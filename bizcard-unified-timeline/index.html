@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BizCard 2.0 – Unified Timeline Prototype</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="device-shell">
+      <div class="device">
+        <div class="device-notch" aria-hidden="true">
+          <div class="notch-camera"></div>
+        </div>
+        <div class="device-screen" id="deviceScreen">
+          <!-- Status Bar -->
+          <div class="statusbar" aria-hidden="true">
+            <div class="sb-time">9:41</div>
+            <div class="sb-icons">
+              <svg class="sb-signal" viewBox="0 0 18 12" fill="currentColor">
+                <rect x="0" y="8" width="3" height="4" rx="0.5"/>
+                <rect x="4" y="5" width="3" height="7" rx="0.5"/>
+                <rect x="8" y="2" width="3" height="10" rx="0.5"/>
+                <rect x="12" y="0" width="3" height="12" rx="0.5"/>
+              </svg>
+              <svg class="sb-wifi" viewBox="0 0 16 12" fill="currentColor">
+                <path d="M8 9.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM8 5c2.5 0 4.7 1.1 6.2 2.8l-1.4 1.4C11.5 7.8 9.9 7 8 7s-3.5.8-4.8 2.2L1.8 7.8C3.3 6.1 5.5 5 8 5z"/>
+              </svg>
+              <div class="sb-battery">
+                <div class="sb-battery-fill"></div>
+                <div class="sb-battery-cap"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- App Container -->
+          <div class="app" id="app">
+            <!-- Scrollable Content Area -->
+            <div class="scroll-container" id="scrollContainer">
+              <!-- Compact Header -->
+              <header class="header-compact" id="header">
+                <!-- Row 1: Avatar + HW Status + Search + QR -->
+                <div class="header-row-1">
+                  <button class="avatar-btn" id="btnDrawer" aria-label="Open settings">
+                    <div class="avatar-ring">
+                      <span class="avatar-initials">BR</span>
+                    </div>
+                    <span class="avatar-status"></span>
+                  </button>
+                  
+                  <button class="hw-status-bar" id="hwStatusBar" aria-label="Hardware Settings">
+                    <div class="hw-status-pill" id="hwStatusPill">
+                      <span class="hw-dot connected"></span>
+                      <span class="hw-name">BizCard Pro</span>
+                      <span class="hw-battery">🔋 85%</span>
+                      <span class="hw-signal">📶</span>
+                    </div>
+                  </button>
+                  
+                  <div class="header-actions">
+                    <button class="icon-btn-ghost" id="btnSearch" aria-label="Search">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="7"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                      </svg>
+                    </button>
+                    <button class="icon-btn-ghost" id="btnShare" aria-label="Share QR">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="3" height="3"/>
+                        <rect x="18" y="18" width="3" height="3"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Row 2: Filter Tabs (始终可见) -->
+                <div class="filter-tabs" id="filterTabs">
+                  <div class="filter-tabs-main">
+                    <button class="filter-tab active" data-view="all">All</button>
+                    <button class="filter-tab" data-view="meetings">
+                      <span class="tab-icon">📍</span> Meetings
+                    </button>
+                    <button class="filter-tab" data-view="calls">
+                      <span class="tab-icon">🤖</span> Calls
+                    </button>
+                  </div>
+                  <div class="filter-tabs-extra">
+                    <button class="filter-icon-btn" id="btnDate" aria-label="Date filter">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                    </button>
+                    <button class="filter-icon-btn" id="btnPerson" aria-label="People filter">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              <!-- Active Filters Bar (有激活筛选时显示) -->
+              <section class="active-filters-bar" id="activeFiltersBar" hidden>
+                <div class="active-filters-list" id="activeFiltersList">
+                  <!-- Dynamically rendered filter chips -->
+                </div>
+                <button class="clear-filters-btn" id="btnClearFilters">Clear</button>
+              </section>
+
+              <!-- Page: Timeline -->
+              <main class="page page-timeline active" id="pageTimeline">
+                <div class="stream" id="stream">
+                  <div class="stream-inner" id="streamInner"></div>
+                </div>
+              </main>
+              
+              <!-- Page: Actions -->
+              <main class="page page-actions" id="pageActions">
+                <!-- Insights Module (跟随 Filter 变化) -->
+                <div class="insights-module" id="insightsModule">
+                  <div class="insights-header">
+                    <span class="insights-period" id="insightsPeriod">All Time</span>
+                  </div>
+                  <div class="insights-grid" id="insightsGrid">
+                    <div class="insight-card" data-type="meetings">
+                      <div class="insight-icon">📍</div>
+                      <div class="insight-value" id="insightMeetings">0</div>
+                      <div class="insight-label">Meetings</div>
+                    </div>
+                    <div class="insight-card" data-type="calls">
+                      <div class="insight-icon">🤖</div>
+                      <div class="insight-value" id="insightCalls">0</div>
+                      <div class="insight-label">Calls</div>
+                    </div>
+                    <div class="insight-card" data-type="visits">
+                      <div class="insight-icon">👁️</div>
+                      <div class="insight-value" id="insightVisits">0</div>
+                      <div class="insight-label">Visits</div>
+                    </div>
+                    <div class="insight-card" data-type="contacts">
+                      <div class="insight-icon">👤</div>
+                      <div class="insight-value" id="insightContacts">0</div>
+                      <div class="insight-label">Contacts</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Smart Banner (运营位，可关闭) -->
+                <div class="smart-banner" id="smartBanner">
+                  <div class="smart-banner-icon">💡</div>
+                  <div class="smart-banner-content">
+                    <div class="smart-banner-text">Try connecting your BizCard hardware</div>
+                    <div class="smart-banner-subtext">Enable NFC sharing and sync</div>
+                  </div>
+                  <button class="smart-banner-action" id="smartBannerAction">Connect</button>
+                  <button class="smart-banner-close" id="smartBannerClose">×</button>
+                </div>
+
+                <div class="actions-content" id="actionsContent">
+                  <!-- Dynamically rendered -->
+                </div>
+              </main>
+            </div>
+
+            <!-- Bottom Bar: View Switcher + FAB -->
+            <div class="bottom-bar" id="bottomBar">
+              <div class="view-switcher" id="viewSwitcher">
+                <button class="view-tab active" data-page="timeline">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="20" x2="12" y2="10"/>
+                    <line x1="18" y1="20" x2="18" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="16"/>
+                  </svg>
+                  <span>Timeline</span>
+                </button>
+                <button class="view-tab" data-page="actions">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  <span>Actions</span>
+                  <span class="view-tab-badge" id="actionsBadge">2</span>
+                </button>
+              </div>
+              
+              <div class="fab" id="fab">
+                <div class="fab-menu" id="fabMenu" hidden>
+                  <button class="fab-item" data-create="task">
+                    <span class="fab-item-icon">✓</span>
+                    <span class="fab-item-label">Add Task</span>
+                  </button>
+                  <button class="fab-item" data-create="note">
+                    <span class="fab-item-icon">📝</span>
+                    <span class="fab-item-label">Add Note</span>
+                  </button>
+                  <button class="fab-item" data-create="scan">
+                    <span class="fab-item-icon">📷</span>
+                    <span class="fab-item-label">Scan Card</span>
+                  </button>
+                  <button class="fab-item" data-create="voice">
+                    <span class="fab-item-icon">🎙️</span>
+                    <span class="fab-item-label">Record</span>
+                  </button>
+                </div>
+                <button class="fab-main" id="fabMain" aria-haspopup="true" aria-expanded="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Backdrop -->
+            <div class="backdrop" id="backdrop" hidden></div>
+
+            <!-- Drawer (Simplified: My Card + Simple Navigation) -->
+            <aside class="drawer" id="drawer" aria-hidden="true">
+              <div class="drawer-head">
+                <span class="drawer-title">我的名片</span>
+                <button class="close-btn" id="btnCloseDrawer" aria-label="Close">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="drawer-body">
+                <!-- My Card Section (核心：名片完整展示) -->
+                <div class="my-card-section">
+                  <div class="my-card">
+                    <div class="my-card-avatar-large">BR</div>
+                    <div class="my-card-main">
+                      <h2 class="my-card-name">Brian Roberts</h2>
+                      <p class="my-card-title">Product Lead @ BizCard</p>
+                      <div class="my-card-contacts">
+                        <div class="my-card-row">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                          </svg>
+                          <span>brian@bizcard.app</span>
+                        </div>
+                        <div class="my-card-row">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                          </svg>
+                          <span>+1 415 555 0100</span>
+                        </div>
+                      </div>
+                      <div class="my-card-tags">
+                        <div class="tag-group">
+                          <span class="tag-label">Skills</span>
+                          <div class="tag-list">
+                            <span class="tag skill">Product Strategy</span>
+                            <span class="tag skill">UX Design</span>
+                            <span class="tag skill">AI/ML</span>
+                          </div>
+                        </div>
+                        <div class="tag-group">
+                          <span class="tag-label">Needs</span>
+                          <div class="tag-list">
+                            <span class="tag need">Investors</span>
+                            <span class="tag need">Partnerships</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <button class="my-card-edit" id="btnEditProfile">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                      Edit Profile
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Quick Navigation (简洁入口) -->
+                <div class="drawer-nav">
+                  <button class="drawer-nav-item" id="btnHardwareSettings">
+                    <div class="drawer-nav-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2"/>
+                        <path d="M8 20h8"/>
+                        <path d="M12 16v4"/>
+                      </svg>
+                    </div>
+                    <div class="drawer-nav-content">
+                      <span class="drawer-nav-label">My Hardware</span>
+                      <span class="drawer-nav-desc" id="hwNavStatus">BizCard Pro · Connected</span>
+                    </div>
+                    <span class="drawer-nav-arrow">›</span>
+                  </button>
+                  
+                  <button class="drawer-nav-item" id="btnAgentSettings">
+                    <div class="drawer-nav-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                      </svg>
+                    </div>
+                    <div class="drawer-nav-content">
+                      <span class="drawer-nav-label">My Agent</span>
+                      <span class="drawer-nav-desc">Voice & Knowledge</span>
+                    </div>
+                    <span class="drawer-nav-arrow">›</span>
+                  </button>
+                  
+                  <button class="drawer-nav-item" id="btnAccountSettings">
+                    <div class="drawer-nav-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                      </svg>
+                    </div>
+                    <div class="drawer-nav-content">
+                      <span class="drawer-nav-label">Account Settings</span>
+                      <span class="drawer-nav-desc">NFC, Privacy, About</span>
+                    </div>
+                    <span class="drawer-nav-arrow">›</span>
+                  </button>
+                </div>
+              </div>
+            </aside>
+
+            <!-- Search Modal (Full-screen search experience) -->
+            <div class="search-modal" id="searchModal" hidden>
+              <div class="search-modal-header">
+                <div class="search-modal-input-wrap">
+                  <svg class="search-modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                  </svg>
+                  <input id="searchModalInput" type="search" placeholder="搜索人 / 公司 / 事项…" autocomplete="off" autofocus />
+                  <button class="search-input-clear" id="searchInputClear" hidden>✕</button>
+                </div>
+                <button class="search-modal-cancel" id="btnSearchCancel">Cancel</button>
+              </div>
+              
+              <div class="search-modal-filters">
+                <div class="filter-section">
+                  <div class="filter-section-title">Type</div>
+                  <div class="filter-options">
+                    <button class="filter-opt" data-sfilter="meetings">
+                      <span class="filter-opt-icon">📍</span>
+                      <span>Meetings</span>
+                    </button>
+                    <button class="filter-opt" data-sfilter="calls">
+                      <span class="filter-opt-icon">🤖</span>
+                      <span>Calls</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="filter-section">
+                  <div class="filter-section-title">Date Range</div>
+                  <div class="filter-options">
+                    <button class="filter-opt" data-sdate="today">Today</button>
+                    <button class="filter-opt" data-sdate="week">This Week</button>
+                    <button class="filter-opt" data-sdate="month">This Month</button>
+                    <button class="filter-opt date-custom" id="btnCustomDate">
+                      <span>Custom</span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="filter-section" id="peopleSection">
+                  <div class="filter-section-title">
+                    <span>Recent People</span>
+                    <button class="filter-section-more" id="btnShowAllPeople">All Contacts ›</button>
+                  </div>
+                  <div class="people-quick-list" id="peopleQuickList">
+                    <!-- Dynamically rendered (常用联系人) -->
+                  </div>
+                </div>
+                
+                <!-- All Contacts List (inline, toggled) -->
+                <div class="all-contacts-section" id="allContactsSection" hidden>
+                  <div class="filter-section-title">
+                    <span>All Contacts</span>
+                    <button class="filter-section-more" id="btnHideAllPeople">‹ Back</button>
+                  </div>
+                  <div class="all-contacts-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="7"/>
+                      <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="allContactsSearchInput" placeholder="Search contacts..." />
+                  </div>
+                  <div class="all-contacts-list" id="allContactsList">
+                    <!-- Dynamically rendered -->
+                  </div>
+                  <div class="all-contacts-footer">
+                    <span class="all-contacts-selected" id="allContactsSelectedCount">0 selected</span>
+                    <button class="all-contacts-confirm" id="btnConfirmAllContacts">Confirm</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="search-modal-footer">
+                <button class="search-apply-btn" id="btnSearchApply">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                  </svg>
+                  Search
+                </button>
+              </div>
+            </div>
+
+            <!-- Modal: Person Picker (Multi-select) -->
+            <div class="modal" id="personModal" hidden>
+              <div class="modal-card">
+                <div class="modal-head">
+                  <span class="modal-title">选择联系人</span>
+                  <button class="close-btn" data-close-modal="personModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <input id="personSearch" class="modal-search" type="search" placeholder="搜索联系人…" />
+                  <div class="person-list" id="personList"></div>
+                </div>
+                <div class="modal-footer" id="personModalFooter">
+                  <button class="modal-submit" id="btnApplyPersons">Apply</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal: Date Range Picker -->
+            <div class="modal" id="dateModal" hidden>
+              <div class="modal-card date-picker-card">
+                <div class="modal-head">
+                  <span class="modal-title">选择日期范围</span>
+                  <button class="close-btn" data-close-modal="dateModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <!-- Quick Presets -->
+                  <div class="date-presets" id="datePresets">
+                    <button class="date-preset" data-preset="today">Today</button>
+                    <button class="date-preset" data-preset="yesterday">Yesterday</button>
+                    <button class="date-preset" data-preset="week">This Week</button>
+                    <button class="date-preset" data-preset="month">This Month</button>
+                  </div>
+                  
+                  <!-- Date Range Inputs -->
+                  <div class="date-range-inputs">
+                    <div class="date-input-group">
+                      <label for="dateFrom">From</label>
+                      <input type="date" id="dateFrom" class="date-input">
+                    </div>
+                    <div class="date-range-separator">→</div>
+                    <div class="date-input-group">
+                      <label for="dateTo">To</label>
+                      <input type="date" id="dateTo" class="date-input">
+                    </div>
+                  </div>
+                  
+                  <button class="modal-submit" id="btnApplyDate">Apply</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal: Add Note -->
+            <div class="modal" id="noteModal" hidden>
+              <div class="modal-card">
+                <div class="modal-head">
+                  <span class="modal-title">Add Note</span>
+                  <button class="close-btn" data-close-modal="noteModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <textarea id="noteInput" class="note-textarea" placeholder="Write your note here..."></textarea>
+                  <div class="note-type-select">
+                    <label class="note-type-option">
+                      <input type="radio" name="noteType" value="note" checked>
+                      <span class="note-type-label">
+                        <span class="note-type-icon">📝</span>
+                        <span>Save as Note</span>
+                      </span>
+                    </label>
+                    <label class="note-type-option">
+                      <input type="radio" name="noteType" value="action">
+                      <span class="note-type-label">
+                        <span class="note-type-icon">✓</span>
+                        <span>Add as Action Item</span>
+                      </span>
+                    </label>
+                  </div>
+                  <button class="modal-submit" id="btnAddNote">Save</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal: Edit Action -->
+            <div class="modal" id="editActionModal" hidden>
+              <div class="modal-card edit-action-card">
+                <div class="modal-head">
+                  <span class="modal-title">Edit Action</span>
+                  <button class="close-btn" data-close-modal="editActionModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <input type="text" id="editActionInput" class="edit-action-input" placeholder="Action item..." />
+                </div>
+                <div class="modal-footer edit-action-footer">
+                  <button class="btn-cancel" id="btnCancelEditAction">Cancel</button>
+                  <button class="btn-primary" id="btnSaveEditAction">Save</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal: Contact Detail -->
+            <div class="modal contact-modal" id="contactModal" hidden>
+              <div class="modal-card contact-detail-card">
+                <div class="contact-detail-head">
+                  <button class="back-btn" data-close-modal="contactModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                  </button>
+                  <button class="edit-btn">Edit</button>
+                </div>
+                <div class="contact-detail-body" id="contactDetailBody">
+                  <!-- Dynamically rendered -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal: Meeting Detail -->
+            <div class="modal" id="meetingModal" hidden>
+              <div class="modal-card meeting-detail-card">
+                <div class="modal-head">
+                  <span class="modal-title">Meeting Details</span>
+                  <button class="close-btn" data-close-modal="meetingModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="modal-body" id="meetingDetailBody">
+                  <!-- Dynamically rendered -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal: Hardware Settings -->
+            <div class="modal hardware-modal" id="hardwareModal" hidden>
+              <div class="modal-card hardware-card">
+                <div class="modal-head">
+                  <span class="modal-title">My Hardware</span>
+                  <button class="close-btn" data-close-modal="hardwareModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="modal-body" id="hardwareDetailBody">
+                  <!-- Disconnected State -->
+                  <div class="hw-disconnected-state" id="hwDisconnectedState">
+                    <div class="hw-disconnected-icon">📱</div>
+                    <div class="hw-disconnected-title">No Device Connected</div>
+                    <div class="hw-disconnected-desc">Connect your BizCard hardware to sync your profile and enable NFC sharing.</div>
+                    <button class="hw-connect-btn" id="btnConnectHw">
+                      <span class="hw-connect-icon">🔗</span>
+                      <span>Connect BizCard Pro</span>
+                    </button>
+                  </div>
+                  
+                  <!-- Connected State -->
+                  <div class="hw-connected-state" id="hwConnectedState" hidden>
+                    <!-- E-ink Screen Preview -->
+                    <div class="hw-modal-section">
+                      <div class="hw-modal-label">E-INK DISPLAY</div>
+                      <div class="eink-preview-large">
+                        <div class="eink-screen-large">
+                          <div class="eink-content-large">
+                            <div class="eink-name-lg">Brian Roberts</div>
+                            <div class="eink-title-lg">Product Lead</div>
+                            <div class="eink-company-lg">BizCard Inc.</div>
+                            <div class="eink-qr-lg">▣</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="hw-modal-status" id="hwModalStatus">
+                        <span class="status-dot connected"></span>
+                        <span>Connected</span>
+                        <span class="hw-modal-battery">🔋 85%</span>
+                        <span class="hw-modal-signal">📶 Strong</span>
+                      </div>
+                    </div>
+                    
+                    <!-- NFC Action Info -->
+                    <div class="hw-modal-section">
+                      <div class="hw-modal-label">NFC ACTION</div>
+                      <div class="nfc-action-card">
+                        <div class="nfc-action-url">bizcard.app/u/brian-roberts</div>
+                        <div class="nfc-action-remark">Personal Profile</div>
+                      </div>
+                    </div>
+                    
+                    <!-- Settings List -->
+                    <div class="hw-modal-section">
+                      <div class="hw-modal-label">SETTINGS</div>
+                      <div class="hw-settings-list">
+                        <button class="hw-setting-item">
+                          <span class="hw-setting-icon">📡</span>
+                          <span class="hw-setting-text">Bind NFC Action</span>
+                          <span class="hw-setting-arrow">›</span>
+                        </button>
+                        <button class="hw-setting-item">
+                          <span class="hw-setting-icon">🖼️</span>
+                          <span class="hw-setting-text">Edit E-ink Display</span>
+                          <span class="hw-setting-arrow">›</span>
+                        </button>
+                        <button class="hw-setting-item">
+                          <span class="hw-setting-icon">🔄</span>
+                          <span class="hw-setting-text">Sync Now</span>
+                          <span class="hw-setting-arrow">›</span>
+                        </button>
+                        <button class="hw-setting-item hw-setting-danger" id="btnDisconnectHw">
+                          <span class="hw-setting-icon">🔌</span>
+                          <span class="hw-setting-text">Disconnect Device</span>
+                          <span class="hw-setting-arrow">›</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Toast -->
+            <div class="toast" id="toast" hidden>
+              <span class="toast-msg" id="toastMsg"></span>
+              <button class="toast-action" id="toastAction" hidden>Undo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

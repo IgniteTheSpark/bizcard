@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BizCard Home Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f5f5f7;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-dark: #1a1a2e;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-muted: #86868b;
+            --accent-blue: #007aff;
+            --accent-purple: #af52de;
+            --accent-green: #34c759;
+            --accent-red: #ff3b30;
+            --accent-orange: #ff9500;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+            --shadow-elevated: 0 12px 40px rgba(0, 0, 0, 0.12);
+            --glass-bg: rgba(255, 255, 255, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #1a1a2e;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 393px;
+            height: 852px;
+            background: #000;
+            border-radius: 55px;
+            padding: 12px;
+            box-shadow: 
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0a0a0a,
+                0 50px 100px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #e8e8ed 0%, #f5f5f7 30%);
+            border-radius: 44px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 126px;
+            height: 37px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 1000;
+        }
+
+        /* Fixed Status Bar */
+        .status-bar-fixed {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 28px 0;
+            font-size: 14px;
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .status-bar-fixed .status-time {
+            color: var(--text-primary);
+        }
+
+        .status-bar-fixed .status-icons {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        /* App Container */
+        .app-container {
+            width: 100%;
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+            padding-bottom: 20px;
+            padding-top: 44px;
+        }
+
+        .app-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Fixed Bottom Container */
+        .fixed-bottom {
+            position: relative;
+            padding: 12px 20px;
+            padding-bottom: 0;
+            background: linear-gradient(180deg, transparent 0%, rgba(245, 245, 247, 0.95) 20%);
+        }
+
+        /* Status Bar (legacy - now using fixed) */
+        .status-bar {
+            display: none;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 0 16px;
+        }
+
+        /* Section 1: Identity & Gear Hub */
+        .card-stack-container {
+            position: relative;
+            height: 260px;
+            margin-bottom: 10px;
+            perspective: 1000px;
+        }
+
+        .stacked-card {
+            position: absolute;
+            width: 100%;
+            border-radius: 20px;
+            cursor: pointer;
+            transform-origin: center top;
+        }
+
+        /* Card Animation Transitions */
+        .card-foreground {
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        opacity 0.4s ease-out;
+        }
+
+        .card-background {
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        opacity 0.3s ease-out;
+        }
+
+        /* Foreground card entering animation */
+        .card-foreground.animate-in {
+            animation: cardSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* Foreground card exiting animation */
+        .card-foreground.animate-out {
+            animation: cardSlideOut 0.4s ease-out forwards;
+        }
+
+        @keyframes cardSlideIn {
+            0% {
+                transform: translateY(20px) scale(0.95);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes cardSlideOut {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-30px) scale(0.9);
+                opacity: 0;
+            }
+        }
+
+        /* Background card animation */
+        @keyframes bgCardFadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card-background.animate-in {
+            animation: bgCardFadeIn 0.3s ease-out forwards;
+        }
+
+        /* Background Card */
+        .card-background {
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 48px;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .card-background-content {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 18px 18px 0 0;
+        }
+
+        /* Digital Profile Background */
+        .card-background.digital .card-background-content {
+            background: linear-gradient(135deg, #2c3e50 0%, #1a1a2e 100%);
+            color: white;
+        }
+
+        .bg-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        .bg-info {
+            font-size: 11px;
+            font-weight: 500;
+            opacity: 0.9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Hardware Background */
+        .card-background.hardware .card-background-content {
+            background: linear-gradient(135deg, #c0c0c0 0%, #a0a0a0 100%);
+            color: #333;
+            justify-content: center;
+            gap: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Foreground Card */
+        .card-foreground {
+            top: 32px;
+            left: 0;
+            right: 0;
+            z-index: 2;
+            box-shadow: var(--shadow-elevated);
+        }
+
+        /* Digital Profile Card */
+        .digital-card {
+            background: linear-gradient(145deg, #1e3a5f 0%, #0f2744 50%, #1a1a2e 100%);
+            color: white;
+            padding: 14px 16px;
+            border-radius: 18px;
+            height: 220px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .digital-card-body {
+            display: flex;
+            gap: 14px;
+            flex: 1;
+        }
+
+        .profile-photo {
+            width: 80px;
+            height: 100px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .profile-info {
+            flex: 1;
+        }
+
+        .profile-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .profile-title {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2px;
+        }
+
+        .profile-email {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 8px;
+        }
+
+        .profile-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .tag {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .tag.skills {
+            background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%);
+        }
+
+        .tag.needs {
+            background: linear-gradient(135deg, #af52de 0%, #8e44ad 100%);
+        }
+
+        .tag-icon {
+            font-size: 9px;
+        }
+
+        .digital-card-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 12px;
+        }
+
+        .card-btn {
+            flex: 1;
+            padding: 10px 8px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .card-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Hardware Card */
+        .hardware-card {
+            background: linear-gradient(145deg, #e8e8e8 0%, #d0d0d0 50%, #b8b8b8 100%);
+            padding: 14px 16px;
+            border-radius: 18px;
+            border: 3px solid #a0a0a0;
+            height: 220px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hardware-card-header {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .hardware-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .hardware-screen {
+            background: #f8f8f8;
+            border: 2px solid #bbb;
+            border-radius: 6px;
+            padding: 24px 16px;
+            text-align: center;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.08);
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* E-ink screen style */
+            font-family: 'Courier New', monospace;
+        }
+
+        .hardware-screen-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #222;
+            line-height: 1.4;
+            font-family: 'Courier New', monospace;
+        }
+
+        .hardware-card-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 12px;
+        }
+
+        .hardware-btn {
+            flex: 1;
+            padding: 10px 8px;
+            border-radius: 10px;
+            border: 1px solid #bbb;
+            background: linear-gradient(180deg, #fff 0%, #e8e8e8 100%);
+            color: #333;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .hardware-btn:hover {
+            background: linear-gradient(180deg, #f5f5f5 0%, #ddd 100%);
+        }
+
+        /* Active States for Card Stack */
+        .card-stack-container.hardware-front .card-background.digital {
+            display: block;
+        }
+
+        .card-stack-container.hardware-front .card-background.hardware {
+            display: none;
+        }
+
+        .card-stack-container.hardware-front .card-foreground.digital-card {
+            display: none;
+        }
+
+        .card-stack-container.hardware-front .card-foreground.hardware-card {
+            display: block;
+        }
+
+        .card-stack-container.digital-front .card-background.digital {
+            display: none;
+        }
+
+        .card-stack-container.digital-front .card-background.hardware {
+            display: block;
+        }
+
+        .card-stack-container.digital-front .card-foreground.digital-card {
+            display: block;
+        }
+
+        .card-stack-container.digital-front .card-foreground.hardware-card {
+            display: none;
+        }
+
+        /* Section 2: Marketing Card */
+        .marketing-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .marketing-card:hover {
+            transform: scale(1.01);
+        }
+
+        .marketing-content {
+            color: white;
+        }
+
+        .marketing-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .marketing-subtitle {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        .marketing-arrow {
+            color: white;
+            font-size: 18px;
+            opacity: 0.8;
+        }
+
+        /* Section 3: Today's Engagement */
+        .engagement-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 14px 16px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-icon {
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .engagement-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .engagement-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .engagement-list {
+            margin-bottom: 12px;
+        }
+
+        .engagement-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .engagement-item:last-child {
+            border-bottom: none;
+        }
+
+        .engagement-item:hover {
+            background: rgba(0, 0, 0, 0.02);
+            margin: 0 -16px;
+            padding: 10px 16px;
+        }
+
+        .engagement-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        .engagement-icon.meeting {
+            background: linear-gradient(135deg, #007aff 0%, #0055cc 100%);
+        }
+
+        .engagement-icon.agent {
+            background: linear-gradient(135deg, #af52de 0%, #8e44ad 100%);
+        }
+
+        .engagement-icon.exchange {
+            background: linear-gradient(135deg, #34c759 0%, #28a745 100%);
+        }
+
+        .engagement-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .engagement-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .engagement-time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .engagement-arrow {
+            color: var(--text-muted);
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .view-all-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            width: 100%;
+            padding: 10px;
+            border: none;
+            background: rgba(0, 122, 255, 0.08);
+            color: var(--accent-blue);
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .view-all-btn:hover {
+            background: rgba(0, 122, 255, 0.12);
+        }
+
+        /* Note: Sticky bar styles moved to after tab-bar */
+
+        .sticky-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 14px;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-elevated);
+        }
+
+        .sticky-btn.scan {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .sticky-btn.scan:hover {
+            background: #f0f0f0;
+        }
+
+        .sticky-btn.capture {
+            background: linear-gradient(135deg, #ff3b30 0%, #cc2d25 100%);
+            color: white;
+        }
+
+        .sticky-btn.capture:hover {
+            transform: scale(1.02);
+        }
+
+        .sticky-btn.capture.disabled {
+            background: #ccc;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        .sticky-btn.capture.disabled:hover {
+            transform: none;
+        }
+
+        /* Sticky Bar */
+        .sticky-bar-container {
+            padding: 8px 16px;
+            background: linear-gradient(0deg, rgba(245, 245, 247, 1) 70%, rgba(245, 245, 247, 0) 100%);
+            padding-top: 16px;
+        }
+
+        .sticky-bar {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 6px 0 24px;
+            border-radius: 0 0 44px 44px;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 6px 14px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-icon {
+            font-size: 22px;
+            opacity: 0.5;
+        }
+
+        .tab-label {
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        .tab-item.active .tab-icon {
+            opacity: 1;
+        }
+
+        .tab-item.active .tab-label {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        /* Toast */
+        .toast {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: var(--bg-dark);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Empty State */
+        .empty-engagement {
+            text-align: center;
+            padding: 32px 0;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+
+        .empty-text {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .recording-dot {
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="iphone-frame">
+        <div class="dynamic-island"></div>
+        <div class="iphone-screen">
+            <!-- Fixed Status Bar -->
+            <div class="status-bar-fixed">
+                <span class="status-time">9:41</span>
+                <div class="status-icons">
+                    <span>📶</span>
+                    <span>📡</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+
+            <div class="app-container">
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Section 1: Card Stack -->
+            <div class="card-stack-container hardware-front" onclick="toggleCardStack()">
+                <!-- Background Card: Digital Profile -->
+                <div class="stacked-card card-background digital">
+                    <div class="card-background-content">
+                        <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Avatar" class="bg-avatar">
+                        <span class="bg-info">Dr. Evelyn Reed · Product Designer · BizCard</span>
+                    </div>
+                </div>
+
+                <!-- Background Card: Hardware -->
+                <div class="stacked-card card-background hardware" style="display: none;">
+                    <div class="card-background-content">
+                        <span class="status-item">⚡ 85%</span>
+                        <span class="status-item">Connected</span>
+                        <span class="status-item">📶</span>
+                    </div>
+                </div>
+
+                <!-- Foreground Card: Hardware -->
+                <div class="stacked-card card-foreground hardware-card">
+                    <div class="hardware-card-header">
+                        <div class="hardware-status">
+                            <span class="status-item">⚡ 85%</span>
+                            <span>|</span>
+                            <span class="status-item">Connected</span>
+                            <span>|</span>
+                            <span class="status-item">📶</span>
+                        </div>
+                    </div>
+                    <div class="hardware-screen">
+                        <div class="hardware-screen-text">BizCard<br>Ready to Capture</div>
+                    </div>
+                    <div class="hardware-card-buttons">
+                        <button class="hardware-btn" onclick="showToast('Syncing E-ink display...'); event.stopPropagation();">
+                            <span>🔄</span>
+                            <span>Sync</span>
+                        </button>
+                        <button class="hardware-btn" onclick="showToast('Opening Settings...'); event.stopPropagation();">
+                            <span>⚙️</span>
+                            <span>Settings</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Foreground Card: Digital Profile -->
+                <div class="stacked-card card-foreground digital-card" style="display: none;">
+                    <div class="digital-card-body">
+                        <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Profile" class="profile-photo">
+                        <div class="profile-info">
+                            <div class="profile-name">Dr. Evelyn Reed</div>
+                            <div class="profile-title">Product Designer</div>
+                            <div class="profile-email">evelyn.reed@bizcard.com</div>
+                            <div class="profile-tags">
+                                <span class="tag skills"><span class="tag-icon">💡</span>UX Research</span>
+                                <span class="tag skills"><span class="tag-icon">💡</span>UI Design</span>
+                                <span class="tag needs"><span class="tag-icon">🎯</span>Prototyping</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="digital-card-buttons">
+                        <button class="card-btn" onclick="showToast('Opening Editor...'); event.stopPropagation();">
+                            <span>✏️</span>
+                            <span>Edit</span>
+                        </button>
+                        <button class="card-btn" onclick="showToast('Starting Agent...'); event.stopPropagation();">
+                            <span>🤖</span>
+                            <span>Agent</span>
+                        </button>
+                        <button class="card-btn" onclick="showToast('Opening Preview...'); event.stopPropagation();">
+                            <span>👁️</span>
+                            <span>Preview</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Marketing Card -->
+            <div class="marketing-card" onclick="showToast('Opening AI Templates...')">
+                <div class="marketing-content">
+                    <div class="marketing-title">🎯 Unlock AI Social Templates</div>
+                    <div class="marketing-subtitle">Craft perfect first impressions</div>
+                </div>
+                <span class="marketing-arrow">→</span>
+            </div>
+
+            <!-- Section 3: Today's Engagement -->
+            <div class="engagement-section">
+                <!-- Stats Row -->
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <div class="stat-icon">👁️</div>
+                        <div class="stat-value">12</div>
+                        <div class="stat-label">Visits</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">🤝</div>
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Cards Added</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">📍</div>
+                        <div class="stat-value">2</div>
+                        <div class="stat-label">Meetings</div>
+                    </div>
+                </div>
+
+                <!-- Engagement Feed -->
+                <div class="engagement-header">
+                    <span class="engagement-title">Today's Engagement</span>
+                </div>
+
+                <div class="engagement-list">
+                    <div class="engagement-item" onclick="navigateToDetail('exchange')">
+                        <div class="engagement-icon exchange">🤝</div>
+                        <div class="engagement-content">
+                            <div class="engagement-name">Exchange with John Mitchell</div>
+                            <div class="engagement-time">11:30 AM · CES Main Hall</div>
+                        </div>
+                        <span class="engagement-arrow">›</span>
+                    </div>
+
+                    <div class="engagement-item" onclick="navigateToDetail('meeting')">
+                        <div class="engagement-icon meeting">📍</div>
+                        <div class="engagement-content">
+                            <div class="engagement-name">Q4 Strategy Review</div>
+                            <div class="engagement-time">10:00 AM · Kevin Du, Nancy Chen</div>
+                        </div>
+                        <span class="engagement-arrow">›</span>
+                    </div>
+
+                    <div class="engagement-item" onclick="navigateToDetail('agent')">
+                        <div class="engagement-icon agent">🤖</div>
+                        <div class="engagement-content">
+                            <div class="engagement-name">Visitor #402 - Pricing Inquiry</div>
+                            <div class="engagement-time">9:15 AM</div>
+                        </div>
+                        <span class="engagement-arrow">›</span>
+                    </div>
+                </div>
+
+                <button class="view-all-btn" onclick="navigateToTimeline()">
+                    <span>View All History</span>
+                    <span>→</span>
+                </button>
+            </div>
+        </div>
+
+                <!-- Toast -->
+                <div class="toast" id="toast"></div>
+            </div>
+
+            <!-- Fixed Bottom: Sticky Bar + Tab Bar -->
+            <div class="sticky-bar-container">
+                <div class="sticky-bar">
+                    <button class="sticky-btn scan" onclick="showToast('Opening Camera to Scan...')">
+                        <span>📷</span>
+                        <span>Scan to Add</span>
+                    </button>
+                    <button class="sticky-btn capture" id="captureBtn" onclick="startCapture()">
+                        <span class="recording-dot">🔴</span>
+                        <span>Start Capture</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Bar -->
+            <div class="tab-bar">
+                <button class="tab-item active">
+                    <span class="tab-icon">🏠</span>
+                    <span class="tab-label">Home</span>
+                </button>
+                <button class="tab-item" onclick="navigateToTimeline()">
+                    <span class="tab-icon">📅</span>
+                    <span class="tab-label">Timeline</span>
+                </button>
+                <button class="tab-item">
+                    <span class="tab-icon">📤</span>
+                    <span class="tab-label">Share</span>
+                </button>
+                <button class="tab-item">
+                    <span class="tab-icon">👥</span>
+                    <span class="tab-label">Contacts</span>
+                </button>
+                <button class="tab-item">
+                    <span class="tab-icon">👤</span>
+                    <span class="tab-label">Me</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Card Stack with Animation
+        let isAnimating = false;
+        
+        function toggleCardStack() {
+            if (isAnimating) return;
+            isAnimating = true;
+            
+            const container = document.querySelector('.card-stack-container');
+            const bgDigital = document.querySelector('.card-background.digital');
+            const bgHardware = document.querySelector('.card-background.hardware');
+            const fgHardware = document.querySelector('.card-foreground.hardware-card');
+            const fgDigital = document.querySelector('.card-foreground.digital-card');
+            
+            if (container.classList.contains('hardware-front')) {
+                // Switching to Digital Front
+                
+                // Animate out hardware foreground
+                fgHardware.classList.add('animate-out');
+                
+                setTimeout(() => {
+                    // Hide hardware foreground
+                    fgHardware.style.display = 'none';
+                    fgHardware.classList.remove('animate-out');
+                    
+                    // Show and animate in digital foreground
+                    fgDigital.style.display = 'block';
+                    fgDigital.classList.add('animate-in');
+                    
+                    // Switch backgrounds
+                    bgDigital.style.display = 'none';
+                    bgHardware.style.display = 'block';
+                    bgHardware.classList.add('animate-in');
+                    
+                    setTimeout(() => {
+                        fgDigital.classList.remove('animate-in');
+                        bgHardware.classList.remove('animate-in');
+                        isAnimating = false;
+                    }, 500);
+                }, 300);
+                
+                container.classList.remove('hardware-front');
+                container.classList.add('digital-front');
+                
+            } else {
+                // Switching to Hardware Front
+                
+                // Animate out digital foreground
+                fgDigital.classList.add('animate-out');
+                
+                setTimeout(() => {
+                    // Hide digital foreground
+                    fgDigital.style.display = 'none';
+                    fgDigital.classList.remove('animate-out');
+                    
+                    // Show and animate in hardware foreground
+                    fgHardware.style.display = 'block';
+                    fgHardware.classList.add('animate-in');
+                    
+                    // Switch backgrounds
+                    bgHardware.style.display = 'none';
+                    bgDigital.style.display = 'block';
+                    bgDigital.classList.add('animate-in');
+                    
+                    setTimeout(() => {
+                        fgHardware.classList.remove('animate-in');
+                        bgDigital.classList.remove('animate-in');
+                        isAnimating = false;
+                    }, 500);
+                }, 300);
+                
+                container.classList.remove('digital-front');
+                container.classList.add('hardware-front');
+            }
+        }
+
+        // Show Toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // Navigate to Detail Page
+        function navigateToDetail(type) {
+            // In real app, this would navigate to the detail page
+            // For demo, we'll show a toast and simulate navigation
+            if (type === 'meeting') {
+                showToast('Opening Meeting Detail: Q4 Strategy Review');
+            } else if (type === 'agent') {
+                showToast('Opening Agent Call Detail: Visitor #402');
+            } else if (type === 'exchange') {
+                showToast('Opening Contact: John Mitchell');
+            }
+            
+            // Simulate navigation delay
+            setTimeout(() => {
+                // Could open timeline demo in new tab
+                // window.open('../timeline-demo/demo.html', '_blank');
+            }, 500);
+        }
+
+        // Navigate to Timeline
+        function navigateToTimeline() {
+            showToast('Navigating to Timeline → Activities Tab');
+            
+            // In real app, this would navigate to Timeline
+            // For demo purposes, you can uncomment below to open timeline demo
+            setTimeout(() => {
+                window.open('../timeline-demo/demo.html', '_self');
+            }, 1000);
+        }
+
+        // Start Capture
+        function startCapture() {
+            const btn = document.getElementById('captureBtn');
+            
+            // Check if hardware is connected (simulated)
+            const isConnected = true; // Change to false to test disconnected state
+            
+            if (!isConnected) {
+                showToast('Please connect your BizCard device first');
+                return;
+            }
+            
+            // Toggle capture state
+            if (btn.classList.contains('recording')) {
+                btn.classList.remove('recording');
+                btn.innerHTML = '<span class="recording-dot">🔴</span><span>Start Capture</span>';
+                showToast('Capture stopped. Processing summary...');
+            } else {
+                btn.classList.add('recording');
+                btn.innerHTML = '<span class="recording-dot">⏹️</span><span>Stop Capture</span>';
+                showToast('Recording started...');
+            }
+        }
+
+        // Simulate disconnected hardware
+        function toggleHardwareConnection() {
+            const captureBtn = document.getElementById('captureBtn');
+            captureBtn.classList.toggle('disabled');
+            
+            if (captureBtn.classList.contains('disabled')) {
+                captureBtn.onclick = function() {
+                    showToast('Please connect your BizCard device');
+                    // Could navigate to hardware connection page
+                };
+            } else {
+                captureBtn.onclick = startCapture;
+            }
+        }
+    </script>
+</body>
+</html>
+

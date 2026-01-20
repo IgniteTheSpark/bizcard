@@ -1,0 +1,3205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BizCard Timeline Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f5f5f7;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f0f0f2;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-muted: #86868b;
+            --accent-blue: #007aff;
+            --accent-purple: #af52de;
+            --accent-yellow: #f59e0b;
+            --accent-green: #34c759;
+            --accent-red: #ff3b30;
+            --accent-cyan: #06b6d4;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --timeline-line: #d1d1d6;
+            --shadow-glow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
+            --glass-bg: rgba(255, 255, 255, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #1a1a2e;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        /* iPhone Frame */
+        .iphone-frame {
+            width: 393px;
+            height: 852px;
+            background: #000;
+            border-radius: 55px;
+            padding: 12px;
+            box-shadow: 
+                0 0 0 3px #1a1a1a,
+                0 0 0 6px #0a0a0a,
+                0 50px 100px rgba(0, 0, 0, 0.5);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #e8e8ed 0%, #f5f5f7 30%);
+            border-radius: 44px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 126px;
+            height: 37px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 1000;
+        }
+
+        /* Fixed Status Bar */
+        .status-bar-fixed {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 28px 0;
+            font-size: 14px;
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .status-bar-fixed .status-time {
+            color: #1d1d1f;
+        }
+
+        .status-bar-fixed .status-icons {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        /* App Container */
+        .app-container {
+            width: 100%;
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .app-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 6px 0 24px;
+            border-radius: 0 0 44px 44px;
+            flex-shrink: 0;
+        }
+
+        .tab-bar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-bar-icon {
+            font-size: 24px;
+            opacity: 0.5;
+        }
+
+        .tab-bar-label {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .tab-bar-item.active .tab-bar-icon {
+            opacity: 1;
+        }
+
+        .tab-bar-item.active .tab-bar-label {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        /* Page Views */
+        .page {
+            display: none;
+            min-height: 100%;
+            padding-bottom: 20px;
+        }
+
+        .page.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: linear-gradient(180deg, rgba(245, 245, 247, 0.98) 0%, rgba(245, 245, 247, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 16px 20px;
+            padding-top: 60px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 18px;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+            border-color: var(--accent-blue);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 4px;
+            border-radius: 14px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab.active {
+            background: var(--accent-blue);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .tab-badge {
+            background: var(--accent-red);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .tab.active .tab-badge {
+            background: white;
+            color: var(--accent-blue);
+        }
+
+        /* View Switcher (Sub-tabs) */
+        .view-switcher {
+            display: flex;
+            gap: 6px;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .view-switcher::-webkit-scrollbar {
+            display: none;
+        }
+
+        .view-btn {
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .view-btn:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-secondary);
+        }
+
+        .view-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .view-btn-icon {
+            font-size: 14px;
+        }
+
+        /* List View Styles */
+        .list-content {
+            padding: 16px 20px;
+        }
+
+        .list-card {
+            display: flex;
+            gap: 14px;
+            padding: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-card);
+        }
+
+        .list-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .list-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .list-card-icon.meeting {
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+        }
+
+        .list-card-icon.agent {
+            background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
+        }
+
+        .list-card-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .list-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .list-card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .list-card-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .list-card-participants {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .list-card-summary {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-style: italic;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Status Tags */
+        .status-tag {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .status-tag.recording {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .status-tag.recording .status-dot {
+            animation: pulse 1s infinite;
+        }
+
+        .status-tag.uploading {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .status-tag.processing {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .status-tag.completed {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .status-tag.failed {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* List Section Headers */
+        .list-section-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 16px 20px 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .list-section-header:first-child {
+            padding-top: 8px;
+        }
+
+        .list-section-count {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        /* Status Filter */
+        .status-filter {
+            display: flex;
+            gap: 8px;
+            padding: 8px 20px 12px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .status-filter::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-chip {
+            padding: 6px 12px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .filter-chip:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-secondary);
+        }
+
+        .filter-chip.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        /* Duration Badge */
+        .duration-badge {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Tag Chips */
+        .tags-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .tag-chip {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.02);
+            color: var(--text-secondary);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .tag-chip:hover {
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+        }
+
+        .tag-chip.active {
+            background: rgba(0, 122, 255, 0.12);
+            border-color: rgba(0, 122, 255, 0.35);
+            color: var(--accent-blue);
+        }
+
+        .tag-chip.small {
+            padding: 4px 8px;
+            font-size: 10px;
+        }
+
+        .tag-chip.intent {
+            background: rgba(175, 82, 222, 0.10);
+            border-color: rgba(175, 82, 222, 0.25);
+            color: var(--accent-purple);
+        }
+
+        .tag-chip.context {
+            background: rgba(6, 182, 212, 0.10);
+            border-color: rgba(6, 182, 212, 0.25);
+            color: var(--accent-cyan);
+        }
+
+        .tag-chip.identity {
+            background: rgba(52, 199, 89, 0.10);
+            border-color: rgba(52, 199, 89, 0.25);
+            color: #1f8a44;
+        }
+
+        /* Enhanced List Card */
+        .list-card-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .list-card-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .list-card-info-separator {
+            opacity: 0.5;
+        }
+
+        /* Recording Card Special Style */
+        .list-card.recording {
+            border-color: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .list-card.recording:hover {
+            border-color: #ef4444;
+        }
+
+        .recording-control {
+            display: flex;
+            margin-top: 12px;
+        }
+
+        .recording-control button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            background: #ef4444;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .call-direction {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+        }
+
+        .call-direction.inbound {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .call-direction.outbound {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--accent-purple);
+        }
+
+        /* Inline Empty State (for today no data) */
+        .inline-empty {
+            background: var(--bg-card);
+            border: 1px dashed rgba(0, 0, 0, 0.15);
+            border-radius: 14px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .inline-empty-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.6;
+        }
+
+        .inline-empty-text {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .inline-empty-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Days Ago Badge */
+        .days-ago {
+            font-size: 11px;
+            color: var(--accent-blue);
+            margin-left: 8px;
+        }
+
+        /* Timeline Content */
+        .timeline-content {
+            padding: 20px;
+        }
+
+        /* Date Header */
+        .date-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .date-header::before,
+        .date-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+        }
+
+        .date-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        /* Timeline Items */
+        .timeline-item {
+            position: relative;
+            padding-left: 80px;
+            margin-bottom: 16px;
+            min-height: 60px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 31px;
+            top: 62px;
+            bottom: -16px;
+            width: 2px;
+            background: var(--timeline-line);
+        }
+
+        .timeline-item:last-child::before {
+            background: linear-gradient(180deg, var(--timeline-line) 0%, transparent 100%);
+        }
+
+        /* Adjust for cluster which has no time label */
+        .timeline-item:has(.timeline-time:empty)::before {
+            top: 50px;
+        }
+
+        /* New Timeline Anchor: Time + Icon stacked */
+        .timeline-anchor {
+            position: absolute;
+            left: 0;
+            top: 8px;
+            width: 65px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .timeline-time {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+
+        .timeline-time:empty {
+            display: none;
+        }
+
+        .timeline-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            border: 3px solid var(--bg-primary);
+            position: relative;
+            z-index: 2;
+        }
+
+        .timeline-icon.meeting { 
+            background: linear-gradient(135deg, var(--accent-blue), #0055cc); 
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3); 
+        }
+        .timeline-icon.exchange { 
+            background: linear-gradient(135deg, var(--accent-green), #28a745); 
+            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); 
+        }
+        .timeline-icon.agent { 
+            background: linear-gradient(135deg, var(--accent-purple), #8e44ad); 
+            box-shadow: 0 4px 12px rgba(175, 82, 222, 0.3); 
+        }
+        .timeline-icon.cluster { 
+            background: var(--bg-secondary); 
+            border: 2px solid var(--border-color);
+            font-size: 14px;
+            box-shadow: none;
+        }
+
+        /* Legacy dot styles - keep for compatibility */
+        .timeline-dot {
+            display: none;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-card);
+        }
+
+        .card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .card-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 10px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 6px;
+        }
+
+        .action-badge {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-red);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .card-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .card-meta-icon {
+            color: var(--accent-cyan);
+        }
+
+        .card-summary {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Exchange Card Avatar */
+        .contact-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .contact-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .contact-info {
+            flex: 1;
+        }
+
+        .contact-name {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .contact-role {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Cluster (Stacked Dots) */
+        .cluster {
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px dashed rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .cluster:hover {
+            background: var(--bg-card);
+            border-style: solid;
+            border-color: var(--accent-blue);
+            box-shadow: var(--shadow-card);
+        }
+
+        .cluster-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .cluster-expand {
+            color: var(--text-muted);
+            font-size: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        .cluster.expanded .cluster-expand {
+            transform: rotate(180deg);
+        }
+
+        /* Expanded Cluster Items */
+        .cluster-items {
+            display: none;
+            padding: 8px 0;
+            margin-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .cluster-items.expanded {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .cluster-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cluster-item:last-child {
+            border-bottom: none;
+        }
+
+        .cluster-item-time {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            width: 55px;
+            flex-shrink: 0;
+        }
+
+        .cluster-item-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .cluster-item-dot.purple { background: var(--accent-purple); color: var(--accent-purple); }
+        .cluster-item-dot.blue { background: var(--accent-blue); color: var(--accent-blue); }
+        .cluster-item-dot.yellow { background: var(--accent-yellow); color: var(--accent-yellow); }
+
+        .cluster-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .cluster-item-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .cluster-item-action {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 30px;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .empty-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 12px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        /* Actions Tab Content */
+        .actions-content {
+            padding: 0 20px 20px;
+        }
+
+        /* Actions Filters */
+        .actions-filters {
+            padding: 0 20px 12px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 124px;
+            z-index: 90;
+            background: linear-gradient(180deg, rgba(245, 245, 247, 0.98) 0%, rgba(245, 245, 247, 0.92) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .actions-search {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .actions-search input {
+            width: 100%;
+            height: 38px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            padding: 0 12px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .actions-search input:focus {
+            border-color: rgba(0, 122, 255, 0.4);
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.10);
+        }
+
+        .actions-filter-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .clear-filter {
+            border: none;
+            background: transparent;
+            color: var(--accent-blue);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 8px;
+            border-radius: 10px;
+        }
+
+        .clear-filter:hover {
+            background: rgba(0, 122, 255, 0.08);
+        }
+
+        .date-scroller {
+            display: flex;
+            gap: 8px;
+            padding: 16px 20px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .date-scroller::-webkit-scrollbar {
+            display: none;
+        }
+
+        .date-chip {
+            flex-shrink: 0;
+            padding: 10px 16px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            min-width: 50px;
+        }
+
+        .date-chip.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .date-chip-day {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .date-chip-num {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .date-chip-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--accent-red);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+
+        /* Action Group Card */
+        .action-group {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+
+        .action-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: rgba(0, 0, 0, 0.02);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            gap: 12px;
+        }
+
+        .action-group-source {
+            font-size: 12px;
+            color: var(--text-muted);
+            min-width: 0;
+            flex: 1;
+        }
+
+        .action-group-source strong {
+            color: var(--text-secondary);
+        }
+
+        .action-group-tags {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .action-group-arrow {
+            color: var(--text-muted);
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .action-group-items {
+            padding: 12px 16px;
+        }
+
+        .action-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .action-item:last-child {
+            border-bottom: none;
+        }
+
+        .action-checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .action-checkbox:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .action-checkbox.checked {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+
+        .action-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .action-text {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .action-text.completed {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .action-group-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-followup {
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            color: white;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-followup:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        /* Detail Page */
+        .detail-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: none;
+            border: none;
+            color: var(--accent-blue);
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .transcript-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .detail-content {
+            padding: 24px 20px;
+        }
+
+        .detail-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .detail-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .detail-section {
+            margin-bottom: 28px;
+        }
+
+        .detail-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .participants {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .participant {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .participant:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .participant-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .participant-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .add-participant {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            background: var(--bg-card);
+            border: 1px dashed var(--border-color);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .images-row {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .image-thumb {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 24px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .add-image {
+            border-style: dashed;
+        }
+
+        .key-points {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .key-point {
+            display: flex;
+            gap: 12px;
+            padding: 8px 0;
+        }
+
+        .key-point-bullet {
+            color: var(--accent-blue);
+            font-size: 16px;
+        }
+
+        .key-point-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .detail-actions {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .detail-action-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-action-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Floating Action Bar */
+        .floating-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 8px;
+            display: flex;
+            gap: 4px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+        }
+
+        .floating-btn {
+            padding: 12px 20px;
+            border-radius: 14px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .floating-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text-primary);
+        }
+
+        .floating-btn.primary {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            color: white;
+        }
+
+        .floating-btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            border-radius: 44px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal {
+            width: 100%;
+            max-width: 430px;
+            background: var(--bg-card);
+            border-radius: 24px 24px 0 0;
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .draft-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .draft-textarea {
+            width: 100%;
+            min-height: 120px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .recipients-section {
+            margin-bottom: 24px;
+        }
+
+        .recipients-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .recipients-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .recipient {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .recipient.selected {
+            background: rgba(0, 122, 255, 0.1);
+            border-color: var(--accent-blue);
+        }
+
+        .recipient-check {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+
+        .recipient.selected .recipient-check {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .channel-section {
+            margin-bottom: 24px;
+        }
+
+        .channel-options {
+            display: flex;
+            gap: 12px;
+        }
+
+        .channel-option {
+            flex: 1;
+            padding: 14px;
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .channel-option.selected {
+            background: rgba(0, 122, 255, 0.1);
+            border-color: var(--accent-blue);
+        }
+
+        .channel-icon {
+            font-size: 24px;
+        }
+
+        .channel-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .modal-footer {
+            padding: 16px 24px 32px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn-send {
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* Date Picker Dropdown */
+        .datepicker-dropdown {
+            position: absolute;
+            top: 130px;
+            right: 16px;
+            width: 300px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            z-index: 200;
+            display: none;
+            animation: dropdownIn 0.2s ease;
+        }
+
+        .datepicker-dropdown.active {
+            display: block;
+        }
+
+        @keyframes dropdownIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .datepicker-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 199;
+            display: none;
+            border-radius: 44px;
+        }
+
+        .datepicker-overlay.active {
+            display: block;
+        }
+
+        .calendar {
+            padding: 20px;
+        }
+
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .calendar-nav {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .calendar-nav:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .calendar-month {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            margin-bottom: 8px;
+        }
+
+        .calendar-weekday {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 8px 0;
+        }
+
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .calendar-day:hover:not(.disabled) {
+            background: var(--bg-card-hover);
+        }
+
+        .calendar-day.today {
+            background: var(--accent-blue);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .calendar-day.disabled {
+            color: var(--text-muted);
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .calendar-day.selected {
+            background: var(--accent-purple);
+            color: white;
+        }
+
+        .calendar-day.has-activity {
+            position: relative;
+        }
+
+        .calendar-day-badge {
+            position: absolute;
+            bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .calendar-day-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+        }
+
+        .calendar-day-dot.activity { background: var(--accent-cyan); }
+
+        .calendar-day-action-count {
+            font-size: 8px;
+            font-weight: 700;
+            color: white;
+            background: var(--accent-red);
+            border-radius: 6px;
+            padding: 1px 4px;
+            min-width: 14px;
+            text-align: center;
+        }
+
+        .calendar-day.today .calendar-day-dot.activity {
+            background: rgba(255,255,255,0.7);
+        }
+
+        .calendar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn-calendar {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-calendar:hover {
+            background: #2563eb;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="iphone-frame">
+        <div class="dynamic-island"></div>
+        <div class="iphone-screen">
+            <!-- Fixed Status Bar -->
+            <div class="status-bar-fixed">
+                <span class="status-time">9:41</span>
+                <div class="status-icons">
+                    <span>📶</span>
+                    <span>📡</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+
+            <div class="app-container">
+                <!-- Timeline Page -->
+                <div id="timeline-page" class="page active">
+                    <header class="header">
+                        <div class="header-top">
+                    <h1 class="header-title">Timeline</h1>
+                    <div class="header-actions">
+                        <button class="icon-btn" onclick="toggleEmptyDemo()" title="Toggle Empty State Demo">🔄</button>
+                        <button class="icon-btn" onclick="openDatePicker()">📅</button>
+                    </div>
+                </div>
+                <div class="tabs">
+                    <button class="tab active" data-tab="activities" onclick="switchTab('activities', this)">Activities</button>
+                    <button class="tab" data-tab="actions" onclick="switchTab('actions', this)">
+                        Actions
+                        <span class="tab-badge">3</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Activities Tab -->
+            <div id="activities-tab" class="tab-content">
+                <!-- View Switcher -->
+                <div class="view-switcher">
+                    <button class="view-btn active" onclick="switchView('timeline')">
+                        <span class="view-btn-icon">📅</span>
+                        <span>Timeline</span>
+                    </button>
+                    <button class="view-btn" onclick="switchView('meetings')">
+                        <span class="view-btn-icon">📍</span>
+                        <span>Meetings</span>
+                    </button>
+                    <button class="view-btn" onclick="switchView('calls')">
+                        <span class="view-btn-icon">🤖</span>
+                        <span>Calls</span>
+                    </button>
+                </div>
+
+                <!-- Timeline View -->
+                <div id="timeline-view" class="view-content">
+                    <div class="timeline-content">
+                        <div class="date-header">
+                            <span class="date-text">Jan 08, 2026 (Today)</span>
+                        </div>
+
+                    <!-- Exchange Card -->
+                    <div class="timeline-item">
+                        <div class="timeline-anchor">
+                            <span class="timeline-time">11:30 AM</span>
+                            <div class="timeline-icon exchange">🤝</div>
+                        </div>
+                        <div class="card" onclick="showContactProfile()">
+                            <div class="card-header">
+                                <div class="card-type">
+                                    <span class="card-label">Contact Exchange</span>
+                                </div>
+                            </div>
+                            <div class="contact-row">
+                                <div class="contact-avatar">JM</div>
+                                <div class="contact-info">
+                                    <div class="contact-name">John Mitchell</div>
+                                    <div class="contact-role">Sales Director @ ACME Corp</div>
+                                </div>
+                            </div>
+                            <div class="card-meta" style="margin-top: 12px; margin-bottom: 0;">
+                                <span class="card-meta-icon">📍</span>
+                                <span>CES Main Hall, Las Vegas</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meeting Card -->
+                    <div class="timeline-item">
+                        <div class="timeline-anchor">
+                            <span class="timeline-time">10:00 AM</span>
+                            <div class="timeline-icon meeting">📍</div>
+                        </div>
+                        <div class="card" onclick="showDetail('meeting')">
+                            <div class="card-header">
+                                <div class="card-type">
+                                    <span class="card-label">Meeting</span>
+                                </div>
+                                <div class="action-badge">
+                                    <span>2 Actions</span>
+                                </div>
+                            </div>
+                            <div class="card-title">Q4 Strategy Review</div>
+                            <div class="card-meta">
+                                <span class="card-meta-icon">📍</span>
+                                <span>Starbucks, Shibuya</span>
+                            </div>
+                            <div class="card-meta" style="margin-bottom: 0;">
+                                <span class="card-meta-icon">👤</span>
+                                <span>Kevin Du, Nancy Chen</span>
+                            </div>
+                            <div class="card-summary">"Discussed API integration timeline and confirmed Q1 budget allocation for enterprise features..."</div>
+                            <div class="tags-row">
+                                <button class="tag-chip small identity" onclick="event.stopPropagation(); gotoActionsWithTag('#KevinDu')">#KevinDu</button>
+                                <button class="tag-chip small context" onclick="event.stopPropagation(); gotoActionsWithTag('#API')">#API</button>
+                                <button class="tag-chip small intent" onclick="event.stopPropagation(); gotoActionsWithTag('#FollowUp')">#FollowUp</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cluster (Stacked Dots) -->
+                    <div class="timeline-item">
+                        <div class="timeline-anchor">
+                            <span class="timeline-time"></span>
+                            <div class="timeline-icon cluster">📋</div>
+                        </div>
+                        <div class="cluster" onclick="toggleCluster(this)">
+                            <span class="cluster-text">3 Activities</span>
+                            <span class="cluster-expand">▼</span>
+                        </div>
+                        <div class="cluster-items">
+                            <div class="cluster-item">
+                                <span class="cluster-item-time">9:45 AM</span>
+                                <div class="cluster-item-dot purple"></div>
+                                <div class="cluster-item-content">
+                                    <div class="cluster-item-name">Kevin Du</div>
+                                    <div class="cluster-item-action">Clicked "Product Deck.pdf"</div>
+                                </div>
+                            </div>
+                            <div class="cluster-item">
+                                <span class="cluster-item-time">9:32 AM</span>
+                                <div class="cluster-item-dot blue"></div>
+                                <div class="cluster-item-content">
+                                    <div class="cluster-item-name">Anonymous</div>
+                                    <div class="cluster-item-action">Viewed Profile</div>
+                                </div>
+                            </div>
+                            <div class="cluster-item">
+                                <span class="cluster-item-time">9:18 AM</span>
+                                <div class="cluster-item-dot yellow"></div>
+                                <div class="cluster-item-content">
+                                    <div class="cluster-item-name">Alice Wang</div>
+                                    <div class="cluster-item-action">Sent Contact Request</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Agent Card -->
+                    <div class="timeline-item">
+                        <div class="timeline-anchor">
+                            <span class="timeline-time">9:15 AM</span>
+                            <div class="timeline-icon agent">🤖</div>
+                        </div>
+                        <div class="card" onclick="showDetail('agent')">
+                            <div class="card-header">
+                                <div class="card-type">
+                                    <span class="card-label">Agent Call</span>
+                                </div>
+                                <div class="action-badge">
+                                    <span>1 Action</span>
+                                </div>
+                            </div>
+                            <div class="card-title">Visitor #402</div>
+                            <div class="card-summary">Asked about enterprise API pricing and integration requirements for their e-commerce platform...</div>
+                            <div class="tags-row">
+                                <button class="tag-chip small context" onclick="event.stopPropagation(); gotoActionsWithTag('#Pricing')">#Pricing</button>
+                                <button class="tag-chip small intent" onclick="event.stopPropagation(); gotoActionsWithTag('#FollowUp')">#FollowUp</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="date-header" style="margin-top: 40px;">
+                        <span class="date-text">Jan 07, 2026</span>
+                    </div>
+
+                    <!-- Another Meeting Card -->
+                    <div class="timeline-item">
+                        <div class="timeline-anchor">
+                            <span class="timeline-time">3:30 PM</span>
+                            <div class="timeline-icon meeting">📍</div>
+                        </div>
+                        <div class="card" onclick="showDetail('meeting')">
+                            <div class="card-header">
+                                <div class="card-type">
+                                    <span class="card-label">Meeting</span>
+                                </div>
+                            </div>
+                            <div class="card-title">Product Demo Session</div>
+                            <div class="card-meta">
+                                <span class="card-meta-icon">📍</span>
+                                <span>WeWork, Roppongi</span>
+                            </div>
+                            <div class="card-meta" style="margin-bottom: 0;">
+                                <span class="card-meta-icon">👤</span>
+                                <span>Smith Johnson</span>
+                            </div>
+                            <div class="card-summary">"Demonstrated new dashboard features and collected feedback on UX improvements..."</div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- Meetings View (Enhanced) -->
+                <div id="meetings-view" class="view-content" style="display: none;">
+                    <!-- Status Filter -->
+                    <div class="status-filter">
+                        <button class="filter-chip active" onclick="filterMeetings('all', this)">All</button>
+                        <button class="filter-chip" onclick="filterMeetings('in-progress', this)">In Progress</button>
+                        <button class="filter-chip" onclick="filterMeetings('completed', this)">Completed</button>
+                        <button class="filter-chip" onclick="filterMeetings('failed', this)">Failed</button>
+                    </div>
+
+                    <div class="list-content" style="padding-top: 0;">
+                        <!-- Today Section -->
+                        <div class="list-section-header">
+                            Today <span class="list-section-count">· 2 meetings</span>
+                        </div>
+
+                        <!-- Recording Meeting -->
+                        <div class="list-card recording" onclick="showToast('Recording in progress...')">
+                            <div class="list-card-icon meeting">📍</div>
+                            <div class="list-card-body">
+                                <div class="list-card-row">
+                                    <span class="list-card-title">New Meeting</span>
+                                    <span class="status-tag recording"><span class="status-dot">🔴</span> Recording</span>
+                                </div>
+                                <div class="list-card-meta">Recording in progress...</div>
+                                <div class="list-card-info">
+                                    <span>📅 2:30 PM</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="duration-badge">⏱ 12:34</span>
+                                </div>
+                                <div class="recording-control">
+                                    <button onclick="event.stopPropagation(); showToast('Recording stopped');">
+                                        <span>⏹</span> Stop Recording
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Completed Meeting -->
+                        <div class="list-card" onclick="showDetail('meeting')">
+                            <div class="list-card-icon meeting">📍</div>
+                            <div class="list-card-body">
+                                <div class="list-card-row">
+                                    <span class="list-card-title">Q4 Strategy Review</span>
+                                    <span class="status-tag completed">✅ Completed</span>
+                                </div>
+                                <div class="list-card-participants">👤 Kevin Du, Nancy Chen</div>
+                                <div class="list-card-info">
+                                    <span>📅 10:00 AM</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="duration-badge">45 min</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="action-badge" style="padding: 2px 6px; font-size: 10px;"><span>2 Actions</span></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Yesterday Section -->
+                        <div class="list-section-header">
+                            Yesterday <span class="list-section-count">· 1 meeting</span>
+                        </div>
+
+                        <div class="list-card" onclick="showDetail('meeting')">
+                            <div class="list-card-icon meeting">📍</div>
+                            <div class="list-card-body">
+                                <div class="list-card-row">
+                                    <span class="list-card-title">Product Demo Session</span>
+                                    <span class="status-tag completed">✅ Completed</span>
+                                </div>
+                                <div class="list-card-participants">👤 Smith Johnson</div>
+                                <div class="list-card-info">
+                                    <span>📅 3:30 PM</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="duration-badge">60 min</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- This Week Section -->
+                        <div class="list-section-header">
+                            This Week <span class="list-section-count">· 2 meetings</span>
+                        </div>
+
+                        <!-- Processing Meeting -->
+                        <div class="list-card" onclick="showToast('Processing... Please wait.')">
+                            <div class="list-card-icon meeting">📍</div>
+                            <div class="list-card-body">
+                                <div class="list-card-row">
+                                    <span class="list-card-title">Client Kickoff Meeting</span>
+                                    <span class="status-tag processing">⏳ Processing</span>
+                                </div>
+                                <div class="list-card-meta" style="color: #f59e0b;">AI is generating summary...</div>
+                                <div class="list-card-info">
+                                    <span>📅 Jan 05 · 2:00 PM</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="duration-badge">35 min</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="list-card" onclick="showDetail('meeting')">
+                            <div class="list-card-icon meeting">📍</div>
+                            <div class="list-card-body">
+                                <div class="list-card-row">
+                                    <span class="list-card-title">Partnership Discussion</span>
+                                    <span class="status-tag completed">✅ Completed</span>
+                                </div>
+                                <div class="list-card-participants">👤 David Lee</div>
+                                <div class="list-card-info">
+                                    <span>📅 Jan 03 · 11:00 AM</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="duration-badge">30 min</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calls View (Enhanced) -->
+                <div id="calls-view" class="view-content" style="display: none;">
+                    <div class="list-content">
+                        <!-- Today Section -->
+                        <div class="list-section-header">
+                            Today <span class="list-section-count">· 1 call</span>
+                        </div>
+
+                        <div class="list-card" onclick="showDetail('agent')">
+                            <div class="list-card-icon agent">🤖</div>
+                            <div class="list-card-body">
+                                <div class="list-card-row">
+                                    <span class="list-card-title">Visitor #402</span>
+                                    <div style="display: flex; gap: 6px; align-items: center;">
+                                        <span class="call-direction inbound">← IN</span>
+                                        <span class="status-tag completed">✅</span>
+                                    </div>
+                                </div>
+                                <div class="list-card-summary">"Asked about enterprise API pricing..."</div>
+                                <div class="list-card-info">
+                                    <span>📅 9:15 AM</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="duration-badge">12 min</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="action-badge" style="padding: 2px 6px; font-size: 10px;"><span>1 Action</span></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- This Week Section -->
+                        <div class="list-section-header">
+                            This Week <span class="list-section-count">· 2 calls</span>
+                        </div>
+
+                        <div class="list-card" onclick="showDetail('agent')">
+                            <div class="list-card-icon agent">🤖</div>
+                            <div class="list-card-body">
+                                <div class="list-card-row">
+                                    <span class="list-card-title">Visitor #398</span>
+                                    <div style="display: flex; gap: 6px; align-items: center;">
+                                        <span class="call-direction inbound">← IN</span>
+                                        <span class="status-tag completed">✅</span>
+                                    </div>
+                                </div>
+                                <div class="list-card-summary">"Product demo request for sales team..."</div>
+                                <div class="list-card-info">
+                                    <span>📅 Jan 06 · 4:20 PM</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="duration-badge">8 min</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="list-card" onclick="showDetail('agent')">
+                            <div class="list-card-icon agent">🤖</div>
+                            <div class="list-card-body">
+                                <div class="list-card-row">
+                                    <span class="list-card-title">Visitor #385</span>
+                                    <div style="display: flex; gap: 6px; align-items: center;">
+                                        <span class="call-direction inbound">← IN</span>
+                                        <span class="status-tag completed">✅</span>
+                                    </div>
+                                </div>
+                                <div class="list-card-summary">"General inquiry about services..."</div>
+                                <div class="list-card-info">
+                                    <span>📅 Jan 04 · 10:45 AM</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="duration-badge">5 min</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Earlier Section -->
+                        <div class="list-section-header">
+                            Earlier <span class="list-section-count">· 1 call</span>
+                        </div>
+
+                        <div class="list-card" onclick="showDetail('agent')">
+                            <div class="list-card-icon agent">🤖</div>
+                            <div class="list-card-body">
+                                <div class="list-card-row">
+                                    <span class="list-card-title">John Mitchell</span>
+                                    <div style="display: flex; gap: 6px; align-items: center;">
+                                        <span class="call-direction outbound">→ OUT</span>
+                                        <span class="status-tag completed">✅</span>
+                                    </div>
+                                </div>
+                                <div class="list-card-summary">"Follow-up on partnership proposal..."</div>
+                                <div class="list-card-info">
+                                    <span>📅 Jan 02 · 3:00 PM</span>
+                                    <span class="list-card-info-separator">·</span>
+                                    <span class="duration-badge">15 min</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Tab -->
+            <div id="actions-tab" class="tab-content" style="display: none;">
+                <div class="date-scroller">
+                    <div class="date-chip">
+                        <span class="date-chip-day">Mon</span>
+                        <span class="date-chip-num">6</span>
+                    </div>
+                    <div class="date-chip">
+                        <span class="date-chip-day">Tue</span>
+                        <span class="date-chip-num">7</span>
+                    </div>
+                    <div class="date-chip active">
+                        <span class="date-chip-day">Wed</span>
+                        <span class="date-chip-num">8</span>
+                        <div class="date-chip-badge">3</div>
+                    </div>
+                    <div class="date-chip">
+                        <span class="date-chip-day">Thu</span>
+                        <span class="date-chip-num">9</span>
+                    </div>
+                    <div class="date-chip">
+                        <span class="date-chip-day">Fri</span>
+                        <span class="date-chip-num">10</span>
+                    </div>
+                    <div class="date-chip">
+                        <span class="date-chip-day">Sat</span>
+                        <span class="date-chip-num">11</span>
+                    </div>
+                    <div class="date-chip">
+                        <span class="date-chip-day">Sun</span>
+                        <span class="date-chip-num">12</span>
+                    </div>
+                </div>
+
+                <!-- Tags + Search Filters (for quick retrieval) -->
+                <div class="actions-filters">
+                    <div class="tags-row" id="actions-tag-chips">
+                        <button class="tag-chip active" data-tag="all" onclick="setActionTagFilter('all', this)">All</button>
+                        <button class="tag-chip identity" data-tag="#KevinDu" onclick="setActionTagFilter('#KevinDu', this)">#KevinDu</button>
+                        <button class="tag-chip context" data-tag="#API" onclick="setActionTagFilter('#API', this)">#API</button>
+                        <button class="tag-chip context" data-tag="#Pricing" onclick="setActionTagFilter('#Pricing', this)">#Pricing</button>
+                        <button class="tag-chip intent" data-tag="#FollowUp" onclick="setActionTagFilter('#FollowUp', this)">#FollowUp</button>
+                        <button class="tag-chip intent" data-tag="#SendDocs" onclick="setActionTagFilter('#SendDocs', this)">#SendDocs</button>
+                    </div>
+                    <div class="actions-search">
+                        <input id="actions-search-input" type="text" placeholder="Search actions, people, tags..." oninput="applyActionsFilter()" />
+                    </div>
+                    <div class="actions-filter-meta">
+                        <span id="actions-filter-status">Showing all actions</span>
+                        <button class="clear-filter" onclick="clearActionsFilter()">Clear</button>
+                    </div>
+                </div>
+
+                <div class="actions-content">
+                    <div class="action-group" data-tags="#KevinDu #API #FollowUp #SendDocs">
+                        <div class="action-group-header" onclick="showDetail('meeting')">
+                            <span class="action-group-source">FROM: <strong>Meeting with Kevin Du</strong> (Jan 08)</span>
+                            <div class="action-group-tags">
+                                <button class="tag-chip small identity" onclick="event.stopPropagation(); setActionTagFilter('#KevinDu', this)">#KevinDu</button>
+                                <button class="tag-chip small context" onclick="event.stopPropagation(); setActionTagFilter('#API', this)">#API</button>
+                                <button class="tag-chip small intent" onclick="event.stopPropagation(); setActionTagFilter('#FollowUp', this)">#FollowUp</button>
+                            </div>
+                            <span class="action-group-arrow">→</span>
+                        </div>
+                        <div class="action-group-items">
+                            <div class="action-item" data-tags="#FollowUp #Email">
+                                <div class="action-checkbox" onclick="toggleAction(this, event)"></div>
+                                <span class="action-text">Send follow-up email with meeting notes</span>
+                            </div>
+                            <div class="action-item" data-tags="#SendDocs #API">
+                                <div class="action-checkbox" onclick="toggleAction(this, event)"></div>
+                                <span class="action-text">Send API documentation package</span>
+                            </div>
+                        </div>
+                        <div class="action-group-footer">
+                            <button class="btn-followup" onclick="openFollowup()">
+                                <span>✨</span>
+                                <span>Follow-up</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="action-group" data-tags="#Pricing #FollowUp">
+                        <div class="action-group-header" onclick="showDetail('agent')">
+                            <span class="action-group-source">FROM: <strong>Agent Call #402</strong> (Jan 08)</span>
+                            <div class="action-group-tags">
+                                <button class="tag-chip small context" onclick="event.stopPropagation(); setActionTagFilter('#Pricing', this)">#Pricing</button>
+                                <button class="tag-chip small intent" onclick="event.stopPropagation(); setActionTagFilter('#FollowUp', this)">#FollowUp</button>
+                            </div>
+                            <span class="action-group-arrow">→</span>
+                        </div>
+                        <div class="action-group-items">
+                            <div class="action-item" data-tags="#Pricing #Reply">
+                                <div class="action-checkbox" onclick="toggleAction(this, event)"></div>
+                                <span class="action-text">Reply to pricing inquiry</span>
+                            </div>
+                        </div>
+                        <div class="action-group-footer">
+                            <button class="btn-followup" onclick="openFollowup()">
+                                <span>✨</span>
+                                <span>Follow-up</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Page -->
+        <div id="detail-page" class="page">
+            <header class="detail-header">
+                <button class="back-btn" onclick="goBack()">
+                    <span>←</span>
+                    <span>Back</span>
+                </button>
+                <button class="transcript-btn">📄</button>
+            </header>
+
+            <div class="detail-content">
+                <h1 class="detail-title" id="detail-title">Q4 Strategy Review</h1>
+                <div class="detail-meta">
+                    <span>Yesterday 2:30 PM</span>
+                    <span>•</span>
+                    <span>📍 Starbucks, Shibuya</span>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Participants</div>
+                    <div class="participants">
+                        <div class="participant">
+                            <div class="participant-avatar">KD</div>
+                            <span class="participant-name">Kevin Du</span>
+                        </div>
+                        <div class="participant">
+                            <div class="participant-avatar">NC</div>
+                            <span class="participant-name">Nancy Chen</span>
+                        </div>
+                        <div class="participant">
+                            <div class="participant-avatar">SJ</div>
+                            <span class="participant-name">Smith Johnson</span>
+                        </div>
+                        <button class="add-participant">+</button>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Images</div>
+                    <div class="images-row">
+                        <div class="image-thumb">🖼️</div>
+                        <div class="image-thumb">🖼️</div>
+                        <div class="image-thumb add-image">+</div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Key Points</div>
+                    <div class="key-points">
+                        <div class="key-point">
+                            <span class="key-point-bullet">•</span>
+                            <span class="key-point-text">Client confirmed budget allocation for Q1, approximately $50K for initial integration.</span>
+                        </div>
+                        <div class="key-point">
+                            <span class="key-point-bullet">•</span>
+                            <span class="key-point-text">Interested in Enterprise API package, especially real-time sync features.</span>
+                        </div>
+                        <div class="key-point">
+                            <span class="key-point-bullet">•</span>
+                            <span class="key-point-text">Need to evaluate competitor pricing before final decision. Timeline: 2 weeks.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Action Items</div>
+                    <div class="detail-actions">
+                        <div class="detail-action-item">
+                            <div class="action-checkbox" onclick="toggleAction(this, event)"></div>
+                            <span class="action-text">Send follow-up email with meeting notes</span>
+                        </div>
+                        <div class="detail-action-item">
+                            <div class="action-checkbox" onclick="toggleAction(this, event)"></div>
+                            <span class="action-text">Send API documentation package</span>
+                        </div>
+                        <div class="detail-action-item">
+                            <div class="action-checkbox" onclick="toggleAction(this, event)"></div>
+                            <span class="action-text">Schedule demo for next week</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="floating-bar">
+                <button class="floating-btn">
+                    <span>🔗</span>
+                    <span>Share</span>
+                </button>
+                <button class="floating-btn">
+                    <span>📋</span>
+                    <span>Copy</span>
+                </button>
+                <button class="floating-btn primary" onclick="openFollowup()">
+                    <span>✨</span>
+                    <span>Follow-up</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Empty State Page (Shows today empty + history) -->
+        <div id="empty-page" class="page">
+            <header class="header">
+                <div class="header-top">
+                    <h1 class="header-title">Timeline</h1>
+                    <div class="header-actions">
+                        <button class="icon-btn" onclick="openDatePicker()">📅</button>
+                    </div>
+                </div>
+                <div class="tabs">
+                    <button class="tab active">Activities</button>
+                    <button class="tab">Actions <span class="tab-badge">2</span></button>
+                </div>
+            </header>
+
+            <!-- View Switcher -->
+            <div class="view-switcher">
+                <button class="view-btn active">
+                    <span class="view-btn-icon">📅</span>
+                    <span>Timeline</span>
+                </button>
+                <button class="view-btn">
+                    <span class="view-btn-icon">📍</span>
+                    <span>Meetings</span>
+                </button>
+                <button class="view-btn">
+                    <span class="view-btn-icon">🤖</span>
+                    <span>Calls</span>
+                </button>
+            </div>
+
+            <div class="timeline-content">
+                <!-- Today - Empty -->
+                <div class="date-header">
+                    <span class="date-text">Jan 08, 2026 (Today)</span>
+                </div>
+
+                <div class="inline-empty">
+                    <div class="inline-empty-icon">📭</div>
+                    <div class="inline-empty-text">No activities today. Share your BizCard to get started!</div>
+                    <button class="inline-empty-btn">
+                        <span>📤</span>
+                        <span>Share BizCard</span>
+                    </button>
+                </div>
+
+                <!-- Previous Day with Data -->
+                <div class="date-header" style="margin-top: 32px;">
+                    <span class="date-text">Jan 06, 2026 <span class="days-ago">(2 days ago)</span></span>
+                </div>
+
+                <!-- Meeting Card -->
+                <div class="timeline-item">
+                    <div class="timeline-anchor">
+                        <span class="timeline-time">2:30 PM</span>
+                        <div class="timeline-icon meeting">📍</div>
+                    </div>
+                    <div class="card" onclick="showDetail('meeting')">
+                        <div class="card-header">
+                            <div class="card-type">
+                                <span class="card-label">Meeting</span>
+                            </div>
+                            <div class="action-badge">
+                                <span>1 Action</span>
+                            </div>
+                        </div>
+                        <div class="card-title">Investor Update Call</div>
+                        <div class="card-meta">
+                            <span class="card-meta-icon">📍</span>
+                            <span>Zoom (Online)</span>
+                        </div>
+                        <div class="card-meta" style="margin-bottom: 0;">
+                            <span class="card-meta-icon">👤</span>
+                            <span>Sarah Kim</span>
+                        </div>
+                        <div class="card-summary">"Discussed Q4 metrics and 2026 roadmap priorities..."</div>
+                    </div>
+                </div>
+
+                <!-- Agent Card -->
+                <div class="timeline-item">
+                    <div class="timeline-anchor">
+                        <span class="timeline-time">11:20 AM</span>
+                        <div class="timeline-icon agent">🤖</div>
+                    </div>
+                    <div class="card" onclick="showDetail('agent')">
+                        <div class="card-header">
+                            <div class="card-type">
+                                <span class="card-label">Agent Call</span>
+                            </div>
+                            <div class="action-badge">
+                                <span>1 Action</span>
+                            </div>
+                        </div>
+                        <div class="card-title">Visitor #398</div>
+                        <div class="card-summary">Product demo request for their sales team, interested in enterprise features...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Follow-up Modal -->
+        <div id="followup-modal" class="modal-overlay">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 class="modal-title">Quick Follow-up</h2>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="draft-box">
+                        <textarea class="draft-textarea">Hi Kevin & Nancy,
+
+Great meeting today! Here's a quick summary of what we discussed:
+
+• Confirmed Q1 budget allocation ($50K)
+• Enterprise API integration timeline
+• Next steps: demo scheduling
+
+I'll send over the API documentation shortly. Let me know if you have any questions!
+
+Best regards</textarea>
+                    </div>
+
+                    <div class="recipients-section">
+                        <div class="recipients-label">To:</div>
+                        <div class="recipients-list">
+                            <div class="recipient selected" onclick="toggleRecipient(this)">
+                                <div class="recipient-check">✓</div>
+                                <span>Kevin Du</span>
+                            </div>
+                            <div class="recipient selected" onclick="toggleRecipient(this)">
+                                <div class="recipient-check">✓</div>
+                                <span>Nancy Chen</span>
+                            </div>
+                            <div class="recipient" onclick="toggleRecipient(this)">
+                                <div class="recipient-check"></div>
+                                <span>Smith Johnson</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="channel-section">
+                        <div class="recipients-label">Via:</div>
+                        <div class="channel-options">
+                            <div class="channel-option selected" onclick="selectChannel(this)">
+                                <span class="channel-icon">📧</span>
+                                <span class="channel-name">Email</span>
+                            </div>
+                            <div class="channel-option" onclick="selectChannel(this)">
+                                <span class="channel-icon">💬</span>
+                                <span class="channel-name">WhatsApp</span>
+                            </div>
+                            <div class="channel-option" onclick="selectChannel(this)">
+                                <span class="channel-icon">💼</span>
+                                <span class="channel-name">LinkedIn</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-send">
+                        <span>Send Now</span>
+                        <span>→</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Date Picker Dropdown -->
+        <div id="datepicker-overlay" class="datepicker-overlay" onclick="closeDatePicker()"></div>
+        <div id="datepicker-dropdown" class="datepicker-dropdown">
+            <div class="calendar">
+                <div class="calendar-header">
+                    <button class="calendar-nav">‹</button>
+                    <span class="calendar-month">January 2026</span>
+                    <button class="calendar-nav">›</button>
+                </div>
+                <div class="calendar-weekdays">
+                    <span class="calendar-weekday">Su</span>
+                    <span class="calendar-weekday">Mo</span>
+                    <span class="calendar-weekday">Tu</span>
+                    <span class="calendar-weekday">We</span>
+                    <span class="calendar-weekday">Th</span>
+                    <span class="calendar-weekday">Fr</span>
+                    <span class="calendar-weekday">Sa</span>
+                </div>
+                <div class="calendar-days">
+                    <div class="calendar-day disabled"></div>
+                    <div class="calendar-day disabled"></div>
+                    <div class="calendar-day disabled"></div>
+                    <div class="calendar-day disabled"></div>
+                    <div class="calendar-day">1</div>
+                    <div class="calendar-day">2</div>
+                    <div class="calendar-day">3</div>
+                    <div class="calendar-day has-activity">
+                        4
+                        <div class="calendar-day-badge">
+                            <div class="calendar-day-dot activity"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day has-activity">
+                        5
+                        <div class="calendar-day-badge">
+                            <div class="calendar-day-dot activity"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day has-activity">
+                        6
+                        <div class="calendar-day-badge">
+                            <div class="calendar-day-dot activity"></div>
+                            <span class="calendar-day-action-count">2</span>
+                        </div>
+                    </div>
+                    <div class="calendar-day has-activity">
+                        7
+                        <div class="calendar-day-badge">
+                            <div class="calendar-day-dot activity"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-day today has-activity">
+                        8
+                        <div class="calendar-day-badge">
+                            <div class="calendar-day-dot activity"></div>
+                            <span class="calendar-day-action-count">3</span>
+                        </div>
+                    </div>
+                    <div class="calendar-day disabled">9</div>
+                    <div class="calendar-day disabled">10</div>
+                    <div class="calendar-day disabled">11</div>
+                    <div class="calendar-day disabled">12</div>
+                    <div class="calendar-day disabled">13</div>
+                    <div class="calendar-day disabled">14</div>
+                    <div class="calendar-day disabled">15</div>
+                    <div class="calendar-day disabled">16</div>
+                    <div class="calendar-day disabled">17</div>
+                    <div class="calendar-day disabled">18</div>
+                    <div class="calendar-day disabled">19</div>
+                    <div class="calendar-day disabled">20</div>
+                    <div class="calendar-day disabled">21</div>
+                    <div class="calendar-day disabled">22</div>
+                    <div class="calendar-day disabled">23</div>
+                    <div class="calendar-day disabled">24</div>
+                    <div class="calendar-day disabled">25</div>
+                    <div class="calendar-day disabled">26</div>
+                    <div class="calendar-day disabled">27</div>
+                    <div class="calendar-day disabled">28</div>
+                    <div class="calendar-day disabled">29</div>
+                    <div class="calendar-day disabled">30</div>
+                    <div class="calendar-day disabled">31</div>
+                </div>
+            </div>
+            <div class="calendar-footer">
+                <button class="btn-calendar" onclick="closeDatePicker()">Show Jan 08 Activities</button>
+            </div>
+        </div>
+            </div>
+
+            <!-- Bottom Tab Bar -->
+            <div class="tab-bar">
+                <button class="tab-bar-item" onclick="navigateToHome()">
+                    <span class="tab-bar-icon">🏠</span>
+                    <span class="tab-bar-label">Home</span>
+                </button>
+                <button class="tab-bar-item active">
+                    <span class="tab-bar-icon">📅</span>
+                    <span class="tab-bar-label">Timeline</span>
+                </button>
+                <button class="tab-bar-item">
+                    <span class="tab-bar-icon">📤</span>
+                    <span class="tab-bar-label">Share</span>
+                </button>
+                <button class="tab-bar-item">
+                    <span class="tab-bar-icon">👥</span>
+                    <span class="tab-bar-label">Contacts</span>
+                </button>
+                <button class="tab-bar-item">
+                    <span class="tab-bar-icon">👤</span>
+                    <span class="tab-bar-label">Me</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Actions filtering state
+        let actionsActiveTag = 'all';
+        let actionsSearchText = '';
+
+        // Tab Switching
+        function switchTab(tab, el) {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            const activeEl = el || document.querySelector(`.tab[data-tab="${tab}"]`);
+            if (activeEl) activeEl.classList.add('active');
+
+            if (tab === 'activities') {
+                document.getElementById('activities-tab').style.display = 'block';
+                document.getElementById('actions-tab').style.display = 'none';
+            } else {
+                document.getElementById('activities-tab').style.display = 'none';
+                document.getElementById('actions-tab').style.display = 'block';
+                // Make sure filtering applies when user lands on Actions
+                setTimeout(() => applyActionsFilter(), 0);
+            }
+        }
+
+        // View Switching (Timeline / Meetings / Calls)
+        function switchView(view) {
+            const viewBtns = document.querySelectorAll('.view-btn');
+            viewBtns.forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.view-btn').classList.add('active');
+
+            document.getElementById('timeline-view').style.display = view === 'timeline' ? 'block' : 'none';
+            document.getElementById('meetings-view').style.display = view === 'meetings' ? 'block' : 'none';
+            document.getElementById('calls-view').style.display = view === 'calls' ? 'block' : 'none';
+        }
+
+        // Toggle Cluster
+        function toggleCluster(element) {
+            const items = element.nextElementSibling;
+            
+            if (items.classList.contains('expanded')) {
+                items.classList.remove('expanded');
+                element.classList.remove('expanded');
+            } else {
+                items.classList.add('expanded');
+                element.classList.add('expanded');
+            }
+        }
+
+        // Show Detail Page
+        function showDetail(type) {
+            document.getElementById('timeline-page').classList.remove('active');
+            document.getElementById('detail-page').classList.add('active');
+
+            if (type === 'agent') {
+                document.getElementById('detail-title').textContent = 'Agent Call #402';
+            } else {
+                document.getElementById('detail-title').textContent = 'Q4 Strategy Review';
+            }
+        }
+
+        // Show Contact Profile (placeholder)
+        function showContactProfile() {
+            alert('Navigate to Contact Profile: John Mitchell');
+        }
+
+        // Go Back
+        function goBack() {
+            document.getElementById('detail-page').classList.remove('active');
+            document.getElementById('timeline-page').classList.add('active');
+        }
+
+        // Toggle Action Checkbox
+        function toggleAction(element, event) {
+            event.stopPropagation();
+            element.classList.toggle('checked');
+            const text = element.nextElementSibling;
+            if (text) {
+                text.classList.toggle('completed');
+            }
+        }
+
+        // Actions: tag filter
+        function setActionTagFilter(tag, element) {
+            actionsActiveTag = tag || 'all';
+            // update chips active state (top row only)
+            const chipContainer = document.getElementById('actions-tag-chips');
+            if (chipContainer) {
+                chipContainer.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
+                const topChip = chipContainer.querySelector(`.tag-chip[data-tag="${CSS.escape(actionsActiveTag)}"]`);
+                if (topChip) topChip.classList.add('active');
+            }
+            applyActionsFilter();
+        }
+
+        function clearActionsFilter() {
+            actionsActiveTag = 'all';
+            actionsSearchText = '';
+            const input = document.getElementById('actions-search-input');
+            if (input) input.value = '';
+            setActionTagFilter('all');
+        }
+
+        function applyActionsFilter() {
+            const input = document.getElementById('actions-search-input');
+            actionsSearchText = (input?.value || '').trim().toLowerCase();
+
+            const groups = document.querySelectorAll('#actions-tab .action-group');
+            let shownGroups = 0;
+            let shownActions = 0;
+
+            groups.forEach(group => {
+                const groupTags = (group.getAttribute('data-tags') || '').toLowerCase();
+                const groupText = group.innerText.toLowerCase();
+                const groupMatchesTag = actionsActiveTag === 'all' || groupTags.includes(actionsActiveTag.toLowerCase());
+
+                // Filter within group: hide unmatched action items
+                const items = group.querySelectorAll('.action-item');
+                let anyItemShown = false;
+                items.forEach(item => {
+                    const itemTags = (item.getAttribute('data-tags') || '').toLowerCase();
+                    const itemText = item.innerText.toLowerCase();
+                    const matchesTag = actionsActiveTag === 'all' || itemTags.includes(actionsActiveTag.toLowerCase()) || groupMatchesTag;
+                    const matchesSearch = !actionsSearchText || itemText.includes(actionsSearchText) || itemTags.includes(actionsSearchText) || groupText.includes(actionsSearchText);
+                    const show = matchesTag && matchesSearch;
+                    item.style.display = show ? 'flex' : 'none';
+                    if (show) {
+                        anyItemShown = true;
+                        shownActions += 1;
+                    }
+                });
+
+                // Group is visible if any item is visible OR group matches tag/search strongly
+                const matchesSearchStrong = !actionsSearchText || groupText.includes(actionsSearchText) || groupTags.includes(actionsSearchText);
+                const showGroup = anyItemShown && groupMatchesTag && matchesSearchStrong;
+                group.style.display = showGroup ? 'block' : 'none';
+                if (showGroup) shownGroups += 1;
+            });
+
+            const status = document.getElementById('actions-filter-status');
+            if (status) {
+                const tagLabel = actionsActiveTag === 'all' ? 'all' : actionsActiveTag;
+                const searchLabel = actionsSearchText ? `, search "${actionsSearchText}"` : '';
+                status.textContent = `Showing ${shownActions} actions from ${shownGroups} sources (tag: ${tagLabel}${searchLabel})`;
+            }
+        }
+
+        // Cross-link: from Activities tags → Actions tab filtered
+        function gotoActionsWithTag(tag) {
+            switchTab('actions');
+            setActionTagFilter(tag);
+            const scroller = document.querySelector('#actions-tab .date-scroller');
+            if (scroller) scroller.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
+
+        // Open Follow-up Modal
+        function openFollowup() {
+            document.getElementById('followup-modal').classList.add('active');
+        }
+
+        // Open Date Picker (Dropdown)
+        function openDatePicker() {
+            document.getElementById('datepicker-dropdown').classList.add('active');
+            document.getElementById('datepicker-overlay').classList.add('active');
+        }
+
+        // Close Date Picker
+        function closeDatePicker() {
+            document.getElementById('datepicker-dropdown').classList.remove('active');
+            document.getElementById('datepicker-overlay').classList.remove('active');
+        }
+
+        // Close Modal
+        function closeModal() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+            closeDatePicker();
+        }
+
+        // Toggle Recipient
+        function toggleRecipient(element) {
+            element.classList.toggle('selected');
+            const check = element.querySelector('.recipient-check');
+            check.textContent = element.classList.contains('selected') ? '✓' : '';
+        }
+
+        // Select Channel
+        function selectChannel(element) {
+            document.querySelectorAll('.channel-option').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+
+        // Close modal on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    closeModal();
+                }
+            });
+        });
+
+        // Toggle Empty State Demo
+        function toggleEmptyDemo() {
+            const timelinePage = document.getElementById('timeline-page');
+            const emptyPage = document.getElementById('empty-page');
+            
+            if (timelinePage.classList.contains('active')) {
+                timelinePage.classList.remove('active');
+                emptyPage.classList.add('active');
+            } else {
+                emptyPage.classList.remove('active');
+                timelinePage.classList.add('active');
+            }
+        }
+
+        // Navigate to Home
+        function navigateToHome() {
+            window.open('../home-demo/demo.html', '_self');
+        }
+
+        // Filter Meetings by Status
+        function filterMeetings(status, element) {
+            // Update active chip
+            const chips = document.querySelectorAll('.status-filter .filter-chip');
+            chips.forEach(chip => chip.classList.remove('active'));
+            element.classList.add('active');
+
+            // Show toast
+            if (status === 'all') {
+                showToast('Showing all meetings');
+            } else if (status === 'in-progress') {
+                showToast('Showing in-progress meetings');
+            } else if (status === 'completed') {
+                showToast('Showing completed meetings');
+            } else if (status === 'failed') {
+                showToast('Showing failed meetings');
+            }
+        }
+
+        // Show Toast Notification
+        function showToast(message) {
+            // Create toast if it doesn't exist
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    left: 50%;
+                    transform: translateX(-50%) translateY(-20px);
+                    background: #1a1a2e;
+                    color: white;
+                    padding: 12px 24px;
+                    border-radius: 12px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    opacity: 0;
+                    transition: all 0.3s ease;
+                    z-index: 2000;
+                    pointer-events: none;
+                    white-space: nowrap;
+                `;
+                document.body.appendChild(toast);
+            }
+            
+            toast.textContent = message;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-50%) translateY(-20px)';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
+
