@@ -43,16 +43,46 @@ function renderHomePage() {
     if (avatarEl) avatarEl.textContent = user.avatar;
 }
 
+// Stats 数据（模拟不同时间范围的数据）
+const StatsData = {
+    today: { visits: 12, cards: 3, meetings: 2, calls: 1 },
+    week: { visits: 87, cards: 15, meetings: 8, calls: 5 },
+    overall: { visits: 1543, cards: 89, meetings: 2131, calls: 973 }
+};
+
+let currentStatsRange = 'today';
+
 function renderUserStats() {
-    const stats = AppData.user.stats;
-    const statsEls = document.querySelectorAll('.stat-item');
+    updateStatsDisplay(currentStatsRange);
+}
+
+function switchStatsRange(range) {
+    currentStatsRange = range;
     
-    if (statsEls.length >= 4) {
-        statsEls[0].querySelector('.stat-value').textContent = stats.visits.toLocaleString();
-        statsEls[1].querySelector('.stat-value').textContent = stats.clicks;
-        statsEls[2].querySelector('.stat-value').textContent = stats.calls.toLocaleString();
-        statsEls[3].querySelector('.stat-value').textContent = stats.leads;
-    }
+    // 更新 Toggle 按钮状态
+    document.querySelectorAll('.stats-toggle-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.range === range) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // 更新数据显示
+    updateStatsDisplay(range);
+}
+
+function updateStatsDisplay(range) {
+    const stats = StatsData[range];
+    
+    const visitsEl = document.getElementById('stat-visits');
+    const cardsEl = document.getElementById('stat-cards');
+    const meetingsEl = document.getElementById('stat-meetings');
+    const callsEl = document.getElementById('stat-calls');
+    
+    if (visitsEl) visitsEl.textContent = stats.visits.toLocaleString();
+    if (cardsEl) cardsEl.textContent = stats.cards.toLocaleString();
+    if (meetingsEl) meetingsEl.textContent = stats.meetings.toLocaleString();
+    if (callsEl) callsEl.textContent = stats.calls.toLocaleString();
 }
 
 function setupEventListeners() {
@@ -72,14 +102,206 @@ function setupEventListeners() {
         if (sortMenu && sortBtn && !sortMenu.contains(e.target) && !sortBtn.contains(e.target)) {
             sortMenu.classList.remove('show');
         }
+        
+        // Close any open swipe actions when clicking elsewhere
+        closeAllSwipeActions(e.target);
     });
 
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeAllModals();
+            closeAllSwipeActions();
         }
     });
+    
+    // Setup swipe gesture handling
+    setupSwipeGestures();
+}
+
+// ========================================
+// Swipe Gesture Handling
+// ========================================
+
+let currentSwipedCard = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let isSwiping = false;
+
+function setupSwipeGestures() {
+    // Use event delegation on the app content
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+    
+    // Mouse support for desktop testing
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+}
+
+function handleTouchStart(e) {
+    // Support both action list and action hub swipe
+    const swipeContent = e.target.closest('.action-swipe-content, .action-hub-swipe-content');
+    if (!swipeContent) return;
+    
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    isSwiping = false;
+    currentSwipedCard = swipeContent;
+}
+
+function handleTouchMove(e) {
+    if (!currentSwipedCard) return;
+    
+    const touchX = e.touches[0].clientX;
+    const touchY = e.touches[0].clientY;
+    const diffX = touchStartX - touchX;
+    const diffY = Math.abs(touchStartY - touchY);
+    
+    // Only horizontal swipe
+    if (diffY > Math.abs(diffX) && !isSwiping) {
+        currentSwipedCard = null;
+        return;
+    }
+    
+    if (Math.abs(diffX) > 10) {
+        isSwiping = true;
+        e.preventDefault();
+        
+        // Calculate transform (limit to 0-140px)
+        const translateX = Math.max(0, Math.min(140, diffX));
+        currentSwipedCard.style.transition = 'none';
+        currentSwipedCard.style.transform = `translateX(-${translateX}px)`;
+    }
+}
+
+function handleTouchEnd(e) {
+    if (!currentSwipedCard || !isSwiping) {
+        currentSwipedCard = null;
+        return;
+    }
+    
+    const currentTransform = currentSwipedCard.style.transform;
+    const translateX = parseInt(currentTransform.replace(/[^0-9-]/g, '')) || 0;
+    
+    currentSwipedCard.style.transition = 'transform 0.3s ease';
+    
+    if (Math.abs(translateX) > 60) {
+        // Snap open
+        closeAllSwipeActions();
+        currentSwipedCard.classList.add('swiped');
+        currentSwipedCard.style.transform = '';
+    } else {
+        // Snap closed
+        currentSwipedCard.classList.remove('swiped');
+        currentSwipedCard.style.transform = '';
+    }
+    
+    currentSwipedCard = null;
+    isSwiping = false;
+}
+
+// Mouse support for desktop
+let isMouseDown = false;
+
+function handleMouseDown(e) {
+    // Support both action list and action hub swipe
+    const swipeContent = e.target.closest('.action-swipe-content, .action-hub-swipe-content');
+    if (!swipeContent) return;
+    
+    isMouseDown = true;
+    touchStartX = e.clientX;
+    touchStartY = e.clientY;
+    isSwiping = false;
+    currentSwipedCard = swipeContent;
+}
+
+function handleMouseMove(e) {
+    if (!isMouseDown || !currentSwipedCard) return;
+    
+    const diffX = touchStartX - e.clientX;
+    const diffY = Math.abs(touchStartY - e.clientY);
+    
+    if (diffY > Math.abs(diffX) && !isSwiping) {
+        currentSwipedCard = null;
+        return;
+    }
+    
+    if (Math.abs(diffX) > 10) {
+        isSwiping = true;
+        const translateX = Math.max(0, Math.min(140, diffX));
+        currentSwipedCard.style.transition = 'none';
+        currentSwipedCard.style.transform = `translateX(-${translateX}px)`;
+    }
+}
+
+function handleMouseUp(e) {
+    if (!isMouseDown) return;
+    isMouseDown = false;
+    
+    if (!currentSwipedCard || !isSwiping) {
+        currentSwipedCard = null;
+        return;
+    }
+    
+    const currentTransform = currentSwipedCard.style.transform;
+    const translateX = parseInt(currentTransform.replace(/[^0-9-]/g, '')) || 0;
+    
+    currentSwipedCard.style.transition = 'transform 0.3s ease';
+    
+    if (Math.abs(translateX) > 60) {
+        closeAllSwipeActions();
+        currentSwipedCard.classList.add('swiped');
+        currentSwipedCard.style.transform = '';
+    } else {
+        currentSwipedCard.classList.remove('swiped');
+        currentSwipedCard.style.transform = '';
+    }
+    
+    currentSwipedCard = null;
+    isSwiping = false;
+}
+
+function closeAllSwipeActions(exceptTarget) {
+    // Close both action list and action hub swipe cards
+    document.querySelectorAll('.action-swipe-content.swiped, .action-hub-swipe-content.swiped').forEach(card => {
+        if (!exceptTarget || !card.contains(exceptTarget)) {
+            card.classList.remove('swiped');
+        }
+    });
+}
+
+function deleteAction(actionId) {
+    // Confirm deletion
+    if (!confirm('Are you sure you want to delete this action?')) {
+        closeAllSwipeActions();
+        return;
+    }
+    
+    // Find and animate out - support both action list and action hub
+    const container = document.getElementById(`action-swipe-${actionId}`) || 
+                      document.getElementById(`action-hub-swipe-${actionId}`);
+    if (container) {
+        container.style.transition = 'all 0.3s ease';
+        container.style.height = container.offsetHeight + 'px';
+        container.offsetHeight; // Force reflow
+        container.style.height = '0';
+        container.style.opacity = '0';
+        container.style.overflow = 'hidden';
+        
+        setTimeout(() => {
+            // Remove from data
+            const actionIndex = AppData.actions.findIndex(a => a.id === actionId);
+            if (actionIndex !== -1) {
+                AppData.actions.splice(actionIndex, 1);
+            }
+            
+            // Refresh views
+            refreshAllViews();
+            showToast('Action deleted');
+        }, 300);
+    }
 }
 
 // ========================================
@@ -186,75 +408,123 @@ function showPage(page) {
 }
 
 // ========================================
-// Action Hub (Home Page)
+// Action Hub (Home Page) - Tab 式设计
 // ========================================
+
+// 当前选中的 Tab
+let currentActionHubTab = 'overdue';
 
 function renderActionHub() {
     const pendingActions = AppData.getPendingActions();
     const count = pendingActions.length;
     
-    // Filter urgent actions (overdue + due today)
-    const urgentActions = pendingActions.filter(a => 
-        DateHelper.isOverdue(a.dueDate) || DateHelper.isToday(a.dueDate)
-    );
-    const otherActions = pendingActions.filter(a => 
-        !DateHelper.isOverdue(a.dueDate) && !DateHelper.isToday(a.dueDate)
-    );
+    // 分类 Actions
+    const categorized = categorizeActions(pendingActions);
     
-    // Update count badge
+    // 更新总数
     const countEl = document.getElementById('action-count');
     if (countEl) {
         countEl.textContent = count;
-        countEl.style.background = count > 0 ? 'var(--primary-red)' : 'var(--primary-green)';
     }
+    
+    // 更新各 Tab 的数量
+    updateTabCounts(categorized);
+    
+    // 如果当前 Tab 没有内容，自动切换到有内容的 Tab
+    if (categorized[currentActionHubTab].length === 0) {
+        if (categorized.overdue.length > 0) currentActionHubTab = 'overdue';
+        else if (categorized.today.length > 0) currentActionHubTab = 'today';
+        else if (categorized.later.length > 0) currentActionHubTab = 'later';
+    }
+    
+    // 更新 Tab 激活状态
+    updateTabActiveState();
+    
+    // 渲染当前 Tab 的 Actions
+    renderActionHubList(categorized[currentActionHubTab]);
+}
 
-    // Update subtitle based on urgency
-    const subtitleEl = document.getElementById('action-subtitle');
-    if (subtitleEl) {
-        if (urgentActions.length > 0) {
-            const overdueCount = pendingActions.filter(a => DateHelper.isOverdue(a.dueDate)).length;
-            const todayCount = pendingActions.filter(a => DateHelper.isToday(a.dueDate)).length;
-            let urgentText = [];
-            if (overdueCount > 0) urgentText.push(`${overdueCount} overdue`);
-            if (todayCount > 0) urgentText.push(`${todayCount} due today`);
-            subtitleEl.textContent = '⚠️ ' + urgentText.join(', ');
-            subtitleEl.classList.add('urgent');
-        } else if (count > 0) {
-            subtitleEl.textContent = 'Next: ' + pendingActions[0].title;
-            subtitleEl.classList.remove('urgent');
-        } else {
-            subtitleEl.textContent = 'All caught up! Great job!';
-            subtitleEl.classList.remove('urgent');
+function categorizeActions(actions) {
+    return {
+        overdue: actions.filter(a => DateHelper.isOverdue(a.dueDate)),
+        today: actions.filter(a => DateHelper.isToday(a.dueDate)),
+        later: actions.filter(a => !DateHelper.isOverdue(a.dueDate) && !DateHelper.isToday(a.dueDate))
+    };
+}
+
+function updateTabCounts(categorized) {
+    const tabs = ['overdue', 'today', 'later'];
+    tabs.forEach(tab => {
+        const countEl = document.getElementById(`tab-${tab}-count`);
+        if (countEl) {
+            countEl.textContent = categorized[tab].length;
         }
-    }
+        
+        // 标记有内容的 Overdue Tab
+        const tabEl = document.querySelector(`.action-tab[data-filter="${tab}"]`);
+        if (tabEl) {
+            if (categorized[tab].length > 0) {
+                tabEl.classList.add('has-items');
+            } else {
+                tabEl.classList.remove('has-items');
+            }
+        }
+    });
+}
 
-    // Render action items - show all urgent first, then others
+function updateTabActiveState() {
+    document.querySelectorAll('.action-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.filter === currentActionHubTab) {
+            tab.classList.add('active');
+        }
+    });
+}
+
+function switchActionHubTab(filter) {
+    currentActionHubTab = filter;
+    const pendingActions = AppData.getPendingActions();
+    const categorized = categorizeActions(pendingActions);
+    
+    updateTabActiveState();
+    renderActionHubList(categorized[filter]);
+}
+
+function renderActionHubList(actions) {
     const contentEl = document.getElementById('action-hub-items');
-    if (contentEl) {
-        // Show all urgent actions + up to 2 others
-        const displayActions = [...urgentActions, ...otherActions.slice(0, Math.max(0, 3 - urgentActions.length))];
-        
-        if (urgentActions.length > 3) {
-            // If many urgent items, make scrollable
-            contentEl.classList.add('scrollable');
-        } else {
-            contentEl.classList.remove('scrollable');
-        }
-        
-        contentEl.innerHTML = displayActions.map(action => renderActionHubItem(action)).join('');
+    if (!contentEl) return;
+    
+    if (actions.length === 0) {
+        contentEl.innerHTML = `
+            <div class="action-hub-empty">
+                <span>✨</span>
+                <span>No actions here</span>
+            </div>
+        `;
+        return;
     }
-
-    // Update view all link
-    const footerEl = document.querySelector('.action-hub-footer a');
-    if (footerEl) {
-        footerEl.textContent = `View all ${count} actions →`;
-    }
+    
+    // 最多显示 5 条
+    const displayActions = actions.slice(0, 5);
+    contentEl.innerHTML = displayActions.map(action => renderActionHubItem(action)).join('');
 }
 
 function renderActionHubItem(action) {
     const contacts = action.contactIds.map(id => AppData.getContact(id)).filter(c => c);
     const meeting = action.meetingId ? AppData.getMeeting(action.meetingId) : null;
-    const contactName = contacts.length > 0 ? contacts[0].name : 'Self';
+    const contactInfo = formatContactsDisplay(contacts, action.id);
+    
+    // Build contact display with click handler - pass only IDs, lookup in function
+    let contactDisplay, contactClickHandler;
+    if (contactInfo.hasContacts) {
+        contactDisplay = contactInfo.extra > 0 
+            ? `${contactInfo.display} <span class="contact-extra">+${contactInfo.extra}</span>` 
+            : contactInfo.display;
+    } else {
+        contactDisplay = contactInfo.display;
+    }
+    contactClickHandler = `event.stopPropagation(); showContactPopoverForAction('${action.id}')`;
+    
     const meetingTitle = meeting ? meeting.title : 'Manual';
     
     // Determine urgency status
@@ -272,17 +542,25 @@ function renderActionHubItem(action) {
     }
 
     return `
-        <div class="${itemClass}" id="action-hub-${action.id}">
-            <div class="action-checkbox" onclick="completeActionFromHub('${action.id}', event)"></div>
-            <div class="action-details">
-                <div class="action-title-row">
-                    <span class="action-title" onclick="showMeetingDetail('${action.meetingId}')">${action.title}</span>
-                    ${statusTag}
+        <div class="action-hub-swipe-container" id="action-hub-swipe-${action.id}">
+            <div class="action-hub-swipe-content">
+                <div class="${itemClass}" id="action-hub-${action.id}">
+                    <div class="action-checkbox" onclick="completeActionFromHub('${action.id}', event)"></div>
+                    <div class="action-details">
+                        <div class="action-title-row">
+                            <span class="action-title" onclick="showMeetingDetail('${action.meetingId}')">${action.title}</span>
+                            ${statusTag}
+                        </div>
+                        <div class="action-meta">
+                            <span class="action-meta-item action-contact" onclick="${contactClickHandler}">👤 ${contactDisplay}</span>
+                            <span class="action-meta-item">📝 ${meetingTitle}</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="action-meta">
-                    <span class="action-meta-item action-contact" onclick="event.stopPropagation(); showContactDetail('${contacts[0]?.id}')">👤 ${contactName}</span>
-                    <span class="action-meta-item">📝 ${meetingTitle}</span>
-                </div>
+            </div>
+            <div class="action-hub-swipe-actions">
+                ${action.dueDate ? `<button class="swipe-btn swipe-btn-snooze" onclick="snoozeAction('${action.id}')"><span>⏰</span>Snooze</button>` : ''}
+                <button class="swipe-btn swipe-btn-delete" onclick="deleteAction('${action.id}')"><span>🗑️</span>Delete</button>
             </div>
         </div>
     `;
@@ -331,7 +609,17 @@ function renderTodayMeetings() {
         const pendingActions = AppData.getActionsForMeeting(meeting.id).filter(a => a.status === 'pending');
         const completedActions = AppData.getActionsForMeeting(meeting.id).filter(a => a.status === 'completed');
         const contacts = meeting.contactIds.map(id => AppData.getContact(id)).filter(c => c);
-        const contactNames = contacts.map(c => c.name).join(', ') || 'Unknown';
+        
+        // Format contacts display with popover support - use wrapper function
+        let contactDisplay;
+        if (contacts.length === 0) {
+            contactDisplay = '<span class="action-add-contact">+ Add contact</span>';
+        } else if (contacts.length === 1) {
+            contactDisplay = contacts[0].name;
+        } else {
+            contactDisplay = `${contacts[0].name} <span class="contact-extra">+${contacts.length - 1}</span>`;
+        }
+        const contactClickHandler = `event.stopPropagation(); showContactPopoverForMeeting('${meeting.id}')`;
 
         let actionStatus = '';
         if (pendingActions.length > 0) {
@@ -349,7 +637,7 @@ function renderTodayMeetings() {
                     <div class="meeting-icon ${iconClass}">${icon}</div>
                     <div class="meeting-info">
                         <div class="meeting-title">${meeting.title}</div>
-                        <div class="meeting-subtitle">with ${contactNames}</div>
+                        <div class="meeting-subtitle meeting-contacts" onclick="${contactClickHandler}">with ${contactDisplay}</div>
                     </div>
                     <div class="meeting-time">${meeting.time}</div>
                 </div>
@@ -446,10 +734,48 @@ function renderPendingActions() {
     container.innerHTML = html || '<div class="empty-state">No pending actions! 🎉</div>';
 }
 
+// Helper function to format multiple contacts display
+function formatContactsDisplay(contacts, actionId) {
+    if (contacts.length === 0) {
+        return { 
+            display: '<span class="action-add-contact">+ Add contact</span>', 
+            extra: 0, 
+            hasContacts: false,
+            ids: []
+        };
+    } else if (contacts.length === 1) {
+        return { 
+            display: contacts[0].name, 
+            extra: 0, 
+            hasContacts: true,
+            ids: [contacts[0].id]
+        };
+    } else {
+        return { 
+            display: contacts[0].name, 
+            extra: contacts.length - 1, 
+            hasContacts: true,
+            ids: contacts.map(c => c.id)
+        };
+    }
+}
+
 function renderActionListItem(action, type) {
     const contacts = action.contactIds.map(id => AppData.getContact(id)).filter(c => c);
     const meeting = action.meetingId ? AppData.getMeeting(action.meetingId) : null;
-    const contactName = contacts.length > 0 ? contacts[0].name : 'Self';
+    const contactInfo = formatContactsDisplay(contacts, action.id);
+    
+    // Build contact display with click handler - pass only IDs, lookup in function
+    let contactDisplay;
+    if (contactInfo.hasContacts) {
+        contactDisplay = contactInfo.extra > 0 
+            ? `${contactInfo.display} <span class="contact-extra">+${contactInfo.extra}</span>` 
+            : contactInfo.display;
+    } else {
+        contactDisplay = contactInfo.display;
+    }
+    const contactClickHandler = `event.stopPropagation(); showContactPopoverForAction('${action.id}')`;
+    
     const meetingTitle = meeting ? meeting.title : 'Manual';
     const createdDate = DateHelper.formatDate(action.createdAt.split('T')[0]);
     
@@ -474,25 +800,32 @@ function renderActionListItem(action, type) {
     // Show "Go to Meeting" if has meeting context (for follow up there)
     const hasMeetingContext = action.meetingId && action.meetingId !== null;
 
+    // Overdue badge for display
+    const overdueTag = type === 'overdue' ? 
+        `<span class="overdue-tag">⚠️ Overdue</span>` : '';
+
     return `
-        <div class="action-list-card" id="action-list-${action.id}">
-            <div class="action-list-checkbox" onclick="completeActionFromList('${action.id}', event)"></div>
-            <div class="action-list-content">
-                <div class="action-list-title" onclick="event.stopPropagation(); enableInlineEdit('${action.id}', this)">${action.title}</div>
-                <div class="action-list-meta">
-                    <span class="action-list-contact" onclick="event.stopPropagation(); ${contacts[0]?.id ? `showContactDetail('${contacts[0].id}')` : ''}">👤 ${contactName}</span>
-                    <span class="action-list-source" onclick="event.stopPropagation(); ${hasMeetingContext ? `showMeetingDetail('${action.meetingId}')` : ''}">📝 ${meetingTitle}</span>
-                    ${aiTag}
+        <div class="action-swipe-container" id="action-swipe-${action.id}">
+            <div class="action-swipe-content">
+                <div class="action-list-card" id="action-list-${action.id}">
+                    <div class="action-list-checkbox" onclick="completeActionFromList('${action.id}', event)"></div>
+                    <div class="action-list-content">
+                        <div class="action-list-title" onclick="event.stopPropagation(); enableInlineEdit('${action.id}', this)">${action.title}</div>
+                        <div class="action-list-meta">
+                            <span class="action-list-contact" onclick="${contactClickHandler}">👤 ${contactDisplay}</span>
+                            <span class="action-list-source" onclick="event.stopPropagation(); ${hasMeetingContext ? `showMeetingDetail('${action.meetingId}')` : ''}">📝 ${meetingTitle}</span>
+                            ${aiTag}
+                        </div>
+                        <div class="action-time-row">
+                            ${dueInfo}
+                            <span class="action-created">Created: ${createdDate}</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="action-time-row">
-                    ${dueInfo}
-                    <span class="action-created">Created: ${createdDate}</span>
-                </div>
-                <div class="action-list-actions">
-                    ${hasMeetingContext ? `<button class="action-quick-btn" onclick="event.stopPropagation(); showMeetingDetail('${action.meetingId}')">📝 View Meeting</button>` : ''}
-                    ${type === 'overdue' ? `<button class="action-quick-btn" onclick="event.stopPropagation(); snoozeAction('${action.id}')">⏰ Snooze</button>` : ''}
-                    ${type === 'overdue' ? `<button class="action-quick-btn secondary" onclick="event.stopPropagation(); clearDueDate('${action.id}')">Remove Due</button>` : ''}
-                </div>
+            </div>
+            <div class="action-swipe-actions">
+                ${action.dueDate ? `<button class="swipe-btn swipe-btn-snooze" onclick="snoozeAction('${action.id}')"><span>⏰</span>Snooze</button>` : ''}
+                <button class="swipe-btn swipe-btn-delete" onclick="deleteAction('${action.id}')"><span>🗑️</span>Delete</button>
             </div>
         </div>
     `;
@@ -768,25 +1101,84 @@ function showMeetingDetail(meetingId) {
             </div>
         </div>
 
+        <!-- 🔥 Action Items - 置顶突出 -->
+        <div class="md-actions-section md-actions-prominent">
+            <div class="md-actions-header">
+                <div class="md-actions-title">
+                    <span class="md-actions-icon">✅</span>
+                    Action Items
+                    <span class="action-badge ${pendingActions.length > 0 ? 'has-pending' : ''}">${pendingActions.length}</span>
+                </div>
+                ${pendingActions.length === 0 ? '<span class="md-actions-done">All done!</span>' : ''}
+            </div>
+            
+            ${pendingActions.length > 0 ? pendingActions.map(a => {
+                const isOverdue = DateHelper.isOverdue(a.dueDate);
+                const isToday = DateHelper.isToday(a.dueDate);
+                let dueBadge = '';
+                if (isOverdue) {
+                    dueBadge = '<span class="md-action-due-badge overdue">Overdue</span>';
+                } else if (isToday) {
+                    dueBadge = '<span class="md-action-due-badge today">Today</span>';
+                }
+                return `
+                <div class="md-action-item ${isOverdue ? 'overdue' : ''}" id="md-action-${a.id}">
+                    <div class="md-action-checkbox" onclick="completeActionFromMeeting('${a.id}', this)"></div>
+                    <div class="md-action-content">
+                        <div class="md-action-text" onclick="enableInlineEdit('${a.id}', this)">${a.title}</div>
+                        <div class="md-action-meta">
+                            <span onclick="editDueDate('${a.id}')">${a.dueDate ? '📅 ' + DateHelper.formatDate(a.dueDate) : '📅 Set due'}</span>
+                            ${dueBadge}
+                        </div>
+                    </div>
+                </div>
+            `}).join('') : `
+                <div class="md-no-actions">
+                    <span>🎉</span>
+                    <span>No pending actions</span>
+                </div>
+            `}
+            
+            ${completedActions.length > 0 ? `
+                <div class="md-completed-section">
+                    <div class="md-completed-label">✓ Completed (${completedActions.length})</div>
+                    ${completedActions.slice(0, 3).map(a => `
+                        <div class="md-action-item completed">
+                            <div class="md-action-checkbox checked"></div>
+                            <div class="md-action-content">
+                                <div class="md-action-text">${a.title}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                    ${completedActions.length > 3 ? `<div class="md-more-completed">+${completedActions.length - 3} more</div>` : ''}
+                </div>
+            ` : ''}
+            
+            <div class="md-add-action-row" onclick="showAddActionForMeeting('${meetingId}')">
+                <span>+</span>
+                <span>Add Action</span>
+            </div>
+        </div>
+
         <!-- 总结 / 整体总结 -->
         <div class="md-section">
-            <h2 class="md-section-title">总结 / 整体总结</h2>
+            <h2 class="md-section-title">📝 总结</h2>
             <p class="md-text">${summaryData.overview}</p>
         </div>
 
         <!-- 会面背景 -->
         <div class="md-section">
-            <h2 class="md-section-title">会面背景</h2>
+            <h2 class="md-section-title">👥 会面背景</h2>
             <ul class="md-list">
                 <li><strong>参与者:</strong> ${summaryData.background.participants}</li>
                 <li><strong>角色:</strong> ${summaryData.background.roles}</li>
-                <li><strong>会面目的:</strong> ${summaryData.background.purpose}</li>
+                <li><strong>目的:</strong> ${summaryData.background.purpose}</li>
             </ul>
         </div>
 
         <!-- 关键结论总结 -->
         <div class="md-section">
-            <h2 class="md-section-title">关键结论总结</h2>
+            <h2 class="md-section-title">🎯 关键结论</h2>
             <ul class="md-list">
                 ${summaryData.keyConclusions.map(c => `<li>${c}</li>`).join('')}
             </ul>
@@ -794,7 +1186,7 @@ function showMeetingDetail(meetingId) {
 
         <!-- 核心议题逐条总结 -->
         <div class="md-section">
-            <h2 class="md-section-title">核心议题逐条总结</h2>
+            <h2 class="md-section-title">💬 核心议题</h2>
             ${summaryData.topics.map((topic, i) => `
                 <div class="md-topic">
                     <div class="md-topic-title">议题 ${i + 1}: ${topic.title}</div>
@@ -818,63 +1210,17 @@ function showMeetingDetail(meetingId) {
         <!-- 待定问题 / 风险点 -->
         ${summaryData.risks && summaryData.risks.length > 0 ? `
             <div class="md-section">
-                <h2 class="md-section-title">待定问题 / 风险点</h2>
+                <h2 class="md-section-title">⚠️ 风险点</h2>
                 <ul class="md-list">
                     ${summaryData.risks.map(r => `<li>${r}</li>`).join('')}
                 </ul>
             </div>
-        ` : `
-            <div class="md-section">
-                <h2 class="md-section-title">待定问题 / 风险点</h2>
-                <ul class="md-list">
-                    <li>无</li>
-                </ul>
-            </div>
-        `}
-
-        <!-- 下一步行动 (Actions) - More Prominent -->
-        <div class="md-actions-section">
-            <div class="md-actions-header">
-                <div class="md-actions-title">
-                    📋 下一步行动
-                    <span class="action-badge">${pendingActions.length}</span>
-                </div>
-            </div>
-            
-            ${pendingActions.map(a => `
-                <div class="md-action-item" id="md-action-${a.id}">
-                    <div class="md-action-checkbox" onclick="completeActionFromMeeting('${a.id}', this)"></div>
-                    <div class="md-action-content">
-                        <div class="md-action-text" onclick="enableInlineEdit('${a.id}', this)">${a.title}</div>
-                        <div class="md-action-meta" onclick="editDueDate('${a.id}')">${a.dueDate ? '📅 ' + DateHelper.formatDate(a.dueDate) : '📅 Set due date'}</div>
-                    </div>
-                </div>
-            `).join('')}
-            
-            ${completedActions.length > 0 ? `
-                <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(0,0,0,0.1);">
-                    <div style="font-size: 13px; color: var(--text-tertiary); margin-bottom: 8px;">✓ Completed</div>
-                    ${completedActions.map(a => `
-                        <div class="md-action-item completed">
-                            <div class="md-action-checkbox checked"></div>
-                            <div class="md-action-content">
-                                <div class="md-action-text">${a.title}</div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            ` : ''}
-            
-            <div class="md-add-action-row" onclick="showAddActionForMeeting('${meetingId}')">
-                <span>+</span>
-                <span>Add Action</span>
-            </div>
-        </div>
+        ` : ''}
 
         <!-- 附录: 高价值原话 / 片段 -->
         ${summaryData.highlights && summaryData.highlights.length > 0 ? `
             <div class="md-section">
-                <h2 class="md-section-title">附录: 高价值原话 / 片段</h2>
+                <h2 class="md-section-title">💡 高价值片段</h2>
                 <ul class="md-list md-quotes">
                     ${summaryData.highlights.map(h => `<li>${h}</li>`).join('')}
                 </ul>
@@ -921,18 +1267,23 @@ function closeMeetingDetail() {
 }
 
 function completeActionFromMeeting(actionId, checkbox) {
+    // Visual feedback
     checkbox.classList.add('checked');
     const actionItem = document.getElementById(`md-action-${actionId}`);
     if (actionItem) {
-        actionItem.classList.add('completed');
+        actionItem.style.opacity = '0.5';
+        actionItem.style.transform = 'translateX(20px)';
     }
     
+    // Update data
     AppData.completeAction(actionId);
     showToast('Action completed! ✓');
     
+    // Refresh meeting detail to move item to completed section
     setTimeout(() => {
+        showMeetingDetail(AppState.selectedMeeting);
         refreshAllViews();
-    }, 300);
+    }, 400);
 }
 
 function showTranscript() {
@@ -1001,7 +1352,10 @@ function renderContactDetail() {
     const roleEl = document.querySelector('.contact-role');
     const badgeEl = document.querySelector('.contact-avatar-badge');
 
-    if (avatarEl) avatarEl.textContent = contact.avatar;
+    if (avatarEl) {
+        avatarEl.textContent = contact.avatar;
+        avatarEl.style.background = contact.avatarColor || '#007AFF';
+    }
     if (nameEl) nameEl.textContent = contact.name;
     if (roleEl) roleEl.textContent = `${contact.role} @ ${contact.company}`;
     
@@ -1068,7 +1422,6 @@ function renderContactPendingActions(contactId) {
                                 <span onclick="event.stopPropagation(); editDueDate('${a.id}')">${a.dueDate ? '📅 ' + DateHelper.formatDate(a.dueDate) : '📅 Set due'}</span>
                             </div>
                             <div class="action-quick-actions">
-                                ${meeting ? `<button class="action-quick-btn" onclick="event.stopPropagation(); showMeetingDetail('${a.meetingId}')">📝 View Meeting</button>` : ''}
                                 ${isOverdue ? `<button class="action-quick-btn" onclick="event.stopPropagation(); snoozeAction('${a.id}')">⏰ Snooze</button>` : ''}
                             </div>
                         </div>
@@ -1321,58 +1674,549 @@ function enableInlineEdit(actionId, element) {
 // Refresh all views
 function refreshAllViews() {
     renderActionHub();
+    renderTodayMeetings();
     if (AppState.currentPage === 'actionList') {
         renderActionList();
     }
     if (AppState.currentPage === 'contact') {
         renderContactDetail();
     }
+    if (AppState.currentPage === 'meetingList') {
+        renderMeetingList();
+    }
 }
 
-// Add Action from different contexts
+// ========================================
+// Add Action Modal
+// ========================================
+
+const AddActionState = {
+    context: null,  // 'home', 'meeting', 'contact'
+    meetingId: null,
+    contactIds: [],
+    selectedDueDate: null,
+    currentMonth: new Date(),
+    createMore: false
+};
+
 function showAddActionModal(contactId) {
-    // From Home or generic - no association
-    const title = prompt('What needs to be done?');
-    if (title) {
-        AppData.addAction({
-            title: title,
-            contactIds: contactId ? [contactId] : [],
-            meetingId: null  // Manual - no meeting association
-        });
-        showToast('Action added!');
-        refreshAllViews();
-    }
+    AddActionState.context = 'home';
+    AddActionState.meetingId = null;
+    AddActionState.contactIds = contactId ? [contactId] : [];
+    AddActionState.selectedDueDate = null;
+    openAddActionModal();
 }
 
 function showAddActionForMeeting(meetingId) {
-    // From Meeting Detail - associate with meeting
     const meeting = AppData.getMeeting(meetingId);
-    const title = prompt(`Add action for "${meeting.title}":`);
-    if (title) {
-        AppData.addAction({
-            title: title,
-            contactIds: meeting.contactIds || [],  // Associate with meeting's contacts
-            meetingId: meetingId
-        });
-        showToast('Action added to meeting!');
-        showMeetingDetail(meetingId);  // Refresh modal
-        refreshAllViews();
-    }
+    AddActionState.context = 'meeting';
+    AddActionState.meetingId = meetingId;
+    AddActionState.contactIds = meeting.contactIds || [];
+    AddActionState.selectedDueDate = null;
+    openAddActionModal();
 }
 
 function showAddActionForContact(contactId) {
-    // From Contact Detail - associate with contact only
-    const contact = AppData.getContact(contactId);
-    const title = prompt(`Add action for "${contact.name}":`);
-    if (title) {
-        AppData.addAction({
-            title: title,
-            contactIds: [contactId],
-            meetingId: null  // Manual - no meeting association
-        });
-        showToast('Action added!');
-        refreshAllViews();
+    AddActionState.context = 'contact';
+    AddActionState.meetingId = null;
+    AddActionState.contactIds = [contactId];
+    AddActionState.selectedDueDate = null;
+    openAddActionModal();
+}
+
+function openAddActionModal() {
+    const modal = document.getElementById('add-action-modal');
+    const input = document.getElementById('add-action-input');
+    
+    // Reset form
+    input.value = '';
+    AddActionState.selectedDueDate = null;
+    AddActionState.currentMonth = new Date();
+    
+    // Update displays
+    updateDueDateDisplay();
+    updateContactDisplay();
+    renderDueCalendar();
+    
+    // Hide date picker
+    document.getElementById('due-date-picker').classList.remove('show');
+    document.getElementById('due-date-btn').classList.remove('active');
+    
+    // Show modal
+    modal.classList.add('show');
+    
+    // Focus input
+    setTimeout(() => input.focus(), 300);
+}
+
+function closeAddActionModal() {
+    const modal = document.getElementById('add-action-modal');
+    modal.classList.remove('show');
+    
+    // Refresh views if context was meeting
+    if (AddActionState.context === 'meeting' && AddActionState.meetingId) {
+        showMeetingDetail(AddActionState.meetingId);
     }
+}
+
+function handleAddActionKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        submitNewAction();
+    } else if (event.key === 'Escape') {
+        closeAddActionModal();
+    }
+}
+
+function submitNewAction() {
+    const input = document.getElementById('add-action-input');
+    const title = input.value.trim();
+    
+    if (!title) {
+        input.focus();
+        return;
+    }
+    
+    // Create the action
+    AppData.addAction({
+        title: title,
+        contactIds: AddActionState.contactIds,
+        meetingId: AddActionState.meetingId,
+        dueDate: AddActionState.selectedDueDate
+    });
+    
+    showToast('Action created!');
+    refreshAllViews();
+    
+    // Check if Create More is enabled
+    const createMore = document.getElementById('create-more-checkbox').checked;
+    
+    if (createMore) {
+        // Clear input and reset due date, keep modal open
+        input.value = '';
+        AddActionState.selectedDueDate = null;
+        updateDueDateDisplay();
+        document.getElementById('due-date-picker').classList.remove('show');
+        input.focus();
+    } else {
+        closeAddActionModal();
+    }
+}
+
+// Due Date Picker functions
+function toggleDueDatePicker() {
+    const picker = document.getElementById('due-date-picker');
+    const btn = document.getElementById('due-date-btn');
+    
+    if (picker.classList.contains('show')) {
+        picker.classList.remove('show');
+        btn.classList.remove('active');
+    } else {
+        picker.classList.add('show');
+        btn.classList.add('active');
+        renderDueCalendar();
+    }
+}
+
+function renderDueCalendar() {
+    const calendar = document.getElementById('due-calendar');
+    const monthLabel = document.getElementById('due-month-label');
+    
+    const year = AddActionState.currentMonth.getFullYear();
+    const month = AddActionState.currentMonth.getMonth();
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    monthLabel.textContent = monthNames[month];
+    
+    // Day headers
+    const dayHeaders = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    let html = dayHeaders.map(d => `<div class="calendar-day-header">${d}</div>`).join('');
+    
+    // First day of month
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDayOfWeek = firstDay.getDay();
+    
+    // Previous month days
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+        const day = prevMonthLastDay - i;
+        html += `<div class="calendar-day other-month">${day}</div>`;
+    }
+    
+    // Current month days
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === AddActionState.selectedDueDate;
+        
+        let classes = 'calendar-day';
+        if (isToday && !isSelected) classes += ' today';
+        if (isSelected) classes += ' selected';
+        
+        html += `<div class="${classes}" onclick="selectDueDate('${dateStr}')">${day}</div>`;
+    }
+    
+    // Next month days
+    const remainingDays = 42 - (startDayOfWeek + lastDay.getDate());
+    for (let day = 1; day <= remainingDays && day <= 7; day++) {
+        html += `<div class="calendar-day other-month">${day}</div>`;
+    }
+    
+    calendar.innerHTML = html;
+}
+
+function changeDueMonth(delta) {
+    AddActionState.currentMonth.setMonth(AddActionState.currentMonth.getMonth() + delta);
+    renderDueCalendar();
+}
+
+function selectDueDate(dateStr) {
+    AddActionState.selectedDueDate = dateStr;
+    updateDueDateDisplay();
+    renderDueCalendar();
+    
+    // Close picker after selection
+    setTimeout(() => {
+        document.getElementById('due-date-picker').classList.remove('show');
+        document.getElementById('due-date-btn').classList.remove('active');
+    }, 200);
+}
+
+function setDueDateToday() {
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    selectDueDate(dateStr);
+}
+
+function clearSelectedDueDate() {
+    AddActionState.selectedDueDate = null;
+    updateDueDateDisplay();
+    renderDueCalendar();
+    document.getElementById('due-date-picker').classList.remove('show');
+    document.getElementById('due-date-btn').classList.remove('active');
+}
+
+function updateDueDateDisplay() {
+    const display = document.getElementById('selected-due-display');
+    const btn = document.getElementById('due-date-btn');
+    
+    if (AddActionState.selectedDueDate) {
+        const formatted = DateHelper.formatDate(AddActionState.selectedDueDate);
+        display.innerHTML = `📅 ${formatted} <span class="remove" onclick="clearSelectedDueDate()">×</span>`;
+        display.style.display = 'inline-flex';
+        btn.classList.add('has-date');
+    } else {
+        display.style.display = 'none';
+        btn.classList.remove('has-date');
+    }
+}
+
+function updateContactDisplay() {
+    const display = document.getElementById('selected-contact-display');
+    
+    if (AddActionState.contactIds.length > 0) {
+        const contacts = AddActionState.contactIds.map(id => AppData.getContact(id)).filter(c => c);
+        if (contacts.length > 0) {
+            // Show each contact as a removable tag
+            const contactTags = contacts.map(c => 
+                `<span class="contact-tag">👤 ${c.name} <span class="remove" onclick="event.stopPropagation(); removeContactFromAction('${c.id}')">×</span></span>`
+            ).join('');
+            display.innerHTML = contactTags;
+            display.style.display = 'flex';
+            return;
+        }
+    }
+    display.style.display = 'none';
+}
+
+function removeContactFromAction(contactId) {
+    const index = AddActionState.contactIds.indexOf(contactId);
+    if (index !== -1) {
+        AddActionState.contactIds.splice(index, 1);
+        updateContactDisplay();
+    }
+}
+
+// ========================================
+// Contact Popover (联系人浮层)
+// ========================================
+
+const ContactPopoverState = {
+    visible: false,
+    contactIds: [],
+    context: null,  // 'action' or 'meeting'
+    contextId: null  // actionId or meetingId
+};
+
+// Wrapper functions for onclick handlers (avoid JSON in HTML attributes)
+function showContactPopoverForAction(actionId) {
+    const action = AppData.getAction(actionId);
+    if (action) {
+        showContactPopover(action.contactIds, 'action', actionId);
+    }
+}
+
+function showContactPopoverForMeeting(meetingId) {
+    const meeting = AppData.getMeeting(meetingId);
+    if (meeting) {
+        showContactPopover(meeting.contactIds, 'meeting', meetingId);
+    }
+}
+
+function showContactPopover(contactIds, context, contextId) {
+    ContactPopoverState.contactIds = contactIds || [];
+    ContactPopoverState.context = context;
+    ContactPopoverState.contextId = contextId;
+    
+    // If no contacts, directly open contact picker
+    if (!contactIds || contactIds.length === 0) {
+        openContactPickerForContext(context, contextId);
+        return;
+    }
+    
+    const popover = document.getElementById('contact-popover');
+    const overlay = document.getElementById('contact-popover-overlay');
+    const content = document.getElementById('contact-popover-content');
+    const title = document.getElementById('contact-popover-title');
+    const addText = document.getElementById('contact-popover-add-text');
+    
+    // Render contacts
+    const contacts = contactIds.map(id => AppData.getContact(id)).filter(c => c);
+    
+    title.textContent = contacts.length === 1 ? 'Related Contact' : `Related Contacts (${contacts.length})`;
+    addText.textContent = 'Add more contacts';
+    
+    content.innerHTML = contacts.map(c => `
+        <div class="contact-popover-item" onclick="goToContactFromPopover('${c.id}')">
+            <div class="contact-popover-avatar" style="background: ${c.avatarColor}">${c.avatar}</div>
+            <div class="contact-popover-info">
+                <div class="contact-popover-name">${c.name}</div>
+                <div class="contact-popover-role">${c.role} @ ${c.company}</div>
+            </div>
+            <span class="contact-popover-arrow-icon">›</span>
+        </div>
+    `).join('');
+    
+    // Show popover with overlay
+    overlay.classList.add('show');
+    popover.classList.add('show');
+    ContactPopoverState.visible = true;
+}
+
+function closeContactPopover() {
+    const popover = document.getElementById('contact-popover');
+    const overlay = document.getElementById('contact-popover-overlay');
+    popover.classList.remove('show');
+    overlay.classList.remove('show');
+    ContactPopoverState.visible = false;
+}
+
+function goToContactFromPopover(contactId) {
+    closeContactPopover();
+    showContactDetail(contactId);
+}
+
+function addContactFromPopover() {
+    // Save state before closing popover
+    const context = ContactPopoverState.context;
+    const contextId = ContactPopoverState.contextId;
+    
+    if (!context || !contextId) {
+        console.warn('addContactFromPopover: Missing context or contextId');
+        return;
+    }
+    
+    closeContactPopover();
+    
+    // Open contact picker with saved state (delay for animation)
+    setTimeout(() => {
+        openContactPickerForContext(context, contextId);
+    }, 200);
+}
+
+function openContactPickerForContext(context, contextId) {
+    if (context === 'action') {
+        const action = AppData.getAction(contextId);
+        if (action) {
+            AddActionState.contactIds = [...action.contactIds];
+            AddActionState.context = 'edit';
+            AddActionState.editingActionId = contextId;
+            showContactPickerForEdit();
+        }
+    } else if (context === 'meeting') {
+        showContactPickerForMeeting(contextId);
+    }
+}
+
+function showContactPickerForEdit() {
+    const modal = document.getElementById('contact-picker-modal');
+    const searchInput = document.getElementById('contact-search-input');
+    
+    ContactPickerState.selectedIds = [...AddActionState.contactIds];
+    ContactPickerState.searchQuery = '';
+    
+    searchInput.value = '';
+    renderContactPickerList();
+    modal.classList.add('show');
+    
+    setTimeout(() => searchInput.focus(), 300);
+}
+
+function showContactPickerForMeeting(meetingId) {
+    // Store meeting context for later update
+    ContactPickerState.meetingId = meetingId;
+    const meeting = AppData.getMeeting(meetingId);
+    
+    const modal = document.getElementById('contact-picker-modal');
+    const searchInput = document.getElementById('contact-search-input');
+    
+    ContactPickerState.selectedIds = meeting ? [...meeting.contactIds] : [];
+    ContactPickerState.searchQuery = '';
+    
+    searchInput.value = '';
+    renderContactPickerList();
+    modal.classList.add('show');
+    
+    setTimeout(() => searchInput.focus(), 300);
+}
+
+// ========================================
+// Contact Picker
+// ========================================
+
+const ContactPickerState = {
+    selectedIds: [],
+    searchQuery: '',
+    meetingId: null,
+    editingActionId: null
+};
+
+function showContactPicker() {
+    const modal = document.getElementById('contact-picker-modal');
+    const searchInput = document.getElementById('contact-search-input');
+    
+    // Initialize with current selection from AddActionState
+    ContactPickerState.selectedIds = [...AddActionState.contactIds];
+    ContactPickerState.searchQuery = '';
+    
+    // Reset search
+    searchInput.value = '';
+    
+    // Render contacts
+    renderContactPickerList();
+    
+    // Show modal
+    modal.classList.add('show');
+    
+    // Focus search
+    setTimeout(() => searchInput.focus(), 300);
+}
+
+function closeContactPicker() {
+    const modal = document.getElementById('contact-picker-modal');
+    modal.classList.remove('show');
+}
+
+function confirmContactSelection() {
+    const selectedIds = [...ContactPickerState.selectedIds];
+    
+    // Check if we're editing an existing action
+    if (AddActionState.context === 'edit' && AddActionState.editingActionId) {
+        const action = AppData.getAction(AddActionState.editingActionId);
+        if (action) {
+            action.contactIds = selectedIds;
+            showToast('Contacts updated');
+            refreshAllViews();
+        }
+        AddActionState.editingActionId = null;
+        AddActionState.context = null;
+    } 
+    // Check if we're editing a meeting
+    else if (ContactPickerState.meetingId) {
+        const meeting = AppData.getMeeting(ContactPickerState.meetingId);
+        if (meeting) {
+            meeting.contactIds = selectedIds;
+            showToast('Contacts updated');
+            refreshAllViews();
+            // Refresh meeting detail if open
+            if (AppState.selectedMeeting === ContactPickerState.meetingId) {
+                showMeetingDetail(ContactPickerState.meetingId);
+            }
+        }
+        ContactPickerState.meetingId = null;
+    }
+    // Normal add action flow
+    else {
+        AddActionState.contactIds = selectedIds;
+        updateContactDisplay();
+    }
+    
+    // Close picker
+    closeContactPicker();
+}
+
+function filterContacts(query) {
+    ContactPickerState.searchQuery = query.toLowerCase();
+    renderContactPickerList();
+}
+
+function renderContactPickerList() {
+    const container = document.getElementById('contact-picker-list');
+    const query = ContactPickerState.searchQuery;
+    
+    // Filter contacts
+    let contacts = AppData.contacts;
+    if (query) {
+        contacts = contacts.filter(c => 
+            c.name.toLowerCase().includes(query) ||
+            c.company.toLowerCase().includes(query) ||
+            c.role.toLowerCase().includes(query)
+        );
+    }
+    
+    if (contacts.length === 0) {
+        container.innerHTML = `
+            <div class="contact-picker-empty">
+                ${query ? 'No contacts found' : 'No contacts available'}
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = contacts.map(contact => {
+        const isSelected = ContactPickerState.selectedIds.includes(contact.id);
+        return `
+            <div class="contact-picker-item ${isSelected ? 'selected' : ''}" 
+                 onclick="toggleContactSelection('${contact.id}')">
+                <div class="contact-picker-checkbox"></div>
+                <div class="contact-picker-avatar" style="background: ${contact.avatarColor}">${contact.avatar}</div>
+                <div class="contact-picker-info">
+                    <div class="contact-picker-name">${contact.name}</div>
+                    <div class="contact-picker-role">${contact.role} @ ${contact.company}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleContactSelection(contactId) {
+    const index = ContactPickerState.selectedIds.indexOf(contactId);
+    
+    if (index === -1) {
+        // Add to selection
+        ContactPickerState.selectedIds.push(contactId);
+    } else {
+        // Remove from selection
+        ContactPickerState.selectedIds.splice(index, 1);
+    }
+    
+    // Re-render list to update visual state
+    renderContactPickerList();
 }
 
 // Generate follow up email from Meeting context
@@ -1494,6 +2338,8 @@ function filterContacts(filter) {
 // Make functions globally available
 window.showPage = showPage;
 window.toggleActionHub = toggleActionHub;
+window.switchActionHubTab = switchActionHubTab;
+window.switchStatsRange = switchStatsRange;
 window.completeActionFromHub = completeActionFromHub;
 window.showMeetingDetail = showMeetingDetail;
 window.closeMeetingDetail = closeMeetingDetail;
@@ -1506,6 +2352,7 @@ window.setDueDate = setDueDate;
 window.snoozeAction = snoozeAction;
 window.showAddActionModal = showAddActionModal;
 window.showToast = showToast;
+window.deleteAction = deleteAction;
 window.toggleContactActions = toggleContactActions;
 window.completeActionFromList = completeActionFromList;
 window.completeActionFromModal = completeActionFromModal;
@@ -1519,6 +2366,26 @@ window.enableInlineEdit = enableInlineEdit;
 window.refreshAllViews = refreshAllViews;
 window.showAddActionForMeeting = showAddActionForMeeting;
 window.showAddActionForContact = showAddActionForContact;
+window.closeAddActionModal = closeAddActionModal;
+window.handleAddActionKeydown = handleAddActionKeydown;
+window.submitNewAction = submitNewAction;
+window.toggleDueDatePicker = toggleDueDatePicker;
+window.changeDueMonth = changeDueMonth;
+window.selectDueDate = selectDueDate;
+window.setDueDateToday = setDueDateToday;
+window.clearSelectedDueDate = clearSelectedDueDate;
+window.showContactPicker = showContactPicker;
+window.closeContactPicker = closeContactPicker;
+window.confirmContactSelection = confirmContactSelection;
+window.filterContacts = filterContacts;
+window.toggleContactSelection = toggleContactSelection;
+window.removeContactFromAction = removeContactFromAction;
+window.showContactPopover = showContactPopover;
+window.showContactPopoverForAction = showContactPopoverForAction;
+window.showContactPopoverForMeeting = showContactPopoverForMeeting;
+window.closeContactPopover = closeContactPopover;
+window.goToContactFromPopover = goToContactFromPopover;
+window.addContactFromPopover = addContactFromPopover;
 window.generateMeetingFollowUp = generateMeetingFollowUp;
 window.completeActionFromMeeting = completeActionFromMeeting;
 window.showTranscript = showTranscript;

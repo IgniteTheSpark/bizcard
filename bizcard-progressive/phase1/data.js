@@ -177,9 +177,9 @@ const AppData = {
     actions: [
         {
             id: 'action_001',
-            title: 'Follow up with Kevin on RWA compliance',
+            title: 'Follow up with Kevin and Alice on RWA compliance',
             status: 'pending',
-            contactIds: ['contact_kevin'],
+            contactIds: ['contact_kevin', 'contact_alice'],  // 多联系人
             meetingId: 'meeting_001',
             dueDate: '2026-01-17',
             createdAt: '2026-01-15T11:30:00',
@@ -188,9 +188,9 @@ const AppData = {
         },
         {
             id: 'action_002',
-            title: 'Send updated proposal to Alice',
+            title: 'Send updated proposal to team',
             status: 'pending',
-            contactIds: ['contact_alice'],
+            contactIds: ['contact_alice', 'contact_bob', 'contact_charlie'],  // 多联系人 (3人)
             meetingId: 'meeting_001',
             dueDate: '2026-01-15', // Today
             createdAt: '2026-01-15T11:30:00',
@@ -201,7 +201,7 @@ const AppData = {
             id: 'action_003',
             title: 'Schedule demo for Acme Corp',
             status: 'pending',
-            contactIds: ['contact_bob'],
+            contactIds: ['contact_bob', 'contact_kevin'],  // 多联系人
             meetingId: 'meeting_002',
             dueDate: '2026-01-18',
             createdAt: '2026-01-15T10:00:00',

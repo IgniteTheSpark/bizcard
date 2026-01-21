@@ -232,24 +232,54 @@
             opacity: 0.8;
         }
 
-        /* Stats */
-        .stats-row {
+        /* Stats Container */
+        .stats-container {
             margin: 8px 16px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .stats-toggle {
+            display: flex;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 3px;
+            margin-bottom: 12px;
+        }
+
+        .stats-toggle-btn {
+            flex: 1;
+            padding: 6px 12px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .stats-toggle-btn.active {
+            background: white;
+            color: var(--text-primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stats-row {
             display: flex;
             gap: 8px;
         }
 
         .stat-item {
             flex: 1;
-            background: var(--bg-card);
-            border-radius: 12px;
-            padding: 12px 8px;
             text-align: center;
-            box-shadow: var(--shadow);
+            padding: 8px 4px;
         }
 
         .stat-value {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 700;
             color: var(--text-primary);
         }
@@ -258,89 +288,179 @@
             font-size: 11px;
             color: var(--text-secondary);
             margin-top: 2px;
+            white-space: nowrap;
         }
 
-        /* Action Hub */
-        .action-hub {
+        /* Action Hub - 新 Tab 式设计 */
+        .action-hub-new {
             margin: 12px 16px;
             background: var(--bg-card);
             border-radius: 16px;
             box-shadow: var(--shadow);
             overflow: hidden;
-            transition: all 0.3s ease;
         }
 
-        .action-hub.empty {
-            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-        }
-
-        .action-hub-header {
-            padding: 14px 16px;
+        .action-hub-header-new {
+            padding: 16px 16px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .action-hub-title-new {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .action-total-badge {
+            background: var(--primary-blue);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .action-view-all {
+            color: var(--primary-blue);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        /* Tab 样式 */
+        .action-hub-tabs {
+            display: flex;
+            padding: 0 12px;
+            gap: 4px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .action-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 8px 12px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .action-tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 3px;
+            background: var(--primary-blue);
+            border-radius: 3px 3px 0 0;
+            transition: width 0.2s;
+        }
+
+        .action-tab.active::after {
+            width: 80%;
+        }
+
+        .action-tab .tab-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .action-tab.active .tab-label {
+            color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        .action-tab .tab-count {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-top: 2px;
+            transition: color 0.2s;
+        }
+
+        .action-tab.active .tab-count {
+            color: var(--text-primary);
+        }
+
+        /* Overdue Tab 特殊样式 */
+        .action-tab[data-filter="overdue"] .tab-count {
+            color: var(--primary-red);
+        }
+
+        .action-tab[data-filter="overdue"].has-items .tab-label {
+            color: var(--primary-red);
+        }
+
+        /* Action 列表 */
+        .action-hub-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .action-hub-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .action-hub-list::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+
+        .action-hub-empty {
+            padding: 32px 16px;
+            text-align: center;
+            color: var(--text-tertiary);
+        }
+
+        .action-hub-empty span:first-child {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* 添加 Action 按钮 */
+        .action-hub-add {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px;
+            border-top: 1px solid var(--border-color);
+            color: var(--primary-blue);
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
             transition: background 0.2s;
         }
 
-        .action-hub-header:hover {
-            background: rgba(0,0,0,0.02);
+        .action-hub-add:hover {
+            background: rgba(0, 122, 255, 0.05);
         }
 
-        .action-hub-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        /* 保留旧样式兼容 */
+        .action-hub-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
         }
 
-        .action-count-badge {
-            width: 24px;
-            height: 24px;
-            background: var(--primary-red);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .action-hub.empty .action-count-badge {
-            background: var(--primary-green);
-        }
-
-        .action-hub-title span {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .action-hub-subtitle {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-            padding-left: 34px;
-        }
-
-        .action-hub-arrow {
-            font-size: 18px;
-            color: var(--text-secondary);
-            transition: transform 0.3s ease;
-        }
-
-        .action-hub.expanded .action-hub-arrow {
-            transform: rotate(180deg);
-        }
-
-        .action-hub-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-
-        .action-hub.expanded .action-hub-content {
-            max-height: 500px;
+        .action-hub-footer a {
+            color: var(--primary-blue);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
         }
 
         .action-item {
@@ -588,6 +708,15 @@
             margin-top: 2px;
         }
 
+        .meeting-subtitle.meeting-contacts {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .meeting-subtitle.meeting-contacts:hover {
+            color: var(--primary-blue);
+        }
+
         .meeting-time {
             font-size: 13px;
             color: var(--text-secondary);
@@ -630,6 +759,7 @@
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
             border-top: 1px solid var(--border-color);
+            z-index: 50;  /* Above scrollable content */
         }
 
         .sticky-btn {
@@ -677,6 +807,7 @@
             border-top: 1px solid var(--border-color);
             display: flex;
             padding-bottom: 20px;
+            z-index: 40;  /* Above scrollable content */
         }
 
         .tab-item {
@@ -704,9 +835,691 @@
             font-weight: 500;
         }
 
-        /* Toast */
+        /* Contact Popover - 底部弹出式（移动端风格，相对于 phone-frame） */
+        .contact-popover-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 300;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .contact-popover-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .contact-popover {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            transform: translateY(100%);
+            max-height: 60%;
+            background: var(--bg-card);
+            border-radius: 20px 20px 0 0;
+            z-index: 301;
+            transition: transform 0.3s ease;
+            overflow: hidden;
+        }
+
+        .contact-popover.show {
+            transform: translateY(0);
+        }
+
+        .contact-popover-header {
+            padding: 16px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .contact-popover-header::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 4px;
+            background: var(--text-tertiary);
+            border-radius: 2px;
+        }
+
+        .contact-popover-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 8px;
+        }
+
+        .contact-popover-content {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .contact-popover-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .contact-popover-item:last-child {
+            border-bottom: none;
+        }
+
+        .contact-popover-item:active {
+            background: var(--bg-primary);
+        }
+
+        .contact-popover-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .contact-popover-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .contact-popover-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .contact-popover-role {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .contact-popover-arrow-icon {
+            color: var(--text-tertiary);
+            font-size: 18px;
+        }
+
+        .contact-popover-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-primary);
+        }
+
+        .contact-popover-add {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            cursor: pointer;
+            color: var(--primary-blue);
+            font-size: 15px;
+            font-weight: 500;
+            background: var(--bg-card);
+            border-radius: 10px;
+        }
+
+        .contact-popover-add:active {
+            background: #E3F2FD;
+        }
+
+        /* Add contact link style */
+        .action-add-contact {
+            color: var(--primary-blue);
+            cursor: pointer;
+        }
+
+        /* Contact Picker Modal - 全屏从底部弹出 */
+        #contact-picker-modal {
+            z-index: 350;  /* Higher than popover */
+            align-items: stretch;
+            justify-content: flex-end;
+        }
+
+        .contact-picker-sheet {
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+            background: var(--bg-primary);
+            border-radius: 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        #contact-picker-modal.show .contact-picker-sheet {
+            transform: translateY(0);
+        }
+
+        .contact-picker-header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+            background: var(--bg-card);
+        }
+
+        .contact-picker-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .contact-picker-cancel,
+        .contact-picker-done {
+            background: none;
+            border: none;
+            font-size: 15px;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+
+        .contact-picker-cancel {
+            color: var(--text-secondary);
+        }
+
+        .contact-picker-done {
+            color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        .contact-picker-search {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+            background: var(--bg-card);
+        }
+
+        .contact-picker-search input {
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 10px;
+            background: var(--bg-primary);
+            font-size: 15px;
+            outline: none;
+        }
+
+        .contact-picker-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .contact-picker-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            gap: 12px;
+            background: var(--bg-card);
+            margin: 0 16px 1px;
+            border-radius: 12px;
+        }
+
+        .contact-picker-item:first-child {
+            margin-top: 8px;
+        }
+
+        .contact-picker-item:hover {
+            background: var(--bg-primary);
+        }
+
+        .contact-picker-item.selected {
+            background: #E3F2FD;
+        }
+
+        .contact-picker-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--text-tertiary);
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .contact-picker-item.selected .contact-picker-checkbox {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+        }
+
+        .contact-picker-item.selected .contact-picker-checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .contact-picker-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .contact-picker-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .contact-picker-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .contact-picker-role {
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .contact-picker-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-tertiary);
+        }
+
+        /* Add Action Modal */
+        .add-action-sheet {
+            width: 100%;
+            background: var(--bg-card);
+            border-radius: 16px 16px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            overflow: hidden;
+        }
+
+        .modal-overlay.show .add-action-sheet {
+            transform: translateY(0);
+        }
+
+        .add-action-header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .add-action-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .add-action-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+        }
+
+        .add-action-body {
+            padding: 20px;
+        }
+
+        .add-action-input-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 12px 16px;
+        }
+
+        .add-action-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--text-tertiary);
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .add-action-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 15px;
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .add-action-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .add-action-due-btn,
+        .add-action-contact-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            opacity: 0.6;
+        }
+
+        .add-action-due-btn:hover,
+        .add-action-contact-btn:hover {
+            background: rgba(0,0,0,0.05);
+            opacity: 1;
+        }
+
+        .add-action-due-btn.active {
+            opacity: 1;
+            color: var(--primary-blue);
+        }
+
+        .add-action-due-btn.has-date {
+            opacity: 1;
+        }
+
+        .add-action-due-btn.has-date .due-icon {
+            color: var(--primary-blue);
+        }
+
+        /* Due Date Picker */
+        .due-date-picker {
+            display: none;
+            background: var(--bg-card);
+            border-radius: 12px;
+            margin-top: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .due-date-picker.show {
+            display: block;
+        }
+
+        .due-date-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .due-picker-back {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .due-date-month {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            font-weight: 600;
+        }
+
+        .due-month-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .due-month-nav button {
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+
+        .due-date-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            padding: 8px 16px 16px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            padding: 8px 0;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .calendar-day:hover {
+            background: var(--bg-primary);
+        }
+
+        .calendar-day.other-month {
+            color: var(--text-tertiary);
+        }
+
+        .calendar-day.today {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .calendar-day.selected {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .due-date-actions {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .due-clear-btn,
+        .due-today-btn {
+            background: none;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+
+        .due-clear-btn {
+            color: var(--text-secondary);
+        }
+
+        .due-today-btn {
+            color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        /* Selected info display */
+        .add-action-selected {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .selected-due,
+        .selected-contact {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .selected-due {
+            padding: 6px 12px;
+            background: #E3F2FD;
+            color: var(--primary-blue);
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .contact-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #E8F5E9;
+            color: #2E7D32;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .selected-due .remove,
+        .contact-tag .remove {
+            cursor: pointer;
+            opacity: 0.7;
+            font-size: 14px;
+        }
+
+        .selected-due .remove:hover,
+        .selected-contact .remove:hover {
+            opacity: 1;
+        }
+
+        /* Create More Toggle */
+        .add-action-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .create-more-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: var(--primary-green);
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        .add-action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .add-action-cancel {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            font-size: 15px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .add-action-submit {
+            padding: 10px 24px;
+            background: var(--primary-blue);
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .add-action-submit:hover {
+            background: #0066DD;
+        }
+
+        /* Toast - 相对于 phone-frame */
         .toast {
-            position: fixed;
+            position: absolute;
             bottom: 120px;
             left: 50%;
             transform: translateX(-50%) translateY(100px);
@@ -729,9 +1542,9 @@
             transform: translateX(-50%) translateY(0);
         }
 
-        /* Modal Overlay */
+        /* Modal Overlay - 相对于 phone-frame */
         .modal-overlay {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             right: 0;
@@ -753,7 +1566,7 @@
 
         /* Meeting Detail Modal */
         .meeting-detail-modal {
-            width: 390px;
+            width: 100%;
             max-height: 90%;
             background: var(--bg-primary);
             border-radius: 20px 20px 0 0;
@@ -1245,12 +2058,29 @@
             font-style: italic;
         }
 
-        /* Actions Section */
+        /* Actions Section - 置顶突出样式 */
         .md-actions-section {
-            background: #FFF8E1;
-            border-radius: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
             padding: 20px;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        }
+
+        .md-actions-section.md-actions-prominent {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .md-actions-section.md-actions-prominent::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
         }
 
         .md-actions-header {
@@ -1261,92 +2091,203 @@
         }
 
         .md-actions-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #F57C00;
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+        }
+
+        .md-actions-icon {
+            font-size: 22px;
+        }
+
+        .md-actions-done {
+            font-size: 13px;
+            color: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+
+        .md-actions-section .action-badge {
+            background: rgba(255,255,255,0.25);
+            color: white;
+        }
+
+        .md-actions-section .action-badge.has-pending {
+            background: #FF5252;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
         }
 
         .md-action-item {
             display: flex;
             align-items: flex-start;
             gap: 12px;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(0,0,0,0.08);
+            padding: 14px 16px;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
         }
 
-        .md-action-item:last-child {
-            border-bottom: none;
+        .md-action-item.overdue {
+            border-left: 4px solid #FF5252;
+        }
+
+        .md-action-item:last-of-type {
+            margin-bottom: 0;
         }
 
         .md-action-checkbox {
-            width: 24px;
-            height: 24px;
-            border: 2px solid #CCC;
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            border: 2px solid #9CA3AF;
             border-radius: 50%;
             flex-shrink: 0;
             cursor: pointer;
             transition: all 0.2s;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .md-action-checkbox:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
         }
 
         .md-action-checkbox.checked {
-            background: var(--primary-green);
-            border-color: var(--primary-green);
+            background: #10B981;
+            border-color: #10B981;
         }
 
         .md-action-checkbox.checked::after {
             content: "✓";
             color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
+            font-size: 12px;
+            font-weight: bold;
         }
 
         .md-action-content {
             flex: 1;
+            min-width: 0;
         }
 
         .md-action-text {
             font-size: 15px;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-            cursor: text;
-        }
-
-        .md-action-text:hover {
-            background: rgba(0,0,0,0.05);
-            border-radius: 4px;
+            font-weight: 500;
+            color: #1F2937;
+            line-height: 1.4;
+            cursor: pointer;
         }
 
         .md-action-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
             font-size: 13px;
-            color: var(--text-tertiary);
+            color: #6B7280;
+        }
+
+        .md-action-meta span {
+            cursor: pointer;
+        }
+
+        .md-action-meta span:hover {
+            color: #667eea;
+        }
+
+        .md-action-item.completed {
+            background: rgba(255,255,255,0.9);
+            padding: 10px 16px;
         }
 
         .md-action-item.completed .md-action-text {
             text-decoration: line-through;
-            color: var(--text-tertiary);
+            color: #6B7280;
+            font-size: 14px;
+        }
+
+        .md-action-due-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .md-action-due-badge.overdue {
+            background: #FFEBEE;
+            color: #D32F2F;
+        }
+
+        .md-action-due-badge.today {
+            background: #FFF3E0;
+            color: #F57C00;
+        }
+
+        .md-no-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
+        }
+
+        .md-completed-section {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .md-completed-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 10px;
+        }
+
+        .md-more-completed {
+            font-size: 13px;
+            color: rgba(255,255,255,0.85);
+            text-align: center;
+            padding: 8px;
         }
 
         .md-add-action-row {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-            padding: 12px;
-            margin-top: 8px;
-            border: 2px dashed var(--border-color);
-            border-radius: 10px;
-            color: var(--primary-blue);
-            font-size: 14px;
+            padding: 14px;
+            margin-top: 16px;
+            background: rgba(255,255,255,0.2);
+            border: 2px dashed rgba(255,255,255,0.4);
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
+            font-weight: 500;
             cursor: pointer;
+            transition: all 0.2s;
         }
 
         .md-add-action-row:hover {
-            background: rgba(0, 122, 255, 0.05);
-            border-color: var(--primary-blue);
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.6);
         }
 
         /* Highlights */
@@ -2625,6 +3566,7 @@
 
         .action-list-contact {
             color: var(--primary-blue);
+            cursor: pointer;
         }
 
         .action-list-done {
@@ -2662,6 +3604,105 @@
         .action-quick-btn.secondary:hover {
             background: var(--bg-secondary);
             color: var(--text-secondary);
+        }
+
+        /* Swipe to reveal - 左滑删除/延后 */
+        .action-swipe-container {
+            position: relative;
+            overflow: hidden;
+            background: var(--bg-card);
+        }
+
+        .action-swipe-content {
+            position: relative;
+            background: var(--bg-card);
+            transition: transform 0.3s ease;
+            z-index: 1;
+        }
+
+        .action-swipe-content.swiped {
+            transform: translateX(-140px);
+        }
+
+        .action-swipe-actions {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            align-items: stretch;
+            z-index: 0;
+        }
+
+        .swipe-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 70px;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .swipe-btn-snooze {
+            background: var(--primary-orange);
+        }
+
+        .swipe-btn-delete {
+            background: var(--primary-red);
+        }
+
+        .swipe-btn span {
+            font-size: 18px;
+        }
+
+        /* Action Hub swipe (首页) */
+        .action-hub-swipe-container {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-hub-swipe-content {
+            position: relative;
+            background: var(--bg-card);
+            transition: transform 0.3s ease;
+            z-index: 1;
+        }
+
+        .action-hub-swipe-content.swiped {
+            transform: translateX(-120px);
+        }
+
+        .action-hub-swipe-actions {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            align-items: stretch;
+            z-index: 0;
+        }
+
+        .action-hub-swipe-actions .swipe-btn {
+            width: 60px;
+            font-size: 11px;
+        }
+
+        /* Contact extra count (+N) */
+        .contact-extra {
+            display: inline-block;
+            background: var(--primary-blue);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 10px;
+            margin-left: 4px;
+            vertical-align: middle;
         }
 
         /* Editable due date */
@@ -3066,45 +4107,63 @@
                 <span class="banner-icon">🏆</span>
             </div>
 
-            <!-- Stats -->
-            <div class="stats-row">
-                <div class="stat-item">
-                    <div class="stat-value">287</div>
-                    <div class="stat-label">Visits</div>
+            <!-- Stats with Time Range Toggle -->
+            <div class="stats-container">
+                <div class="stats-toggle">
+                    <div class="stats-toggle-btn active" data-range="today" onclick="switchStatsRange('today')">Today</div>
+                    <div class="stats-toggle-btn" data-range="week" onclick="switchStatsRange('week')">Week</div>
+                    <div class="stats-toggle-btn" data-range="overall" onclick="switchStatsRange('overall')">Overall</div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value">36</div>
-                    <div class="stat-label">Cards Added</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">2</div>
-                    <div class="stat-label">Meetings</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">3</div>
-                    <div class="stat-label">Agent Call</div>
+                <div class="stats-row" id="stats-row">
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-visits">12</div>
+                        <div class="stat-label">Visits</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-cards">3</div>
+                        <div class="stat-label">Cards</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-meetings">2</div>
+                        <div class="stat-label">Meetings</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-calls">1</div>
+                        <div class="stat-label">Calls</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Action Hub -->
-            <div class="action-hub" id="action-hub">
-                <div class="action-hub-header" onclick="toggleActionHub()">
-                    <div>
-                        <div class="action-hub-title">
-                            <div class="action-count-badge" id="action-count">3</div>
-                            <span>Pending Actions</span>
-                        </div>
-                        <div class="action-hub-subtitle" id="action-subtitle">Next: Follow up with Kevin on RWA</div>
+            <!-- Action Hub - Tab 式设计 -->
+            <div class="action-hub-new" id="action-hub">
+                <div class="action-hub-header-new">
+                    <div class="action-hub-title-new">
+                        <span>📋</span>
+                        <span>Actions</span>
+                        <span class="action-total-badge" id="action-count">7</span>
                     </div>
-                    <span class="action-hub-arrow">▼</span>
+                    <a class="action-view-all" href="#" onclick="event.preventDefault(); showPage('actionList')">View All ›</a>
                 </div>
-                <div class="action-hub-content">
-                    <div id="action-hub-items">
-                        <!-- Dynamically rendered by app.js -->
+                <div class="action-hub-tabs" id="action-hub-tabs">
+                    <div class="action-tab active" data-filter="overdue" onclick="switchActionHubTab('overdue')">
+                        <span class="tab-label">Overdue</span>
+                        <span class="tab-count" id="tab-overdue-count">2</span>
                     </div>
-                    <div class="action-hub-footer">
-                        <a href="#" onclick="event.preventDefault(); showPage('actionList')">View all actions →</a>
+                    <div class="action-tab" data-filter="today" onclick="switchActionHubTab('today')">
+                        <span class="tab-label">Today</span>
+                        <span class="tab-count" id="tab-today-count">1</span>
                     </div>
+                    <div class="action-tab" data-filter="later" onclick="switchActionHubTab('later')">
+                        <span class="tab-label">Later</span>
+                        <span class="tab-count" id="tab-later-count">4</span>
+                    </div>
+                </div>
+                <div class="action-hub-list" id="action-hub-items">
+                    <!-- Dynamically rendered by app.js -->
+                </div>
+                <div class="action-hub-add" onclick="showAddActionModal()">
+                    <span>+</span>
+                    <span>Add Action</span>
                 </div>
             </div>
 
@@ -3418,12 +4477,118 @@
                 </button>
             </div>
         </div>
-    </div>
 
-    <!-- Toast -->
-    <div class="toast" id="toast">
-        <span>✓</span>
-        <span id="toast-message">Action completed!</span>
+        <!-- Contact Popover - 底部弹出式 (inside phone-frame) -->
+        <div class="contact-popover-overlay" id="contact-popover-overlay" onclick="closeContactPopover()"></div>
+        <div class="contact-popover" id="contact-popover">
+            <div class="contact-popover-header">
+                <div class="contact-popover-title" id="contact-popover-title">Related Contacts</div>
+            </div>
+            <div class="contact-popover-content" id="contact-popover-content">
+                <!-- Dynamically rendered -->
+            </div>
+            <div class="contact-popover-footer">
+                <div class="contact-popover-add" id="contact-popover-add" onclick="addContactFromPopover()">
+                    <span>+</span>
+                    <span id="contact-popover-add-text">Add contact</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Picker Modal (inside phone-frame) -->
+        <div class="modal-overlay" id="contact-picker-modal">
+            <div class="contact-picker-sheet">
+                <div class="contact-picker-header">
+                    <button class="contact-picker-cancel" onclick="closeContactPicker()">Cancel</button>
+                    <span class="contact-picker-title">Select Contacts</span>
+                    <button class="contact-picker-done" onclick="confirmContactSelection()">Done</button>
+                </div>
+                <div class="contact-picker-search">
+                    <input type="text" 
+                           id="contact-search-input" 
+                           placeholder="Search contacts..."
+                           oninput="filterContacts(this.value)">
+                </div>
+                <div class="contact-picker-list" id="contact-picker-list">
+                    <!-- Dynamically rendered by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Action Modal (inside phone-frame) -->
+        <div class="modal-overlay" id="add-action-modal">
+            <div class="add-action-sheet">
+                <div class="add-action-header">
+                    <span class="add-action-title">Add Action</span>
+                    <button class="add-action-close" onclick="closeAddActionModal()">×</button>
+                </div>
+                <div class="add-action-body">
+                    <div class="add-action-input-row">
+                        <div class="add-action-checkbox"></div>
+                        <input type="text" 
+                               id="add-action-input" 
+                               class="add-action-input" 
+                               placeholder="Type out your action item, then hit &quot;Enter&quot;."
+                               onkeydown="handleAddActionKeydown(event)">
+                        <button class="add-action-due-btn" onclick="toggleDueDatePicker()" id="due-date-btn">
+                            <span class="due-icon">🕐</span>
+                        </button>
+                        <button class="add-action-contact-btn" onclick="showContactPicker()" id="contact-picker-btn">
+                            <span>👥</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Due Date Picker -->
+                    <div class="due-date-picker" id="due-date-picker">
+                        <div class="due-date-header">
+                            <button class="due-picker-back" onclick="toggleDueDatePicker()">‹</button>
+                            <span>Due date</span>
+                            <div></div>
+                        </div>
+                        <div class="due-date-month">
+                            <span id="due-month-label">January</span>
+                            <div class="due-month-nav">
+                                <button onclick="changeDueMonth(-1)">←</button>
+                                <button onclick="changeDueMonth(1)">→</button>
+                            </div>
+                        </div>
+                        <div class="due-date-calendar" id="due-calendar">
+                            <!-- Calendar rendered by JS -->
+                        </div>
+                        <div class="due-date-actions">
+                            <button class="due-clear-btn" onclick="clearSelectedDueDate()">Clear</button>
+                            <button class="due-today-btn" onclick="setDueDateToday()">Today</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Selected info display -->
+                    <div class="add-action-selected" id="add-action-selected">
+                        <span class="selected-due" id="selected-due-display" style="display: none;"></span>
+                        <span class="selected-contact" id="selected-contact-display" style="display: none;"></span>
+                    </div>
+                    
+                    <div class="add-action-footer">
+                        <label class="create-more-toggle">
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="create-more-checkbox">
+                                <span class="toggle-slider"></span>
+                            </div>
+                            <span>Create more</span>
+                        </label>
+                        <div class="add-action-buttons">
+                            <button class="add-action-cancel" onclick="closeAddActionModal()">Cancel</button>
+                            <button class="add-action-submit" onclick="submitNewAction()">Create</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast (inside phone-frame) -->
+        <div class="toast" id="toast">
+            <span>✓</span>
+            <span id="toast-message">Action completed!</span>
+        </div>
     </div>
 
     <!-- External JS Files -->
