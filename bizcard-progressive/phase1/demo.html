@@ -97,76 +97,136 @@
             display: none;
         }
 
-        /* Hardware Status */
-        .hardware-status {
-            margin: 8px 16px;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-            border-radius: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
         }
 
-        .hardware-left {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        /* ========================================
+           Unified Profile Card with Hardware Status
+           ======================================== */
+        .profile-card-unified {
+            margin: 8px 16px 12px;
+            padding: 16px;
+            background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            position: relative;
         }
 
-        .hardware-signal {
-            font-size: 14px;
-        }
-
-        .hardware-battery {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .hardware-connected {
-            color: var(--primary-green);
-            font-weight: 600;
-            font-size: 14px;
+        /* 硬件状态小标签 */
+        .hw-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
             display: flex;
             align-items: center;
             gap: 6px;
+            padding: 4px 10px;
+            background: rgba(34, 197, 94, 0.12);
+            border-radius: 20px;
+            font-size: 11px;
+            color: #15803D;
         }
 
-        .hardware-connected::before {
-            content: '';
-            width: 8px;
-            height: 8px;
+        .hw-dot {
+            width: 6px;
+            height: 6px;
             background: var(--primary-green);
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        .hw-text {
+            font-weight: 500;
         }
 
-        /* Profile Section - Compact */
-        .profile-compact {
-            margin: 8px 16px;
-            padding: 12px 16px;
-            background: var(--bg-card);
-            border-radius: 16px;
+        /* 主要信息区 */
+        .profile-main {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            box-shadow: var(--shadow);
+            gap: 14px;
+            margin-bottom: 14px;
         }
 
-        .profile-left {
+        .profile-avatar-lg {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 22px;
+            flex-shrink: 0;
         }
 
+        .profile-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .profile-details .profile-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .profile-details .profile-role {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 1px;
+        }
+
+        .profile-details .profile-company {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* 操作按钮 */
+        .profile-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .profile-action-btn {
+            flex: 1;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s;
+            background: #f1f5f9;
+            color: var(--text-primary);
+        }
+
+        .profile-action-btn:hover {
+            background: #e2e8f0;
+        }
+
+        .profile-action-btn.primary {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .profile-action-btn.primary:hover {
+            background: #0066CC;
+        }
+
+        .profile-action-btn span {
+            font-size: 14px;
+        }
+
+        /* Legacy support */
         .profile-avatar {
             width: 44px;
             height: 44px;
@@ -180,25 +240,15 @@
             font-size: 18px;
         }
 
-        .profile-info h3 {
-            font-size: 16px;
-            font-weight: 600;
+        .profile-name {
+            font-size: 18px;
+            font-weight: 700;
             color: var(--text-primary);
         }
 
-        .profile-info p {
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        .profile-preview {
-            color: var(--primary-blue);
+        .profile-role {
             font-size: 14px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
+            color: var(--text-secondary);
         }
 
         /* Banner */
@@ -291,8 +341,10 @@
             white-space: nowrap;
         }
 
-        /* Action Hub - 新 Tab 式设计 */
-        .action-hub-new {
+        /* ========================================
+           Reminders Hub (轻量化首页组件)
+           ======================================== */
+        .reminders-hub {
             margin: 12px 16px;
             background: var(--bg-card);
             border-radius: 16px;
@@ -300,167 +352,1156 @@
             overflow: hidden;
         }
 
-        .action-hub-header-new {
-            padding: 16px 16px 12px;
+        .reminders-header {
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .reminders-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .reminders-badge {
+            background: var(--text-tertiary);
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 10px;
+        }
+
+        .reminders-view-all {
+            color: var(--primary-blue);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        .reminders-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* ========================================
+           Reminder Card - 统一规范设计
+           ======================================== */
+        
+        /* 卡片外层包装（用于swipe） */
+        .reminder-card-wrapper {
+            position: relative;
+            margin-bottom: 10px;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        /* 主卡片 */
+        .reminder-card {
+            display: flex;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            transition: transform 0.2s ease;
+            position: relative;
+            z-index: 2;
+            cursor: pointer;
+        }
+
+        .reminder-card:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .reminder-card:active {
+            transform: scale(0.99);
+        }
+
+        .reminder-card.completed {
+            opacity: 0.6;
+        }
+
+        /* 左侧日期列 - 颜色通过内联样式设置 */
+        .rc-date-col {
+            width: 54px;
+            min-width: 54px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 6px;
+            color: white;
+        }
+
+        .rc-date-month {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+
+        .rc-date-day {
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        .rc-date-weekday {
+            font-size: 9px;
+            font-weight: 500;
+            opacity: 0.85;
+            margin-top: 1px;
+        }
+
+        /* 主内容区 */
+        .rc-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        /* 复选框 */
+        .rc-checkbox {
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            border: 2px solid #D1D5DB;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: white;
+        }
+
+        .rc-checkbox:hover {
+            border-color: var(--primary-blue);
+        }
+
+        .rc-checkbox.checked {
+            background: var(--primary-green);
+            border-color: var(--primary-green);
+        }
+
+        .rc-checkbox.checked::after {
+            content: '✓';
+        }
+
+        /* 内容区 */
+        .rc-content {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        /* 标题 - 第一行 */
+        .rc-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .rc-title.completed {
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+        }
+
+        /* 信息行 - 第二/三行 */
+        .rc-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            height: 18px;
+        }
+
+        .rc-icon {
+            font-size: 11px;
+            width: 16px;
+            text-align: center;
+        }
+
+        .rc-text {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .rc-text.clickable {
+            cursor: pointer;
+        }
+
+        .rc-text.clickable:hover {
+            color: var(--primary-blue);
+        }
+
+        .rc-badge {
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+            background: var(--primary-blue);
+            padding: 1px 5px;
+            border-radius: 8px;
+        }
+
+        /* 右箭头 */
+        .rc-arrow {
+            color: #C7C7CC;
+            font-size: 18px;
+            font-weight: 300;
+        }
+
+        /* ========================================
+           首页紧凑卡片样式
+           ======================================== */
+        .reminder-card.home-card {
+            margin-bottom: 8px;
+        }
+
+        .reminder-card.home-card .rc-main {
+            padding: 8px 10px;
+            gap: 8px;
+        }
+
+        .reminder-card.home-card .rc-content {
+            gap: 2px;
+        }
+
+        .reminder-card.home-card .rc-title {
+            font-size: 13px;
+            -webkit-line-clamp: 1;
+            line-clamp: 1;
+        }
+
+        .reminder-card.home-card .rc-row {
+            height: 16px;
+            font-size: 11px;
+        }
+
+        .reminder-card.home-card .rc-checkbox {
+            width: 18px;
+            height: 18px;
+            min-width: 18px;
+            font-size: 10px;
+        }
+
+        /* 首页迷你日期列 - 颜色通过内联样式设置 */
+        .rc-date-col-mini {
+            width: 42px;
+            min-width: 42px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 4px;
+            color: white;
+        }
+
+        .rc-date-col-mini .rc-date-month {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            opacity: 0.9;
+        }
+
+        .rc-date-col-mini .rc-date-day {
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        /* Swipe 操作按钮 */
+        /* Swipe 操作按钮 - 默认隐藏 */
+        .rc-swipe-actions {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .reminder-card-wrapper.swiped .rc-swipe-actions {
+            pointer-events: auto;
+            opacity: 1;
+        }
+
+        .rc-swipe-btn {
+            width: 70px;
+            border: none;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .rc-swipe-btn.snooze {
+            background: var(--primary-orange);
+        }
+
+        .rc-swipe-btn.delete {
+            background: var(--primary-red);
+        }
+
+        /* 日历页面卡片的左滑删除和snooze */
+        .reminder-card-wrapper .reminder-card {
+            transition: transform 0.2s ease;
+        }
+
+        .reminder-card-wrapper.swiped .reminder-card {
+            transform: translateX(-140px);
+        }
+
+        /* 首页 Reminders 分组样式 */
+        .reminders-group {
+            padding: 0 16px;
+            margin-bottom: 20px;
+        }
+
+        .reminders-group.upcoming {
+            margin-top: 8px;
+        }
+
+        .reminders-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+        }
+
+        .reminders-group-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .reminders-group-title.today {
+            color: var(--primary-red);
+        }
+
+        .reminders-group-count {
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            background: var(--primary-blue);
+            min-width: 22px;
+            height: 22px;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 7px;
+        }
+
+        .reminders-group-title.today + .reminders-group-count,
+        .reminders-group-header:has(.reminders-group-title.today) .reminders-group-count {
+            background: var(--primary-red);
+        }
+
+        .reminders-empty-inline {
+            padding: 24px 16px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-tertiary);
+            background: var(--bg-secondary);
+            border-radius: 12px;
+        }
+
+        .reminders-more {
+            padding: 14px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--primary-blue);
+            cursor: pointer;
+            font-weight: 600;
+            background: rgba(0, 122, 255, 0.04);
+            border-radius: 12px;
+            margin-top: 8px;
+            transition: all 0.2s;
+        }
+
+        .reminders-more:hover {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .reminders-more:active {
+            transform: scale(0.98);
+        }
+
+        /* Calendar 日期分组 */
+        .cal-reminders-list {
+            padding: 0 16px;
+        }
+
+        .cal-date-group {
+            margin-bottom: 16px;
+            background: var(--group-bg);
+            border-radius: 16px;
+            border-left: 4px solid var(--group-border);
+            overflow: hidden;
+        }
+
+        .cal-date-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .cal-date-group-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--group-text);
+        }
+
+        .cal-date-group-count {
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            background: var(--group-border);
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+        }
+
+        .cal-date-group-items {
+            padding: 8px;
+        }
+
+        .cal-date-group-items .reminder-card {
+            margin-bottom: 8px;
+        }
+
+        .cal-date-group-items .reminder-card:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Calendar completed section */
+        .cal-completed-section {
+            margin: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .cal-completed-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-green);
+            margin-bottom: 12px;
+        }
+
+        .completed-list .reminder-card {
+            opacity: 0.7;
+        }
+
+        /* Legacy simple reminder styles */
+        .reminder-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .reminder-item:last-child {
+            border-bottom: none;
+        }
+
+        .reminder-item:hover {
+            background: rgba(0, 122, 255, 0.03);
+        }
+
+        .reminder-date {
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .reminder-date-day {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .reminder-date-month {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .reminder-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .reminder-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .reminder-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .reminder-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .reminder-checkbox:hover {
+            border-color: var(--primary-blue);
+        }
+
+        .reminder-checkbox.checked {
+            background: var(--primary-green);
+            border-color: var(--primary-green);
+        }
+
+        .reminder-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .reminders-empty {
+            padding: 24px 16px;
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        /* ========================================
+           Calendar Page (紧凑时间轴设计)
+           ======================================== */
+        .calendar-page {
+            display: none;
+            background: var(--bg-primary);
+        }
+
+        .calendar-page.active {
+            display: block;
+        }
+
+        /* Header */
+        .cal-header {
+            background: var(--bg-card);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cal-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cal-back-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--primary-blue);
+            cursor: pointer;
+            padding: 0 8px 0 0;
+        }
+
+        .cal-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .cal-picker-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        /* View Mode Tabs */
+        .cal-view-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cal-view-tab {
+            padding: 6px 20px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--bg-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cal-view-tab.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        /* Horizontal Date Selector */
+        .cal-date-selector {
+            display: flex;
+            align-items: center;
+            padding: 12px 8px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cal-date-nav {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: var(--primary-blue);
+            cursor: pointer;
+            padding: 8px;
+            flex-shrink: 0;
+        }
+
+        .cal-dates-scroll {
+            flex: 1;
+            display: flex;
+            gap: 4px;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .cal-dates-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cal-date-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 12px;
+            min-width: 48px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        /* Week视图 - 固定宽度确保统一排版 */
+        .cal-dates.week-view .cal-date-item {
+            min-width: 72px;
+            padding: 10px 8px;
+        }
+
+        /* Month视图 - 固定宽度 */
+        .cal-dates.month-view .cal-date-item {
+            min-width: 56px;
+            padding: 10px 8px;
+        }
+
+        .cal-date-item:hover {
+            background: rgba(0, 122, 255, 0.05);
+        }
+
+        .cal-date-item.selected {
+            background: var(--primary-blue);
+        }
+
+        .cal-date-item.today:not(.selected) {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .cal-date-weekday {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .cal-date-item.selected .cal-date-weekday {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .cal-date-day {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 2px;
+        }
+
+        .cal-date-item.selected .cal-date-day {
+            color: white;
+        }
+
+        .cal-date-badge {
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+            background: var(--primary-blue);
+            min-width: 16px;
+            height: 16px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+
+        .cal-date-item.selected .cal-date-badge {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Selected Date Header */
+        .cal-selected-header {
+            padding: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .action-hub-title-new {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 17px;
-            font-weight: 700;
+        .cal-selected-title {
+            font-size: 16px;
+            font-weight: 600;
             color: var(--text-primary);
         }
 
-        .action-total-badge {
-            background: var(--primary-blue);
-            color: white;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 10px;
-            min-width: 20px;
-            text-align: center;
+        .cal-reminder-count {
+            font-size: 13px;
+            color: var(--text-secondary);
         }
 
-        .action-view-all {
-            color: var(--primary-blue);
-            font-size: 14px;
-            font-weight: 500;
-            text-decoration: none;
+        /* Reminders Container */
+        .cal-reminders-container {
+            margin: 0 16px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
         }
 
-        /* Tab 样式 */
-        .action-hub-tabs {
+        .cal-reminder-item {
+            padding: 14px 16px;
             display: flex;
-            padding: 0 12px;
-            gap: 4px;
+            align-items: flex-start;
+            gap: 12px;
             border-bottom: 1px solid var(--border-color);
-        }
-
-        .action-tab {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 10px 8px 12px;
-            cursor: pointer;
-            position: relative;
             transition: all 0.2s;
         }
 
-        .action-tab::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 3px;
-            background: var(--primary-blue);
-            border-radius: 3px 3px 0 0;
-            transition: width 0.2s;
+        .cal-reminder-item:last-child {
+            border-bottom: none;
         }
 
-        .action-tab.active::after {
-            width: 80%;
-        }
-
-        .action-tab .tab-label {
+        .cal-reminder-checkbox {
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 12px;
-            color: var(--text-tertiary);
+            color: white;
+        }
+
+        .cal-reminder-checkbox:hover {
+            border-color: var(--primary-blue);
+        }
+
+        .cal-reminder-checkbox.checked {
+            background: var(--primary-green);
+            border-color: var(--primary-green);
+        }
+
+        .cal-reminder-checkbox.checked::after {
+            content: '✓';
+        }
+
+        .cal-reminder-content {
+            flex: 1;
+        }
+
+        .cal-reminder-title {
+            font-size: 15px;
             font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .action-tab.active .tab-label {
-            color: var(--primary-blue);
-            font-weight: 600;
-        }
-
-        .action-tab .tab-count {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            margin-top: 2px;
-            transition: color 0.2s;
-        }
-
-        .action-tab.active .tab-count {
             color: var(--text-primary);
         }
 
-        /* Overdue Tab 特殊样式 */
-        .action-tab[data-filter="overdue"] .tab-count {
+        .cal-reminder-title.completed {
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+        }
+
+        .cal-reminder-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cal-reminder-source {
+            color: var(--primary-blue);
+            cursor: pointer;
+        }
+
+        .cal-reminder-delete {
             color: var(--primary-red);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 4px;
         }
 
-        .action-tab[data-filter="overdue"].has-items .tab-label {
-            color: var(--primary-red);
-        }
-
-        /* Action 列表 */
-        .action-hub-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .action-hub-list::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .action-hub-list::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 2px;
-        }
-
-        .action-hub-empty {
-            padding: 32px 16px;
+        .cal-no-reminders {
+            padding: 40px 16px;
             text-align: center;
             color: var(--text-tertiary);
         }
 
-        .action-hub-empty span:first-child {
+        .cal-no-reminders span:first-child {
             font-size: 32px;
             display: block;
             margin-bottom: 8px;
         }
 
-        /* 添加 Action 按钮 */
-        .action-hub-add {
+        /* Add Reminder Button */
+        .cal-add-reminder {
+            margin: 16px;
+            padding: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 14px;
-            border-top: 1px solid var(--border-color);
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px dashed var(--border-color);
             color: var(--primary-blue);
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
-        .action-hub-add:hover {
+        .cal-add-reminder:hover {
             background: rgba(0, 122, 255, 0.05);
+            border-color: var(--primary-blue);
         }
 
-        /* 保留旧样式兼容 */
-        .action-hub-footer {
+        /* Date Picker Modal */
+        .cal-picker-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 150;
+        }
+
+        .cal-picker-overlay.show {
+            display: block;
+        }
+
+        .cal-picker-modal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100% - 48px);
+            max-width: 340px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            z-index: 160;
+            overflow: hidden;
+        }
+
+        .cal-picker-modal.show {
+            display: block;
+        }
+
+        .cal-picker-header {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cal-picker-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .cal-picker-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        /* Picker内部的Tab */
+        .cal-picker-tabs {
+            display: flex;
             padding: 12px 16px;
-            border-top: 1px solid var(--border-color);
-            text-align: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .action-hub-footer a {
-            color: var(--primary-blue);
+        .cal-picker-tab {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
             font-size: 14px;
             font-weight: 500;
-            text-decoration: none;
+            color: var(--text-secondary);
+            background: var(--bg-primary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cal-picker-tab.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .cal-picker-month-nav {
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cal-picker-month-nav button {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: var(--primary-blue);
+            cursor: pointer;
+            padding: 4px 12px;
+        }
+
+        .cal-picker-month-nav span {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .cal-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            padding: 8px 12px;
+            gap: 4px;
+        }
+
+        /* Week Picker Grid - 统一布局 */
+        .cal-picker-grid.week-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            padding: 12px 16px;
+        }
+
+        /* Month Picker Grid */
+        .cal-picker-grid.month-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 12px 16px;
+        }
+
+        .cal-picker-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: var(--text-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .cal-picker-day:hover {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .cal-picker-day.other {
+            color: var(--text-tertiary);
+        }
+
+        .cal-picker-day.today {
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+
+        .cal-picker-day.selected {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .cal-picker-day-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 9px;
+            background: var(--primary-blue);
+            color: white;
+            min-width: 14px;
+            height: 14px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cal-picker-day.selected .cal-picker-day-badge {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Week/Month选择项 - 统一卡片样式 */
+        .cal-picker-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 8px;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .cal-picker-item:hover {
+            border-color: var(--primary-blue);
+        }
+
+        .cal-picker-item.selected {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .cal-picker-item-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .cal-picker-item.selected .cal-picker-item-title {
+            color: white;
+        }
+
+        .cal-picker-item-range {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .cal-picker-item.selected .cal-picker-item-range {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .cal-picker-item-badge {
+            font-size: 10px;
+            background: var(--primary-blue);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-top: 4px;
+        }
+
+        .cal-picker-item.selected .cal-picker-item-badge {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .cal-picker-quick {
+            padding: 12px 16px 16px;
+            display: flex;
+            gap: 8px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .cal-picker-quick button {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cal-picker-quick button:hover {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
         }
 
         .action-item {
@@ -1830,13 +2871,13 @@
         .meeting-detail-page {
             display: none;
             position: absolute;
-            top: 54px; /* Below status bar */
+            top: 54px; /* Below status bar (54px height) */
             left: 0;
             right: 0;
             bottom: 0;
-            height: auto;
+            height: calc(100% - 54px); /* Full height minus status bar */
             background: var(--bg-primary);
-            z-index: 50; /* Above app-content but below status bar */
+            z-index: 100; /* Above all app-content and tab-bar */
             flex-direction: column;
             overflow: hidden;
         }
@@ -2058,29 +3099,236 @@
             font-style: italic;
         }
 
-        /* Actions Section - 置顶突出样式 */
-        .md-actions-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        /* Follow-ups Section (新设计) */
+        .md-followups-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
         }
 
-        .md-actions-section.md-actions-prominent {
-            position: relative;
-            overflow: hidden;
+        .md-followups-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
 
-        .md-actions-section.md-actions-prominent::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 200px;
-            height: 200px;
-            background: rgba(255,255,255,0.1);
+        .md-followups-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* AI Suggestions */
+        .md-ai-suggestions {
+            margin-bottom: 12px;
+        }
+
+        .md-ai-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #9333EA;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .md-suggestion-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: linear-gradient(135deg, #F3E8FF 0%, #FCE7F3 100%);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            border: 1px dashed #D8B4FE;
+            transition: all 0.3s ease;
+        }
+
+        .md-suggestion-item.accepting {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        .md-suggestion-text {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .md-suggestion-add-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .md-suggestion-add-btn:hover {
+            background: #0066CC;
+            transform: scale(1.05);
+        }
+
+        .md-suggestion-add-btn span {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        /* AI Suggestions 全部添加完毕 */
+        .md-ai-suggestions-empty {
+            padding: 16px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--primary-green);
+            background: rgba(16, 185, 129, 0.08);
+            border-radius: 10px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* Reminders List */
+        .md-reminders-list {
+            margin-bottom: 12px;
+        }
+
+        .md-reminders-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .md-reminder-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .md-reminder-item.completed {
+            opacity: 0.6;
+            background: rgba(0,0,0,0.02);
+        }
+
+        .md-reminder-item.completed .md-reminder-text {
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+        }
+
+        .md-reminder-checkbox {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            border: 2px solid var(--border-color);
             border-radius: 50%;
+            cursor: pointer;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .md-reminder-checkbox.checked {
+            background: var(--primary-green);
+            border-color: var(--primary-green);
+        }
+
+        .md-reminder-checkbox.checked::after {
+            content: '✓';
+        }
+
+        .md-reminder-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .md-reminder-text {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            line-height: 1.4;
+            cursor: pointer;
+        }
+
+        .md-reminder-text:hover {
+            color: var(--primary-blue);
+        }
+
+        .md-reminder-date {
+            font-size: 13px;
+            color: var(--primary-blue);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .md-reminder-date:hover {
+            text-decoration: underline;
+        }
+
+        /* Completed List */
+        .md-completed-list {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .md-completed-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a7f37;  /* 深绿色，更好的可见度 */
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Add Follow-up */
+        .md-add-followup {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+            color: var(--primary-blue);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .md-add-followup:hover {
+            background: rgba(0, 122, 255, 0.05);
+            border-color: var(--primary-blue);
         }
 
         .md-actions-header {
@@ -4077,26 +5325,32 @@
 
         <!-- Home Page -->
         <div class="app-content" id="home-page">
-            <!-- Hardware Status -->
-            <div class="hardware-status">
-                <div class="hardware-left">
-                    <span class="hardware-signal">📶</span>
-                    <span class="hardware-battery">🔋 85%</span>
+            <!-- Profile Card with Hardware Status -->
+            <div class="profile-card-unified">
+                <!-- 硬件状态小标签 -->
+                <div class="hw-badge">
+                    <span class="hw-dot"></span>
+                    <span class="hw-text">📶 85%</span>
                 </div>
-                <div class="hardware-connected">Connected</div>
-            </div>
-
-            <!-- Profile Compact -->
-            <div class="profile-compact">
-                <div class="profile-left">
-                    <div class="profile-avatar">E</div>
-                    <div class="profile-info">
-                        <h3>Ethan Carter</h3>
-                        <p>Product Designer</p>
+                
+                <!-- 头像和名片信息 -->
+                <div class="profile-main">
+                    <div class="profile-avatar-lg">E</div>
+                    <div class="profile-details">
+                        <h2 class="profile-name">Ethan Carter</h2>
+                        <p class="profile-role">Product Designer</p>
+                        <p class="profile-company">@ Bitflux Insurance</p>
                     </div>
                 </div>
-                <div class="profile-preview" onclick="showToast('Opening share...')">
-                    📤 Share
+                
+                <!-- 操作按钮 -->
+                <div class="profile-actions">
+                    <button class="profile-action-btn primary" onclick="showToast('Opening share...')">
+                        <span>📤</span> Share Card
+                    </button>
+                    <button class="profile-action-btn" onclick="showToast('Editing profile...')">
+                        <span>✏️</span> Edit
+                    </button>
                 </div>
             </div>
 
@@ -4107,73 +5361,28 @@
                 <span class="banner-icon">🏆</span>
             </div>
 
-            <!-- Stats with Time Range Toggle -->
-            <div class="stats-container">
-                <div class="stats-toggle">
-                    <div class="stats-toggle-btn active" data-range="today" onclick="switchStatsRange('today')">Today</div>
-                    <div class="stats-toggle-btn" data-range="week" onclick="switchStatsRange('week')">Week</div>
-                    <div class="stats-toggle-btn" data-range="overall" onclick="switchStatsRange('overall')">Overall</div>
-                </div>
-                <div class="stats-row" id="stats-row">
-                    <div class="stat-item">
-                        <div class="stat-value" id="stat-visits">12</div>
-                        <div class="stat-label">Visits</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="stat-cards">3</div>
-                        <div class="stat-label">Cards</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="stat-meetings">2</div>
-                        <div class="stat-label">Meetings</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="stat-calls">1</div>
-                        <div class="stat-label">Calls</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Action Hub - Tab 式设计 -->
-            <div class="action-hub-new" id="action-hub">
-                <div class="action-hub-header-new">
-                    <div class="action-hub-title-new">
-                        <span>📋</span>
-                        <span>Actions</span>
-                        <span class="action-total-badge" id="action-count">7</span>
-                    </div>
-                    <a class="action-view-all" href="#" onclick="event.preventDefault(); showPage('actionList')">View All ›</a>
-                </div>
-                <div class="action-hub-tabs" id="action-hub-tabs">
-                    <div class="action-tab active" data-filter="overdue" onclick="switchActionHubTab('overdue')">
-                        <span class="tab-label">Overdue</span>
-                        <span class="tab-count" id="tab-overdue-count">2</span>
-                    </div>
-                    <div class="action-tab" data-filter="today" onclick="switchActionHubTab('today')">
-                        <span class="tab-label">Today</span>
-                        <span class="tab-count" id="tab-today-count">1</span>
-                    </div>
-                    <div class="action-tab" data-filter="later" onclick="switchActionHubTab('later')">
-                        <span class="tab-label">Later</span>
-                        <span class="tab-count" id="tab-later-count">4</span>
-                    </div>
-                </div>
-                <div class="action-hub-list" id="action-hub-items">
-                    <!-- Dynamically rendered by app.js -->
-                </div>
-                <div class="action-hub-add" onclick="showAddActionModal()">
-                    <span>+</span>
-                    <span>Add Action</span>
-                </div>
-            </div>
-
-            <!-- Today's Meeting -->
+            <!-- Today's Meeting (优先展示) -->
             <div class="section-header">
                 <div class="section-title">Today's Meeting</div>
                 <div class="section-action" onclick="showPage('meetingList')">View All ›</div>
             </div>
             <div class="meeting-list" id="today-meetings">
                 <!-- Dynamically rendered by app.js -->
+            </div>
+
+            <!-- Reminders (轻量化设计) -->
+            <div class="reminders-hub" id="reminders-hub">
+                <div class="reminders-header">
+                    <div class="reminders-title">
+                        <span>📅</span>
+                        <span>Reminders</span>
+                        <span class="reminders-badge" id="reminder-count">4</span>
+                    </div>
+                    <a class="reminders-view-all" href="#" onclick="event.preventDefault(); showPage('calendar')">Calendar ›</a>
+                </div>
+                <div class="reminders-list" id="reminder-items">
+                    <!-- Dynamically rendered by app.js -->
+                </div>
             </div>
 
             <div style="height: 140px;"></div>
@@ -4366,60 +5575,81 @@
             <div style="height: 100px;"></div>
         </div>
 
-        <!-- Actions List Page -->
-        <div class="app-content action-list-page" id="action-list-page">
-            <div class="page-header">
-                <span class="page-back" onclick="showPage('home')">‹</span>
-                <span class="page-title">Actions</span>
-                <span class="page-add" onclick="showAddActionModal()">+</span>
+        <!-- Calendar Page (紧凑时间轴设计) -->
+        <div class="app-content calendar-page" id="calendar-page">
+            <!-- Header -->
+            <div class="cal-header">
+                <div class="cal-header-left">
+                    <button class="cal-back-btn" onclick="showPage('home')">‹</button>
+                    <span class="cal-title">Reminders</span>
+                </div>
+                <button class="cal-picker-btn" onclick="toggleCalendarPicker()">📅</button>
             </div>
 
-            <!-- Tabs -->
-            <div class="action-tabs">
-                <div class="action-tab active" onclick="switchActionTab('pending', this)">
-                    Pending
-                    <span class="action-tab-count">5</span>
-                </div>
-                <div class="action-tab" onclick="switchActionTab('completed', this)">
-                    Completed
-                    <span class="action-tab-count">12</span>
-                </div>
+            <!-- View Mode Tabs -->
+            <div class="cal-view-tabs">
+                <div class="cal-view-tab active" data-view="day" onclick="switchCalendarView('day', this)">Day</div>
+                <div class="cal-view-tab" data-view="week" onclick="switchCalendarView('week', this)">Week</div>
+                <div class="cal-view-tab" data-view="month" onclick="switchCalendarView('month', this)">Month</div>
             </div>
 
-            <!-- Sort & Filter Bar -->
-            <div class="action-toolbar">
-                <div class="action-sort" onclick="toggleSortMenu()">
-                    Sort: <span id="current-sort">Due Date</span> ▼
+            <!-- Horizontal Date Selector -->
+            <div class="cal-date-selector">
+                <button class="cal-date-nav" onclick="shiftCalendarDates(-7)">‹</button>
+                <div class="cal-dates-scroll" id="cal-dates-scroll">
+                    <!-- Dynamically rendered by app.js -->
                 </div>
-                <div class="action-filter" onclick="showToast('Filter by contact...')">
-                    Filter ▼
-                </div>
+                <button class="cal-date-nav" onclick="shiftCalendarDates(7)">›</button>
             </div>
 
-            <!-- Sort Menu (hidden by default) -->
-            <div class="sort-menu" id="sort-menu">
-                <div class="sort-option active" onclick="changeSortBy('due')">
-                    <span>📅</span> Due Date (nearest first)
-                </div>
-                <div class="sort-option" onclick="changeSortBy('created')">
-                    <span>🕐</span> Creation Date (newest first)
-                </div>
-                <div class="sort-option" onclick="changeSortBy('contact')">
-                    <span>👤</span> Contact (A-Z)
-                </div>
+            <!-- Selected Date Title -->
+            <div class="cal-selected-header">
+                <span class="cal-selected-title" id="cal-selected-title">Wednesday, Jan 15</span>
+                <span class="cal-reminder-count" id="cal-reminder-count">2 reminders</span>
             </div>
 
-            <!-- Pending Actions Content -->
-            <div class="action-tab-content active" id="pending-content">
+            <!-- Reminders List -->
+            <div class="cal-reminders-container" id="cal-reminders-container">
                 <!-- Dynamically rendered by app.js -->
             </div>
 
-            <!-- Completed Actions Content -->
-            <div class="action-tab-content" id="completed-content">
-                <!-- Dynamically rendered by app.js -->
+            <!-- Add Button -->
+            <div class="cal-add-reminder" onclick="showAddReminderModal()">
+                <span>+</span>
+                <span>Add Reminder</span>
             </div>
 
             <div style="height: 100px;"></div>
+        </div>
+
+        <!-- Date Picker Modal (独立设计) -->
+        <div class="cal-picker-overlay" id="cal-picker-overlay" onclick="toggleCalendarPicker()"></div>
+        <div class="cal-picker-modal" id="cal-picker-modal">
+            <div class="cal-picker-header">
+                <span class="cal-picker-title">Select Date</span>
+                <button class="cal-picker-close" onclick="toggleCalendarPicker()">×</button>
+            </div>
+            
+            <!-- Picker内部的Tab切换 -->
+            <div class="cal-picker-tabs">
+                <div class="cal-picker-tab active" data-type="day" onclick="switchPickerTab('day', this)">Day</div>
+                <div class="cal-picker-tab" data-type="week" onclick="switchPickerTab('week', this)">Week</div>
+                <div class="cal-picker-tab" data-type="month" onclick="switchPickerTab('month', this)">Month</div>
+            </div>
+            
+            <div class="cal-picker-month-nav">
+                <button onclick="changePickerMonth(-1)">‹</button>
+                <span id="cal-picker-month">January 2026</span>
+                <button onclick="changePickerMonth(1)">›</button>
+            </div>
+            <div class="cal-picker-grid" id="cal-picker-grid">
+                <!-- Dynamically rendered -->
+            </div>
+            <div class="cal-picker-quick">
+                <button onclick="selectQuickDate('today')">Today</button>
+                <button onclick="selectQuickDate('tomorrow')">Tomorrow</button>
+                <button onclick="selectQuickDate('thisWeek')">This Week</button>
+            </div>
         </div>
 
         <!-- Sticky Bar -->
@@ -4452,8 +5682,8 @@
             </div>
         </div>
 
-        <!-- Meeting Detail Page (Full Screen within phone-frame) -->
-        <div class="app-content meeting-detail-page" id="meeting-detail-page">
+        <!-- Meeting Detail Page (Full Screen within phone-frame, NOT app-content to avoid CSS conflicts) -->
+        <div class="meeting-detail-page" id="meeting-detail-page">
             <!-- Header Bar -->
             <div class="md-header-bar">
                 <button class="md-back-btn" onclick="closeMeetingDetail()">← Back</button>

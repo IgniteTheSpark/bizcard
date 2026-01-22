@@ -24,23 +24,35 @@ document.addEventListener('DOMContentLoaded', function() {
 function initApp() {
     console.log('🚀 BizCard Demo Initialized');
     renderHomePage();
-    renderActionHub();
     renderTodayMeetings();
+    renderRemindersHub();
     renderContactList();
-    renderUserStats();
     setupEventListeners();
 }
 
 function renderHomePage() {
-    // Update user profile
+    // Update user profile - support both old and new structure
     const user = AppData.user;
+    
+    // 新的统一卡片结构
+    const avatarLgEl = document.querySelector('.profile-avatar-lg');
+    const nameInDetailsEl = document.querySelector('.profile-details .profile-name');
+    const roleInDetailsEl = document.querySelector('.profile-details .profile-role');
+    const companyEl = document.querySelector('.profile-details .profile-company');
+    
+    if (avatarLgEl) avatarLgEl.textContent = user.avatar;
+    if (nameInDetailsEl) nameInDetailsEl.textContent = user.name;
+    if (roleInDetailsEl) roleInDetailsEl.textContent = user.role;
+    if (companyEl) companyEl.textContent = `@ ${user.company || 'Bitflux Insurance'}`;
+    
+    // Legacy support
     const nameEl = document.querySelector('.profile-name');
     const roleEl = document.querySelector('.profile-role');
     const avatarEl = document.querySelector('.profile-avatar');
     
-    if (nameEl) nameEl.textContent = user.name;
-    if (roleEl) roleEl.textContent = user.role;
-    if (avatarEl) avatarEl.textContent = user.avatar;
+    if (nameEl && !nameInDetailsEl) nameEl.textContent = user.name;
+    if (roleEl && !roleInDetailsEl) roleEl.textContent = user.role;
+    if (avatarEl && !avatarLgEl) avatarEl.textContent = user.avatar;
 }
 
 // Stats 数据（模拟不同时间范围的数据）
@@ -116,193 +128,9 @@ function setupEventListeners() {
     });
     
     // Setup swipe gesture handling
-    setupSwipeGestures();
+    setupSwipeHandlers();
 }
 
-// ========================================
-// Swipe Gesture Handling
-// ========================================
-
-let currentSwipedCard = null;
-let touchStartX = 0;
-let touchStartY = 0;
-let isSwiping = false;
-
-function setupSwipeGestures() {
-    // Use event delegation on the app content
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: true });
-    
-    // Mouse support for desktop testing
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-}
-
-function handleTouchStart(e) {
-    // Support both action list and action hub swipe
-    const swipeContent = e.target.closest('.action-swipe-content, .action-hub-swipe-content');
-    if (!swipeContent) return;
-    
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    isSwiping = false;
-    currentSwipedCard = swipeContent;
-}
-
-function handleTouchMove(e) {
-    if (!currentSwipedCard) return;
-    
-    const touchX = e.touches[0].clientX;
-    const touchY = e.touches[0].clientY;
-    const diffX = touchStartX - touchX;
-    const diffY = Math.abs(touchStartY - touchY);
-    
-    // Only horizontal swipe
-    if (diffY > Math.abs(diffX) && !isSwiping) {
-        currentSwipedCard = null;
-        return;
-    }
-    
-    if (Math.abs(diffX) > 10) {
-        isSwiping = true;
-        e.preventDefault();
-        
-        // Calculate transform (limit to 0-140px)
-        const translateX = Math.max(0, Math.min(140, diffX));
-        currentSwipedCard.style.transition = 'none';
-        currentSwipedCard.style.transform = `translateX(-${translateX}px)`;
-    }
-}
-
-function handleTouchEnd(e) {
-    if (!currentSwipedCard || !isSwiping) {
-        currentSwipedCard = null;
-        return;
-    }
-    
-    const currentTransform = currentSwipedCard.style.transform;
-    const translateX = parseInt(currentTransform.replace(/[^0-9-]/g, '')) || 0;
-    
-    currentSwipedCard.style.transition = 'transform 0.3s ease';
-    
-    if (Math.abs(translateX) > 60) {
-        // Snap open
-        closeAllSwipeActions();
-        currentSwipedCard.classList.add('swiped');
-        currentSwipedCard.style.transform = '';
-    } else {
-        // Snap closed
-        currentSwipedCard.classList.remove('swiped');
-        currentSwipedCard.style.transform = '';
-    }
-    
-    currentSwipedCard = null;
-    isSwiping = false;
-}
-
-// Mouse support for desktop
-let isMouseDown = false;
-
-function handleMouseDown(e) {
-    // Support both action list and action hub swipe
-    const swipeContent = e.target.closest('.action-swipe-content, .action-hub-swipe-content');
-    if (!swipeContent) return;
-    
-    isMouseDown = true;
-    touchStartX = e.clientX;
-    touchStartY = e.clientY;
-    isSwiping = false;
-    currentSwipedCard = swipeContent;
-}
-
-function handleMouseMove(e) {
-    if (!isMouseDown || !currentSwipedCard) return;
-    
-    const diffX = touchStartX - e.clientX;
-    const diffY = Math.abs(touchStartY - e.clientY);
-    
-    if (diffY > Math.abs(diffX) && !isSwiping) {
-        currentSwipedCard = null;
-        return;
-    }
-    
-    if (Math.abs(diffX) > 10) {
-        isSwiping = true;
-        const translateX = Math.max(0, Math.min(140, diffX));
-        currentSwipedCard.style.transition = 'none';
-        currentSwipedCard.style.transform = `translateX(-${translateX}px)`;
-    }
-}
-
-function handleMouseUp(e) {
-    if (!isMouseDown) return;
-    isMouseDown = false;
-    
-    if (!currentSwipedCard || !isSwiping) {
-        currentSwipedCard = null;
-        return;
-    }
-    
-    const currentTransform = currentSwipedCard.style.transform;
-    const translateX = parseInt(currentTransform.replace(/[^0-9-]/g, '')) || 0;
-    
-    currentSwipedCard.style.transition = 'transform 0.3s ease';
-    
-    if (Math.abs(translateX) > 60) {
-        closeAllSwipeActions();
-        currentSwipedCard.classList.add('swiped');
-        currentSwipedCard.style.transform = '';
-    } else {
-        currentSwipedCard.classList.remove('swiped');
-        currentSwipedCard.style.transform = '';
-    }
-    
-    currentSwipedCard = null;
-    isSwiping = false;
-}
-
-function closeAllSwipeActions(exceptTarget) {
-    // Close both action list and action hub swipe cards
-    document.querySelectorAll('.action-swipe-content.swiped, .action-hub-swipe-content.swiped').forEach(card => {
-        if (!exceptTarget || !card.contains(exceptTarget)) {
-            card.classList.remove('swiped');
-        }
-    });
-}
-
-function deleteAction(actionId) {
-    // Confirm deletion
-    if (!confirm('Are you sure you want to delete this action?')) {
-        closeAllSwipeActions();
-        return;
-    }
-    
-    // Find and animate out - support both action list and action hub
-    const container = document.getElementById(`action-swipe-${actionId}`) || 
-                      document.getElementById(`action-hub-swipe-${actionId}`);
-    if (container) {
-        container.style.transition = 'all 0.3s ease';
-        container.style.height = container.offsetHeight + 'px';
-        container.offsetHeight; // Force reflow
-        container.style.height = '0';
-        container.style.opacity = '0';
-        container.style.overflow = 'hidden';
-        
-        setTimeout(() => {
-            // Remove from data
-            const actionIndex = AppData.actions.findIndex(a => a.id === actionId);
-            if (actionIndex !== -1) {
-                AppData.actions.splice(actionIndex, 1);
-            }
-            
-            // Refresh views
-            refreshAllViews();
-            showToast('Action deleted');
-        }, 300);
-    }
-}
 
 // ========================================
 // Contact List
@@ -348,7 +176,7 @@ function showPage(page) {
     }
 
     // Hide all pages
-    const pages = ['home-page', 'action-list-page', 'meeting-list-page', 'contacts-list-page', 'contact-page', 'me-page', 'meeting-detail-page'];
+    const pages = ['home-page', 'calendar-page', 'meeting-list-page', 'contacts-list-page', 'contact-page', 'me-page', 'meeting-detail-page'];
     pages.forEach(p => {
         const el = document.getElementById(p);
         if (el) {
@@ -371,14 +199,15 @@ function showPage(page) {
         case 'home':
             document.getElementById('home-page').style.display = 'block';
             document.querySelectorAll('.tab-item')[0].classList.add('active');
-            renderActionHub();
+            renderRemindersHub();
             renderTodayMeetings();
             break;
-        case 'actionList':
-            document.getElementById('action-list-page').style.display = 'block';
-            document.getElementById('action-list-page').classList.add('active');
+        case 'calendar':
+            document.getElementById('calendar-page').style.display = 'block';
+            document.getElementById('calendar-page').classList.add('active');
             if (stickyBar) stickyBar.style.display = 'none';
-            renderActionList();
+            if (tabBar) tabBar.style.display = 'none';
+            renderCalendar();
             break;
         case 'meetingList':
             document.getElementById('meeting-list-page').style.display = 'block';
@@ -408,105 +237,1190 @@ function showPage(page) {
 }
 
 // ========================================
-// Action Hub (Home Page) - Tab 式设计
+// Reminders Hub (Home Page) - 轻量化设计
 // ========================================
 
-// 当前选中的 Tab
-let currentActionHubTab = 'overdue';
-
-function renderActionHub() {
-    const pendingActions = AppData.getPendingActions();
-    const count = pendingActions.length;
+function renderRemindersHub() {
+    const allReminders = AppData.getPendingActions();
     
-    // 分类 Actions
-    const categorized = categorizeActions(pendingActions);
+    // 计算今天和未来7天的日期范围
+    const today = DateHelper.today;
+    const next7Days = [];
+    for (let i = 1; i <= 7; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        next7Days.push(formatDateStr(d));
+    }
     
-    // 更新总数
-    const countEl = document.getElementById('action-count');
+    // 分类：今天的 vs 未来7天的
+    const todayReminders = allReminders.filter(r => r.dueDate === today);
+    const upcomingReminders = allReminders.filter(r => r.dueDate && next7Days.includes(r.dueDate));
+    
+    // 更新总数（今天的数量）
+    const countEl = document.getElementById('reminder-count');
     if (countEl) {
-        countEl.textContent = count;
+        countEl.textContent = todayReminders.length;
     }
     
-    // 更新各 Tab 的数量
-    updateTabCounts(categorized);
+    // 渲染列表
+    const listEl = document.getElementById('reminder-items');
+    if (!listEl) return;
     
-    // 如果当前 Tab 没有内容，自动切换到有内容的 Tab
-    if (categorized[currentActionHubTab].length === 0) {
-        if (categorized.overdue.length > 0) currentActionHubTab = 'overdue';
-        else if (categorized.today.length > 0) currentActionHubTab = 'today';
-        else if (categorized.later.length > 0) currentActionHubTab = 'later';
+    let html = '';
+    
+    // 今天的 Reminders
+    if (todayReminders.length > 0) {
+        html += `
+            <div class="reminders-group">
+                <div class="reminders-group-header">
+                    <span class="reminders-group-title today">📅 Today</span>
+                    <span class="reminders-group-count">${todayReminders.length}</span>
+                </div>
+                ${todayReminders.slice(0, 3).map(r => renderReminderCard(r, 'home')).join('')}
+                ${todayReminders.length > 3 ? `<div class="reminders-more" onclick="showPage('calendar')">+${todayReminders.length - 3} more</div>` : ''}
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="reminders-group">
+                <div class="reminders-group-header">
+                    <span class="reminders-group-title today">📅 Today</span>
+                </div>
+                <div class="reminders-empty-inline">✨ No reminders for today</div>
+            </div>
+        `;
     }
     
-    // 更新 Tab 激活状态
-    updateTabActiveState();
+    // 未来7天的 Reminders
+    if (upcomingReminders.length > 0) {
+        // 按日期排序
+        upcomingReminders.sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
+        
+        html += `
+            <div class="reminders-group upcoming">
+                <div class="reminders-group-header">
+                    <span class="reminders-group-title">📆 Next 7 Days</span>
+                    <span class="reminders-group-count">${upcomingReminders.length}</span>
+                </div>
+                ${upcomingReminders.slice(0, 3).map(r => renderReminderCard(r, 'home')).join('')}
+                ${upcomingReminders.length > 3 ? `<div class="reminders-more" onclick="showPage('calendar')">+${upcomingReminders.length - 3} more</div>` : ''}
+            </div>
+        `;
+    }
     
-    // 渲染当前 Tab 的 Actions
-    renderActionHubList(categorized[currentActionHubTab]);
+    // 如果都没有
+    if (todayReminders.length === 0 && upcomingReminders.length === 0) {
+        html = `
+            <div class="reminders-empty">
+                ✨ No upcoming reminders
+            </div>
+        `;
+    }
+    
+    listEl.innerHTML = html;
 }
 
-function categorizeActions(actions) {
+// ========================================
+// 通用 Reminder 卡片渲染 - 统一规范设计
+// ========================================
+function renderReminderCard(reminder, context = 'calendar', groupDateKey = null) {
+    const contacts = reminder.contactIds.map(id => AppData.getContact(id)).filter(c => c);
+    const meeting = reminder.meetingId ? AppData.getMeeting(reminder.meetingId) : null;
+    const isCompleted = reminder.status === 'completed';
+    
+    // 联系人显示和点击处理
+    let contactName = 'Self';
+    let contactExtra = '';
+    let contactClickHandler = '';
+    const contactIdsStr = contacts.map(c => `'${c.id}'`).join(',');
+    if (contacts.length === 1) {
+        contactName = contacts[0].name;
+        contactClickHandler = `event.stopPropagation(); showContactPopover([${contactIdsStr}], 'reminder', '${reminder.id}')`;
+    } else if (contacts.length > 1) {
+        contactName = contacts[0].name;
+        contactExtra = `+${contacts.length - 1}`;
+        contactClickHandler = `event.stopPropagation(); showContactPopover([${contactIdsStr}], 'reminder', '${reminder.id}')`;
+    }
+    
+    // 来源显示
+    const sourceTitle = meeting ? meeting.title : 'Manual';
+    const sourceClickHandler = meeting ? `event.stopPropagation(); showMeetingDetail('${meeting.id}')` : '';
+    
+    // 日期处理
+    const isToday = reminder.dueDate && DateHelper.isToday(reminder.dueDate);
+    
+    // 基于星期的颜色 (与日历分组一致)
+    const weekdayGradients = {
+        0: 'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)', // Sun - 粉
+        1: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', // Mon - 紫
+        2: 'linear-gradient(135deg, #F59E0B 0%, #EAB308 100%)', // Tue - 橙
+        3: 'linear-gradient(135deg, #22C55E 0%, #10B981 100%)', // Wed - 绿
+        4: 'linear-gradient(135deg, #0EA5E9 0%, #06B6D4 100%)', // Thu - 蓝
+        5: 'linear-gradient(135deg, #A855F7 0%, #8B5CF6 100%)', // Fri - 浅紫
+        6: 'linear-gradient(135deg, #EF4444 0%, #F97316 100%)', // Sat - 红
+    };
+    const noDateGradient = 'linear-gradient(135deg, #94A3B8 0%, #64748B 100%)';
+    
+    // 计算日期列颜色
+    let dateColGradient = noDateGradient;
+    if (reminder.dueDate) {
+        const dayOfWeek = new Date(reminder.dueDate).getDay();
+        dateColGradient = weekdayGradients[dayOfWeek];
+    }
+    
+    // 统一的卡片内容（三行布局）- 更紧凑
+    const cardContent = `
+        <div class="rc-title ${isCompleted ? 'completed' : ''}">${reminder.title}</div>
+        <div class="rc-row">
+            <span class="rc-icon">👤</span>
+            <span class="rc-text clickable" onclick="${contactClickHandler}">${contactName}</span>
+            ${contactExtra ? `<span class="rc-badge" onclick="${contactClickHandler}">${contactExtra}</span>` : ''}
+        </div>
+        <div class="rc-row">
+            <span class="rc-icon">📝</span>
+            <span class="rc-text ${sourceClickHandler ? 'clickable' : ''}" onclick="${sourceClickHandler}">${sourceTitle}</span>
+        </div>
+    `;
+    
+    // 首页卡片 - 更紧凑设计
+    if (context === 'home') {
+        return `
+            <div class="reminder-card home-card ${isCompleted ? 'completed' : ''}" onclick="showPage('calendar')">
+                <div class="rc-date-col-mini" style="background: ${dateColGradient}">
+                    ${reminder.dueDate ? `
+                        <span class="rc-date-month">${getMonthShort(reminder.dueDate)}</span>
+                        <span class="rc-date-day">${new Date(reminder.dueDate).getDate()}</span>
+                    ` : `
+                        <span class="rc-date-day">--</span>
+                    `}
+                </div>
+                <div class="rc-main">
+                    <div class="rc-checkbox ${isCompleted ? 'checked' : ''}" 
+                         onclick="event.stopPropagation(); toggleReminderComplete('${reminder.id}', this)"></div>
+                    <div class="rc-content">${cardContent}</div>
+                    <span class="rc-arrow">›</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 日历页面卡片（含左滑操作）
+    return `
+        <div class="reminder-card-wrapper" id="rcw-${reminder.id}">
+            <div class="reminder-card ${isCompleted ? 'completed' : ''}" id="rc-${reminder.id}">
+                <div class="rc-date-col" style="background: ${dateColGradient}">
+                    ${reminder.dueDate ? `
+                        <span class="rc-date-month">${getMonthShort(reminder.dueDate)}</span>
+                        <span class="rc-date-day">${new Date(reminder.dueDate).getDate()}</span>
+                        <span class="rc-date-weekday">${getWeekdayShort(reminder.dueDate)}</span>
+                    ` : `
+                        <span class="rc-date-day">--</span>
+                    `}
+                </div>
+                <div class="rc-main">
+                    <div class="rc-checkbox ${isCompleted ? 'checked' : ''}" 
+                         onclick="event.stopPropagation(); toggleReminderComplete('${reminder.id}', this)"></div>
+                    <div class="rc-content">${cardContent}</div>
+                </div>
+            </div>
+            <div class="rc-swipe-actions">
+                ${reminder.dueDate ? `<button class="rc-swipe-btn snooze" onclick="snoozeReminder('${reminder.id}')">⏰ Snooze</button>` : ''}
+                <button class="rc-swipe-btn delete" onclick="deleteReminder('${reminder.id}')">🗑 Delete</button>
+            </div>
+        </div>
+    `;
+}
+
+// 辅助函数
+function getMonthShort(dateStr) {
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    return months[new Date(dateStr).getMonth()];
+}
+
+function getWeekdayShort(dateStr) {
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return weekdays[new Date(dateStr).getDay()];
+}
+
+// 左滑手势处理（支持触摸和鼠标）
+let currentSwipedId = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let currentSwipeWrapper = null;
+let isMouseDragging = false;
+
+function setupSwipeHandlers() {
+    // 触摸事件
+    document.addEventListener('touchstart', handleSwipeStart, { passive: true });
+    document.addEventListener('touchmove', handleSwipeMove, { passive: false });
+    document.addEventListener('touchend', handleSwipeEnd, { passive: true });
+    
+    // 鼠标事件（用于桌面测试）
+    document.addEventListener('mousedown', handleMouseSwipeStart);
+    document.addEventListener('mousemove', handleMouseSwipeMove);
+    document.addEventListener('mouseup', handleMouseSwipeEnd);
+}
+
+function handleSwipeStart(e) {
+    const wrapper = e.target.closest('.reminder-card-wrapper');
+    if (!wrapper) return;
+    
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    currentSwipeWrapper = wrapper;
+    
+    // 关闭其他已打开的
+    if (currentSwipedId && currentSwipedId !== wrapper.id) {
+        const prevWrapper = document.getElementById(currentSwipedId);
+        if (prevWrapper) prevWrapper.classList.remove('swiped');
+    }
+}
+
+function handleMouseSwipeStart(e) {
+    const wrapper = e.target.closest('.reminder-card-wrapper');
+    if (!wrapper) return;
+    
+    // 排除点击按钮
+    if (e.target.closest('.rc-swipe-btn') || e.target.closest('.rc-checkbox')) return;
+    
+    isMouseDragging = true;
+    touchStartX = e.clientX;
+    touchStartY = e.clientY;
+    currentSwipeWrapper = wrapper;
+    
+    // 关闭其他已打开的
+    if (currentSwipedId && currentSwipedId !== wrapper.id) {
+        const prevWrapper = document.getElementById(currentSwipedId);
+        if (prevWrapper) prevWrapper.classList.remove('swiped');
+        currentSwipedId = null;
+    }
+}
+
+function handleSwipeMove(e) {
+    if (!currentSwipeWrapper) return;
+    
+    const touchX = e.touches[0].clientX;
+    const touchY = e.touches[0].clientY;
+    processSwipeMove(touchX, touchY, e);
+}
+
+function handleMouseSwipeMove(e) {
+    if (!isMouseDragging || !currentSwipeWrapper) return;
+    processSwipeMove(e.clientX, e.clientY, e);
+}
+
+function processSwipeMove(currentX, currentY, e) {
+    const diffX = touchStartX - currentX;
+    const diffY = Math.abs(touchStartY - currentY);
+    
+    // 如果垂直滑动更多，忽略
+    if (diffY > Math.abs(diffX)) return;
+    
+    // 阻止默认行为
+    if (Math.abs(diffX) > 10 && e.preventDefault) {
+        e.preventDefault();
+    }
+    
+    const card = currentSwipeWrapper.querySelector('.reminder-card');
+    if (!card) return;
+    
+    // 左滑展示按钮
+    if (diffX > 0) {
+        const translateX = Math.min(diffX, 140);
+        card.style.transform = `translateX(-${translateX}px)`;
+    } else {
+        card.style.transform = 'translateX(0)';
+    }
+}
+
+function handleSwipeEnd(e) {
+    processSwipeEnd();
+}
+
+function handleMouseSwipeEnd(e) {
+    if (!isMouseDragging) return;
+    isMouseDragging = false;
+    processSwipeEnd();
+}
+
+function processSwipeEnd() {
+    if (!currentSwipeWrapper) return;
+    
+    const card = currentSwipeWrapper.querySelector('.reminder-card');
+    if (!card) return;
+    
+    const transform = card.style.transform;
+    const match = transform.match(/translateX\(-?(\d+)px\)/);
+    const translateX = match ? parseInt(match[1]) : 0;
+    
+    if (translateX > 70) {
+        currentSwipeWrapper.classList.add('swiped');
+        currentSwipedId = currentSwipeWrapper.id;
+    } else {
+        currentSwipeWrapper.classList.remove('swiped');
+        currentSwipedId = null;
+    }
+    
+    card.style.transform = '';
+    currentSwipeWrapper = null;
+}
+
+// 触摸事件的别名（兼容旧代码）
+function handleTouchStart(e) { handleSwipeStart(e); }
+function handleTouchMove(e) { handleSwipeMove(e); }
+function handleTouchEnd(e) { handleSwipeEnd(e); }
+
+// 点击其他地方关闭swipe
+function closeAllSwipes(e) {
+    if (e && e.target) {
+        if (!e.target.closest('.reminder-card-wrapper') && !e.target.closest('.rc-swipe-btn') && currentSwipedId) {
+            closeAllSwipeActions();
+        }
+    }
+}
+
+// 关闭所有 swipe 操作
+function closeAllSwipeActions(exceptTarget) {
+    // 关闭 reminder card swipe
+    if (currentSwipedId) {
+        const wrapper = document.getElementById(currentSwipedId);
+        if (wrapper && (!exceptTarget || !wrapper.contains(exceptTarget))) {
+            wrapper.classList.remove('swiped');
+        }
+        currentSwipedId = null;
+    }
+    // 关闭旧版 action swipe (兼容)
+    document.querySelectorAll('.action-swipe-content.swiped, .action-hub-swipe-content.swiped').forEach(card => {
+        if (!exceptTarget || !card.contains(exceptTarget)) {
+            card.classList.remove('swiped');
+        }
+    });
+}
+
+// 初始化swipe（在DOM加载后）
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setupSwipeHandlers();
+        document.addEventListener('click', closeAllSwipes);
+    });
+} else {
+    setupSwipeHandlers();
+    document.addEventListener('click', closeAllSwipes);
+}
+
+function snoozeReminder(reminderId) {
+    const choice = prompt('Snooze until:\\n1. Tomorrow\\n2. +3 Days\\n3. +1 Week\\nEnter 1-3:');
+    
+    if (!choice) return;
+    
+    const today = new Date(DateHelper.today);
+    let newDate;
+    
+    switch(choice) {
+        case '1':
+            newDate = new Date(today);
+            newDate.setDate(newDate.getDate() + 1);
+            break;
+        case '2':
+            newDate = new Date(today);
+            newDate.setDate(newDate.getDate() + 3);
+            break;
+        case '3':
+            newDate = new Date(today);
+            newDate.setDate(newDate.getDate() + 7);
+            break;
+        default:
+            return;
+    }
+    
+    const reminder = AppData.actions.find(a => a.id === reminderId);
+    if (reminder) {
+        reminder.dueDate = formatDateStr(newDate);
+        showToast(`Snoozed to ${DateHelper.formatDate(reminder.dueDate)}`);
+        renderRemindersHub();
+        renderCalendarReminders();
+    }
+}
+
+function formatReminderDate(dateStr) {
+    if (!dateStr) return { day: '--', month: '' };
+    const date = new Date(dateStr);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return {
-        overdue: actions.filter(a => DateHelper.isOverdue(a.dueDate)),
-        today: actions.filter(a => DateHelper.isToday(a.dueDate)),
-        later: actions.filter(a => !DateHelper.isOverdue(a.dueDate) && !DateHelper.isToday(a.dueDate))
+        day: date.getDate(),
+        month: months[date.getMonth()]
     };
 }
 
-function updateTabCounts(categorized) {
-    const tabs = ['overdue', 'today', 'later'];
-    tabs.forEach(tab => {
-        const countEl = document.getElementById(`tab-${tab}-count`);
-        if (countEl) {
-            countEl.textContent = categorized[tab].length;
+function toggleReminderComplete(reminderId, checkbox) {
+    const reminder = AppData.getAction(reminderId);
+    if (!reminder) return;
+    
+    if (reminder.status === 'completed') {
+        reminder.status = 'pending';
+        reminder.completedAt = null;
+        checkbox.classList.remove('checked');
+    } else {
+        reminder.status = 'completed';
+        reminder.completedAt = new Date().toISOString();
+        checkbox.classList.add('checked');
+    }
+    
+    showToast(reminder.status === 'completed' ? 'Marked as done ✓' : 'Unmarked');
+    
+    // 刷新视图
+    setTimeout(() => {
+        renderRemindersHub();
+        if (AppState.currentPage === 'calendar') {
+            renderCalendarReminders();
         }
+    }, 300);
+}
+
+// ========================================
+// Calendar Page (紧凑时间轴设计)
+// ========================================
+
+const CalendarState = {
+    selectedDate: '2026-01-15', // Today
+    selectedWeek: null,
+    selectedMonth: null,
+    viewMode: 'day', // 'day', 'week', 'month'
+    dateRangeStart: new Date(2026, 0, 12), // 一周的起始
+    pickerMonth: new Date(2026, 0, 1),
+    pickerMode: 'day' // Picker内部的模式
+};
+
+function renderCalendar() {
+    renderDateSelector();
+    renderCalendarReminders();
+}
+
+// 渲染横向日期选择器（根据视图模式）
+function renderDateSelector() {
+    const container = document.getElementById('cal-dates-scroll');
+    if (!container) return;
+    
+    if (CalendarState.viewMode === 'day') {
+        renderDaySelector(container);
+    } else if (CalendarState.viewMode === 'week') {
+        renderWeekSelector(container);
+    } else {
+        renderMonthSelector(container);
+    }
+}
+
+function renderDaySelector(container) {
+    // 移除特殊视图类
+    container.classList.remove('week-view', 'month-view');
+    
+    // 统计每天的reminder数量
+    const reminderCounts = {};
+    AppData.actions.filter(a => a.dueDate).forEach(a => {
+        reminderCounts[a.dueDate] = (reminderCounts[a.dueDate] || 0) + 1;
+    });
+    
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const todayStr = DateHelper.today;
+    
+    let html = '';
+    
+    // 显示7天
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(CalendarState.dateRangeStart);
+        date.setDate(date.getDate() + i);
         
-        // 标记有内容的 Overdue Tab
-        const tabEl = document.querySelector(`.action-tab[data-filter="${tab}"]`);
-        if (tabEl) {
-            if (categorized[tab].length > 0) {
-                tabEl.classList.add('has-items');
-            } else {
-                tabEl.classList.remove('has-items');
-            }
-        }
-    });
-}
-
-function updateTabActiveState() {
-    document.querySelectorAll('.action-tab').forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.filter === currentActionHubTab) {
-            tab.classList.add('active');
-        }
-    });
-}
-
-function switchActionHubTab(filter) {
-    currentActionHubTab = filter;
-    const pendingActions = AppData.getPendingActions();
-    const categorized = categorizeActions(pendingActions);
+        const dateStr = formatDateStr(date);
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === CalendarState.selectedDate;
+        const count = reminderCounts[dateStr] || 0;
+        
+        let classes = 'cal-date-item';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+        
+        html += `
+            <div class="${classes}" onclick="selectCalendarDate('${dateStr}')">
+                <span class="cal-date-weekday">${weekdays[date.getDay()]}</span>
+                <span class="cal-date-day">${date.getDate()}</span>
+                ${count > 0 ? `<span class="cal-date-badge">${count}</span>` : ''}
+            </div>
+        `;
+    }
     
-    updateTabActiveState();
-    renderActionHubList(categorized[filter]);
+    container.innerHTML = html;
 }
 
-function renderActionHubList(actions) {
-    const contentEl = document.getElementById('action-hub-items');
-    if (!contentEl) return;
+function renderWeekSelector(container) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonth = CalendarState.dateRangeStart.getMonth();
+    const currentYear = CalendarState.dateRangeStart.getFullYear();
     
-    if (actions.length === 0) {
-        contentEl.innerHTML = `
-            <div class="action-hub-empty">
-                <span>✨</span>
-                <span>No actions here</span>
+    // 添加week-view类以获得统一样式
+    container.classList.add('week-view');
+    container.classList.remove('month-view');
+    
+    // 获取当月的所有周
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    
+    let html = '';
+    let weekNum = 1;
+    let currentWeekStart = new Date(firstDay);
+    // 调整到周日开始
+    currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
+    
+    while (currentWeekStart <= lastDay && weekNum <= 5) {
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        
+        const weekStartStr = formatDateStr(currentWeekStart);
+        const weekEndStr = formatDateStr(weekEnd);
+        const isSelected = CalendarState.selectedWeek === weekStartStr;
+        
+        // 统计这周的reminder数量
+        const count = AppData.actions.filter(a => {
+            if (!a.dueDate) return false;
+            return a.dueDate >= weekStartStr && a.dueDate <= weekEndStr;
+        }).length;
+        
+        let classes = 'cal-date-item';
+        if (isSelected) classes += ' selected';
+        
+        // 格式化日期范围
+        const startDate = currentWeekStart.getDate();
+        const endDate = weekEnd.getDate();
+        
+        html += `
+            <div class="${classes}" onclick="selectCalendarWeek('${weekStartStr}')">
+                <span class="cal-date-weekday">W${weekNum}</span>
+                <span class="cal-date-day">${startDate}-${endDate}</span>
+                ${count > 0 ? `<span class="cal-date-badge">${count}</span>` : ''}
+            </div>
+        `;
+        
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+        weekNum++;
+    }
+    
+    container.innerHTML = html;
+}
+
+function renderMonthSelector(container) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentYear = CalendarState.dateRangeStart.getFullYear();
+    const todayMonth = new Date(DateHelper.today).getMonth();
+    const todayYear = new Date(DateHelper.today).getFullYear();
+    
+    // 添加month-view类以获得统一样式
+    container.classList.add('month-view');
+    container.classList.remove('week-view');
+    
+    let html = '';
+    
+    for (let i = 0; i < 12; i++) {
+        const monthStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
+        const isSelected = CalendarState.selectedMonth === monthStr;
+        const isCurrentMonth = (i === todayMonth && currentYear === todayYear);
+        
+        // 统计这月的reminder数量
+        const count = AppData.actions.filter(a => {
+            if (!a.dueDate) return false;
+            return a.dueDate.startsWith(monthStr);
+        }).length;
+        
+        let classes = 'cal-date-item';
+        if (isSelected) classes += ' selected';
+        if (isCurrentMonth) classes += ' today';
+        
+        html += `
+            <div class="${classes}" onclick="selectCalendarMonth('${monthStr}')">
+                <span class="cal-date-weekday">${currentYear}</span>
+                <span class="cal-date-day">${months[i]}</span>
+                ${count > 0 ? `<span class="cal-date-badge">${count}</span>` : ''}
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function shiftCalendarDates(delta) {
+    if (CalendarState.viewMode === 'day') {
+        CalendarState.dateRangeStart.setDate(CalendarState.dateRangeStart.getDate() + delta);
+    } else if (CalendarState.viewMode === 'week') {
+        // 切换月份
+        CalendarState.dateRangeStart.setMonth(CalendarState.dateRangeStart.getMonth() + (delta > 0 ? 1 : -1));
+    } else {
+        // 切换年份
+        CalendarState.dateRangeStart.setFullYear(CalendarState.dateRangeStart.getFullYear() + (delta > 0 ? 1 : -1));
+    }
+    renderDateSelector();
+}
+
+function selectCalendarWeek(weekStartStr) {
+    CalendarState.selectedWeek = weekStartStr;
+    CalendarState.selectedDate = weekStartStr;
+    renderDateSelector();
+    renderCalendarReminders();
+}
+
+function selectCalendarMonth(monthStr) {
+    CalendarState.selectedMonth = monthStr;
+    CalendarState.selectedDate = monthStr + '-01';
+    renderDateSelector();
+    renderCalendarReminders();
+}
+
+function selectCalendarDate(dateStr) {
+    CalendarState.selectedDate = dateStr;
+    renderDateSelector();
+    renderCalendarReminders();
+}
+
+function switchCalendarView(view, element) {
+    CalendarState.viewMode = view;
+    
+    // 更新Tab状态
+    document.querySelectorAll('.cal-view-tab').forEach(tab => tab.classList.remove('active'));
+    if (element) element.classList.add('active');
+    
+    // 初始化选中状态
+    if (view === 'week' && !CalendarState.selectedWeek) {
+        const today = new Date(DateHelper.today);
+        const dayOfWeek = today.getDay();
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - dayOfWeek);
+        CalendarState.selectedWeek = formatDateStr(weekStart);
+    }
+    if (view === 'month' && !CalendarState.selectedMonth) {
+        CalendarState.selectedMonth = DateHelper.today.substring(0, 7);
+    }
+    
+    // 根据视图调整显示
+    renderDateSelector();
+    renderCalendarReminders();
+}
+
+function renderCalendarReminders() {
+    const titleEl = document.getElementById('cal-selected-title');
+    const countEl = document.getElementById('cal-reminder-count');
+    const container = document.getElementById('cal-reminders-container');
+    
+    if (!container) return;
+    
+    // 获取选中日期的reminders
+    let reminders = [];
+    let dateTitle = '';
+    
+    if (CalendarState.viewMode === 'day') {
+        reminders = AppData.actions.filter(a => a.dueDate === CalendarState.selectedDate);
+        const date = new Date(CalendarState.selectedDate);
+        const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        dateTitle = `${weekdays[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`;
+    } else if (CalendarState.viewMode === 'week') {
+        const weekStart = new Date(CalendarState.dateRangeStart);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        
+        reminders = AppData.actions.filter(a => {
+            if (!a.dueDate) return false;
+            return a.dueDate >= formatDateStr(weekStart) && a.dueDate <= formatDateStr(weekEnd);
+        });
+        
+        dateTitle = `Week of ${formatDateStr(weekStart).split('-').slice(1).join('/')}`;
+    } else {
+        const monthStart = `${CalendarState.selectedDate.substring(0, 7)}-01`;
+        const monthEnd = `${CalendarState.selectedDate.substring(0, 7)}-31`;
+        
+        reminders = AppData.actions.filter(a => {
+            if (!a.dueDate) return false;
+            return a.dueDate >= monthStart && a.dueDate <= monthEnd;
+        });
+        
+        const date = new Date(CalendarState.selectedDate);
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+        dateTitle = `${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+    
+    // 更新标题
+    if (titleEl) titleEl.textContent = dateTitle;
+    if (countEl) countEl.textContent = `${reminders.length} reminder${reminders.length !== 1 ? 's' : ''}`;
+    
+    if (reminders.length === 0) {
+        container.innerHTML = `
+            <div class="cal-no-reminders">
+                <span>📭</span>
+                <span>No reminders</span>
             </div>
         `;
         return;
     }
     
-    // 最多显示 5 条
-    const displayActions = actions.slice(0, 5);
-    contentEl.innerHTML = displayActions.map(action => renderActionHubItem(action)).join('');
+    // 分离未完成和已完成
+    const pending = reminders.filter(r => r.status !== 'completed');
+    const completed = reminders.filter(r => r.status === 'completed');
+    
+    let html = '';
+    
+    // Day视图：直接列表
+    if (CalendarState.viewMode === 'day') {
+        if (pending.length > 0) {
+            html += `<div class="cal-reminders-list">
+                ${pending.map(r => renderReminderCard(r, 'calendar')).join('')}
+            </div>`;
+        }
+    } else {
+        // Week/Month视图：按日期分组，带颜色区分
+        const groupedByDate = {};
+        pending.forEach(r => {
+            const dateKey = r.dueDate || 'no-date';
+            if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+            groupedByDate[dateKey].push(r);
+        });
+        
+        // 按日期排序
+        const sortedDates = Object.keys(groupedByDate).sort();
+        
+        // 日期颜色方案 - 基于星期几，与卡片日期列一致
+        // 0=Sun, 1=Mon, ..., 6=Sat
+        const weekdayColors = {
+            0: { bg: '#FCE7F3', border: '#EC4899', text: '#BE185D', gradient: 'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)' }, // 粉 Sun
+            1: { bg: '#EEF2FF', border: '#6366F1', text: '#4338CA', gradient: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }, // 紫 Mon
+            2: { bg: '#FEF3C7', border: '#F59E0B', text: '#B45309', gradient: 'linear-gradient(135deg, #F59E0B 0%, #EAB308 100%)' }, // 橙 Tue
+            3: { bg: '#DCFCE7', border: '#22C55E', text: '#15803D', gradient: 'linear-gradient(135deg, #22C55E 0%, #10B981 100%)' }, // 绿 Wed
+            4: { bg: '#E0F2FE', border: '#0EA5E9', text: '#0369A1', gradient: 'linear-gradient(135deg, #0EA5E9 0%, #06B6D4 100%)' }, // 蓝 Thu
+            5: { bg: '#F3E8FF', border: '#A855F7', text: '#7E22CE', gradient: 'linear-gradient(135deg, #A855F7 0%, #8B5CF6 100%)' }, // 浅紫 Fri
+            6: { bg: '#FEE2E2', border: '#EF4444', text: '#B91C1C', gradient: 'linear-gradient(135deg, #EF4444 0%, #F97316 100%)' }, // 红 Sat
+            nodate: { bg: '#F1F5F9', border: '#64748B', text: '#475569', gradient: 'linear-gradient(135deg, #94A3B8 0%, #64748B 100%)' } // 灰
+        };
+        
+        sortedDates.forEach((dateKey) => {
+            const items = groupedByDate[dateKey];
+            
+            // 根据星期几确定颜色
+            let color, dateLabel;
+            if (dateKey === 'no-date') {
+                color = weekdayColors.nodate;
+                dateLabel = 'No Date';
+            } else {
+                const d = new Date(dateKey);
+                const dayOfWeek = d.getDay();
+                color = weekdayColors[dayOfWeek];
+                
+                const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const isToday = dateKey === DateHelper.today;
+                dateLabel = isToday ? '📍 Today' : `${weekdays[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+            }
+            
+            html += `
+                <div class="cal-date-group" style="--group-bg: ${color.bg}; --group-border: ${color.border}; --group-text: ${color.text}; --group-gradient: ${color.gradient};">
+                    <div class="cal-date-group-header">
+                        <span class="cal-date-group-label">${dateLabel}</span>
+                        <span class="cal-date-group-count">${items.length}</span>
+                    </div>
+                    <div class="cal-date-group-items">
+                        ${items.map(r => renderReminderCard(r, 'calendar', dateKey)).join('')}
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    // 已完成的
+    if (completed.length > 0) {
+        html += `
+            <div class="cal-completed-section">
+                <div class="cal-completed-header">✅ Completed (${completed.length})</div>
+                <div class="cal-reminders-list completed-list">
+                    ${completed.map(r => renderReminderCard(r, 'calendar')).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function formatDateStr(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function deleteReminder(reminderId) {
+    if (!confirm('Delete this reminder?')) return;
+    
+    const index = AppData.actions.findIndex(a => a.id === reminderId);
+    if (index !== -1) {
+        AppData.actions.splice(index, 1);
+        renderCalendarReminders();
+        renderRemindersHub();
+        showToast('Reminder deleted');
+    }
+}
+
+// Date Picker Modal
+function toggleCalendarPicker() {
+    const overlay = document.getElementById('cal-picker-overlay');
+    const modal = document.getElementById('cal-picker-modal');
+    
+    if (modal.classList.contains('show')) {
+        overlay.classList.remove('show');
+        modal.classList.remove('show');
+    } else {
+        overlay.classList.add('show');
+        modal.classList.add('show');
+        // 默认使用当前的viewMode
+        CalendarState.pickerMode = CalendarState.viewMode;
+        updatePickerTabs();
+        renderPickerGrid();
+    }
+}
+
+function switchPickerTab(mode, element) {
+    CalendarState.pickerMode = mode;
+    updatePickerTabs();
+    renderPickerGrid();
+}
+
+function updatePickerTabs() {
+    document.querySelectorAll('.cal-picker-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.type === CalendarState.pickerMode);
+    });
+}
+
+function changePickerMonth(delta) {
+    if (CalendarState.pickerMode === 'month') {
+        // 在月视图下切换年
+        CalendarState.pickerMonth.setFullYear(CalendarState.pickerMonth.getFullYear() + delta);
+    } else {
+        // 在日/周视图下切换月
+        CalendarState.pickerMonth.setMonth(CalendarState.pickerMonth.getMonth() + delta);
+    }
+    renderPickerGrid();
+}
+
+function renderPickerGrid() {
+    if (CalendarState.pickerMode === 'day') {
+        renderPickerDayGrid();
+    } else if (CalendarState.pickerMode === 'week') {
+        renderPickerWeekGrid();
+    } else {
+        renderPickerMonthGrid();
+    }
+}
+
+// Day模式：按月选日
+function renderPickerDayGrid() {
+    const monthLabel = document.getElementById('cal-picker-month');
+    const grid = document.getElementById('cal-picker-grid');
+    
+    const year = CalendarState.pickerMonth.getFullYear();
+    const month = CalendarState.pickerMonth.getMonth();
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    if (monthLabel) {
+        monthLabel.textContent = `${monthNames[month]} ${year}`;
+    }
+    
+    if (!grid) return;
+    
+    grid.className = 'cal-picker-grid';
+    
+    // 统计每天的reminder数量
+    const reminderCounts = {};
+    AppData.actions.filter(a => a.dueDate).forEach(a => {
+        reminderCounts[a.dueDate] = (reminderCounts[a.dueDate] || 0) + 1;
+    });
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDayOfWeek = firstDay.getDay();
+    
+    // Weekday headers
+    let html = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => 
+        `<div class="cal-picker-day" style="font-weight: 600; color: var(--text-secondary); cursor: default;">${d}</div>`
+    ).join('');
+    
+    // Previous month
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+        html += `<div class="cal-picker-day other">${prevMonthLastDay - i}</div>`;
+    }
+    
+    // Current month
+    const todayStr = DateHelper.today;
+    
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === CalendarState.selectedDate;
+        const count = reminderCounts[dateStr] || 0;
+        
+        let classes = 'cal-picker-day';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+        
+        html += `<div class="${classes}" onclick="selectPickerDate('${dateStr}')">${day}${count > 0 ? `<span class="cal-picker-day-badge">${count}</span>` : ''}</div>`;
+    }
+    
+    grid.innerHTML = html;
+}
+
+// Week模式：按月选周
+function renderPickerWeekGrid() {
+    const monthLabel = document.getElementById('cal-picker-month');
+    const grid = document.getElementById('cal-picker-grid');
+    
+    const year = CalendarState.pickerMonth.getFullYear();
+    const month = CalendarState.pickerMonth.getMonth();
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    if (monthLabel) {
+        monthLabel.textContent = `${monthNames[month]} ${year}`;
+    }
+    
+    if (!grid) return;
+    
+    grid.className = 'cal-picker-grid week-grid';
+    
+    // 获取当月的所有周
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    let html = '';
+    let weekNum = 1;
+    let currentWeekStart = new Date(firstDay);
+    currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
+    
+    while (currentWeekStart <= lastDay && weekNum <= 6) {
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        
+        const weekStartStr = formatDateStr(currentWeekStart);
+        const weekEndStr = formatDateStr(weekEnd);
+        const isSelected = CalendarState.selectedWeek === weekStartStr;
+        
+        // 统计这周的reminder数量
+        const count = AppData.actions.filter(a => {
+            if (!a.dueDate) return false;
+            return a.dueDate >= weekStartStr && a.dueDate <= weekEndStr;
+        }).length;
+        
+        let classes = 'cal-picker-item';
+        if (isSelected) classes += ' selected';
+        
+        // 格式化日期范围
+        const startMonth = currentWeekStart.getMonth();
+        const endMonth = weekEnd.getMonth();
+        let rangeLabel = '';
+        if (startMonth === endMonth) {
+            rangeLabel = `${currentWeekStart.getDate()} - ${weekEnd.getDate()}`;
+        } else {
+            rangeLabel = `${shortMonths[startMonth]} ${currentWeekStart.getDate()} - ${shortMonths[endMonth]} ${weekEnd.getDate()}`;
+        }
+        
+        html += `
+            <div class="${classes}" onclick="selectPickerWeek('${weekStartStr}')">
+                <div class="cal-picker-item-title">Week ${weekNum}</div>
+                <div class="cal-picker-item-range">${rangeLabel}</div>
+                ${count > 0 ? `<div class="cal-picker-item-badge">${count}</div>` : ''}
+            </div>
+        `;
+        
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+        weekNum++;
+    }
+    
+    grid.innerHTML = html;
+}
+
+// Month模式：按年选月
+function renderPickerMonthGrid() {
+    const monthLabel = document.getElementById('cal-picker-month');
+    const grid = document.getElementById('cal-picker-grid');
+    
+    const year = CalendarState.pickerMonth.getFullYear();
+    
+    if (monthLabel) {
+        monthLabel.textContent = `${year}`;
+    }
+    
+    if (!grid) return;
+    
+    grid.className = 'cal-picker-grid month-grid';
+    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const todayMonth = new Date(DateHelper.today).getMonth();
+    const todayYear = new Date(DateHelper.today).getFullYear();
+    
+    let html = '';
+    
+    for (let i = 0; i < 12; i++) {
+        const monthStr = `${year}-${String(i + 1).padStart(2, '0')}`;
+        const isSelected = CalendarState.selectedMonth === monthStr;
+        const isCurrentMonth = (i === todayMonth && year === todayYear);
+        
+        // 统计这月的reminder数量
+        const count = AppData.actions.filter(a => {
+            if (!a.dueDate) return false;
+            return a.dueDate.startsWith(monthStr);
+        }).length;
+        
+        let classes = 'cal-picker-item';
+        if (isSelected) classes += ' selected';
+        if (isCurrentMonth) classes += ' today';
+        
+        html += `
+            <div class="${classes}" onclick="selectPickerMonth('${monthStr}')">
+                <div class="cal-picker-item-title">${monthNames[i]}</div>
+                ${count > 0 ? `<div class="cal-picker-item-badge">${count}</div>` : ''}
+            </div>
+        `;
+    }
+    
+    grid.innerHTML = html;
+}
+
+function selectPickerDate(dateStr) {
+    CalendarState.selectedDate = dateStr;
+    CalendarState.viewMode = 'day'; // 切换外层Tab到Day
+    
+    // 更新日期范围以包含选中的日期
+    const selectedDate = new Date(dateStr);
+    const dayOfWeek = selectedDate.getDay();
+    CalendarState.dateRangeStart = new Date(selectedDate);
+    CalendarState.dateRangeStart.setDate(selectedDate.getDate() - dayOfWeek);
+    
+    toggleCalendarPicker();
+    updateCalendarViewTabs();
+    renderCalendar();
+}
+
+function selectPickerWeek(weekStartStr) {
+    CalendarState.selectedWeek = weekStartStr;
+    CalendarState.selectedDate = weekStartStr;
+    CalendarState.viewMode = 'week'; // 切换外层Tab到Week
+    
+    const selectedDate = new Date(weekStartStr);
+    CalendarState.dateRangeStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    
+    toggleCalendarPicker();
+    updateCalendarViewTabs();
+    renderCalendar();
+}
+
+function selectPickerMonth(monthStr) {
+    CalendarState.selectedMonth = monthStr;
+    CalendarState.selectedDate = monthStr + '-01';
+    CalendarState.viewMode = 'month'; // 切换外层Tab到Month
+    
+    CalendarState.dateRangeStart = new Date(parseInt(monthStr.split('-')[0]), 0, 1);
+    
+    toggleCalendarPicker();
+    updateCalendarViewTabs();
+    renderCalendar();
+}
+
+function selectQuickDate(type) {
+    if (type === 'today') {
+        CalendarState.viewMode = 'day';
+        selectPickerDate(DateHelper.today);
+    } else if (type === 'tomorrow') {
+        CalendarState.viewMode = 'day';
+        const tomorrow = new Date(DateHelper.today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        selectPickerDate(formatDateStr(tomorrow));
+    } else if (type === 'thisWeek') {
+        CalendarState.viewMode = 'week';
+        const today = new Date(DateHelper.today);
+        const dayOfWeek = today.getDay();
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - dayOfWeek);
+        selectPickerWeek(formatDateStr(weekStart));
+    }
+}
+
+// 更新外层Calendar视图的Tab
+function updateCalendarViewTabs() {
+    document.querySelectorAll('.cal-view-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.view === CalendarState.viewMode);
+    });
+}
+
+function showAddReminderModal() {
+    // 使用现有的添加Action模态框
+    showAddActionModal();
+}
+
+// ========================================
+// Follow-up Accept Logic
+// ========================================
+
+function acceptAISuggestion(meetingId, index, actionTitle, button) {
+    const meeting = AppData.getMeeting(meetingId);
+    if (!meeting) {
+        console.error('Meeting not found:', meetingId);
+        return;
+    }
+    
+    // 检查是否已存在
+    const existingAction = AppData.actions.find(a => 
+        a.meetingId === meetingId && a.title === actionTitle
+    );
+    
+    if (existingAction) {
+        showToast('Already in My Calendar');
+        return;
+    }
+    
+    // 计算明天的日期作为默认
+    const tomorrow = new Date(DateHelper.today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = formatDateStr(tomorrow);
+    
+    // Accept - 添加到 My Calendar，默认日期为明天
+    const newAction = {
+        id: 'action_' + Date.now(),
+        title: actionTitle,
+        status: 'pending',
+        contactIds: meeting.contactIds || [],
+        meetingId: meetingId,
+        dueDate: tomorrowStr, // 默认明天
+        createdAt: new Date().toISOString(),
+        source: 'ai_extracted',
+        aiSuggested: true
+    };
+    AppData.actions.unshift(newAction);
+    
+    console.log('Added action:', newAction);
+    console.log('Total actions now:', AppData.actions.length);
+    
+    // 动画效果：条目移动到 My Calendar
+    const suggestionItem = button ? button.closest('.md-suggestion-item') : null;
+    if (suggestionItem) {
+        suggestionItem.classList.add('accepting');
+    }
+    
+    // 无论动画是否存在，都重新渲染 Meeting Detail
+    setTimeout(() => {
+        showMeetingDetail(meetingId);
+    }, suggestionItem ? 300 : 0);
+    
+    showToast('Added to My Calendar ✓');
+    
+    // 刷新其他视图
+    renderRemindersHub();
+    if (AppState.currentPage === 'calendar') {
+        renderCalendar();
+    }
 }
 
 function renderActionHubItem(action) {
@@ -591,7 +1505,7 @@ function completeActionFromHub(actionId, event) {
     setTimeout(() => {
         actionItem.classList.add('removed');
         setTimeout(() => {
-            renderActionHub();
+            renderRemindersHub();
         }, 300);
     }, 500);
 }
@@ -623,7 +1537,7 @@ function renderTodayMeetings() {
 
         let actionStatus = '';
         if (pendingActions.length > 0) {
-            actionStatus = `<div class="meeting-actions-preview pending">${pendingActions.length} pending</div>`;
+            actionStatus = `<div class="meeting-actions-preview pending">${pendingActions.length} reminder${pendingActions.length > 1 ? 's' : ''}</div>`;
         } else if (completedActions.length > 0) {
             actionStatus = `<div class="meeting-actions-preview done">✅ All done</div>`;
         }
@@ -944,7 +1858,7 @@ function completeActionFromList(actionId, event) {
 
     setTimeout(() => {
         renderActionList();
-        renderActionHub();
+        renderRemindersHub();
     }, 500);
 }
 
@@ -1011,7 +1925,7 @@ function renderMeetingList() {
 
             let actionPreview = '';
             if (pendingActions.length > 0) {
-                actionPreview = `<div class="meeting-list-actions">${pendingActions.length} pending action${pendingActions.length > 1 ? 's' : ''}</div>`;
+                actionPreview = `<div class="meeting-list-actions">${pendingActions.length} reminder${pendingActions.length > 1 ? 's' : ''}</div>`;
             }
 
             html += `
@@ -1101,62 +2015,91 @@ function showMeetingDetail(meetingId) {
             </div>
         </div>
 
-        <!-- 🔥 Action Items - 置顶突出 -->
-        <div class="md-actions-section md-actions-prominent">
-            <div class="md-actions-header">
-                <div class="md-actions-title">
-                    <span class="md-actions-icon">✅</span>
-                    Action Items
-                    <span class="action-badge ${pendingActions.length > 0 ? 'has-pending' : ''}">${pendingActions.length}</span>
+        <!-- 📅 Follow-up Reminders (Accept 模式) -->
+        <div class="md-followups-section">
+            <div class="md-followups-header">
+                <div class="md-followups-title">
+                    <span>📅</span>
+                    <span>Follow-ups</span>
                 </div>
-                ${pendingActions.length === 0 ? '<span class="md-actions-done">All done!</span>' : ''}
             </div>
             
-            ${pendingActions.length > 0 ? pendingActions.map(a => {
-                const isOverdue = DateHelper.isOverdue(a.dueDate);
-                const isToday = DateHelper.isToday(a.dueDate);
-                let dueBadge = '';
-                if (isOverdue) {
-                    dueBadge = '<span class="md-action-due-badge overdue">Overdue</span>';
-                } else if (isToday) {
-                    dueBadge = '<span class="md-action-due-badge today">Today</span>';
-                }
-                return `
-                <div class="md-action-item ${isOverdue ? 'overdue' : ''}" id="md-action-${a.id}">
-                    <div class="md-action-checkbox" onclick="completeActionFromMeeting('${a.id}', this)"></div>
-                    <div class="md-action-content">
-                        <div class="md-action-text" onclick="enableInlineEdit('${a.id}', this)">${a.title}</div>
-                        <div class="md-action-meta">
-                            <span onclick="editDueDate('${a.id}')">${a.dueDate ? '📅 ' + DateHelper.formatDate(a.dueDate) : '📅 Set due'}</span>
-                            ${dueBadge}
+            <!-- AI 建议的 Follow-ups（只显示未accept的） -->
+            ${(() => {
+                const allSuggestions = summaryData.nextActions || [];
+                const unacceptedSuggestions = allSuggestions.filter(action => 
+                    !meetingActions.some(a => a.title === action)
+                );
+                
+                // 如果有AI建议
+                if (allSuggestions.length > 0) {
+                    if (unacceptedSuggestions.length > 0) {
+                        // 还有未添加的
+                        return `
+                        <div class="md-ai-suggestions">
+                            <div class="md-ai-label">
+                                <span>✨</span> AI Suggested
+                            </div>
+                            ${unacceptedSuggestions.map((action, i) => `
+                                <div class="md-suggestion-item" id="suggestion-${meetingId}-${i}">
+                                    <div class="md-suggestion-text">${action}</div>
+                                    <button class="md-suggestion-add-btn" 
+                                            onclick="acceptAISuggestion('${meetingId}', ${i}, '${action.replace(/'/g, "\\'")}', this)">
+                                        <span>+</span> Add
+                                    </button>
+                                </div>
+                            `).join('')}
                         </div>
-                    </div>
-                </div>
-            `}).join('') : `
-                <div class="md-no-actions">
-                    <span>🎉</span>
-                    <span>No pending actions</span>
-                </div>
-            `}
+                        `;
+                    } else {
+                        // 全部已添加
+                        return `
+                        <div class="md-ai-suggestions-empty">
+                            <span>✨</span> All AI suggestions added to calendar
+                        </div>
+                        `;
+                    }
+                }
+                return '';
+            })()}
             
-            ${completedActions.length > 0 ? `
-                <div class="md-completed-section">
-                    <div class="md-completed-label">✓ Completed (${completedActions.length})</div>
-                    ${completedActions.slice(0, 3).map(a => `
-                        <div class="md-action-item completed">
-                            <div class="md-action-checkbox checked"></div>
-                            <div class="md-action-content">
-                                <div class="md-action-text">${a.title}</div>
+            <!-- My Calendar（已accept的 + 手动添加的） -->
+            ${pendingActions.length > 0 ? `
+                <div class="md-reminders-list">
+                    <div class="md-reminders-label">📋 My Calendar</div>
+                    ${pendingActions.map(a => `
+                        <div class="md-reminder-item">
+                            <div class="md-reminder-checkbox ${a.status === 'completed' ? 'checked' : ''}" 
+                                 onclick="toggleReminderComplete('${a.id}', this)"></div>
+                            <div class="md-reminder-content">
+                                <div class="md-reminder-text" onclick="event.stopPropagation(); enableInlineEdit('${a.id}', this)">${a.title}</div>
+                                <span class="md-reminder-date" onclick="event.stopPropagation(); editDueDate('${a.id}')">
+                                    📅 ${a.dueDate ? DateHelper.formatDate(a.dueDate) : 'Set date'}
+                                </span>
                             </div>
                         </div>
                     `).join('')}
-                    ${completedActions.length > 3 ? `<div class="md-more-completed">+${completedActions.length - 3} more</div>` : ''}
                 </div>
             ` : ''}
             
-            <div class="md-add-action-row" onclick="showAddActionForMeeting('${meetingId}')">
+            <!-- 已完成的 -->
+            ${completedActions.length > 0 ? `
+                <div class="md-completed-list">
+                    <div class="md-completed-label">✅ Done (${completedActions.length})</div>
+                    ${completedActions.slice(0, 2).map(a => `
+                        <div class="md-reminder-item completed">
+                            <div class="md-reminder-checkbox checked"></div>
+                            <div class="md-reminder-content">
+                                <div class="md-reminder-text">${a.title}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+            
+            <div class="md-add-followup" onclick="showAddActionForMeeting('${meetingId}')">
                 <span>+</span>
-                <span>Add Action</span>
+                <span>Add Follow-up</span>
             </div>
         </div>
 
@@ -1236,18 +2179,18 @@ function showMeetingDetail(meetingId) {
         </div>
     `;
 
-    // Show the page
+    // Hide tab bar and sticky bar first
+    const tabBar = document.querySelector('.tab-bar');
+    const stickyBar = document.querySelector('.sticky-bar');
+    if (tabBar) tabBar.style.display = 'none';
+    if (stickyBar) stickyBar.style.display = 'none';
+    
+    // Show the meeting detail page
     const meetingDetailPage = document.getElementById('meeting-detail-page');
     if (meetingDetailPage) {
         meetingDetailPage.style.display = 'flex';
         meetingDetailPage.classList.add('active');
     }
-    
-    // Hide tab bar and sticky bar
-    const tabBar = document.querySelector('.tab-bar');
-    const stickyBar = document.querySelector('.sticky-bar');
-    if (tabBar) tabBar.style.display = 'none';
-    if (stickyBar) stickyBar.style.display = 'none';
 }
 
 function closeMeetingDetail() {
@@ -1257,13 +2200,32 @@ function closeMeetingDetail() {
         meetingDetailPage.style.display = 'none';
     }
     
-    // Restore tab bar
+    // Restore tab bar and sticky bar
     const tabBar = document.querySelector('.tab-bar');
+    const stickyBar = document.querySelector('.sticky-bar');
     if (tabBar) tabBar.style.display = 'flex';
+    if (stickyBar) stickyBar.style.display = 'flex';
     
-    // Go back to previous page or home
+    // Reset state - don't call showPage to avoid double state changes
+    // Just ensure the previous page is visible
     const prevPage = AppState.previousPage || 'home';
-    showPage(prevPage);
+    
+    // Show the previous page element directly
+    const pageId = prevPage === 'home' ? 'home-page' : 
+                   prevPage === 'contacts' ? 'contacts-list-page' :
+                   prevPage === 'contact' ? 'contact-page' :
+                   prevPage === 'calendar' ? 'calendar-page' :
+                   prevPage === 'meetingList' ? 'meeting-list-page' :
+                   prevPage === 'me' ? 'me-page' : 'home-page';
+    
+    const prevPageEl = document.getElementById(pageId);
+    if (prevPageEl) {
+        prevPageEl.style.display = 'block';
+    }
+    
+    // Update current page state
+    AppState.currentPage = prevPage;
+    AppState.previousPage = null;
 }
 
 function completeActionFromMeeting(actionId, checkbox) {
@@ -1323,7 +2285,7 @@ function completeActionFromModal(actionId, event) {
     showToast('Action completed! ✓');
 
     setTimeout(() => {
-        renderActionHub();
+        renderRemindersHub();
         if (AppState.currentPage === 'actionList') {
             renderActionList();
         }
@@ -1506,7 +2468,7 @@ function completeActionFromContact(actionId, checkbox) {
     
     setTimeout(() => {
         renderContactDetail();
-        renderActionHub();
+        renderRemindersHub();
     }, 300);
 }
 
@@ -1673,10 +2635,10 @@ function enableInlineEdit(actionId, element) {
 
 // Refresh all views
 function refreshAllViews() {
-    renderActionHub();
+    renderRemindersHub();
     renderTodayMeetings();
-    if (AppState.currentPage === 'actionList') {
-        renderActionList();
+    if (AppState.currentPage === 'calendar') {
+        renderCalendar();
     }
     if (AppState.currentPage === 'contact') {
         renderContactDetail();
@@ -2337,10 +3299,28 @@ function filterContacts(filter) {
 
 // Make functions globally available
 window.showPage = showPage;
-window.toggleActionHub = toggleActionHub;
-window.switchActionHubTab = switchActionHubTab;
-window.switchStatsRange = switchStatsRange;
-window.completeActionFromHub = completeActionFromHub;
+window.toggleReminderComplete = toggleReminderComplete;
+window.renderCalendar = renderCalendar;
+window.shiftCalendarDates = shiftCalendarDates;
+window.selectCalendarDate = selectCalendarDate;
+window.switchCalendarView = switchCalendarView;
+window.deleteReminder = deleteReminder;
+window.snoozeReminder = snoozeReminder;
+window.renderReminderCard = renderReminderCard;
+window.getMonthShort = getMonthShort;
+window.getWeekdayShort = getWeekdayShort;
+window.toggleCalendarPicker = toggleCalendarPicker;
+window.switchPickerTab = switchPickerTab;
+window.changePickerMonth = changePickerMonth;
+window.selectPickerDate = selectPickerDate;
+window.selectPickerWeek = selectPickerWeek;
+window.selectPickerMonth = selectPickerMonth;
+window.selectQuickDate = selectQuickDate;
+window.updateCalendarViewTabs = updateCalendarViewTabs;
+window.selectCalendarWeek = selectCalendarWeek;
+window.selectCalendarMonth = selectCalendarMonth;
+window.showAddReminderModal = showAddReminderModal;
+window.acceptAISuggestion = acceptAISuggestion;
 window.showMeetingDetail = showMeetingDetail;
 window.closeMeetingDetail = closeMeetingDetail;
 window.showContactDetail = showContactDetail;

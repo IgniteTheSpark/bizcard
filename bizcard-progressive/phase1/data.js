@@ -8,6 +8,7 @@ const AppData = {
         id: 'user_001',
         name: 'Ethan Carter',
         role: 'Product Designer',
+        company: 'Bitflux Insurance',
         email: 'ethan.carter@bizcard.com',
         avatar: 'E',
         plan: 'Free',
