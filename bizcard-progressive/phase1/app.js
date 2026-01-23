@@ -194,6 +194,7 @@ function showPage(page) {
     // Update tab bar
     document.querySelectorAll('.tab-item').forEach(tab => tab.classList.remove('active'));
 
+    // Tab order: [0]=Home, [1]=Calendar, [2]=Contacts, [3]=Notifications, [4]=Me
     // Show selected page
     switch(page) {
         case 'home':
@@ -205,32 +206,36 @@ function showPage(page) {
         case 'calendar':
             document.getElementById('calendar-page').style.display = 'block';
             document.getElementById('calendar-page').classList.add('active');
+            document.querySelectorAll('.tab-item')[1].classList.add('active');
             if (stickyBar) stickyBar.style.display = 'none';
-            if (tabBar) tabBar.style.display = 'none';
+            // Tab bar 保持显示
             renderCalendar();
             break;
         case 'meetingList':
             document.getElementById('meeting-list-page').style.display = 'block';
             document.getElementById('meeting-list-page').classList.add('active');
             if (stickyBar) stickyBar.style.display = 'none';
+            if (tabBar) tabBar.style.display = 'none';
             renderMeetingList();
             break;
         case 'contacts':
             document.getElementById('contacts-list-page').style.display = 'block';
             document.getElementById('contacts-list-page').classList.add('active');
-            document.querySelectorAll('.tab-item')[1].classList.add('active');
+            document.querySelectorAll('.tab-item')[2].classList.add('active');
             renderContactList();
             break;
         case 'contact':
             document.getElementById('contact-page').style.display = 'block';
             document.getElementById('contact-page').classList.add('active');
-            document.querySelectorAll('.tab-item')[1].classList.add('active');
+            document.querySelectorAll('.tab-item')[2].classList.add('active');
+            if (stickyBar) stickyBar.style.display = 'none';
+            if (tabBar) tabBar.style.display = 'none';
             renderContactDetail();
             break;
         case 'me':
             document.getElementById('me-page').style.display = 'block';
             document.getElementById('me-page').classList.add('active');
-            document.querySelectorAll('.tab-item')[3].classList.add('active');
+            document.querySelectorAll('.tab-item')[4].classList.add('active');
             if (stickyBar) stickyBar.style.display = 'none';
             break;
     }
@@ -383,10 +388,12 @@ function renderReminderCard(reminder, context = 'calendar', groupDateKey = null)
     `;
     
     // 首页卡片 - 更紧凑设计
+    // 日期列可点击修改日期，其他区域点击跳转 Calendar
     if (context === 'home') {
         return `
             <div class="reminder-card home-card ${isCompleted ? 'completed' : ''}" onclick="showPage('calendar')">
-                <div class="rc-date-col-mini" style="background: ${dateColGradient}">
+                <div class="rc-date-col-mini clickable" style="background: ${dateColGradient}" 
+                     onclick="event.stopPropagation(); editDueDate('${reminder.id}')" title="Change date">
                     ${reminder.dueDate ? `
                         <span class="rc-date-month">${getMonthShort(reminder.dueDate)}</span>
                         <span class="rc-date-day">${new Date(reminder.dueDate).getDate()}</span>
@@ -405,10 +412,12 @@ function renderReminderCard(reminder, context = 'calendar', groupDateKey = null)
     }
     
     // 日历页面卡片（含左滑操作）
+    // 日期列可点击修改日期
     return `
         <div class="reminder-card-wrapper" id="rcw-${reminder.id}">
             <div class="reminder-card ${isCompleted ? 'completed' : ''}" id="rc-${reminder.id}">
-                <div class="rc-date-col" style="background: ${dateColGradient}">
+                <div class="rc-date-col clickable" style="background: ${dateColGradient}" 
+                     onclick="event.stopPropagation(); editDueDate('${reminder.id}')" title="Change date">
                     ${reminder.dueDate ? `
                         <span class="rc-date-month">${getMonthShort(reminder.dueDate)}</span>
                         <span class="rc-date-day">${new Date(reminder.dueDate).getDate()}</span>
@@ -424,7 +433,7 @@ function renderReminderCard(reminder, context = 'calendar', groupDateKey = null)
                 </div>
             </div>
             <div class="rc-swipe-actions">
-                ${reminder.dueDate ? `<button class="rc-swipe-btn snooze" onclick="snoozeReminder('${reminder.id}')">⏰ Snooze</button>` : ''}
+                <button class="rc-swipe-btn snooze" onclick="snoozeReminder('${reminder.id}')">⏰ Snooze</button>
                 <button class="rc-swipe-btn delete" onclick="deleteReminder('${reminder.id}')">🗑 Delete</button>
             </div>
         </div>
@@ -678,72 +687,202 @@ function toggleReminderComplete(reminderId, checkbox) {
 }
 
 // ========================================
-// Calendar Page (紧凑时间轴设计)
+// Calendar Page (Lark-style Design)
 // ========================================
 
 const CalendarState = {
-    selectedDate: '2026-01-15', // Today
-    selectedWeek: null,
-    selectedMonth: null,
-    viewMode: 'day', // 'day', 'week', 'month'
-    dateRangeStart: new Date(2026, 0, 12), // 一周的起始
-    pickerMonth: new Date(2026, 0, 1),
-    pickerMode: 'day' // Picker内部的模式
+    selectedDate: '2026-01-22', // 当前选中的日期（会在 initCalendarWeek 中同步为 DateHelper.today）
+    viewMode: 'day', // 'day' or 'month'
+    weekStartDate: null, // 当前周的起始日期（周日）
+    pickerOpen: false,
+    monthExpandedDate: null // 月视图中展开的日期
 };
 
-function renderCalendar() {
-    renderDateSelector();
-    renderCalendarReminders();
+// 初始化周起始日期
+function initCalendarWeek() {
+    // 同步为当前日期
+    if (DateHelper && DateHelper.today) {
+        CalendarState.selectedDate = DateHelper.today;
+    }
+    
+    const today = new Date(CalendarState.selectedDate);
+    const dayOfWeek = today.getDay();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - dayOfWeek);
+    CalendarState.weekStartDate = weekStart;
 }
 
-// 渲染横向日期选择器（根据视图模式）
-function renderDateSelector() {
-    const container = document.getElementById('cal-dates-scroll');
-    if (!container) return;
+// 主渲染函数
+function renderCalendar() {
+    initCalendarWeek();
+    updateCalendarHeader();
     
     if (CalendarState.viewMode === 'day') {
-        renderDaySelector(container);
-    } else if (CalendarState.viewMode === 'week') {
-        renderWeekSelector(container);
+        renderDayView();
     } else {
-        renderMonthSelector(container);
+        renderMonthView();
     }
+    
+    // 设置触摸滑动事件
+    setupCalendarSwipe();
 }
 
-function renderDaySelector(container) {
-    // 移除特殊视图类
-    container.classList.remove('week-view', 'month-view');
+// 设置周日期条的滑动手势（支持触摸和鼠标拖拽）
+function setupCalendarSwipe() {
+    const weekStrip = document.getElementById('cal-week-strip');
+    const monthView = document.getElementById('cal-month-view');
     
-    // 统计每天的reminder数量
+    const minSwipeDistance = 50;
+    
+    function handleSwipe(element, onLeft, onRight) {
+        if (!element) return;
+        
+        let startX = 0;
+        let isDragging = false;
+        
+        // 触摸事件
+        element.addEventListener('touchstart', (e) => {
+            startX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        
+        element.addEventListener('touchend', (e) => {
+            const endX = e.changedTouches[0].screenX;
+            const diff = startX - endX;
+            
+            if (Math.abs(diff) > minSwipeDistance) {
+                if (diff > 0) {
+                    onLeft(); // 向左滑 -> 下一周/月
+                } else {
+                    onRight(); // 向右滑 -> 上一周/月
+                }
+            }
+        }, { passive: true });
+        
+        // 鼠标拖拽事件
+        element.addEventListener('mousedown', (e) => {
+            startX = e.screenX;
+            isDragging = true;
+            element.style.cursor = 'grabbing';
+        });
+        
+        element.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+            }
+        });
+        
+        element.addEventListener('mouseup', (e) => {
+            if (isDragging) {
+                const endX = e.screenX;
+                const diff = startX - endX;
+                
+                if (Math.abs(diff) > minSwipeDistance) {
+                    if (diff > 0) {
+                        onLeft();
+                    } else {
+                        onRight();
+                    }
+                }
+                
+                isDragging = false;
+                element.style.cursor = '';
+            }
+        });
+        
+        element.addEventListener('mouseleave', () => {
+            isDragging = false;
+            element.style.cursor = '';
+        });
+    }
+    
+    // 日视图：滑动切换周
+    handleSwipe(weekStrip, () => shiftWeek(1), () => shiftWeek(-1));
+    
+    // 月视图：滑动切换月
+    handleSwipe(monthView, () => shiftMonth(1), () => shiftMonth(-1));
+}
+
+// 更新头部日期显示
+function updateCalendarHeader() {
+    const headerDate = document.getElementById('cal-header-date');
+    if (!headerDate) return;
+    
+    const date = new Date(CalendarState.selectedDate);
+    const month = date.getMonth() + 1;
+    headerDate.textContent = `${month}月`;
+}
+
+// 切换视图
+function switchCalendarView(view) {
+    CalendarState.viewMode = view;
+    CalendarState.monthExpandedDate = null;
+    
+    // 更新按钮状态
+    document.querySelectorAll('.cal-view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+    });
+    
+    // 显示/隐藏对应容器
+    const dayView = document.getElementById('cal-day-view');
+    const monthView = document.getElementById('cal-month-view');
+    
+    if (view === 'day') {
+        if (dayView) dayView.style.display = 'block';
+        if (monthView) monthView.style.display = 'none';
+        renderDayView();
+    } else {
+        if (dayView) dayView.style.display = 'none';
+        if (monthView) monthView.style.display = 'block';
+        renderMonthView();
+    }
+    
+    updateCalendarHeader();
+}
+
+// ========== 日视图 ==========
+function renderDayView() {
+    renderWeekStrip();
+    renderDayReminders();
+}
+
+// 渲染周日期条
+function renderWeekStrip() {
+    const container = document.getElementById('cal-week-dates');
+    if (!container) return;
+    
+    // 统计每天的 pending reminder 数量
     const reminderCounts = {};
-    AppData.actions.filter(a => a.dueDate).forEach(a => {
+    AppData.actions.filter(a => a.dueDate && a.status !== 'completed').forEach(a => {
         reminderCounts[a.dueDate] = (reminderCounts[a.dueDate] || 0) + 1;
     });
     
-    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const todayStr = DateHelper.today;
-    
     let html = '';
     
     // 显示7天
     for (let i = 0; i < 7; i++) {
-        const date = new Date(CalendarState.dateRangeStart);
+        const date = new Date(CalendarState.weekStartDate);
         date.setDate(date.getDate() + i);
         
         const dateStr = formatDateStr(date);
         const isToday = dateStr === todayStr;
         const isSelected = dateStr === CalendarState.selectedDate;
-        const count = reminderCounts[dateStr] || 0;
+        const hasReminders = reminderCounts[dateStr] > 0;
         
-        let classes = 'cal-date-item';
+        // 判断是否是其他月份
+        const selectedMonth = new Date(CalendarState.selectedDate).getMonth();
+        const dateMonth = date.getMonth();
+        const isOtherMonth = dateMonth !== selectedMonth;
+        
+        let classes = 'cal-week-date';
         if (isToday) classes += ' today';
         if (isSelected) classes += ' selected';
+        if (isOtherMonth) classes += ' other-month';
         
         html += `
             <div class="${classes}" onclick="selectCalendarDate('${dateStr}')">
-                <span class="cal-date-weekday">${weekdays[date.getDay()]}</span>
-                <span class="cal-date-day">${date.getDate()}</span>
-                ${count > 0 ? `<span class="cal-date-badge">${count}</span>` : ''}
+                <span class="date-num">${date.getDate()}</span>
+                ${hasReminders ? '<span class="date-dot"></span>' : ''}
             </div>
         `;
     }
@@ -751,298 +890,533 @@ function renderDaySelector(container) {
     container.innerHTML = html;
 }
 
-function renderWeekSelector(container) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonth = CalendarState.dateRangeStart.getMonth();
-    const currentYear = CalendarState.dateRangeStart.getFullYear();
-    
-    // 添加week-view类以获得统一样式
-    container.classList.add('week-view');
-    container.classList.remove('month-view');
-    
-    // 获取当月的所有周
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    
-    let html = '';
-    let weekNum = 1;
-    let currentWeekStart = new Date(firstDay);
-    // 调整到周日开始
-    currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
-    
-    while (currentWeekStart <= lastDay && weekNum <= 5) {
-        const weekEnd = new Date(currentWeekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        
-        const weekStartStr = formatDateStr(currentWeekStart);
-        const weekEndStr = formatDateStr(weekEnd);
-        const isSelected = CalendarState.selectedWeek === weekStartStr;
-        
-        // 统计这周的reminder数量
-        const count = AppData.actions.filter(a => {
-            if (!a.dueDate) return false;
-            return a.dueDate >= weekStartStr && a.dueDate <= weekEndStr;
-        }).length;
-        
-        let classes = 'cal-date-item';
-        if (isSelected) classes += ' selected';
-        
-        // 格式化日期范围
-        const startDate = currentWeekStart.getDate();
-        const endDate = weekEnd.getDate();
-        
-        html += `
-            <div class="${classes}" onclick="selectCalendarWeek('${weekStartStr}')">
-                <span class="cal-date-weekday">W${weekNum}</span>
-                <span class="cal-date-day">${startDate}-${endDate}</span>
-                ${count > 0 ? `<span class="cal-date-badge">${count}</span>` : ''}
-            </div>
-        `;
-        
-        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-        weekNum++;
-    }
-    
-    container.innerHTML = html;
-}
-
-function renderMonthSelector(container) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentYear = CalendarState.dateRangeStart.getFullYear();
-    const todayMonth = new Date(DateHelper.today).getMonth();
-    const todayYear = new Date(DateHelper.today).getFullYear();
-    
-    // 添加month-view类以获得统一样式
-    container.classList.add('month-view');
-    container.classList.remove('week-view');
-    
-    let html = '';
-    
-    for (let i = 0; i < 12; i++) {
-        const monthStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
-        const isSelected = CalendarState.selectedMonth === monthStr;
-        const isCurrentMonth = (i === todayMonth && currentYear === todayYear);
-        
-        // 统计这月的reminder数量
-        const count = AppData.actions.filter(a => {
-            if (!a.dueDate) return false;
-            return a.dueDate.startsWith(monthStr);
-        }).length;
-        
-        let classes = 'cal-date-item';
-        if (isSelected) classes += ' selected';
-        if (isCurrentMonth) classes += ' today';
-        
-        html += `
-            <div class="${classes}" onclick="selectCalendarMonth('${monthStr}')">
-                <span class="cal-date-weekday">${currentYear}</span>
-                <span class="cal-date-day">${months[i]}</span>
-                ${count > 0 ? `<span class="cal-date-badge">${count}</span>` : ''}
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-}
-
-function shiftCalendarDates(delta) {
-    if (CalendarState.viewMode === 'day') {
-        CalendarState.dateRangeStart.setDate(CalendarState.dateRangeStart.getDate() + delta);
-    } else if (CalendarState.viewMode === 'week') {
-        // 切换月份
-        CalendarState.dateRangeStart.setMonth(CalendarState.dateRangeStart.getMonth() + (delta > 0 ? 1 : -1));
-    } else {
-        // 切换年份
-        CalendarState.dateRangeStart.setFullYear(CalendarState.dateRangeStart.getFullYear() + (delta > 0 ? 1 : -1));
-    }
-    renderDateSelector();
-}
-
-function selectCalendarWeek(weekStartStr) {
-    CalendarState.selectedWeek = weekStartStr;
-    CalendarState.selectedDate = weekStartStr;
-    renderDateSelector();
-    renderCalendarReminders();
-}
-
-function selectCalendarMonth(monthStr) {
-    CalendarState.selectedMonth = monthStr;
-    CalendarState.selectedDate = monthStr + '-01';
-    renderDateSelector();
-    renderCalendarReminders();
-}
-
-function selectCalendarDate(dateStr) {
-    CalendarState.selectedDate = dateStr;
-    renderDateSelector();
-    renderCalendarReminders();
-}
-
-function switchCalendarView(view, element) {
-    CalendarState.viewMode = view;
-    
-    // 更新Tab状态
-    document.querySelectorAll('.cal-view-tab').forEach(tab => tab.classList.remove('active'));
-    if (element) element.classList.add('active');
-    
-    // 初始化选中状态
-    if (view === 'week' && !CalendarState.selectedWeek) {
-        const today = new Date(DateHelper.today);
-        const dayOfWeek = today.getDay();
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - dayOfWeek);
-        CalendarState.selectedWeek = formatDateStr(weekStart);
-    }
-    if (view === 'month' && !CalendarState.selectedMonth) {
-        CalendarState.selectedMonth = DateHelper.today.substring(0, 7);
-    }
-    
-    // 根据视图调整显示
-    renderDateSelector();
-    renderCalendarReminders();
-}
-
-function renderCalendarReminders() {
-    const titleEl = document.getElementById('cal-selected-title');
-    const countEl = document.getElementById('cal-reminder-count');
-    const container = document.getElementById('cal-reminders-container');
+// 渲染选中日期的 Reminders
+function renderDayReminders() {
+    const titleEl = document.getElementById('cal-day-title');
+    const countEl = document.getElementById('cal-day-count');
+    const container = document.getElementById('cal-reminders-list');
     
     if (!container) return;
     
-    // 获取选中日期的reminders
-    let reminders = [];
-    let dateTitle = '';
-    
-    if (CalendarState.viewMode === 'day') {
-        reminders = AppData.actions.filter(a => a.dueDate === CalendarState.selectedDate);
-        const date = new Date(CalendarState.selectedDate);
-        const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        dateTitle = `${weekdays[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`;
-    } else if (CalendarState.viewMode === 'week') {
-        const weekStart = new Date(CalendarState.dateRangeStart);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        
-        reminders = AppData.actions.filter(a => {
-            if (!a.dueDate) return false;
-            return a.dueDate >= formatDateStr(weekStart) && a.dueDate <= formatDateStr(weekEnd);
-        });
-        
-        dateTitle = `Week of ${formatDateStr(weekStart).split('-').slice(1).join('/')}`;
-    } else {
-        const monthStart = `${CalendarState.selectedDate.substring(0, 7)}-01`;
-        const monthEnd = `${CalendarState.selectedDate.substring(0, 7)}-31`;
-        
-        reminders = AppData.actions.filter(a => {
-            if (!a.dueDate) return false;
-            return a.dueDate >= monthStart && a.dueDate <= monthEnd;
-        });
-        
-        const date = new Date(CalendarState.selectedDate);
-        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-                       'July', 'August', 'September', 'October', 'November', 'December'];
-        dateTitle = `${months[date.getMonth()]} ${date.getFullYear()}`;
-    }
-    
-    // 更新标题
-    if (titleEl) titleEl.textContent = dateTitle;
-    if (countEl) countEl.textContent = `${reminders.length} reminder${reminders.length !== 1 ? 's' : ''}`;
-    
-    if (reminders.length === 0) {
-        container.innerHTML = `
-            <div class="cal-no-reminders">
-                <span>📭</span>
-                <span>No reminders</span>
-            </div>
-        `;
-        return;
-    }
-    
-    // 分离未完成和已完成
+    const reminders = AppData.actions.filter(a => a.dueDate === CalendarState.selectedDate);
     const pending = reminders.filter(r => r.status !== 'completed');
     const completed = reminders.filter(r => r.status === 'completed');
     
+    // 更新标题
+    const date = new Date(CalendarState.selectedDate);
+    const weekdaysCN = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const dateTitle = `${weekdaysCN[date.getDay()]}, ${date.getMonth() + 1}月${date.getDate()}日`;
+    
+    if (titleEl) titleEl.textContent = dateTitle;
+    if (countEl) countEl.textContent = `${pending.length} pending`;
+    
     let html = '';
     
-    // Day视图：直接列表
-    if (CalendarState.viewMode === 'day') {
-        if (pending.length > 0) {
-            html += `<div class="cal-reminders-list">
-                ${pending.map(r => renderReminderCard(r, 'calendar')).join('')}
-            </div>`;
-        }
+    if (pending.length === 0 && completed.length === 0) {
+        html = `<div class="cal-no-reminders"><span>📭</span><span>No reminders</span></div>`;
     } else {
-        // Week/Month视图：按日期分组，带颜色区分
-        const groupedByDate = {};
-        pending.forEach(r => {
-            const dateKey = r.dueDate || 'no-date';
-            if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
-            groupedByDate[dateKey].push(r);
-        });
-        
-        // 按日期排序
-        const sortedDates = Object.keys(groupedByDate).sort();
-        
-        // 日期颜色方案 - 基于星期几，与卡片日期列一致
-        // 0=Sun, 1=Mon, ..., 6=Sat
-        const weekdayColors = {
-            0: { bg: '#FCE7F3', border: '#EC4899', text: '#BE185D', gradient: 'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)' }, // 粉 Sun
-            1: { bg: '#EEF2FF', border: '#6366F1', text: '#4338CA', gradient: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }, // 紫 Mon
-            2: { bg: '#FEF3C7', border: '#F59E0B', text: '#B45309', gradient: 'linear-gradient(135deg, #F59E0B 0%, #EAB308 100%)' }, // 橙 Tue
-            3: { bg: '#DCFCE7', border: '#22C55E', text: '#15803D', gradient: 'linear-gradient(135deg, #22C55E 0%, #10B981 100%)' }, // 绿 Wed
-            4: { bg: '#E0F2FE', border: '#0EA5E9', text: '#0369A1', gradient: 'linear-gradient(135deg, #0EA5E9 0%, #06B6D4 100%)' }, // 蓝 Thu
-            5: { bg: '#F3E8FF', border: '#A855F7', text: '#7E22CE', gradient: 'linear-gradient(135deg, #A855F7 0%, #8B5CF6 100%)' }, // 浅紫 Fri
-            6: { bg: '#FEE2E2', border: '#EF4444', text: '#B91C1C', gradient: 'linear-gradient(135deg, #EF4444 0%, #F97316 100%)' }, // 红 Sat
-            nodate: { bg: '#F1F5F9', border: '#64748B', text: '#475569', gradient: 'linear-gradient(135deg, #94A3B8 0%, #64748B 100%)' } // 灰
-        };
-        
-        sortedDates.forEach((dateKey) => {
-            const items = groupedByDate[dateKey];
-            
-            // 根据星期几确定颜色
-            let color, dateLabel;
-            if (dateKey === 'no-date') {
-                color = weekdayColors.nodate;
-                dateLabel = 'No Date';
-            } else {
-                const d = new Date(dateKey);
-                const dayOfWeek = d.getDay();
-                color = weekdayColors[dayOfWeek];
-                
-                const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const isToday = dateKey === DateHelper.today;
-                dateLabel = isToday ? '📍 Today' : `${weekdays[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
-            }
-            
-            html += `
-                <div class="cal-date-group" style="--group-bg: ${color.bg}; --group-border: ${color.border}; --group-text: ${color.text}; --group-gradient: ${color.gradient};">
-                    <div class="cal-date-group-header">
-                        <span class="cal-date-group-label">${dateLabel}</span>
-                        <span class="cal-date-group-count">${items.length}</span>
-                    </div>
-                    <div class="cal-date-group-items">
-                        ${items.map(r => renderReminderCard(r, 'calendar', dateKey)).join('')}
-                    </div>
-                </div>
-            `;
+        if (pending.length > 0) {
+            html += pending.map(r => renderReminderCard(r, 'calendar')).join('');
+        }
+        if (completed.length > 0) {
+            html += renderDoneSection(completed, 'day');
+        }
+    }
+    
+    container.innerHTML = html;
+}
+
+// 选择日期
+function selectCalendarDate(dateStr) {
+    CalendarState.selectedDate = dateStr;
+    
+    // 更新周起始日期，确保选中日期在当前周内
+    const selectedDate = new Date(dateStr);
+    const dayOfWeek = selectedDate.getDay();
+    const weekStart = new Date(selectedDate);
+    weekStart.setDate(selectedDate.getDate() - dayOfWeek);
+    CalendarState.weekStartDate = weekStart;
+    
+    updateCalendarHeader();
+    renderWeekStrip();
+    renderDayReminders();
+}
+
+// 切换周
+function shiftWeek(delta) {
+    CalendarState.weekStartDate.setDate(CalendarState.weekStartDate.getDate() + delta * 7);
+    
+    // 选中新周的同一天
+    const selectedDate = new Date(CalendarState.selectedDate);
+    selectedDate.setDate(selectedDate.getDate() + delta * 7);
+    CalendarState.selectedDate = formatDateStr(selectedDate);
+    
+    updateCalendarHeader();
+    renderWeekStrip();
+    renderDayReminders();
+}
+
+// ========== 月视图 ==========
+function renderMonthView() {
+    const container = document.getElementById('cal-month-view');
+    if (!container) return;
+    
+    const date = new Date(CalendarState.selectedDate);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    // 统计每天的 pending reminder 数量和标题
+    const remindersByDate = {};
+    AppData.actions.filter(a => a.dueDate && a.status !== 'completed').forEach(a => {
+        if (!remindersByDate[a.dueDate]) {
+            remindersByDate[a.dueDate] = [];
+        }
+        remindersByDate[a.dueDate].push(a.title);
+    });
+    
+    // 构建月历 - 固定5行
+    const firstDay = new Date(year, month, 1);
+    const firstDayOfWeek = firstDay.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = DateHelper.today;
+    
+    // 构建35个格子（5行 x 7列）
+    const allDays = [];
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    
+    // 上月填充
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+        const d = prevMonthLastDay - i;
+        const prevMonth = month === 0 ? 12 : month;
+        const prevYear = month === 0 ? year - 1 : year;
+        allDays.push({ 
+            day: d, 
+            otherMonth: true, 
+            dateStr: `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`
         });
     }
     
-    // 已完成的
-    if (completed.length > 0) {
+    // 当月
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        allDays.push({ day, otherMonth: false, dateStr });
+    }
+    
+    // 下月填充至35个
+    let nextDay = 1;
+    while (allDays.length < 35) {
+        const nextMonth = month === 11 ? 1 : month + 2;
+        const nextYear = month === 11 ? year + 1 : year;
+        allDays.push({ 
+            day: nextDay, 
+            otherMonth: true, 
+            dateStr: `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(nextDay).padStart(2, '0')}`
+        });
+        nextDay++;
+    }
+    
+    // 计算展开日期所在的行（0-4）
+    let expandedRow = -1;
+    if (CalendarState.monthExpandedDate) {
+        const expandedDate = new Date(CalendarState.monthExpandedDate);
+        if (expandedDate.getMonth() === month && expandedDate.getFullYear() === year) {
+            const expandedDay = expandedDate.getDate();
+            expandedRow = Math.floor((firstDayOfWeek + expandedDay - 1) / 7);
+        }
+    }
+    
+    let html = '';
+    
+    if (expandedRow >= 0) {
+        // ===== 展开模式 =====
+        html += `<div class="cal-month-expanded-view">`;
+        
+        // 顶部固定区域
+        html += `<div class="cal-month-top-section">`;
+        
+        // 星期header
         html += `
-            <div class="cal-completed-section">
-                <div class="cal-completed-header">✅ Completed (${completed.length})</div>
-                <div class="cal-reminders-list completed-list">
-                    ${completed.map(r => renderReminderCard(r, 'calendar')).join('')}
-                </div>
+            <div class="cal-month-weekdays">
+                <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+            </div>
+        `;
+        
+        // 选中日期所在行
+        html += `<div class="cal-month-row selected-row">`;
+        for (let col = 0; col < 7; col++) {
+            const idx = expandedRow * 7 + col;
+            html += renderMonthCell(allDays[idx], remindersByDate, todayStr, true);
+        }
+        html += `</div>`;
+        
+        // 收起箭头
+        html += `<div class="cal-month-collapse-btn" onclick="closeMonthExpanded()">
+            <span class="collapse-arrow">▲</span>
+        </div>`;
+        
+        html += `</div>`; // end top-section
+        
+        // 中间可滚动的内容区域
+        const expandedReminders = AppData.actions.filter(a => a.dueDate === CalendarState.monthExpandedDate);
+        const pending = expandedReminders.filter(r => r.status !== 'completed');
+        const completed = expandedReminders.filter(r => r.status === 'completed');
+        
+        html += `<div class="cal-month-content-section">`;
+        html += `<div class="cal-month-events-scroll">`;
+        
+        if (pending.length > 0) {
+            html += pending.map(r => renderReminderCard(r, 'calendar')).join('');
+        } else {
+            html += `<div class="cal-no-events">No reminders</div>`;
+        }
+        
+        if (completed.length > 0) {
+            html += renderDoneSection(completed, 'month');
+        }
+        
+        html += `</div></div>`; // end scroll & content-section
+        
+        // 底部固定的下一行日期
+        html += `<div class="cal-month-bottom-section">`;
+        if (expandedRow < 4) {
+            html += `<div class="cal-month-row next-row">`;
+            for (let col = 0; col < 7; col++) {
+                const idx = (expandedRow + 1) * 7 + col;
+                if (idx < allDays.length) {
+                    html += renderMonthCell(allDays[idx], remindersByDate, todayStr, true);
+                }
+            }
+            html += `</div>`;
+        }
+        html += `</div>`; // end bottom-section
+        
+        html += `</div>`; // end expanded-view
+    } else {
+        // ===== 完整月历模式 =====
+        html += `<div class="cal-month-full-view">`;
+        
+        // 月份导航
+        const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+        html += `
+            <div class="cal-month-nav">
+                <button class="cal-month-nav-btn" onclick="shiftMonth(-1)">‹</button>
+                <span class="cal-month-nav-title">${year}年${monthNames[month]}</span>
+                <button class="cal-month-nav-btn" onclick="shiftMonth(1)">›</button>
+            </div>
+        `;
+        
+        // 星期header
+        html += `
+            <div class="cal-month-weekdays">
+                <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+            </div>
+        `;
+        
+        // 5行日期
+        for (let row = 0; row < 5; row++) {
+            html += `<div class="cal-month-row">`;
+            for (let col = 0; col < 7; col++) {
+                const idx = row * 7 + col;
+                html += renderMonthCell(allDays[idx], remindersByDate, todayStr, false);
+            }
+            html += `</div>`;
+        }
+        
+        html += `</div>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+// 渲染单个日期格子
+function renderMonthCell(dayData, remindersByDate, todayStr, isCompact) {
+    if (!dayData) return '<div class="cal-month-cell"></div>';
+    
+    const { day, otherMonth, dateStr } = dayData;
+    const isToday = dateStr === todayStr;
+    const isSelected = dateStr === CalendarState.monthExpandedDate;
+    const reminders = dateStr ? (remindersByDate[dateStr] || []) : [];
+    
+    let classes = 'cal-month-cell';
+    if (otherMonth) classes += ' other-month';
+    if (isToday) classes += ' today';
+    if (isSelected) classes += ' selected';
+    
+    if (isCompact) {
+        // 紧凑模式：只显示日期和小点
+        return `
+            <div class="${classes}" onclick="selectMonthDate('${dateStr}')">
+                <span class="cell-day">${day}</span>
+                ${reminders.length > 0 ? '<span class="cell-dot"></span>' : ''}
             </div>
         `;
     }
     
-    container.innerHTML = html;
+    // 完整模式：显示日期和事件预览
+    let eventsHtml = '';
+    if (reminders.length > 0) {
+        eventsHtml = reminders.slice(0, 2).map(title => 
+            `<div class="cell-event">${title.length > 6 ? title.substring(0, 6) + '..' : title}</div>`
+        ).join('');
+    }
+    
+    return `
+        <div class="${classes}" onclick="selectMonthDate('${dateStr}')">
+            <span class="cell-day">${day}</span>
+            <div class="cell-events">${eventsHtml}</div>
+        </div>
+    `;
+}
+
+// 月视图：选择日期
+function selectMonthDate(dateStr) {
+    if (CalendarState.monthExpandedDate === dateStr) {
+        CalendarState.monthExpandedDate = null;
+    } else {
+        CalendarState.monthExpandedDate = dateStr;
+    }
+    CalendarState.selectedDate = dateStr;
+    renderMonthView();
+    updateCalendarHeader();
+}
+
+// 月视图：关闭展开
+function closeMonthExpanded() {
+    CalendarState.monthExpandedDate = null;
+    renderMonthView();
+}
+
+// 月视图：切换月份
+function shiftMonth(delta) {
+    const date = new Date(CalendarState.selectedDate);
+    date.setMonth(date.getMonth() + delta);
+    CalendarState.selectedDate = formatDateStr(date);
+    CalendarState.monthExpandedDate = null;
+    updateCalendarHeader();
+    renderMonthView();
+}
+
+// ========== Date Picker ==========
+function openCalendarPicker() {
+    const overlay = document.getElementById('cal-picker-overlay');
+    const dropdown = document.getElementById('cal-picker-dropdown');
+    const trigger = document.querySelector('.cal-date-trigger');
+    
+    if (overlay) overlay.classList.add('show');
+    if (dropdown) dropdown.classList.add('show');
+    if (trigger) trigger.classList.add('open');
+    
+    CalendarState.pickerOpen = true;
+    
+    // 重置 picker 显示的月份为当前选中日期所在月
+    pickerViewDate = new Date(CalendarState.selectedDate);
+    
+    // 根据当前视图模式渲染不同的 picker
+    if (CalendarState.viewMode === 'day') {
+        renderDayPicker();
+    } else {
+        renderMonthPicker();
+    }
+}
+
+function closeCalendarPicker() {
+    const overlay = document.getElementById('cal-picker-overlay');
+    const dropdown = document.getElementById('cal-picker-dropdown');
+    const trigger = document.querySelector('.cal-date-trigger');
+    
+    if (overlay) overlay.classList.remove('show');
+    if (dropdown) dropdown.classList.remove('show');
+    if (trigger) trigger.classList.remove('open');
+    
+    CalendarState.pickerOpen = false;
+}
+
+// 日视图的 Picker：月历选择
+function renderDayPicker() {
+    const dayPicker = document.getElementById('cal-picker-day');
+    const monthPicker = document.getElementById('cal-picker-month-view');
+    
+    if (dayPicker) dayPicker.style.display = 'block';
+    if (monthPicker) monthPicker.style.display = 'none';
+    
+    // 使用 pickerViewDate 来显示月份（允许独立切换月份）
+    if (!pickerViewDate) {
+        pickerViewDate = new Date(CalendarState.selectedDate);
+    }
+    
+    const year = pickerViewDate.getFullYear();
+    const month = pickerViewDate.getMonth();
+    
+    // 更新月份标签
+    const monthLabel = document.getElementById('cal-picker-month-label');
+    if (monthLabel) {
+        monthLabel.textContent = `${year}年${month + 1}月`;
+    }
+    
+    // 渲染日期网格
+    const grid = document.getElementById('cal-picker-days');
+    if (!grid) return;
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const firstDayOfWeek = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
+    const todayStr = DateHelper.today;
+    
+    let html = '';
+    
+    // 上月填充
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+        html += `<div class="cal-picker-date other">${prevMonthLastDay - i}</div>`;
+    }
+    
+    // 当月日期
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === CalendarState.selectedDate;
+        
+        let classes = 'cal-picker-date';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+        
+        html += `<div class="${classes}" onclick="pickDate('${dateStr}')">${day}</div>`;
+    }
+    
+    // 下月填充
+    const totalCells = Math.ceil((firstDayOfWeek + daysInMonth) / 7) * 7;
+    const remainingCells = totalCells - (firstDayOfWeek + daysInMonth);
+    for (let day = 1; day <= remainingCells; day++) {
+        html += `<div class="cal-picker-date other">${day}</div>`;
+    }
+    
+    grid.innerHTML = html;
+}
+
+// 月视图的 Picker：年月滚轮
+function renderMonthPicker() {
+    const dayPicker = document.getElementById('cal-picker-day');
+    const monthPicker = document.getElementById('cal-picker-month-view');
+    
+    if (dayPicker) dayPicker.style.display = 'none';
+    if (monthPicker) monthPicker.style.display = 'block';
+    
+    const date = new Date(CalendarState.selectedDate);
+    const currentYear = date.getFullYear();
+    const currentMonth = date.getMonth();
+    
+    // 渲染年份滚动
+    const yearScroll = document.getElementById('cal-picker-year-scroll');
+    if (yearScroll) {
+        let yearHtml = '';
+        for (let y = currentYear - 2; y <= currentYear + 2; y++) {
+            const selected = y === currentYear ? 'selected' : '';
+            yearHtml += `<div class="cal-picker-scroll-item ${selected}" onclick="pickYear(${y})">${y}年</div>`;
+        }
+        yearScroll.innerHTML = yearHtml;
+    }
+    
+    // 渲染月份滚动
+    const monthScroll = document.getElementById('cal-picker-month-scroll');
+    if (monthScroll) {
+        let monthHtml = '';
+        for (let m = 0; m < 12; m++) {
+            const selected = m === currentMonth ? 'selected' : '';
+            monthHtml += `<div class="cal-picker-scroll-item ${selected}" onclick="pickMonth(${m})">${m + 1}月</div>`;
+        }
+        monthScroll.innerHTML = monthHtml;
+    }
+}
+
+// Picker 选择日期
+function pickDate(dateStr) {
+    CalendarState.selectedDate = dateStr;
+    
+    // 更新周起始日期
+    const selectedDate = new Date(dateStr);
+    const dayOfWeek = selectedDate.getDay();
+    const weekStart = new Date(selectedDate);
+    weekStart.setDate(selectedDate.getDate() - dayOfWeek);
+    CalendarState.weekStartDate = weekStart;
+    
+    closeCalendarPicker();
+    renderDayView();
+    updateCalendarHeader();
+}
+
+// Picker 切换月份（用于新的 Lark-style picker）
+// 使用单独的 pickerViewDate 来跟踪 picker 中显示的月份
+let pickerViewDate = null;
+
+function changePickerMonth(delta) {
+    if (!pickerViewDate) {
+        pickerViewDate = new Date(CalendarState.selectedDate);
+    }
+    pickerViewDate.setMonth(pickerViewDate.getMonth() + delta);
+    renderDayPicker();
+}
+
+// Picker 选择年份（月视图）
+function pickYear(year) {
+    const date = new Date(CalendarState.selectedDate);
+    date.setFullYear(year);
+    CalendarState.selectedDate = formatDateStr(date);
+    closeCalendarPicker();
+    renderMonthView();
+    updateCalendarHeader();
+}
+
+// Picker 选择月份（月视图）
+function pickMonth(month) {
+    const date = new Date(CalendarState.selectedDate);
+    date.setMonth(month);
+    CalendarState.selectedDate = formatDateStr(date);
+    closeCalendarPicker();
+    renderMonthView();
+    updateCalendarHeader();
+}
+
+// ========== 通用函数 ==========
+// 渲染 Done 区域（默认折叠）
+function renderDoneSection(completed, viewMode) {
+    const isListView = viewMode === 'list';
+    const sectionClass = isListView ? 'cal-done-section-list' : 'cal-done-section';
+    const headerText = isListView ? '✅ Recently Done' : `✅ Done (${completed.length})`;
+    
+    return `
+        <div class="${sectionClass} collapsed" id="done-section">
+            <div class="cal-done-header" onclick="toggleDoneSection()">
+                <span class="cal-done-title">${headerText}</span>
+                <span class="cal-done-toggle">▼</span>
+            </div>
+            <div class="cal-done-content">
+                ${completed.slice(0, 10).map(r => `
+                    <div class="cal-done-item">
+                        <span class="cal-done-check">✓</span>
+                        <span class="cal-done-text">${r.title}</span>
+                        ${isListView && r.dueDate ? `<span class="cal-done-date">${DateHelper.formatDate(r.dueDate)}</span>` : ''}
+                    </div>
+                `).join('')}
+                ${completed.length > 10 ? `<div class="cal-done-more">+${completed.length - 10} more</div>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// 切换 Done 区域折叠状态
+function toggleDoneSection() {
+    const section = document.getElementById('done-section');
+    if (section) {
+        section.classList.toggle('collapsed');
+    }
+}
+
+// 获取明天的日期字符串
+function getTomorrowStr() {
+    const tomorrow = new Date(DateHelper.today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return formatDateStr(tomorrow);
 }
 
 function formatDateStr(date) {
@@ -1091,16 +1465,7 @@ function updatePickerTabs() {
     });
 }
 
-function changePickerMonth(delta) {
-    if (CalendarState.pickerMode === 'month') {
-        // 在月视图下切换年
-        CalendarState.pickerMonth.setFullYear(CalendarState.pickerMonth.getFullYear() + delta);
-    } else {
-        // 在日/周视图下切换月
-        CalendarState.pickerMonth.setMonth(CalendarState.pickerMonth.getMonth() + delta);
-    }
-    renderPickerGrid();
-}
+// 旧版 changePickerMonth 已删除，使用新的 Lark-style picker 逻辑
 
 function renderPickerGrid() {
     if (CalendarState.pickerMode === 'day') {
@@ -1361,8 +1726,33 @@ function showAddReminderModal() {
 }
 
 // ========================================
-// Follow-up Accept Logic
+// Reminder Accept/Dismiss Logic
 // ========================================
+
+function dismissAISuggestion(meetingId, actionTitle, button) {
+    // 保存到localStorage以记住已dismiss的建议
+    const dismissedKey = `dismissed_${meetingId}`;
+    const dismissedList = JSON.parse(localStorage.getItem(dismissedKey) || '[]');
+    if (!dismissedList.includes(actionTitle)) {
+        dismissedList.push(actionTitle);
+        localStorage.setItem(dismissedKey, JSON.stringify(dismissedList));
+    }
+    
+    // 动画效果：淡出
+    const suggestionItem = button ? button.closest('.md-suggestion-item') : null;
+    if (suggestionItem) {
+        suggestionItem.style.opacity = '0';
+        suggestionItem.style.transform = 'translateX(-20px)';
+        suggestionItem.style.transition = 'all 0.3s ease';
+    }
+    
+    // 重新渲染 Meeting Detail
+    setTimeout(() => {
+        showMeetingDetail(meetingId);
+    }, suggestionItem ? 300 : 0);
+    
+    showToast('Dismissed');
+}
 
 function acceptAISuggestion(meetingId, index, actionTitle, button) {
     const meeting = AppData.getMeeting(meetingId);
@@ -1381,19 +1771,18 @@ function acceptAISuggestion(meetingId, index, actionTitle, button) {
         return;
     }
     
-    // 计算明天的日期作为默认
-    const tomorrow = new Date(DateHelper.today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = formatDateStr(tomorrow);
+    // AI suggested 的 reminder 默认日期为今天
+    // TODO: 如果从会议中提取出时间字段则把 reminder 设在那天
+    const defaultDate = DateHelper.today;
     
-    // Accept - 添加到 My Calendar，默认日期为明天
+    // Accept - 添加到 My Calendar，默认日期为今天
     const newAction = {
         id: 'action_' + Date.now(),
         title: actionTitle,
         status: 'pending',
         contactIds: meeting.contactIds || [],
         meetingId: meetingId,
-        dueDate: tomorrowStr, // 默认明天
+        dueDate: defaultDate, // 默认今天（如果AI提取出时间则用提取的时间）
         createdAt: new Date().toISOString(),
         source: 'ai_extracted',
         aiSuggested: true
@@ -2015,47 +2404,57 @@ function showMeetingDetail(meetingId) {
             </div>
         </div>
 
-        <!-- 📅 Follow-up Reminders (Accept 模式) -->
+        <!-- 📅 Reminders Section -->
         <div class="md-followups-section">
             <div class="md-followups-header">
                 <div class="md-followups-title">
                     <span>📅</span>
-                    <span>Follow-ups</span>
+                    <span>Reminders</span>
                 </div>
+                <button class="md-add-btn" onclick="showAddActionForMeeting('${meetingId}')" title="Add Reminder">+</button>
             </div>
             
-            <!-- AI 建议的 Follow-ups（只显示未accept的） -->
+            <!-- AI 建议的 Reminders（只显示未处理的） -->
             ${(() => {
                 const allSuggestions = summaryData.nextActions || [];
-                const unacceptedSuggestions = allSuggestions.filter(action => 
-                    !meetingActions.some(a => a.title === action)
+                // 过滤掉已accept的和已dismiss的
+                const dismissedKey = `dismissed_${meetingId}`;
+                const dismissedList = JSON.parse(localStorage.getItem(dismissedKey) || '[]');
+                const unprocessedSuggestions = allSuggestions.filter(action => 
+                    !meetingActions.some(a => a.title === action) && !dismissedList.includes(action)
                 );
                 
                 // 如果有AI建议
                 if (allSuggestions.length > 0) {
-                    if (unacceptedSuggestions.length > 0) {
-                        // 还有未添加的
+                    if (unprocessedSuggestions.length > 0) {
+                        // 还有未处理的
                         return `
                         <div class="md-ai-suggestions">
                             <div class="md-ai-label">
                                 <span>✨</span> AI Suggested
                             </div>
-                            ${unacceptedSuggestions.map((action, i) => `
+                            ${unprocessedSuggestions.map((action, i) => `
                                 <div class="md-suggestion-item" id="suggestion-${meetingId}-${i}">
                                     <div class="md-suggestion-text">${action}</div>
-                                    <button class="md-suggestion-add-btn" 
-                                            onclick="acceptAISuggestion('${meetingId}', ${i}, '${action.replace(/'/g, "\\'")}', this)">
-                                        <span>+</span> Add
-                                    </button>
+                                    <div class="md-suggestion-actions">
+                                        <button class="md-suggestion-dismiss-btn" 
+                                                onclick="dismissAISuggestion('${meetingId}', '${action.replace(/'/g, "\\'")}', this)">
+                                            ✗ Dismiss
+                                        </button>
+                                        <button class="md-suggestion-accept-btn" 
+                                                onclick="acceptAISuggestion('${meetingId}', ${i}, '${action.replace(/'/g, "\\'")}', this)">
+                                            ✓ Accept
+                                        </button>
+                                    </div>
                                 </div>
                             `).join('')}
                         </div>
                         `;
                     } else {
-                        // 全部已添加
+                        // 全部已处理
                         return `
                         <div class="md-ai-suggestions-empty">
-                            <span>✨</span> All AI suggestions added to calendar
+                            <span>✨</span> All AI suggestions processed
                         </div>
                         `;
                     }
@@ -2067,18 +2466,53 @@ function showMeetingDetail(meetingId) {
             ${pendingActions.length > 0 ? `
                 <div class="md-reminders-list">
                     <div class="md-reminders-label">📋 My Calendar</div>
-                    ${pendingActions.map(a => `
-                        <div class="md-reminder-item">
-                            <div class="md-reminder-checkbox ${a.status === 'completed' ? 'checked' : ''}" 
-                                 onclick="toggleReminderComplete('${a.id}', this)"></div>
-                            <div class="md-reminder-content">
-                                <div class="md-reminder-text" onclick="event.stopPropagation(); enableInlineEdit('${a.id}', this)">${a.title}</div>
-                                <span class="md-reminder-date" onclick="event.stopPropagation(); editDueDate('${a.id}')">
-                                    📅 ${a.dueDate ? DateHelper.formatDate(a.dueDate) : 'Set date'}
-                                </span>
+                    ${pendingActions.map(a => {
+                        // 获取联系人名字
+                        const contactIds = a.contactIds || [];
+                        const contactNames = contactIds.map(id => {
+                            const contact = AppData.contacts.find(c => c.id === id);
+                            return contact ? contact.name.split(' ')[0] : null;
+                        }).filter(Boolean);
+                        const contactDisplay = contactNames.length > 0 
+                            ? contactNames.slice(0, 2).join(', ') + (contactNames.length > 2 ? ` +${contactNames.length - 2}` : '')
+                            : '';
+                        
+                        // 日期和颜色
+                        const dueDate = a.dueDate || DateHelper.today;
+                        const weekdayGradients = {
+                            0: 'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)',
+                            1: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+                            2: 'linear-gradient(135deg, #F59E0B 0%, #EAB308 100%)',
+                            3: 'linear-gradient(135deg, #22C55E 0%, #10B981 100%)',
+                            4: 'linear-gradient(135deg, #0EA5E9 0%, #06B6D4 100%)',
+                            5: 'linear-gradient(135deg, #A855F7 0%, #8B5CF6 100%)',
+                            6: 'linear-gradient(135deg, #EF4444 0%, #F97316 100%)',
+                        };
+                        const dayOfWeek = new Date(dueDate).getDay();
+                        const dateGradient = weekdayGradients[dayOfWeek];
+                        
+                        return `
+                        <div class="md-reminder-card">
+                            <div class="md-rc-date-col clickable" style="background: ${dateGradient}" 
+                                 onclick="event.stopPropagation(); editDueDate('${a.id}')" title="Change date">
+                                <span class="md-rc-month">${getMonthShort(dueDate)}</span>
+                                <span class="md-rc-day">${new Date(dueDate).getDate()}</span>
+                            </div>
+                            <div class="md-rc-main">
+                                <div class="md-reminder-checkbox ${a.status === 'completed' ? 'checked' : ''}" 
+                                     onclick="toggleReminderComplete('${a.id}', this)"></div>
+                                <div class="md-rc-content">
+                                    <div class="md-rc-title" onclick="event.stopPropagation(); enableInlineEdit('${a.id}', this)">${a.title}</div>
+                                    <div class="md-rc-row">
+                                        <span class="md-rc-icon">👤</span>
+                                        ${contactDisplay 
+                                            ? `<span class="md-rc-text">${contactDisplay}</span>` 
+                                            : `<span class="md-rc-add" onclick="event.stopPropagation(); addContactToReminder('${a.id}')">Add contact</span>`}
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    `).join('')}
+                    `;}).join('')}
                 </div>
             ` : ''}
             
@@ -2097,10 +2531,6 @@ function showMeetingDetail(meetingId) {
                 </div>
             ` : ''}
             
-            <div class="md-add-followup" onclick="showAddActionForMeeting('${meetingId}')">
-                <span>+</span>
-                <span>Add Follow-up</span>
-            </div>
         </div>
 
         <!-- 总结 / 整体总结 -->
@@ -2356,7 +2786,10 @@ function renderContactPendingActions(contactId) {
             <div class="contact-pending-title">
                 🔴 ${actions.length} Pending Actions with ${contact.name}
             </div>
-            <span class="contact-pending-arrow">▼</span>
+            <div class="contact-pending-actions-right">
+                <button class="contact-add-btn" onclick="event.stopPropagation(); showAddActionForContact('${contactId}')" title="Add Reminder">+</button>
+                <span class="contact-pending-arrow">▼</span>
+            </div>
         </div>
         <div class="contact-pending-content">
             ${actions.map(a => {
@@ -2390,14 +2823,15 @@ function renderContactPendingActions(contactId) {
                     </div>
                 `;
             }).join('')}
-            <div class="contact-pending-footer">
-                <span onclick="showAddActionForContact('${contactId}')">+ Add Action</span>
-            </div>
         </div>
     `;
 }
 
 function renderContactActivities(contactId) {
+    // Get contact info first
+    const contact = AppData.getContact(contactId);
+    if (!contact) return;
+    
     // Get meetings with this contact
     const meetings = AppData.meetings.filter(m => m.contactIds.includes(contactId));
     const container = document.querySelector('.activity-section');
@@ -2419,33 +2853,39 @@ function renderContactActivities(contactId) {
         html += `<div class="activity-date">${dateLabel}</div>`;
         
         grouped[date].forEach(meeting => {
+            // 与首页 meeting-card 样式保持一致
             const pendingActions = AppData.getActionsForMeeting(meeting.id).filter(a => a.status === 'pending');
-            const actionHtml = pendingActions.length > 0 ? `
-                <div class="activity-card-actions">
-                    <div class="activity-actions-title">${pendingActions.length} Actions</div>
-                    ${pendingActions.slice(0, 2).map(a => `<div class="activity-action-preview">• ${a.title}</div>`).join('')}
-                </div>
-            ` : '';
+            const completedActions = AppData.getActionsForMeeting(meeting.id).filter(a => a.status === 'completed');
+            
+            // Reminder状态展示（与首页一致）
+            let actionStatus = '';
+            if (pendingActions.length > 0) {
+                actionStatus = `<div class="meeting-actions-preview pending">🔴 ${pendingActions.length} reminder${pendingActions.length > 1 ? 's' : ''}</div>`;
+            } else if (completedActions.length > 0) {
+                actionStatus = `<div class="meeting-actions-preview done">✅ All done</div>`;
+            }
+            
+            const iconClass = meeting.type === 'call' ? 'call' : meeting.type === 'voice' ? 'voice' : 'chat';
+            const icon = meeting.type === 'call' ? '📞' : meeting.type === 'voice' ? '🎙' : '💬';
 
             html += `
-                <div class="activity-card" onclick="showMeetingDetail('${meeting.id}')">
-                    <div class="activity-card-header">
-                        <div class="activity-card-title">📝 ${meeting.title}</div>
-                        <div class="activity-card-time">${meeting.time}</div>
+                <div class="meeting-card" onclick="showMeetingDetail('${meeting.id}')">
+                    <div class="meeting-top">
+                        <div class="meeting-icon ${iconClass}">${icon}</div>
+                        <div class="meeting-info">
+                            <div class="meeting-title">${meeting.title}</div>
+                            <div class="meeting-subtitle">with ${contact.name}</div>
+                        </div>
+                        <div class="meeting-time">${meeting.time}</div>
                     </div>
-                    <div class="activity-card-summary">${meeting.summary.substring(0, 100)}...</div>
-                    ${actionHtml}
-                    <div class="activity-card-footer">
-                        <span class="activity-view-details">View Details →</span>
-                    </div>
+                    ${actionStatus}
                 </div>
             `;
         });
     });
 
-    // Add first contact
-    const contact = AppData.getContact(contactId);
-    if (contact && contact.firstContact) {
+    // Add first contact card
+    if (contact.firstContact) {
         html += `
             <div class="activity-date">${DateHelper.formatDate(contact.firstContact.date)}</div>
             <div class="activity-card first-contact">
@@ -2501,66 +2941,165 @@ function setDueDate(actionId) {
     editDueDate(actionId);
 }
 
+// ========================================
+// Date Picker Modal State
+// ========================================
+const DatePickerState = {
+    actionId: null,
+    currentDate: null,
+    displayMonth: new Date()
+};
+
 function editDueDate(actionId) {
     const action = AppData.getAction(actionId);
-    const currentDue = action?.dueDate || '';
+    if (!action) return;
     
-    // Show date picker modal
-    const options = [
-        { label: 'Today', value: DateHelper.today },
-        { label: 'Tomorrow', value: '2026-01-16' },
-        { label: 'This Week', value: '2026-01-19' },
-        { label: 'Next Week', value: '2026-01-22' },
-        { label: 'No Due Date', value: '' },
-        { label: 'Custom...', value: 'custom' }
-    ];
+    DatePickerState.actionId = actionId;
+    DatePickerState.currentDate = action.dueDate || DateHelper.today;
+    DatePickerState.displayMonth = new Date(DatePickerState.currentDate);
     
-    const choice = prompt(
-        `Set due date for: "${action.title.substring(0, 40)}..."\n\n` +
-        `Current: ${currentDue ? DateHelper.formatDate(currentDue) : 'No due date'}\n\n` +
-        `Options:\n` +
-        `1. Today (Jan 15)\n` +
-        `2. Tomorrow (Jan 16)\n` +
-        `3. This Week (Jan 19)\n` +
-        `4. Next Week (Jan 22)\n` +
-        `5. No Due Date\n` +
-        `6. Custom (enter YYYY-MM-DD)\n\n` +
-        `Enter 1-6 or a date:`
-    );
+    openDatePickerModal();
+}
+
+function openDatePickerModal() {
+    const modal = document.getElementById('date-picker-modal');
+    if (!modal) return;
     
-    if (!choice) return;
+    renderEditDateCalendar();
+    modal.classList.add('show');
+}
+
+function closeDatePickerModal() {
+    const modal = document.getElementById('date-picker-modal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+function changeEditMonth(delta) {
+    DatePickerState.displayMonth.setMonth(DatePickerState.displayMonth.getMonth() + delta);
+    renderEditDateCalendar();
+}
+
+function renderEditDateCalendar() {
+    const calendar = document.getElementById('edit-date-calendar');
+    const monthLabel = document.getElementById('edit-month-label');
+    if (!calendar || !monthLabel) return;
     
-    let newDate = null;
-    switch(choice.trim()) {
-        case '1': newDate = DateHelper.today; break;
-        case '2': newDate = '2026-01-16'; break;
-        case '3': newDate = '2026-01-19'; break;
-        case '4': newDate = '2026-01-22'; break;
-        case '5': newDate = null; break;
-        case '6': 
-            const customDate = prompt('Enter date (YYYY-MM-DD):', DateHelper.today);
-            if (customDate) newDate = customDate;
-            else return;
-            break;
-        default:
-            // Check if it's a valid date format
-            if (/^\d{4}-\d{2}-\d{2}$/.test(choice.trim())) {
-                newDate = choice.trim();
-            } else {
-                showToast('Invalid option');
-                return;
-            }
+    const year = DatePickerState.displayMonth.getFullYear();
+    const month = DatePickerState.displayMonth.getMonth();
+    
+    // Update month label
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    monthLabel.textContent = `${monthNames[month]} ${year}`;
+    
+    // Build calendar
+    let html = '';
+    
+    // Day headers
+    const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    dayNames.forEach(d => {
+        html += `<div class="dp-day-header">${d}</div>`;
+    });
+    
+    // First day of month and days in month
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    
+    // Previous month days
+    for (let i = firstDay - 1; i >= 0; i--) {
+        const day = daysInPrevMonth - i;
+        html += `<div class="dp-day other-month">${day}</div>`;
     }
     
-    AppData.updateActionDueDate(actionId, newDate);
-    showToast(newDate ? 'Due date set to ' + DateHelper.formatDate(newDate) : 'Due date removed');
+    // Current month days
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = dateStr === DateHelper.today;
+        const isSelected = dateStr === DatePickerState.currentDate;
+        
+        let classes = 'dp-day';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+        
+        html += `<div class="${classes}" onclick="selectEditDate('${dateStr}')">${day}</div>`;
+    }
+    
+    // Next month days (fill remaining cells)
+    const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+    const remainingCells = totalCells - (firstDay + daysInMonth);
+    for (let day = 1; day <= remainingCells; day++) {
+        html += `<div class="dp-day other-month">${day}</div>`;
+    }
+    
+    calendar.innerHTML = html;
+    
+    // Setup shortcut buttons
+    setupDateShortcuts();
+}
+
+function setupDateShortcuts() {
+    const shortcuts = document.querySelectorAll('.date-shortcut');
+    shortcuts.forEach(btn => {
+        btn.onclick = () => {
+            const days = parseInt(btn.dataset.days);
+            const date = new Date(DateHelper.today);
+            date.setDate(date.getDate() + days);
+            const dateStr = formatDateStr(date);
+            selectEditDate(dateStr);
+        };
+    });
+}
+
+function selectEditDate(dateStr) {
+    if (!DatePickerState.actionId) return;
+    
+    AppData.updateActionDueDate(DatePickerState.actionId, dateStr);
+    showToast('Date set to ' + DateHelper.formatDate(dateStr));
+    closeDatePickerModal();
     refreshAllViews();
 }
 
 function clearDueDate(actionId) {
-    AppData.updateActionDueDate(actionId, null);
-    showToast('Due date removed');
+    // Reminder 必须有日期，所以清除时重置为今天
+    AppData.updateActionDueDate(actionId, DateHelper.today);
+    showToast('Due date reset to today');
     refreshAllViews();
+}
+
+function addContactToReminder(actionId) {
+    const action = AppData.getAction(actionId);
+    if (!action) return;
+    
+    // 简化版：显示联系人列表让用户选择
+    const contacts = AppData.contacts;
+    const contactList = contacts.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+    
+    const choice = prompt(
+        `Add contact to reminder:\n"${action.title.substring(0, 30)}..."\n\n` +
+        `Select contact:\n${contactList}\n\n` +
+        `Enter number:`
+    );
+    
+    if (!choice) return;
+    
+    const index = parseInt(choice.trim()) - 1;
+    if (index >= 0 && index < contacts.length) {
+        const selectedContact = contacts[index];
+        // 添加联系人到 action
+        if (!action.contactIds) action.contactIds = [];
+        if (!action.contactIds.includes(selectedContact.id)) {
+            action.contactIds.push(selectedContact.id);
+            showToast(`Added ${selectedContact.name}`);
+            refreshAllViews();
+        } else {
+            showToast('Contact already added');
+        }
+    } else {
+        showToast('Invalid selection');
+    }
 }
 
 function snoozeAction(actionId) {
@@ -2665,7 +3204,8 @@ function showAddActionModal(contactId) {
     AddActionState.context = 'home';
     AddActionState.meetingId = null;
     AddActionState.contactIds = contactId ? [contactId] : [];
-    AddActionState.selectedDueDate = null;
+    // 默认日期：今天（用户手动添加的 reminder 必填时间，默认今天）
+    AddActionState.selectedDueDate = DateHelper.today;
     openAddActionModal();
 }
 
@@ -2674,7 +3214,8 @@ function showAddActionForMeeting(meetingId) {
     AddActionState.context = 'meeting';
     AddActionState.meetingId = meetingId;
     AddActionState.contactIds = meeting.contactIds || [];
-    AddActionState.selectedDueDate = null;
+    // 默认日期：今天（手动添加默认今天）
+    AddActionState.selectedDueDate = DateHelper.today;
     openAddActionModal();
 }
 
@@ -2682,7 +3223,8 @@ function showAddActionForContact(contactId) {
     AddActionState.context = 'contact';
     AddActionState.meetingId = null;
     AddActionState.contactIds = [contactId];
-    AddActionState.selectedDueDate = null;
+    // 默认日期：今天
+    AddActionState.selectedDueDate = DateHelper.today;
     openAddActionModal();
 }
 
@@ -2692,7 +3234,8 @@ function openAddActionModal() {
     
     // Reset form
     input.value = '';
-    AddActionState.selectedDueDate = null;
+    // 注意：selectedDueDate 已经在 showAddAction* 函数中设置了默认值（今天）
+    // 这里不再重置为 null
     AddActionState.currentMonth = new Date();
     
     // Update displays
@@ -3321,6 +3864,7 @@ window.selectCalendarWeek = selectCalendarWeek;
 window.selectCalendarMonth = selectCalendarMonth;
 window.showAddReminderModal = showAddReminderModal;
 window.acceptAISuggestion = acceptAISuggestion;
+window.dismissAISuggestion = dismissAISuggestion;
 window.showMeetingDetail = showMeetingDetail;
 window.closeMeetingDetail = closeMeetingDetail;
 window.showContactDetail = showContactDetail;
@@ -3342,6 +3886,26 @@ window.filterContacts = filterContacts;
 window.renderContactList = renderContactList;
 window.editDueDate = editDueDate;
 window.clearDueDate = clearDueDate;
+window.addContactToReminder = addContactToReminder;
+window.closeDatePickerModal = closeDatePickerModal;
+window.changeEditMonth = changeEditMonth;
+window.selectEditDate = selectEditDate;
+window.toggleDoneSection = toggleDoneSection;
+window.shiftMonth = shiftMonth;
+window.selectMonthDate = selectMonthDate;
+window.selectCalendarDate = selectCalendarDate;
+window.switchCalendarView = switchCalendarView;
+window.openCalendarPicker = openCalendarPicker;
+window.closeCalendarPicker = closeCalendarPicker;
+window.pickDate = pickDate;
+window.changePickerMonth = changePickerMonth;
+window.pickYear = pickYear;
+window.pickMonth = pickMonth;
+window.closeMonthExpanded = closeMonthExpanded;
+window.showReminderDetail = function(id) {
+    showToast('Opening reminder...');
+};
+window.shiftWeek = shiftWeek;
 window.enableInlineEdit = enableInlineEdit;
 window.refreshAllViews = refreshAllViews;
 window.showAddActionForMeeting = showAddActionForMeeting;

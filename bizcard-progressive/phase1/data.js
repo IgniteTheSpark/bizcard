@@ -356,7 +356,7 @@ const AppData = {
 
 // Date helpers
 const DateHelper = {
-    today: '2026-01-15', // Mock today for demo
+    today: '2026-01-22', // Mock today for demo
 
     isToday(dateStr) {
         return dateStr === this.today;

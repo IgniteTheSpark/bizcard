@@ -386,7 +386,7 @@
         }
 
         .reminders-list {
-            max-height: 200px;
+            max-height: 280px;
             overflow-y: auto;
         }
 
@@ -437,6 +437,19 @@
             justify-content: center;
             padding: 10px 6px;
             color: white;
+            transition: opacity 0.15s, transform 0.15s;
+        }
+
+        .rc-date-col.clickable {
+            cursor: pointer;
+        }
+
+        .rc-date-col.clickable:hover {
+            opacity: 0.85;
+        }
+
+        .rc-date-col.clickable:active {
+            transform: scale(0.95);
         }
 
         .rc-date-month {
@@ -559,9 +572,9 @@
         .rc-badge {
             font-size: 10px;
             font-weight: 600;
-            color: white;
-            background: var(--primary-blue);
-            padding: 1px 5px;
+            color: var(--text-tertiary);
+            background: var(--bg-secondary);
+            padding: 2px 6px;
             border-radius: 8px;
         }
 
@@ -616,6 +629,19 @@
             justify-content: center;
             padding: 8px 4px;
             color: white;
+            transition: opacity 0.15s, transform 0.15s;
+        }
+
+        .rc-date-col-mini.clickable {
+            cursor: pointer;
+        }
+
+        .rc-date-col-mini.clickable:hover {
+            opacity: 0.85;
+        }
+
+        .rc-date-col-mini.clickable:active {
+            transform: scale(0.95);
         }
 
         .rc-date-col-mini .rc-date-month {
@@ -812,22 +838,289 @@
             margin-bottom: 0;
         }
 
-        /* Calendar completed section */
-        .cal-completed-section {
+        /* Calendar Done Section (折叠式) */
+        .cal-done-section,
+        .cal-done-section-list {
             margin: 16px;
             padding-top: 16px;
             border-top: 1px solid var(--border-color);
         }
 
-        .cal-completed-header {
+        .cal-done-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .cal-done-header:hover {
+            background: var(--border-color);
+        }
+
+        .cal-done-title {
             font-size: 14px;
             font-weight: 600;
-            color: var(--primary-green);
-            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        .cal-done-toggle {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            transition: transform 0.2s;
+        }
+
+        .cal-done-section.collapsed .cal-done-toggle,
+        .cal-done-section-list.collapsed .cal-done-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .cal-done-content {
+            padding: 12px 0;
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .cal-done-section.collapsed .cal-done-content,
+        .cal-done-section-list.collapsed .cal-done-content {
+            max-height: 0;
+            padding: 0;
+        }
+
+        .cal-done-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cal-done-item:last-child {
+            border-bottom: none;
+        }
+
+        .cal-done-check {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-green);
+            color: white;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cal-done-text {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-decoration: line-through;
+        }
+
+        .cal-done-date {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .cal-done-more {
+            padding: 8px 12px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--primary-blue);
+        }
+
+        /* 时间线视图 */
+        .cal-timeline-group {
+            margin: 12px 16px;
+        }
+
+        .cal-timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cal-timeline-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .cal-timeline-count {
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            background: var(--primary-blue);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .cal-timeline-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .completed-list .reminder-card {
             opacity: 0.7;
+        }
+
+        /* ========================================
+           Month Grid View (类似 Lark)
+           ======================================== */
+        .month-grid-container {
+            padding: 0 12px;
+        }
+
+        .month-grid-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 8px;
+        }
+
+        .month-grid-header .month-nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary);
+            font-size: 18px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .month-grid-header .month-nav-btn:hover {
+            background: var(--border-color);
+        }
+
+        .month-grid-header .month-title {
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .month-grid-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .month-weekday {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .month-grid-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+
+        .month-day {
+            min-height: 70px;
+            padding: 4px;
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .month-day:nth-child(7n) {
+            border-right: none;
+        }
+
+        .month-day:hover {
+            background: var(--bg-secondary);
+        }
+
+        .month-day.other-month {
+            background: var(--bg-secondary);
+            opacity: 0.5;
+        }
+
+        .month-day.today .month-day-num {
+            background: var(--primary-blue);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .month-day.selected {
+            background: rgba(0, 122, 255, 0.08);
+        }
+
+        .month-day-num {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .month-day-events {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .month-day-event {
+            font-size: 10px;
+            color: var(--primary-blue);
+            background: rgba(0, 122, 255, 0.1);
+            padding: 1px 4px;
+            border-radius: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .month-day-more {
+            font-size: 10px;
+            color: var(--text-tertiary);
+        }
+
+        /* 月视图展开的日期详情 */
+        .month-expanded-section {
+            margin: 12px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .month-expanded-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .month-expanded-list {
+            padding: 12px;
+        }
+
+        .month-expanded-list .reminder-card {
+            margin-bottom: 8px;
+        }
+
+        .month-expanded-list .reminder-card:last-child {
+            margin-bottom: 0;
         }
 
         /* Legacy simple reminder styles */
@@ -923,7 +1216,7 @@
         }
 
         /* ========================================
-           Calendar Page (紧凑时间轴设计)
+           Calendar Page (Lark-style Design)
            ======================================== */
         .calendar-page {
             display: none;
@@ -942,12 +1235,15 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .cal-header-left {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
         }
 
         .cal-back-btn {
@@ -956,260 +1252,201 @@
             font-size: 24px;
             color: var(--primary-blue);
             cursor: pointer;
-            padding: 0 8px 0 0;
+            padding: 0 4px 0 0;
         }
 
-        .cal-title {
+        .cal-date-trigger {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
             font-size: 17px;
             font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .cal-picker-btn {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 4px;
-        }
-
-        /* View Mode Tabs */
-        .cal-view-tabs {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            padding: 12px 16px;
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .cal-view-tab {
-            padding: 6px 20px;
-            border-radius: 16px;
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            background: var(--bg-primary);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .cal-view-tab.active {
-            background: var(--primary-blue);
-            color: white;
-        }
-
-        /* Horizontal Date Selector */
-        .cal-date-selector {
-            display: flex;
-            align-items: center;
-            padding: 12px 8px;
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .cal-date-nav {
-            background: none;
-            border: none;
-            font-size: 20px;
             color: var(--primary-blue);
             cursor: pointer;
-            padding: 8px;
-            flex-shrink: 0;
+            padding: 4px 8px;
+            border-radius: 8px;
         }
 
-        .cal-dates-scroll {
-            flex: 1;
-            display: flex;
-            gap: 4px;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .cal-dates-scroll::-webkit-scrollbar {
-            display: none;
-        }
-
-        .cal-date-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 8px 12px;
-            min-width: 48px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        /* Week视图 - 固定宽度确保统一排版 */
-        .cal-dates.week-view .cal-date-item {
-            min-width: 72px;
-            padding: 10px 8px;
-        }
-
-        /* Month视图 - 固定宽度 */
-        .cal-dates.month-view .cal-date-item {
-            min-width: 56px;
-            padding: 10px 8px;
-        }
-
-        .cal-date-item:hover {
-            background: rgba(0, 122, 255, 0.05);
-        }
-
-        .cal-date-item.selected {
-            background: var(--primary-blue);
-        }
-
-        .cal-date-item.today:not(.selected) {
+        .cal-date-trigger:active {
             background: rgba(0, 122, 255, 0.1);
         }
 
-        .cal-date-weekday {
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-        }
-
-        .cal-date-item.selected .cal-date-weekday {
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .cal-date-day {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-top: 2px;
-        }
-
-        .cal-date-item.selected .cal-date-day {
-            color: white;
-        }
-
-        .cal-date-badge {
+        .cal-trigger-arrow {
             font-size: 10px;
-            font-weight: 600;
-            color: white;
+            transition: transform 0.2s;
+        }
+
+        .cal-date-trigger.open .cal-trigger-arrow {
+            transform: rotate(180deg);
+        }
+
+        .cal-header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cal-add-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
             background: var(--primary-blue);
-            min-width: 16px;
-            height: 16px;
-            border-radius: 8px;
+            color: white;
+            border: none;
+            font-size: 22px;
+            font-weight: 500;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .cal-add-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* View Switch: 日 | 月 */
+        .cal-view-switch {
+            display: flex;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 2px;
+        }
+
+        .cal-view-btn {
+            padding: 6px 14px;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .cal-view-btn.active {
+            background: var(--bg-card);
+            color: var(--primary-blue);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* ========================================
+           Day View
+           ======================================== */
+        .cal-day-view {
+            display: block;
+        }
+
+        /* Week Strip */
+        .cal-week-strip {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .cal-week-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            padding: 8px 8px 4px;
+        }
+
+        .cal-week-header span {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .cal-week-dates {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            padding: 0 8px;
+        }
+
+        .cal-week-date {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 4px;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: background 0.15s;
+            position: relative;
+        }
+
+        .cal-week-date:active {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .cal-week-date .date-num {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+            border-radius: 50%;
+        }
+
+        .cal-week-date.today .date-num {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .cal-week-date.selected:not(.today) .date-num {
+            background: rgba(0, 122, 255, 0.15);
+            color: var(--primary-blue);
+        }
+
+        .cal-week-date.other-month .date-num {
+            color: var(--text-tertiary);
+        }
+
+        .cal-week-date .date-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--primary-blue);
             margin-top: 4px;
-            padding: 0 4px;
         }
 
-        .cal-date-item.selected .cal-date-badge {
-            background: rgba(255,255,255,0.3);
+        .cal-week-date.today .date-dot {
+            background: white;
         }
 
-        /* Selected Date Header */
-        .cal-selected-header {
+        /* Day Header */
+        .cal-day-header {
             padding: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .cal-selected-title {
+        .cal-day-title {
             font-size: 16px;
             font-weight: 600;
             color: var(--text-primary);
         }
 
-        .cal-reminder-count {
+        .cal-day-count {
             font-size: 13px;
             color: var(--text-secondary);
         }
 
-        /* Reminders Container */
-        .cal-reminders-container {
+        /* Reminders List */
+        .cal-reminders-list {
             margin: 0 16px;
             background: var(--bg-card);
             border-radius: 16px;
             overflow: hidden;
             box-shadow: var(--shadow);
-        }
-
-        .cal-reminder-item {
-            padding: 14px 16px;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            border-bottom: 1px solid var(--border-color);
-            transition: all 0.2s;
-        }
-
-        .cal-reminder-item:last-child {
-            border-bottom: none;
-        }
-
-        .cal-reminder-checkbox {
-            width: 22px;
-            height: 22px;
-            min-width: 22px;
-            border: 2px solid var(--border-color);
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: white;
-        }
-
-        .cal-reminder-checkbox:hover {
-            border-color: var(--primary-blue);
-        }
-
-        .cal-reminder-checkbox.checked {
-            background: var(--primary-green);
-            border-color: var(--primary-green);
-        }
-
-        .cal-reminder-checkbox.checked::after {
-            content: '✓';
-        }
-
-        .cal-reminder-content {
-            flex: 1;
-        }
-
-        .cal-reminder-title {
-            font-size: 15px;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .cal-reminder-title.completed {
-            text-decoration: line-through;
-            color: var(--text-tertiary);
-        }
-
-        .cal-reminder-meta {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .cal-reminder-source {
-            color: var(--primary-blue);
-            cursor: pointer;
-        }
-
-        .cal-reminder-delete {
-            color: var(--primary-red);
-            font-size: 18px;
-            cursor: pointer;
-            padding: 0 4px;
         }
 
         .cal-no-reminders {
@@ -1224,30 +1461,251 @@
             margin-bottom: 8px;
         }
 
-        /* Add Reminder Button */
-        .cal-add-reminder {
-            margin: 16px;
-            padding: 14px;
+        /* ========================================
+           Month View (Lark-style)
+           ======================================== */
+        .cal-month-view {
+            display: none;
+            background: var(--bg-card);
+        }
+
+        .cal-month-view.active {
+            display: block;
+        }
+
+        /* 完整月历视图 */
+        .cal-month-full-view,
+        .cal-month-expanded-view {
+            background: var(--bg-card);
+        }
+
+        /* 月份导航 */
+        .cal-month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+        }
+
+        .cal-month-nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary);
+            font-size: 18px;
+            color: var(--text-secondary);
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            background: var(--bg-card);
-            border-radius: 12px;
-            border: 1px dashed var(--border-color);
-            color: var(--primary-blue);
+        }
+
+        .cal-month-nav-btn:hover {
+            background: var(--border-color);
+        }
+
+        .cal-month-nav-btn:active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .cal-month-nav-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* 星期 header */
+        .cal-month-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            padding: 12px 0 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cal-month-weekdays span {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        /* 日期行 */
+        .cal-month-row {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cal-month-row:last-child {
+            border-bottom: none;
+        }
+
+        /* 日期格子 - 完整模式 */
+        .cal-month-cell {
+            min-height: 80px;
+            padding: 6px 4px;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .cal-month-cell:active {
+            background: var(--bg-secondary);
+        }
+
+        .cal-month-cell.other-month {
+            opacity: 0.4;
+        }
+
+        .cal-month-cell .cell-day {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 14px;
             font-weight: 500;
+            color: var(--text-primary);
+            border-radius: 50%;
+            margin-bottom: 4px;
+        }
+
+        .cal-month-cell.today .cell-day {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .cal-month-cell.selected .cell-day {
+            background: var(--bg-secondary);
+        }
+
+        .cal-month-cell.today.selected .cell-day {
+            background: var(--primary-blue);
+        }
+
+        .cal-month-cell .cell-events {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .cal-month-cell .cell-event {
+            font-size: 10px;
+            color: var(--primary-blue);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+
+        .cal-month-cell .cell-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            margin-top: 4px;
+        }
+
+        /* ===== 展开模式样式 ===== */
+        .cal-month-expanded-view {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 120px); /* 减去header和底部留白 */
+            max-height: 600px;
+        }
+
+        /* 顶部固定区域 */
+        .cal-month-top-section {
+            flex-shrink: 0;
+            background: var(--bg-card);
+        }
+
+        .cal-month-expanded-view .cal-month-row {
+            background: var(--bg-card);
+        }
+
+        .cal-month-expanded-view .cal-month-row.selected-row {
+            background: var(--bg-card);
+            border-bottom: none;
+        }
+
+        .cal-month-expanded-view .cal-month-cell {
+            min-height: 56px;
+            padding: 8px 4px;
+        }
+
+        /* 收起按钮 */
+        .cal-month-collapse-btn {
+            display: flex;
+            justify-content: center;
+            padding: 8px 0;
             cursor: pointer;
-            transition: all 0.2s;
+            background: var(--bg-card);
         }
 
-        .cal-add-reminder:hover {
-            background: rgba(0, 122, 255, 0.05);
-            border-color: var(--primary-blue);
+        .cal-month-collapse-btn:active {
+            background: var(--bg-secondary);
         }
 
-        /* Date Picker Modal */
+        .collapse-arrow {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* 中间可滚动内容区域 */
+        .cal-month-content-section {
+            flex: 1;
+            overflow: hidden;
+            border-top: 3px solid var(--primary-blue);
+            background: var(--bg-primary);
+        }
+
+        .cal-month-events-scroll {
+            height: 100%;
+            overflow-y: auto;
+            padding: 12px 16px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .cal-month-events-scroll .reminder-card {
+            margin-bottom: 12px;
+        }
+
+        .cal-month-events-scroll .reminder-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .cal-no-events {
+            padding: 40px 16px;
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        /* 底部固定的日期行 */
+        .cal-month-bottom-section {
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .cal-month-bottom-section .cal-month-row {
+            background: var(--bg-secondary);
+            border-bottom: none;
+        }
+
+        .cal-month-bottom-section .cal-month-cell {
+            min-height: 56px;
+        }
+
+        /* ========================================
+           Date Picker Dropdown (Lark-style)
+           ======================================== */
         .cal-picker-overlay {
             display: none;
             position: absolute;
@@ -1255,125 +1713,77 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 150;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 100;
         }
 
         .cal-picker-overlay.show {
             display: block;
         }
 
-        .cal-picker-modal {
+        .cal-picker-dropdown {
             display: none;
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: calc(100% - 48px);
-            max-width: 340px;
+            top: 56px;
+            left: 16px;
+            width: 300px;
             background: var(--bg-card);
-            border-radius: 20px;
-            box-shadow: var(--shadow-lg);
-            z-index: 160;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            z-index: 110;
             overflow: hidden;
         }
 
-        .cal-picker-modal.show {
+        .cal-picker-dropdown.show {
             display: block;
         }
 
-        .cal-picker-header {
-            padding: 16px;
+        /* Day Picker (Month Calendar) */
+        .cal-picker-day {
+            padding: 12px;
+        }
+
+        .cal-picker-nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 12px;
         }
 
-        .cal-picker-title {
-            font-size: 17px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .cal-picker-close {
+        .cal-picker-nav button {
             background: none;
             border: none;
-            font-size: 24px;
-            color: var(--text-secondary);
-            cursor: pointer;
-        }
-
-        /* Picker内部的Tab */
-        .cal-picker-tabs {
-            display: flex;
-            padding: 12px 16px;
-            gap: 8px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .cal-picker-tab {
-            flex: 1;
-            padding: 8px;
-            text-align: center;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            background: var(--bg-primary);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .cal-picker-tab.active {
-            background: var(--primary-blue);
-            color: white;
-        }
-
-        .cal-picker-month-nav {
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .cal-picker-month-nav button {
-            background: none;
-            border: none;
-            font-size: 20px;
+            font-size: 18px;
             color: var(--primary-blue);
             cursor: pointer;
-            padding: 4px 12px;
+            padding: 4px 8px;
         }
 
-        .cal-picker-month-nav span {
+        .cal-picker-nav span {
             font-size: 15px;
             font-weight: 600;
             color: var(--text-primary);
         }
 
-        .cal-picker-grid {
+        .cal-picker-weekdays {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            padding: 8px 12px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .cal-picker-weekdays span {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .cal-picker-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
             gap: 4px;
         }
 
-        /* Week Picker Grid - 统一布局 */
-        .cal-picker-grid.week-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            padding: 12px 16px;
-        }
-
-        /* Month Picker Grid */
-        .cal-picker-grid.month-grid {
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            padding: 12px 16px;
-        }
-
-        .cal-picker-day {
+        .cal-picker-date {
             aspect-ratio: 1;
             display: flex;
             align-items: center;
@@ -1382,126 +1792,61 @@
             color: var(--text-primary);
             border-radius: 50%;
             cursor: pointer;
-            position: relative;
         }
 
-        .cal-picker-day:hover {
+        .cal-picker-date:active {
             background: rgba(0, 122, 255, 0.1);
         }
 
-        .cal-picker-day.other {
+        .cal-picker-date.other {
             color: var(--text-tertiary);
         }
 
-        .cal-picker-day.today {
+        .cal-picker-date.today {
             font-weight: 700;
             color: var(--primary-blue);
         }
 
-        .cal-picker-day.selected {
+        .cal-picker-date.selected {
             background: var(--primary-blue);
             color: white;
         }
 
-        .cal-picker-day-badge {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            font-size: 9px;
-            background: var(--primary-blue);
-            color: white;
-            min-width: 14px;
-            height: 14px;
-            border-radius: 7px;
+        /* Month Picker (Year & Month Scroll) */
+        .cal-picker-month {
+            padding: 16px;
+        }
+
+        .cal-picker-scroll-container {
             display: flex;
-            align-items: center;
-            justify-content: center;
+            gap: 16px;
+            height: 200px;
         }
 
-        .cal-picker-day.selected .cal-picker-day-badge {
-            background: rgba(255,255,255,0.3);
-        }
-
-        /* Week/Month选择项 - 统一卡片样式 */
-        .cal-picker-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 14px 8px;
-            background: var(--bg-primary);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-
-        .cal-picker-item:hover {
-            border-color: var(--primary-blue);
-        }
-
-        .cal-picker-item.selected {
-            background: var(--primary-blue);
-            color: white;
-        }
-
-        .cal-picker-item-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .cal-picker-item.selected .cal-picker-item-title {
-            color: white;
-        }
-
-        .cal-picker-item-range {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        .cal-picker-item.selected .cal-picker-item-range {
-            color: rgba(255,255,255,0.8);
-        }
-
-        .cal-picker-item-badge {
-            font-size: 10px;
-            background: var(--primary-blue);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin-top: 4px;
-        }
-
-        .cal-picker-item.selected .cal-picker-item-badge {
-            background: rgba(255,255,255,0.3);
-        }
-
-        .cal-picker-quick {
-            padding: 12px 16px 16px;
-            display: flex;
-            gap: 8px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .cal-picker-quick button {
+        .cal-picker-scroll {
             flex: 1;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background: var(--bg-primary);
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: all 0.2s;
+            overflow-y: auto;
+            scroll-snap-type: y mandatory;
         }
 
-        .cal-picker-quick button:hover {
-            background: var(--primary-blue);
-            color: white;
-            border-color: var(--primary-blue);
+        .cal-picker-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cal-picker-scroll-item {
+            padding: 12px 16px;
+            text-align: center;
+            font-size: 16px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            scroll-snap-align: center;
+        }
+
+        .cal-picker-scroll-item.selected {
+            font-weight: 600;
+            color: var(--primary-blue);
+            background: rgba(0, 122, 255, 0.1);
+            border-radius: 8px;
         }
 
         .action-item {
@@ -1788,7 +2133,7 @@
             color: var(--primary-green);
         }
 
-        /* Sticky Bar */
+        /* Sticky Bar - 粘滞在底部 */
         .sticky-bar {
             position: absolute;
             bottom: 83px;
@@ -1800,7 +2145,7 @@
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
             border-top: 1px solid var(--border-color);
-            z-index: 50;  /* Above scrollable content */
+            z-index: 50;
         }
 
         .sticky-btn {
@@ -2397,6 +2742,186 @@
             justify-content: space-between;
             padding: 12px 16px;
             border-top: 1px solid var(--border-color);
+        }
+
+        /* ========================================
+           Date Picker Modal (独立日期选择器)
+           ======================================== */
+        .date-picker-modal {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .date-picker-modal.show {
+            display: flex;
+        }
+
+        .date-picker-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .date-picker-content {
+            position: relative;
+            background: var(--bg-card);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 320px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .date-picker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .date-picker-title {
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .date-picker-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            border: none;
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .date-picker-close:hover {
+            background: var(--border-color);
+        }
+
+        .date-picker-shortcuts {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .date-shortcut {
+            flex: 1;
+            padding: 10px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: white;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .date-shortcut:hover {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .date-shortcut:active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: white;
+        }
+
+        .date-picker-month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+        }
+
+        .month-nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary);
+            font-size: 18px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .month-nav-btn:hover {
+            background: var(--border-color);
+        }
+
+        .month-label {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .date-picker-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            padding: 0 16px 16px;
+        }
+
+        .dp-day-header {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            padding: 8px 0;
+            font-weight: 500;
+        }
+
+        .dp-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-weight: 500;
+        }
+
+        .dp-day:hover {
+            background: var(--bg-primary);
+        }
+
+        .dp-day.other-month {
+            color: var(--text-tertiary);
+            opacity: 0.5;
+        }
+
+        .dp-day.today {
+            border: 2px solid var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .dp-day.selected {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .dp-day.selected.today {
+            border-color: var(--primary-blue);
         }
 
         .due-clear-btn,
@@ -3124,6 +3649,31 @@
             gap: 8px;
         }
 
+        .md-add-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .md-add-btn:hover {
+            background: #0066CC;
+            transform: scale(1.1);
+        }
+
+        .md-add-btn:active {
+            transform: scale(0.95);
+        }
+
         /* AI Suggestions */
         .md-ai-suggestions {
             margin-bottom: 12px;
@@ -3141,8 +3691,8 @@
 
         .md-suggestion-item {
             display: flex;
-            align-items: center;
-            gap: 12px;
+            flex-direction: column;
+            gap: 8px;
             padding: 12px;
             background: linear-gradient(135deg, #F3E8FF 0%, #FCE7F3 100%);
             border-radius: 10px;
@@ -3157,11 +3707,59 @@
         }
 
         .md-suggestion-text {
-            flex: 1;
             font-size: 14px;
             color: var(--text-primary);
+            line-height: 1.4;
         }
 
+        .md-suggestion-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .md-suggestion-dismiss-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .md-suggestion-dismiss-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #EF4444;
+            color: #EF4444;
+        }
+
+        .md-suggestion-accept-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .md-suggestion-accept-btn:hover {
+            background: #0066CC;
+            transform: scale(1.05);
+        }
+
+        /* 保留旧样式兼容性 */
         .md-suggestion-add-btn {
             display: flex;
             align-items: center;
@@ -3214,6 +3812,112 @@
             margin-bottom: 8px;
         }
 
+        /* My Calendar 新卡片样式 - 与首页/Calendar保持一致 */
+        .md-reminder-card {
+            display: flex;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .md-rc-date-col {
+            width: 48px;
+            min-width: 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 6px;
+            color: white;
+            transition: opacity 0.15s, transform 0.15s;
+        }
+
+        .md-rc-date-col.clickable {
+            cursor: pointer;
+        }
+
+        .md-rc-date-col.clickable:hover {
+            opacity: 0.85;
+        }
+
+        .md-rc-date-col.clickable:active {
+            transform: scale(0.95);
+        }
+
+        .md-rc-month {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+
+        .md-rc-day {
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        .md-rc-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            min-width: 0;
+        }
+
+        .md-rc-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .md-rc-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            line-height: 1.3;
+            cursor: pointer;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .md-rc-title:hover {
+            color: var(--primary-blue);
+        }
+
+        .md-rc-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .md-rc-icon {
+            font-size: 11px;
+        }
+
+        .md-rc-text {
+            color: var(--text-secondary);
+        }
+
+        .md-rc-add {
+            color: var(--primary-blue);
+            cursor: pointer;
+        }
+
+        .md-rc-add:hover {
+            text-decoration: underline;
+        }
+
+        /* 旧样式保留给 Done 区域使用 */
         .md-reminder-item {
             display: flex;
             align-items: flex-start;
@@ -3293,6 +3997,27 @@
             text-decoration: underline;
         }
 
+        .md-reminder-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .md-reminder-contacts {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .md-reminder-add-contact {
+            font-size: 13px;
+            color: var(--primary-blue);
+            cursor: pointer;
+        }
+
+        .md-reminder-add-contact:hover {
+            text-decoration: underline;
+        }
+
         /* Completed List */
         .md-completed-list {
             margin-top: 16px;
@@ -3303,7 +4028,7 @@
         .md-completed-label {
             font-size: 13px;
             font-weight: 600;
-            color: #1a7f37;  /* 深绿色，更好的可见度 */
+            color: var(--text-tertiary);  /* 灰色，与My Calendar区域同步 */
             margin-bottom: 10px;
             display: flex;
             align-items: center;
@@ -4043,6 +4768,33 @@
             color: var(--text-secondary);
             font-size: 12px;
             transition: transform 0.3s;
+        }
+
+        .contact-pending-actions-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .contact-add-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .contact-add-btn:hover {
+            background: #0066CC;
+            transform: scale(1.1);
         }
 
         .contact-pending-actions.collapsed .contact-pending-arrow {
@@ -5345,11 +6097,11 @@
                 
                 <!-- 操作按钮 -->
                 <div class="profile-actions">
-                    <button class="profile-action-btn primary" onclick="showToast('Opening share...')">
-                        <span>📤</span> Share Card
+                    <button class="profile-action-btn" onclick="showToast('Opening preview...')">
+                        <span>👁</span> Preview
                     </button>
-                    <button class="profile-action-btn" onclick="showToast('Editing profile...')">
-                        <span>✏️</span> Edit
+                    <button class="profile-action-btn primary" onclick="showToast('Opening share...')">
+                        <span>📤</span> Share
                     </button>
                 </div>
             </div>
@@ -5385,7 +6137,8 @@
                 </div>
             </div>
 
-            <div style="height: 140px;"></div>
+            <!-- 底部留白，为 sticky bar 留出空间 -->
+            <div style="height: 80px;"></div>
         </div>
 
         <!-- Contacts List Page -->
@@ -5575,80 +6328,83 @@
             <div style="height: 100px;"></div>
         </div>
 
-        <!-- Calendar Page (紧凑时间轴设计) -->
+        <!-- Calendar Page (Lark-style Design) -->
         <div class="app-content calendar-page" id="calendar-page">
             <!-- Header -->
             <div class="cal-header">
                 <div class="cal-header-left">
                     <button class="cal-back-btn" onclick="showPage('home')">‹</button>
-                    <span class="cal-title">Reminders</span>
+                    <button class="cal-date-trigger" onclick="openCalendarPicker()">
+                        <span id="cal-header-date">1月</span>
+                        <span class="cal-trigger-arrow">▼</span>
+                    </button>
                 </div>
-                <button class="cal-picker-btn" onclick="toggleCalendarPicker()">📅</button>
-            </div>
-
-            <!-- View Mode Tabs -->
-            <div class="cal-view-tabs">
-                <div class="cal-view-tab active" data-view="day" onclick="switchCalendarView('day', this)">Day</div>
-                <div class="cal-view-tab" data-view="week" onclick="switchCalendarView('week', this)">Week</div>
-                <div class="cal-view-tab" data-view="month" onclick="switchCalendarView('month', this)">Month</div>
-            </div>
-
-            <!-- Horizontal Date Selector -->
-            <div class="cal-date-selector">
-                <button class="cal-date-nav" onclick="shiftCalendarDates(-7)">‹</button>
-                <div class="cal-dates-scroll" id="cal-dates-scroll">
-                    <!-- Dynamically rendered by app.js -->
+                <div class="cal-header-right">
+                    <button class="cal-add-btn" onclick="showAddReminderModal()">+</button>
+                    <div class="cal-view-switch">
+                        <button class="cal-view-btn active" data-view="day" onclick="switchCalendarView('day')">日</button>
+                        <button class="cal-view-btn" data-view="month" onclick="switchCalendarView('month')">月</button>
+                    </div>
                 </div>
-                <button class="cal-date-nav" onclick="shiftCalendarDates(7)">›</button>
             </div>
 
-            <!-- Selected Date Title -->
-            <div class="cal-selected-header">
-                <span class="cal-selected-title" id="cal-selected-title">Wednesday, Jan 15</span>
-                <span class="cal-reminder-count" id="cal-reminder-count">2 reminders</span>
+            <!-- Day View Container -->
+            <div class="cal-day-view" id="cal-day-view">
+                <!-- Week Strip: 7 days horizontal -->
+                <div class="cal-week-strip" id="cal-week-strip">
+                    <div class="cal-week-header">
+                        <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+                    </div>
+                    <div class="cal-week-dates" id="cal-week-dates">
+                        <!-- Dynamically rendered -->
+                    </div>
+                </div>
+
+                <!-- Selected Date Header & Reminders -->
+                <div class="cal-day-header">
+                    <span class="cal-day-title" id="cal-day-title">周三, 1月15日</span>
+                    <span class="cal-day-count" id="cal-day-count">2 pending</span>
+                </div>
+                <div class="cal-reminders-list" id="cal-reminders-list">
+                    <!-- Dynamically rendered -->
+                </div>
             </div>
 
-            <!-- Reminders List -->
-            <div class="cal-reminders-container" id="cal-reminders-container">
-                <!-- Dynamically rendered by app.js -->
-            </div>
-
-            <!-- Add Button -->
-            <div class="cal-add-reminder" onclick="showAddReminderModal()">
-                <span>+</span>
-                <span>Add Reminder</span>
-            </div>
-
-            <div style="height: 100px;"></div>
-        </div>
-
-        <!-- Date Picker Modal (独立设计) -->
-        <div class="cal-picker-overlay" id="cal-picker-overlay" onclick="toggleCalendarPicker()"></div>
-        <div class="cal-picker-modal" id="cal-picker-modal">
-            <div class="cal-picker-header">
-                <span class="cal-picker-title">Select Date</span>
-                <button class="cal-picker-close" onclick="toggleCalendarPicker()">×</button>
-            </div>
-            
-            <!-- Picker内部的Tab切换 -->
-            <div class="cal-picker-tabs">
-                <div class="cal-picker-tab active" data-type="day" onclick="switchPickerTab('day', this)">Day</div>
-                <div class="cal-picker-tab" data-type="week" onclick="switchPickerTab('week', this)">Week</div>
-                <div class="cal-picker-tab" data-type="month" onclick="switchPickerTab('month', this)">Month</div>
-            </div>
-            
-            <div class="cal-picker-month-nav">
-                <button onclick="changePickerMonth(-1)">‹</button>
-                <span id="cal-picker-month">January 2026</span>
-                <button onclick="changePickerMonth(1)">›</button>
-            </div>
-            <div class="cal-picker-grid" id="cal-picker-grid">
+            <!-- Month View Container -->
+            <div class="cal-month-view" id="cal-month-view" style="display: none;">
                 <!-- Dynamically rendered -->
             </div>
-            <div class="cal-picker-quick">
-                <button onclick="selectQuickDate('today')">Today</button>
-                <button onclick="selectQuickDate('tomorrow')">Tomorrow</button>
-                <button onclick="selectQuickDate('thisWeek')">This Week</button>
+
+            <div style="height: 80px;"></div>
+        </div>
+
+        <!-- Date Picker Dropdown (Lark-style) -->
+        <div class="cal-picker-overlay" id="cal-picker-overlay" onclick="closeCalendarPicker()"></div>
+        <div class="cal-picker-dropdown" id="cal-picker-dropdown">
+            <!-- Day Picker: Month Calendar -->
+            <div class="cal-picker-day" id="cal-picker-day">
+                <div class="cal-picker-nav">
+                    <button onclick="changePickerMonth(-1)">‹</button>
+                    <span id="cal-picker-month-label">2026年1月</span>
+                    <button onclick="changePickerMonth(1)">›</button>
+                </div>
+                <div class="cal-picker-weekdays">
+                    <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+                </div>
+                <div class="cal-picker-days" id="cal-picker-days">
+                    <!-- Dynamically rendered -->
+                </div>
+            </div>
+            <!-- Month Picker: Year & Month Scroll -->
+            <div class="cal-picker-month" id="cal-picker-month-view" style="display: none;">
+                <div class="cal-picker-scroll-container">
+                    <div class="cal-picker-scroll" id="cal-picker-year-scroll">
+                        <!-- Years -->
+                    </div>
+                    <div class="cal-picker-scroll" id="cal-picker-month-scroll">
+                        <!-- Months -->
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -5666,7 +6422,11 @@
         <div class="tab-bar">
             <div class="tab-item active" onclick="showPage('home')">
                 <span class="tab-icon">🏠</span>
-                <span class="tab-label">BizCard</span>
+                <span class="tab-label">Home</span>
+            </div>
+            <div class="tab-item" onclick="showPage('calendar')">
+                <span class="tab-icon">📅</span>
+                <span class="tab-label">Calendar</span>
             </div>
             <div class="tab-item" onclick="showPage('contacts')">
                 <span class="tab-icon">👥</span>
@@ -5749,7 +6509,7 @@
         <div class="modal-overlay" id="add-action-modal">
             <div class="add-action-sheet">
                 <div class="add-action-header">
-                    <span class="add-action-title">Add Action</span>
+                    <span class="add-action-title">Add Reminder</span>
                     <button class="add-action-close" onclick="closeAddActionModal()">×</button>
                 </div>
                 <div class="add-action-body">
@@ -5772,7 +6532,7 @@
                     <div class="due-date-picker" id="due-date-picker">
                         <div class="due-date-header">
                             <button class="due-picker-back" onclick="toggleDueDatePicker()">‹</button>
-                            <span>Due date</span>
+                            <span>Date</span>
                             <div></div>
                         </div>
                         <div class="due-date-month">
@@ -5810,6 +6570,30 @@
                             <button class="add-action-submit" onclick="submitNewAction()">Create</button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Date Picker Modal (独立的日期选择器) -->
+        <div class="date-picker-modal" id="date-picker-modal">
+            <div class="date-picker-overlay" onclick="closeDatePickerModal()"></div>
+            <div class="date-picker-content">
+                <div class="date-picker-header">
+                    <span class="date-picker-title">Select Date</span>
+                    <button class="date-picker-close" onclick="closeDatePickerModal()">✕</button>
+                </div>
+                <div class="date-picker-shortcuts">
+                    <button class="date-shortcut" data-days="0">Today</button>
+                    <button class="date-shortcut" data-days="1">Tomorrow</button>
+                    <button class="date-shortcut" data-days="7">In 1 week</button>
+                </div>
+                <div class="date-picker-month-nav">
+                    <button class="month-nav-btn" onclick="changeEditMonth(-1)">‹</button>
+                    <span class="month-label" id="edit-month-label">January 2026</span>
+                    <button class="month-nav-btn" onclick="changeEditMonth(1)">›</button>
+                </div>
+                <div class="date-picker-calendar" id="edit-date-calendar">
+                    <!-- Calendar rendered by JS -->
                 </div>
             </div>
         </div>
