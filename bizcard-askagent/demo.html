@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BizCard Ask Agent Demo</title>
+  <style>
+    /* 基础重置 */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 外部控制台 */
+    .external-controls {
+      position: absolute;
+      left: 30px;
+      top: 50px;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .external-controls h3 { font-size: 16px; margin-bottom: 8px; }
+    .btn-control {
+      padding: 10px 16px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+      text-align: left;
+    }
+    .btn-control:hover { background: #4338ca; }
+    .btn-control.secondary {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+    .btn-control.secondary:hover { background: #e5e7eb; }
+
+    /* 手机外壳模拟 */
+    .phone-frame {
+      width: 375px;
+      height: 812px;
+      background: #f9fafb;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+      border: 8px solid #1f2937;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 状态栏模拟 */
+    .status-bar {
+      height: 44px;
+      background: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #000;
+      z-index: 20;
+      position: relative;
+    }
+
+    /* App Views */
+    .app-view {
+      position: absolute;
+      top: 44px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      flex-direction: column;
+      background: #fff;
+      z-index: 10;
+    }
+    .app-view.active { display: flex; }
+
+    /* Mock 详情页通用样式 */
+    .mock-header {
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid #f3f4f6;
+      font-weight: 500;
+      background: #fff;
+    }
+    .mock-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      padding-bottom: 100px; /* 留出悬浮按钮空间 */
+      background: #fff;
+    }
+    .floating-action-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      display: flex;
+      gap: 12px;
+      z-index: 20;
+    }
+    .fab-btn {
+      height: 48px;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transition: transform 0.1s;
+    }
+    .fab-btn:active { transform: scale(0.98); }
+    .fab-btn .icon { margin-right: 6px; font-size: 18px; }
+
+    /* ====== Ask Agent UI ====== */
+    .header {
+      height: 50px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid #f3f4f6;
+      z-index: 10;
+    }
+    .menu-btn {
+      font-size: 24px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #374151;
+      width: 32px;
+      text-align: left;
+    }
+    .header-title {
+      flex: 1;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 600;
+      color: #111827;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 侧边栏 (Drawer) */
+    .sidebar {
+      position: absolute;
+      top: 0;
+      left: -280px;
+      width: 280px;
+      height: 100%;
+      background: #fff;
+      z-index: 30;
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 2px 0 12px rgba(0,0,0,0.1);
+    }
+    .sidebar.open { transform: translateX(280px); }
+    .sidebar-header {
+      height: 94px; /* StatusBar + Header */
+      padding: 44px 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 18px;
+      font-weight: 600;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
+    .sidebar-content { flex: 1; overflow-y: auto; padding: 16px 12px; }
+    .new-chat-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: 24px;
+    }
+    .history-group { font-size: 12px; color: #6b7280; font-weight: 600; margin: 16px 0 8px 8px; }
+    .history-item {
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #374151;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-item:hover { background: #f9fafb; }
+    .history-item.active { background: #eef2ff; color: #4f46e5; font-weight: 500; }
+    
+    .overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 25;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .overlay.show { display: block; opacity: 1; }
+
+    /* 主内容区 */
+    .main-area {
+      flex: 1;
+      overflow-y: auto;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Hint 视图 (新对话) */
+    .hint-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .hint-icon { font-size: 48px; margin-bottom: 16px; }
+    .hint-title { font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 8px; text-align: center;}
+    .hint-subtitle { font-size: 14px; color: #6b7280; margin-bottom: 24px; }
+    .hint-list { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+    .hint-item {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      color: #374151;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .hint-item:hover { border-color: #d1d5db; background: #f3f4f6; }
+
+    /* 聊天流视图 */
+    .chat-stream {
+      flex: 1;
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    /* 气泡样式 */
+    .bubble-wrapper { display: flex; flex-direction: column; max-width: 90%; }
+    .bubble-wrapper.user { align-self: flex-end; align-items: flex-end; }
+    .bubble-wrapper.agent { align-self: flex-start; align-items: flex-start; }
+    
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 15px;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+    .bubble-wrapper.user .bubble {
+      background: #4f46e5;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .bubble-wrapper.agent .bubble {
+      background: #f3f4f6;
+      color: #111827;
+      border-bottom-left-radius: 4px;
+      width: 100%;
+    }
+
+    /* 附件区 (Cards Container) */
+    .attachments-area {
+      margin-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 12px;
+      width: 100%;
+    }
+    .attachments-title {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .cards-carousel {
+      display: flex;
+      overflow-x: auto;
+      gap: 12px;
+      padding-bottom: 8px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; /* 增强 iOS 上的滑动体验 */
+    }
+    /* 隐藏横向滚动条但保持可滑动 */
+    .cards-carousel::-webkit-scrollbar { display: none; }
+    
+    .asset-card {
+      min-width: 240px; /* 稍微调宽一点，让滑动时露出下一张卡片的边缘，暗示可滑动 */
+      max-width: 260px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+      flex-shrink: 0;
+      scroll-snap-align: start;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .asset-card.single { 
+      min-width: 100%; 
+      max-width: 100%; 
+    }
+    
+    .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .card-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .icon-contact { background: #e0e7ff; color: #4f46e5; }
+    .icon-meeting { background: #dcfce7; color: #4338ca; }
+    .icon-reminder { background: #fee2e2; color: #166534; }
+    
+    .card-title { font-size: 14px; font-weight: 600; color: #111827; line-height: 1.2;}
+    .card-subtitle { font-size: 12px; color: #6b7280; margin-top: 2px;}
+    
+    .card-cta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #f3f4f6;
+      padding-top: 8px;
+    }
+    .cta-link { font-size: 12px; color: #4f46e5; font-weight: 500; cursor: pointer; }
+    .cta-action { font-size: 12px; padding: 4px 8px; background: #f3f4f6; border-radius: 6px; color: #374151; font-weight: 500; cursor: pointer; }
+
+    /* 底部输入框 */
+    .input-bar {
+      padding: 12px 16px;
+      background: #fff;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      z-index: 10;
+    }
+    .input-box {
+      flex: 1;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 20px;
+      padding: 10px 16px;
+      font-size: 15px;
+      outline: none;
+      color: #111827;
+    }
+    .send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 18px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    /* 底部 Tab Bar */
+    .bottom-tab {
+      height: 80px;
+      background: #fff;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 0 10px 20px;
+      z-index: 10;
+    }
+    .tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: #9ca3af;
+      font-size: 10px;
+      width: 60px;
+      cursor: pointer;
+    }
+    .tab-icon { font-size: 20px; }
+    .tab-item.ask-agent {
+      position: relative;
+      top: -10px;
+      color: #4f46e5;
+    }
+    .tab-item.ask-agent .tab-icon {
+      width: 48px;
+      height: 48px;
+      background: #4f46e5;
+      border-radius: 24px;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 控制面板（模拟点击 App 内的不同地方） -->
+  <div class="external-controls">
+    <h3>模拟 App 页面流转</h3>
+    <button class="btn-control secondary" onclick="showView('global')">1. 首页 (从底部 Tab 进入 Global Ask)</button>
+    <button class="btn-control secondary" onclick="showView('meeting')">2. 查看会议详情页 (Q3 同步会)</button>
+    <button class="btn-control secondary" onclick="showView('contact')">3. 查看联系人详情页 (August.z)</button>
+  </div>
+
+  <div class="phone-frame">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>🔋 100%</span>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- VIEW: Meeting Detail (Mock)                    -->
+    <!-- ============================================== -->
+    <div id="viewMeeting" class="app-view">
+      <div class="mock-header">
+        <span style="font-size:18px; cursor:pointer;" onclick="showView('global')">❮</span>
+        <div style="flex:1; display:flex; justify-content:center;">
+           <span style="font-size:12px; background:#f3f4f6; padding:6px 16px; border-radius:16px; display:flex; align-items:center; gap:8px;">
+             <span style="color:#4f46e5;">▶</span> 
+             <span style="color:#9ca3af; letter-spacing: 2px;">|||||||||</span>
+           </span>
+        </div>
+        <span style="font-size:16px; cursor:pointer;">📄</span>
+      </div>
+      <div class="mock-content">
+        <h2 style="font-size: 22px; margin-bottom: 12px; line-height:1.3; font-weight:700;">Q4 Business Review & Strategy Planning</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+          <div style="color: #6b7280; font-size: 13px;">📅 Oct 28 15:20</div>
+          <div style="display:flex;">
+            <div style="width:24px; height:24px; background:#fca5a5; border-radius:12px; border:2px solid #fff; margin-right:-8px; z-index:3;"></div>
+            <div style="width:24px; height:24px; background:#93c5fd; border-radius:12px; border:2px solid #fff; margin-right:-8px; z-index:2;"></div>
+            <div style="width:24px; height:24px; background:#f3f4f6; border-radius:12px; border:2px solid #fff; z-index:1; display:flex; justify-content:center; align-items:center; font-size:12px; color:#6b7280;">+</div>
+          </div>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+          <h3 style="font-size: 16px; font-weight:600;">Images (6)</h3>
+          <span style="font-size: 12px; color: #6b7280;">View All ></span>
+        </div>
+        <div style="display:flex; gap:8px; overflow-x:auto; margin-bottom: 24px;">
+          <div style="width: 80px; height: 60px; background: #e5e7eb; border-radius: 8px; flex-shrink: 0;"></div>
+          <div style="width: 80px; height: 60px; background: #d1d5db; border-radius: 8px; flex-shrink: 0;"></div>
+          <div style="width: 80px; height: 60px; background: #e5e7eb; border-radius: 8px; flex-shrink: 0;"></div>
+          <div style="width: 80px; height: 60px; background: #d1d5db; border-radius: 8px; flex-shrink: 0;"></div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+          <h3 style="font-size: 16px; font-weight:600;">Reminders</h3>
+          <div style="width:24px; height:24px; background:#4f46e5; color:#fff; border-radius:12px; display:flex; justify-content:center; align-items:center; font-size:16px;">+</div>
+        </div>
+        <div style="font-size:13px; color:#6b7280; margin-bottom:8px;">AI Suggested</div>
+        <div style="background:#fff; border:1px dashed #c7d2fe; padding:16px; border-radius:12px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+          <div style="font-size:14px; color:#374151; margin-bottom:12px; line-height:1.5;">
+            Good morning everyone. Let's start with our Q4 business review. I'm pleased to share that our revenue exceeded projections...
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button style="flex:1; background:#4f46e5; color:#fff; border:none; padding:8px 0; border-radius:6px; font-weight:500;">Accept</button>
+            <button style="width:36px; background:#fff; border:1px solid #e5e7eb; color:#6b7280; border-radius:6px; display:flex; justify-content:center; align-items:center;">✕</button>
+          </div>
+        </div>
+
+        <h3 style="font-size: 16px; font-weight:600; margin-bottom: 12px;">Key Points</h3>
+        <ul style="padding-left: 20px; font-size: 14px; color: #374151; line-height: 1.6;">
+          <li>Q4 revenue exceeded projections by 15%</li>
+          <li>Customer satisfaction score improved to 4.7/5.0</li>
+          <li>Prepare technical specification document for mobile app</li>
+        </ul>
+      </div>
+
+      <!-- Meeting 详情页底部悬浮栏 -->
+      <div class="floating-action-bar">
+        <button class="fab-btn primary" onclick="openAskAgent('meeting')" style="flex: 1.2; background: #fff; color: #111827; border: 1px solid #e5e7eb;">
+          <span class="icon">✨</span> Ask Agent
+        </button>
+        <button class="fab-btn secondary" style="flex: 1; background: #fff; color: #111827; border: 1px solid #e5e7eb;">
+          <span class="icon">📤</span> Share
+        </button>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- VIEW: Contact Detail (Mock)                    -->
+    <!-- ============================================== -->
+    <div id="viewContact" class="app-view">
+      <div class="mock-header">
+        <span style="font-size:18px; cursor:pointer;" onclick="showView('global')">❮</span>
+        <span style="color:#0066ff; font-weight:500; font-size:15px; cursor:pointer;">Edit</span>
+      </div>
+      <div class="mock-content" style="text-align: center;">
+        <div style="width: 80px; height: 80px; background: #fca5a5; border-radius: 40px; margin: 0 auto 12px;"></div>
+        <h2 style="font-size: 20px; margin-bottom: 4px; font-weight:700;">August.z <span style="color:#3b82f6; font-size:16px;">✓</span></h2>
+        <div style="color: #6b7280; font-size: 12px; margin-bottom: 24px;">Upgrade to pro for more benefits</div>
+        
+        <div style="display:flex; justify-content:space-around; margin-bottom: 24px; padding:0 16px;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <div style="width:44px; height:44px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:22px; display:flex; justify-content:center; align-items:center; font-size:18px;">📞</div>
+            <span style="font-size:11px; color:#6b7280;">Phone</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <div style="width:44px; height:44px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:22px; display:flex; justify-content:center; align-items:center; font-size:18px;">✉️</div>
+            <span style="font-size:11px; color:#6b7280;">Email</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <div style="width:44px; height:44px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:22px; display:flex; justify-content:center; align-items:center; font-size:18px;">💬</div>
+            <span style="font-size:11px; color:#6b7280;">Message</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <div style="width:44px; height:44px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:22px; display:flex; justify-content:center; align-items:center; font-size:18px;">📱</div>
+            <span style="font-size:11px; color:#6b7280;">Whatsapp</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <div style="width:44px; height:44px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:22px; display:flex; justify-content:center; align-items:center; font-size:18px;">💾</div>
+            <span style="font-size:11px; color:#6b7280;">Save</span>
+          </div>
+        </div>
+        
+        <div style="display:flex; background:#f3f4f6; border-radius:8px; padding:4px; margin-bottom:20px; margin-left:16px; margin-right:16px;">
+          <div style="flex:1; padding:8px 0; font-size:13px; color:#6b7280;">Information</div>
+          <div style="flex:1; padding:8px 0; font-size:13px; font-weight:600; background:#fff; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">Activities</div>
+        </div>
+        
+        <div style="text-align:left; padding:0 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div style="font-size:14px; font-weight:700;">2 Reminders with August.z ▾</div>
+            <div style="width:24px; height:24px; background:#0066ff; color:#fff; border-radius:12px; display:flex; justify-content:center; align-items:center; font-size:16px;">+</div>
+          </div>
+          
+          <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+            <div style="background:#eff6ff; color:#0066ff; width:48px; height:48px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:12px; font-weight:bold;">
+              <span>JAN</span><span style="font-size:16px;">22</span>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:14px; font-weight:600; margin-bottom:2px;">Send updated proposal...</div>
+              <div style="font-size:12px; color:#6b7280; display:flex; align-items:center; gap:4px;">Product Design Sync</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:4px; font-size:12px; color:#9ca3af;">
+              <div style="width:16px; height:16px; border:1px solid #d1d5db; border-radius:8px;"></div>
+              Complete
+            </div>
+          </div>
+          
+          <div style="font-size:14px; font-weight:700; margin: 24px 0 16px;">May 20, 2025</div>
+          <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px;">
+            <div style="font-size:14px; font-weight:600; margin-bottom:8px;">First Contact</div>
+            <div style="font-size:13px; color:#6b7280; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+              <span>🏷</span> Source: exchange
+            </div>
+            <div style="font-size:13px; color:#6b7280; display:flex; align-items:center; gap:6px;">
+              <span>📍</span> Stamford CT Connecticut Cambridge
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact 详情页底部悬浮栏 -->
+      <div class="floating-action-bar">
+        <button class="fab-btn primary" onclick="openAskAgent('contact')" style="flex: 1.2; background: #fff; color: #0066ff; border: 1px solid #e5e7eb;">
+          <span class="icon">✨</span> Ask Agent
+        </button>
+        <button class="fab-btn secondary-blue" style="flex: 1; background: #0066ff; color: white; border: none;">+ Note</button>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- VIEW: Ask Agent Chat View                      -->
+    <!-- ============================================== -->
+    <div id="viewAskAgent" class="app-view active">
+      
+      <!-- 头部 -->
+      <div class="header">
+        <!-- 返回按钮仅在 Context 模式下显示 -->
+        <button id="backBtn" class="menu-btn" style="display:none; font-size:20px; width:36px; margin-left:-4px;" onclick="goBack()">❮</button>
+        <button class="menu-btn" onclick="toggleSidebar()">≡</button>
+        <div class="header-title" id="headerTitle">Ask Agent</div>
+        <div style="width: 32px;"></div>
+      </div>
+
+      <!-- 侧边栏与遮罩 -->
+      <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+      <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          历史对话
+          <button class="close-btn" onclick="toggleSidebar()">✕</button>
+        </div>
+        <div class="sidebar-content" id="sidebarContent">
+          <div class="new-chat-btn" onclick="startNewChat()">
+            <span style="font-size: 18px;">⊕</span> 新对话
+          </div>
+          <!-- 历史列表将通过 JS 渲染 -->
+          <div id="historyListContainer"></div>
+        </div>
+      </div>
+
+      <!-- 主内容区 -->
+      <div class="main-area" id="mainArea">
+        <!-- 初始 Hint 视图 -->
+        <div class="hint-view" id="hintView">
+          <div class="hint-icon">✨</div>
+          <div class="hint-title" id="hintTitle">嗨，我是你的 BizCard Agent</div>
+          <div class="hint-subtitle" id="hintSubtitle">你可以这样问我：</div>
+          <div class="hint-list" id="hintList">
+            <!-- Hints via JS -->
+          </div>
+        </div>
+
+        <!-- 聊天流视图 -->
+        <div class="chat-stream" id="chatStream">
+          <!-- Bubbles via JS -->
+        </div>
+      </div>
+
+      <!-- 输入区 -->
+      <div class="input-bar">
+        <input type="text" class="input-box" placeholder="输入消息..." readonly>
+        <button class="send-btn">↑</button>
+      </div>
+
+      <!-- 底部 Tab (仅 Global 模式可见) -->
+      <div class="bottom-tab" id="bottomTab">
+        <div class="tab-item" onclick="showView('global')">
+          <div class="tab-icon">📇</div>
+          <span>BizCard</span>
+        </div>
+        <div class="tab-item" onclick="showView('global')">
+          <div class="tab-icon">📅</div>
+          <span>Calendar</span>
+        </div>
+        <div class="tab-item ask-agent" onclick="showView('global')">
+          <div class="tab-icon">✨</div>
+          <span style="font-weight: 600;">Ask Agent</span>
+        </div>
+        <div class="tab-item" onclick="showView('global')">
+          <div class="tab-icon">👥</div>
+          <span>Contacts</span>
+        </div>
+        <div class="tab-item" onclick="showView('global')">
+          <div class="tab-icon">👤</div>
+          <span>Me</span>
+        </div>
+      </div>
+    </div> <!-- End viewAskAgent -->
+
+  </div>
+
+  <script>
+    // === 页面路由控制 ===
+    let appHistory = []; // 用于记录从哪个详情页进入了 Ask Agent
+    let currentView = 'global'; // 默认为 Ask Agent Global Tab
+
+    function showView(viewId) {
+      document.querySelectorAll('.app-view').forEach(el => el.classList.remove('active'));
+      
+      if (viewId === 'global') {
+        // Global 就是 Ask Agent 的默认形态，带底部 Tab
+        document.getElementById('viewAskAgent').classList.add('active');
+        document.getElementById('bottomTab').style.display = 'flex';
+        document.getElementById('backBtn').style.display = 'none';
+        switchContext('global');
+      } else if (viewId === 'meeting') {
+        document.getElementById('viewMeeting').classList.add('active');
+      } else if (viewId === 'contact') {
+        document.getElementById('viewContact').classList.add('active');
+      }
+      currentView = viewId;
+      appHistory = []; // 清空历史
+    }
+
+    function openAskAgent(ctxType) {
+      // 从详情页点击悬浮按钮进入
+      appHistory.push(currentView); // 记住来源页面
+      
+      document.querySelectorAll('.app-view').forEach(el => el.classList.remove('active'));
+      document.getElementById('viewAskAgent').classList.add('active');
+      
+      // 隐藏底部 Tab，显示返回按钮
+      document.getElementById('bottomTab').style.display = 'none';
+      document.getElementById('backBtn').style.display = 'block';
+      
+      switchContext(ctxType);
+    }
+
+    function goBack() {
+      // Ask Agent 内的返回按钮
+      if (appHistory.length > 0) {
+        const prev = appHistory.pop();
+        showView(prev);
+      } else {
+        showView('global');
+      }
+    }
+
+    // === Mock Data (契约结构) ===
+    const mockThreads = {
+      "t1": {
+        id: "t1", title: "找 Kevin 的联系方式", context: "global",
+        messages: [
+          { role: "user", text: "帮我找一下 Kevin 的联系方式" },
+          { 
+            role: "agent", 
+            text: "Kevin 的联系方式如下：\n电话是 **+1 234-567-8901**，邮箱是 **kevin@acme.com**。",
+            cards: [
+              {
+                type: "contact_card",
+                payload: { id: "c1", name: "Kevin Chen", title: "Product Manager", company: "Acme Corp" }
+              }
+            ]
+          }
+        ]
+      },
+      "t2": {
+        id: "t2", title: "关于 RWA 的讨论", context: "global",
+        messages: [
+          { role: "user", text: "我上次和谁聊了 RWA？" },
+          { 
+            role: "agent", 
+            text: "上次聊 RWA 是在《Product Design Sync》会议里，参与的联系人有 **Kevin Chen** 和 **Alice Wang**。",
+            cards: [
+              { type: "meeting_card", payload: { id: "m1", title: "Product Design Sync", meeting_at: "10月12日 14:00" } },
+              { type: "contact_card", payload: { id: "c1", name: "Kevin Chen", title: "PM", company: "Acme Corp" } },
+              { type: "contact_card", payload: { id: "c2", name: "Alice Wang", title: "Designer", company: "TechCorp" } }
+            ]
+          }
+        ]
+      },
+      "t3": {
+        id: "t3", title: "总结待办事项并提醒", context: "meeting",
+        messages: [
+          { role: "user", text: "总结这场会的待办事项并帮我添加提醒" },
+          { 
+            role: "agent", 
+            text: "基于这场会议，我为你提取了两个待办事项，并已添加到你的提醒中：\n1. 产出架构优化设计图\n2. 给所有参会人发送会议纪要",
+            cards: [
+              { type: "reminder_card", payload: { id: "r1", content: "产出架构优化设计图", due_at: "明天 18:00" } },
+              { type: "reminder_card", payload: { id: "r2", content: "发送会议纪要邮件", due_at: "今晚 20:00" } }
+            ]
+          }
+        ]
+      },
+      "t4": {
+        id: "t4", title: "整理最近的会议", context: "contact",
+        messages: [
+          { role: "user", text: "帮我整理出我和 August.z 最近的会议" },
+          { 
+            role: "agent", 
+            text: "你和 August.z 最近共有 2 场会议，主要围绕 Q4 规划开展：",
+            cards: [
+              { type: "meeting_card", payload: { id: "m2", title: "Q4 Business Review", meeting_at: "Oct 28 15:20" } },
+              { type: "meeting_card", payload: { id: "m1", title: "Product Design Sync", meeting_at: "Oct 12 14:00" } }
+            ]
+          }
+        ]
+      }
+    };
+
+    // 历史记录改为全局共享
+    const globalHistory = [
+      {
+        group: "今天", 
+        items: ["t1", "t2", "t3"]
+      },
+      {
+        group: "昨天",
+        items: ["t4"]
+      }
+    ];
+
+    // 不同 Context 的配置
+    const contexts = {
+      global: {
+        header: "Ask Agent",
+        hintTitle: "嗨，我是你的 BizCard Agent",
+        hints: [
+          "📅 我明天有什么待办？",
+          "👤 帮我找一下 Kevin 的联系方式",
+          "📝 上次和 Alice 开会主要聊了什么？"
+        ]
+      },
+      meeting: {
+        header: "关于《Q4 Business Review...》",
+        hintTitle: "关于这场会议，你可以这样问我：",
+        hints: [
+          "📝 请帮我按话题拆分这段会议摘要",
+          "✅ 总结这场会的待办并帮我添加提醒",
+          "📧 帮我起草一封跟进邮件"
+        ]
+      },
+      contact: {
+        header: "关于联系人 August.z",
+        hintTitle: "关于 August.z，你可以这样问我：",
+        hints: [
+          "📅 帮我整理出最近我和他的所有会议",
+          "✏️ 帮我更新他的电话号码",
+          "⏰ 帮我建一个下周跟进他的待办"
+        ]
+      }
+    };
+
+    let currentAgentContext = 'global';
+
+    // === DOM 元素 ===
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const headerTitle = document.getElementById('headerTitle');
+    
+    const hintView = document.getElementById('hintView');
+    const hintTitle = document.getElementById('hintTitle');
+    const hintList = document.getElementById('hintList');
+    
+    const chatStream = document.getElementById('chatStream');
+    const historyListContainer = document.getElementById('historyListContainer');
+
+    // === 逻辑控制 ===
+    function toggleSidebar() {
+      const isOpen = sidebar.classList.contains('open');
+      if (isOpen) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+      } else {
+        sidebar.classList.add('open');
+        overlay.classList.add('show');
+      }
+    }
+
+    function switchContext(ctxType) {
+      currentAgentContext = ctxType;
+      const ctx = contexts[ctxType];
+      
+      // 更新 Header
+      headerTitle.innerText = ctx.header;
+      
+      // 渲染 Sidebar History (全局共享历史)
+      renderSidebar(globalHistory);
+      
+      // 回到新对话视图
+      startNewChat();
+    }
+
+    function renderSidebar(historyGroups) {
+      historyListContainer.innerHTML = '';
+      historyGroups.forEach(g => {
+        const groupTitle = document.createElement('div');
+        groupTitle.className = 'history-group';
+        groupTitle.innerText = g.group;
+        historyListContainer.appendChild(groupTitle);
+        
+        g.items.forEach(tId => {
+          const thread = mockThreads[tId];
+          const item = document.createElement('div');
+          item.className = 'history-item';
+          item.innerText = '💬 ' + thread.title;
+          item.onclick = () => {
+            document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+            item.classList.add('active');
+            loadChat(tId);
+            toggleSidebar();
+          };
+          historyListContainer.appendChild(item);
+        });
+      });
+    }
+
+    function startNewChat() {
+      const ctx = contexts[currentAgentContext];
+      chatStream.style.display = 'none';
+      hintView.style.display = 'flex';
+      hintTitle.innerText = ctx.hintTitle;
+      hintList.innerHTML = '';
+      ctx.hints.forEach(text => {
+        const div = document.createElement('div');
+        div.className = 'hint-item';
+        div.innerText = text;
+        hintList.appendChild(div);
+      });
+      document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+      if(sidebar.classList.contains('open')) toggleSidebar();
+    }
+
+    function loadChat(threadId) {
+      const thread = mockThreads[threadId];
+      if(!thread) return;
+
+      hintView.style.display = 'none';
+      chatStream.style.display = 'flex';
+      chatStream.innerHTML = '';
+
+      thread.messages.forEach(msg => {
+        const wrapper = document.createElement('div');
+        wrapper.className = `bubble-wrapper ${msg.role}`;
+        
+        const formattedText = msg.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+        let html = `<div class="bubble">${formattedText}</div>`;
+        
+        if (msg.role === 'agent' && msg.cards && msg.cards.length > 0) {
+          const isSingle = msg.cards.length === 1;
+          let cardsHtml = msg.cards.map(c => renderCard(c, isSingle)).join('');
+          
+          html += `
+            <div class="attachments-area">
+              <div class="attachments-title">📁 相关引用</div>
+              <div class="cards-carousel">
+                ${cardsHtml}
+              </div>
+            </div>
+          `;
+        }
+        wrapper.innerHTML = html;
+        chatStream.appendChild(wrapper);
+      });
+      chatStream.scrollTop = chatStream.scrollHeight;
+    }
+
+    function renderCard(card, isSingle) {
+      const type = card.type;
+      const p = card.payload;
+      const singleClass = isSingle ? 'single' : '';
+      
+      if (type === 'contact_card') {
+        return `
+          <div class="asset-card ${singleClass}">
+            <div class="card-header">
+              <div class="card-icon icon-contact">👤</div>
+              <div>
+                <div class="card-title">${p.name}</div>
+                <div class="card-subtitle">${p.title} @ ${p.company}</div>
+              </div>
+            </div>
+            <div class="card-cta">
+              <span class="cta-link">查看详情 ></span>
+            </div>
+          </div>
+        `;
+      }
+      
+      if (type === 'meeting_card') {
+        return `
+          <div class="asset-card ${singleClass}">
+            <div class="card-header">
+              <div class="card-icon icon-meeting">📅</div>
+              <div>
+                <div class="card-title">${p.title}</div>
+                <div class="card-subtitle">${p.meeting_at}</div>
+              </div>
+            </div>
+            <div class="card-cta">
+              <span class="cta-link">查看会议 ></span>
+            </div>
+          </div>
+        `;
+      }
+
+      if (type === 'reminder_card') {
+        return `
+          <div class="asset-card ${singleClass}">
+            <div class="card-header">
+              <div class="card-icon icon-reminder">✅</div>
+              <div>
+                <div class="card-title">${p.content}</div>
+                <div class="card-subtitle">⏰ ${p.due_at}</div>
+              </div>
+            </div>
+            <div class="card-cta">
+              <span class="cta-link">查看详情 ></span>
+              <span class="cta-action">标记完成</span>
+            </div>
+          </div>
+        `;
+      }
+      return '';
+    }
+
+    // 初始化显示 Global
+    showView('global');
+
+  </script>
+</body>
+</html>

@@ -84,6 +84,9 @@ Phase 0        Phase 1           Phase 2           Phase 3
 | P1 | **首页 Profile 区域精简** | 减少干扰，突出核心功能 | 低 |
 | P1 | **会议卡片增加 Action 预览** | 在列表层面就能看到待办 | 低 |
 | P2 | **录音结束关联优化** | AI 推荐关联联系人 | 中 |
+| P1 | **Ask Agent（Super Chatbox）** | AI-Native 入口：自然语言查会议/人/待办、添加待办等 | 中～高 |
+
+> **Ask Agent** 详见 [bizcard-askagent](../bizcard-askagent/APP_PRD.md)。作为跨 Phase 能力，可在 Phase 1 先上「问-答 + 资产卡片 + CTA」最小闭环，Phase 2/3 与搜索、Scope 深度整合。
 
 ### 2.2 P0-1: 首页增加 Action Hub
 
@@ -416,6 +419,7 @@ BEFORE                              AFTER
 
 ## 附录：相关文档
 
+- [Ask Agent（bizcard-askagent：Nanobot Skills + 资产卡片与 CTA）](../bizcard-askagent/APP_PRD.md)
 - [Unified Timeline 完整 PRD](../bizcard-unified-timeline/UnifiedTimeline_AppInteraction_PRD.md)
 - [Unified Timeline 产品方案](../bizcard-unified-timeline/intro.MD)
 - [Demo 原型](../bizcard-unified-timeline/index.html)

@@ -65,6 +65,8 @@
 │  │头像│  Ethan Carter · Product Designer   [Preview >]     │  ← 精简 Profile
 │  └────┘                                                     │
 ├─────────────────────────────────────────────────────────────┤
+│  [💬 问我：会议、联系人、待办...                    ] [Ask]  │  ← NEW: Super Chatbox
+├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  🏢 Bitflux Insurance Agent Training Program        │    │
 │  └─────────────────────────────────────────────────────┘    │
@@ -103,6 +105,7 @@
 ✅ 新增 Action Hub - 用户一眼看到待办
 ✅ 精简 Profile - 节省首屏空间
 ✅ 会议卡片增加 Action 状态预览
+✅ 新增 Ask 入口 - Super Chatbox 承接自然语言需求（见 [bizcard-askagent](../bizcard-askagent/APP_PRD.md)）
 ⚪ 保留现有架构和 Tab 导航
 ```
 
