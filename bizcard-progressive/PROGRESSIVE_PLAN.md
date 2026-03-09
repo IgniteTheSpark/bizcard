@@ -85,8 +85,12 @@ Phase 0        Phase 1           Phase 2           Phase 3
 | P1 | **会议卡片增加 Action 预览** | 在列表层面就能看到待办 | 低 |
 | P2 | **录音结束关联优化** | AI 推荐关联联系人 | 中 |
 | P1 | **Ask Agent（Super Chatbox）** | AI-Native 入口：自然语言查会议/人/待办、添加待办等 | 中～高 |
+| P2 | **Calendar 集成与多源聚合** | 接入飞书/钉钉日历，Ask Agent 实现排期与避冲能力 | 中 |
+| P2 | **2.0 硬件 E-ink 场景拓展** | 手机端排版推流至硬件，实现晨报/提词器/翻译模式 | 高 |
+| P3 | **OpenClaw 沙箱集成 (混合Agent)** | 接入云端执行沙箱，实现跨系统自动化任务 (如发送研报等) | 高 |
 
 > **Ask Agent** 详见 [bizcard-askagent](../bizcard-askagent/APP_PRD.md)。作为跨 Phase 能力，可在 Phase 1 先上「问-答 + 资产卡片 + CTA」最小闭环，Phase 2/3 与搜索、Scope 深度整合。
+> **商务营销场景拓展**（含硬件 2.0、Calendar 聚合、混合 Agent 架构）详见 [bizcard-business-expansion](../bizcard-business-expansion/STRATEGY_OVERVIEW.md)。
 
 ### 2.2 P0-1: 首页增加 Action Hub
 

@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizCard 2.0: 全链路商务智能助理</title>
+
+    <!-- Fonts -->
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           =========================================== */
+        :root {
+            /* High-end Executive Dark Theme */
+            --bg-primary: #050505;
+            --bg-secondary: #121212;
+            --surface: #1E1E1E;
+            --text-primary: #F8FAFC;
+            --text-secondary: #A1A1AA;
+            
+            /* Professional Gold & Cyan Accents */
+            --accent: #EAB308; /* Premium Gold */
+            --accent-glow: rgba(234, 179, 8, 0.15);
+            --accent-alt: #38BDF8; /* Tech Blue */
+            
+            --success: #10B981;
+            
+            /* Typography */
+            --font-display: 'Clash Display', sans-serif;
+            --font-body: 'Satoshi', sans-serif;
+            
+            /* Fluid Typography (Viewport Fitting) */
+            --title-size: clamp(2rem, 5vw, 4rem);
+            --h2-size: clamp(1.5rem, 3.5vw, 3rem);
+            --h3-size: clamp(1.1rem, 2vw, 1.5rem);
+            --body-size: clamp(0.9rem, 1.5vw, 1.15rem);
+            --small-size: clamp(0.75rem, 1vw, 0.95rem);
+
+            /* Spacing */
+            --slide-padding: clamp(2rem, 5vw, 4rem);
+            --content-gap: clamp(1rem, 2.5vw, 2.5rem);
+            --element-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.8s;
+        }
+
+        /* ===========================================
+           VIEWPORT FITTING & BASE STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            line-height: 1.6;
+        }
+
+        /* Elegant grainy texture overlay */
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none; z-index: 9999;
+        }
+
+        #presentation {
+            height: 100vh;
+            height: 100dvh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding: var(--slide-padding);
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Typography */
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.2; }
+        h1 { font-size: var(--title-size); margin-bottom: var(--content-gap); letter-spacing: -0.02em; }
+        h2 { font-size: var(--h2-size); margin-bottom: var(--content-gap); color: var(--text-primary); }
+        h3 { font-size: var(--h3-size); margin-bottom: var(--element-gap); color: var(--accent); }
+        p { font-size: var(--body-size); margin-bottom: var(--element-gap); color: var(--text-secondary); }
+        
+        .gold-text { background: linear-gradient(90deg, #FDE68A, #D97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .tag { display: inline-block; padding: 0.3em 1em; border-radius: 100px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); font-size: var(--small-size); margin-bottom: 1rem; color: var(--text-secondary); }
+
+        /* Layouts */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--content-gap); align-items: center; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--content-gap); }
+        @media (max-width: 800px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+        /* ===========================================
+           UI COMPONENTS: CHATBOX & HARDWARE
+           =========================================== */
+        
+        /* Chatbox Mockup */
+        .chat-container {
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            height: 60vh;
+            max-height: 500px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .chat-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; align-items: center; gap: 10px;
+            font-family: var(--font-display); font-weight: 500;
+        }
+        .chat-header-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+        .chat-body {
+            flex: 1; padding: 1.5rem; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 1rem;
+        }
+        .bubble {
+            max-width: 80%; padding: 1rem; border-radius: 12px; font-size: var(--body-size);
+            opacity: 0; transform: translateY(10px); animation: popIn 0.5s var(--ease-out-expo) forwards;
+        }
+        .bubble.user { background: var(--surface); color: #FFF; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .bubble.agent { background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); color: #FDE68A; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .bubble.card-attachment { background: #18181b; border: 1px solid #27272a; margin-top: 0.5rem; border-radius: 8px; padding: 1rem; font-size: var(--small-size); color: #d4d4d8;}
+
+        /* Slider Hardware Mockup (Two-piece design) */
+        .hardware-mockup {
+            position: relative;
+            width: 280px; height: 460px;
+            margin: 0 auto;
+            perspective: 1000px;
+        }
+        .hw-back {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(145deg, #1A1A1A, #0A0A0A);
+            border-radius: 20px; border: 2px solid #333;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 30px 60px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px 0;
+        }
+        
+        /* Top Mic Array (Exposed when pulled down) */
+        .hw-mic-array-top { display: flex; gap: 12px; margin-top: 5px; opacity: 0; transition: opacity 0.3s; }
+        .hw-mic-array-top .hw-mic { width: 8px; height: 8px; border-radius: 50%; background: #000; box-shadow: inset 0 2px 4px rgba(255,255,255,0.1); }
+        .hardware-mockup.mode-meeting .hw-mic-array-top { opacity: 1; }
+        
+        /* Bottom Mic Array (Exposed when pushed up) */
+        .hw-mic-array-bottom { display: flex; gap: 8px; margin-bottom: 5px; opacity: 0; transition: opacity 0.3s; }
+        .hw-mic-array-bottom .hw-mic { width: 6px; height: 6px; border-radius: 50%; background: #000; box-shadow: inset 0 2px 4px rgba(255,255,255,0.1); }
+        .hardware-mockup.mode-memo .hw-mic-array-bottom { opacity: 1; }
+
+        /* The sliding E-ink panel */
+        .hw-slider {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #F3F4F6; /* E-ink base color */
+            border-radius: 18px;
+            border: 6px solid #111;
+            transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; overflow: hidden;
+            z-index: 10;
+        }
+        
+        /* Slide States */
+        .hardware-mockup.mode-memo .hw-slider { transform: translateY(-40px); }
+        .hardware-mockup.mode-meeting .hw-slider { transform: translateY(40px); }
+        
+        /* Side Buttons Mockup */
+        .hw-side-btn {
+            position: absolute; right: -4px; width: 4px; background: #333; border-radius: 0 4px 4px 0;
+        }
+        .hw-btn-up { top: 100px; height: 30px; }
+        .hw-btn-down { top: 140px; height: 30px; }
+        .hw-slider-switch { left: -4px; top: 80px; width: 4px; height: 40px; background: #EAB308; border-radius: 4px 0 0 4px; }
+        
+        .eink-screen {
+            flex: 1; background: #F3F4F6; color: #111; padding: 1.5rem;
+            display: flex; flex-direction: column;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        .eink-status { font-size: 0.75rem; font-weight: bold; border-bottom: 2px solid #111; padding-bottom: 0.5rem; margin-bottom: 1rem; display: flex; justify-content: space-between;}
+        
+        /* E-ink Flash Animation */
+        @keyframes einkFlash {
+            0% { background: #F3F4F6; color: #111; }
+            20% { background: #111; color: #F3F4F6; }
+            40% { background: #F3F4F6; color: #111; }
+            60% { background: #111; color: #F3F4F6; }
+            100% { background: #F3F4F6; color: #111; }
+        }
+        .flash { animation: einkFlash 0.6s ease-in-out; }
+
+        /* Buttons & Utils */
+        .btn { background: #FFF; color: #000; border: none; padding: 0.8rem 1.5rem; border-radius: 100px; font-family: var(--font-display); font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: var(--body-size); }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .btn-gold { background: var(--accent); }
+        .btn-gold:hover { box-shadow: 0 0 20px var(--accent-glow); }
+        
+        .icon-row { display: flex; gap: 1rem; margin-top: 1rem; opacity: 0.5; transition: opacity 0.5s;}
+        .icon-row.active { opacity: 1; }
+        .icon-box { width: 40px; height: 40px; background: var(--surface); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid #333; }
+
+        /* Animations */
+        .reveal { opacity: 0; transform: translateY(20px); transition: all var(--duration-normal) var(--ease-out-expo); }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .d-1 { transition-delay: 0.1s; } .d-2 { transition-delay: 0.2s; } .d-3 { transition-delay: 0.3s; } .d-4 { transition-delay: 0.4s; }
+        @keyframes popIn { to { opacity: 1; transform: translateY(0); } }
+
+        /* Nav */
+        .progress-bar { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.05); z-index: 1000; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+    <div id="presentation">
+
+        <!-- ==========================================
+             SLIDE 1: TITLE
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content" style="text-align: center; align-items: center;">
+                <span class="tag reveal d-1">Product Strategy 2026</span>
+                <h1 class="reveal d-2">BizCard 2.0 <br><span class="gold-text">全链路商务外脑</span></h1>
+                <p class="reveal d-3" style="max-width: 600px; margin: 2rem auto; font-size: var(--h3-size);">
+                    不仅是智能名片盒，更是你的 <strong>Biz Assistant (专属 AI 助理)</strong>。<br>
+                    帮助高净值商务人士在营销与获客链路上 <span style="color: var(--accent);">多做一步</span>。
+                </p>
+                <div class="reveal d-4" style="margin-top: 2rem;">
+                    <p style="font-size: var(--small-size); color: #555;">Scroll or Use Arrow Keys to navigate</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 2: THE VISION
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content">
+                <span class="tag reveal d-1">战略重塑</span>
+                <h2 class="reveal d-2">从“中间态记录”到“全链路驱动”</h2>
+                
+                <div class="grid-3 reveal d-3" style="margin-top: 2rem; gap: 2rem;">
+                    <div style="border-top: 2px solid #333; padding-top: 1.5rem;">
+                        <h3 style="color: var(--text-primary);">前链路 <span style="color: var(--text-secondary); font-size:0.8em; font-weight:normal;">(Pre-action)</span></h3>
+                        <p style="color: var(--accent); margin-bottom: 1rem; font-weight: 500;">主动准备与排期</p>
+                        <p style="font-size: var(--small-size);">打破日历孤岛，自动聚合钉钉/飞书/Apple日程。会前自动检索客户背景并推送晨报。</p>
+                    </div>
+                    <div style="border-top: 2px solid var(--accent); padding-top: 1.5rem; background: linear-gradient(180deg, rgba(234,179,8,0.05), transparent); padding-left: 1rem; padding-right:1rem; border-radius: 8px;">
+                        <h3 style="color: var(--text-primary);">中链路 <span style="color: var(--text-secondary); font-size:0.8em; font-weight:normal;">(In-action)</span></h3>
+                        <p style="color: var(--accent); margin-bottom: 1rem; font-weight: 500;">实时 Copilot 提词</p>
+                        <p style="font-size: var(--small-size);">面对面交谈时，硬件推拉屏长亮。根据客户异议实时展现应对建议或产品推荐。</p>
+                    </div>
+                    <div style="border-top: 2px solid #333; padding-top: 1.5rem;">
+                        <h3 style="color: var(--text-primary);">后链路 <span style="color: var(--text-secondary); font-size:0.8em; font-weight:normal;">(Post-action)</span></h3>
+                        <p style="color: var(--accent); margin-bottom: 1rem; font-weight: 500;">无人值守跟进</p>
+                        <p style="font-size: var(--small-size);">授权 Biz Assistant 拟写会议纪要、甚至跨系统撰写商务邮件并一键分发。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 3: COMPETITIVE DIFFERENTIATION
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content">
+                <div class="reveal d-1" style="text-align: center; margin-bottom: 3rem;">
+                    <span class="tag">破局点分析</span>
+                    <h2>为什么我们不是下一个 Plaud / 钉钉 A1？</h2>
+                    <p style="color: var(--text-secondary); max-width: 600px; margin: 1rem auto 0;">传统 AI 硬件停留在“记录与总结”，而 BizCard 2.0 跃升为“全链路行动派”。</p>
+                </div>
+
+                <div class="grid-2" style="gap: 2rem; align-items: stretch;">
+                    <!-- Competitors -->
+                    <div class="reveal d-2" style="background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 16px; padding: 2rem;">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🎙️</div>
+                        <h3 style="color: #888; font-size: 1.2rem; margin-bottom: 1.5rem;">传统 AI 录音硬件<br><span style="font-size: 0.9rem; font-weight: normal;">(Plaud, Ticnotes, 钉钉 A1)</span></h3>
+                        <ul style="list-style: none; color: #888; font-size: 0.95rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <li style="border-bottom: 1px dashed #333; padding-bottom: 0.5rem;"><strong>定位：</strong> 被动记录器 (语音备忘录)</li>
+                            <li style="border-bottom: 1px dashed #333; padding-bottom: 0.5rem;"><strong>链路：</strong> 仅限“事后” (录音 -> ASR -> 总结)</li>
+                            <li style="border-bottom: 1px dashed #333; padding-bottom: 0.5rem;"><strong>硬件：</strong> 无屏盲操，只能塞在口袋或手机背面</li>
+                            <li style="border-bottom: 1px dashed #333; padding-bottom: 0.5rem;"><strong>AI 能力：</strong> 文本生成 (LLM Text Generation)</li>
+                        </ul>
+                    </div>
+
+                    <!-- BizCard -->
+                    <div class="reveal d-3" style="background: linear-gradient(145deg, rgba(234,179,8,0.1), transparent); border: 1px solid var(--accent); border-radius: 16px; padding: 2rem; position: relative;">
+                        <div style="position: absolute; top: 1rem; right: 1rem; background: var(--accent); color: #000; font-size: 0.7rem; font-weight: bold; padding: 0.2rem 0.6rem; border-radius: 20px;">NEXT GEN</div>
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🧠</div>
+                        <h3 style="color: var(--accent); font-size: 1.2rem; margin-bottom: 1.5rem;">BizCard 2.0<br><span style="font-size: 0.9rem; font-weight: normal; color: #FFF;">(全链路商务外脑)</span></h3>
+                        <ul style="list-style: none; color: #FFF; font-size: 0.95rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <li style="border-bottom: 1px dashed #444; padding-bottom: 0.5rem;"><strong>定位：</strong> 主动执行者 (促成交易/跟进)</li>
+                            <li style="border-bottom: 1px dashed #444; padding-bottom: 0.5rem;"><strong>链路：</strong> 事前准备 + 事中提词 + 事后闭环执行</li>
+                            <li style="border-bottom: 1px dashed #444; padding-bottom: 0.5rem;"><strong>硬件：</strong> E-ink 前置控制台，摆在桌面的辅助视窗</li>
+                            <li style="border-bottom: 1px dashed #444; padding-bottom: 0.5rem;"><strong>AI 能力：</strong> 智能体行动 (Agentic Action via OpenClaw)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 4: HARDWARE INNOVATION
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content grid-2">
+                <div class="reveal d-1">
+                    <span class="tag">核心物理形态</span>
+                    <h2>极致超薄的推拉式伴随者</h2>
+                    <p>摒弃“后置记录器”的被动定位。BizCard 2.0 采用卡片级超薄双平板推拉设计，结合磁吸与 NFC，成为你桌面和随身的<strong>前置商务控制台</strong>。</p>
+                    <ul style="margin-top: 1.5rem; list-style: none; color: var(--text-secondary); font-size: var(--body-size); display: flex; flex-direction: column; gap: 0.8rem;">
+                        <li>⬆️ <strong>向上推屏：</strong> 触发骨传导麦克风，进入“闪念/私密语音”强抗噪模式。</li>
+                        <li>⬇️ <strong>向下拉屏：</strong> 露出顶部环境麦克风阵列，进入“全向多人会议录音”模式。</li>
+                        <li>🔘 <strong>实体交互：</strong> 侧边具备墨水屏翻页键及收音模式物理滑块，支持盲操。</li>
+                        <li>🧲 <strong>碰一碰与磁吸：</strong> 内置 NFC 社交破冰，兼容 MagSafe 磁吸随身携带。</li>
+                    </ul>
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button class="btn btn-gold reveal d-3" onclick="toggleHardwareMode('memo')">演示上推 (闪念模式)</button>
+                        <button class="btn reveal d-4" onclick="toggleHardwareMode('meeting')" style="background: var(--surface); color: #FFF;">演示下拉 (会议模式)</button>
+                    </div>
+                </div>
+
+                <div class="reveal d-2" style="display: flex; justify-content: center;">
+                    <div class="hardware-mockup" id="hw-demo">
+                        <!-- Side buttons -->
+                        <div class="hw-side-btn hw-btn-up"></div>
+                        <div class="hw-side-btn hw-btn-down"></div>
+                        <div class="hw-slider-switch"></div>
+                        
+                        <!-- Back layer with mics -->
+                        <div class="hw-back">
+                            <div class="hw-mic-array-top">
+                                <div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div>
+                            </div>
+                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">BizCard 2.0</span>
+                            <div class="hw-mic-array-bottom">
+                                <div class="hw-mic" style="background:#EAB308;"></div> <!-- Bone conduction indicator -->
+                            </div>
+                        </div>
+                        <!-- Front layer with E-ink -->
+                        <div class="hw-slider">
+                            <div class="eink-screen">
+                                <div class="eink-status" id="hw-demo-status">
+                                    <span>Standby</span><span>100%</span>
+                                </div>
+                                <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+                                    <h1 style="font-size: 3rem; color: #111; margin-bottom: 0;">10:42</h1>
+                                    <p id="hw-demo-text" style="color: #444; font-weight: bold; margin-top: 0;">Slide to Start</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 4: SCENARIO 1 - MORNING BRIEFING
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content grid-2">
+                <div class="reveal d-1">
+                    <span class="tag">场景 1：主动准备</span>
+                    <h2>跨平台日程聚合<br>& 每日晨报</h2>
+                    <p>国内职场人的痛点：内部用飞书/钉钉，外部用苹果日历。Biz Assistant 能够统一接管授权，在清晨为你生成专属的 E-ink 桌面仪表盘。</p>
+                    
+                    <div class="icon-row" id="s1-icons">
+                        <div class="icon-box">🍏</div>
+                        <div class="icon-box">💬</div> <!-- Dingtalk mock -->
+                        <div class="icon-box">🕊️</div> <!-- Feishu mock -->
+                    </div>
+
+                    <button class="btn reveal d-3" style="margin-top: 2rem;" onclick="runScenario1(this)">授权聚合日历</button>
+                </div>
+
+                <div class="reveal d-2" style="display: flex; justify-content: center;">
+                    <div class="hardware-mockup">
+                        <!-- Side buttons -->
+                        <div class="hw-side-btn hw-btn-up"></div>
+                        <div class="hw-side-btn hw-btn-down"></div>
+                        <div class="hw-slider-switch"></div>
+                        <div class="hw-back">
+                            <div class="hw-mic-array-top">
+                                <div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div>
+                            </div>
+                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">BizCard 2.0</span>
+                            <div class="hw-mic-array-bottom">
+                                <div class="hw-mic" style="background:#EAB308;"></div>
+                            </div>
+                        </div>
+                        <div class="hw-slider">
+                            <div class="eink-screen" id="s1-eink">
+                                <div class="eink-status"><span>07:00 AM</span><span>Standby</span></div>
+                                <div style="text-align: center; margin-top: 40%;">等待同步...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 5: SCENARIO 2 - PRE-MEETING PREP
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content grid-2">
+                <div class="reveal d-1" style="display: flex; justify-content: center;">
+                    <div class="chat-container" style="width: 100%;">
+                        <div class="chat-header">
+                            <div class="chat-header-dot"></div> Biz Assistant
+                        </div>
+                        <div class="chat-body" id="s2-chat">
+                            <!-- JS injected -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="reveal d-2" style="padding-left: 2rem;">
+                    <span class="tag">场景 2：知己知彼</span>
+                    <h2>会前背景极速穿透</h2>
+                    <p>在即将踏入会议室前，无需翻找繁杂的历史记录。只需在 Super Chatbox 中对 Biz Assistant 问一句，它就能瞬间提取过往的核心 Context。</p>
+                    <button class="btn btn-gold" style="margin-top: 2rem;" onclick="runScenario2(this)">演示: 询问客户背景</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 6: SCENARIO 3 - IN-MEETING COPILOT
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content grid-2">
+                <div class="reveal d-1">
+                    <span class="tag">场景 3：实时辅助 (保险销售案例)</span>
+                    <h2>会中 Copilot 话术提词</h2>
+                    <p>硬件推开进入录音模式。手机端 ASR 实时上云，Agent 捕捉到客户需求后，向静音的 e-ink 屏幕下发<span class="gold-text">产品推荐与攻单话术</span>。</p>
+                    
+                    <div style="background: var(--surface); padding: 1.5rem; border-radius: 12px; margin-top: 1.5rem; border-left: 4px solid var(--accent-alt);">
+                        <p style="font-size: var(--small-size); color: var(--text-secondary); margin-bottom: 0.5rem;">🗣️ 客户原声 (实时识别中...)</p>
+                        <p id="s3-transcript" style="font-family: var(--font-display); font-weight: 500;">"我主要想看一看重疾类的，最好是大品牌，预算在每年一万左右。之前看了别家的觉得有点贵。"</p>
+                    </div>
+
+                    <button class="btn" style="margin-top: 2rem;" onclick="runScenario3(this)">触发 Agent 智能提词</button>
+                </div>
+
+                <div class="reveal d-2" style="display: flex; justify-content: center;">
+                    <div class="hardware-mockup mode-meeting">
+                        <!-- Side buttons -->
+                        <div class="hw-side-btn hw-btn-up"></div>
+                        <div class="hw-side-btn hw-btn-down"></div>
+                        <div class="hw-slider-switch"></div>
+                        <div class="hw-back">
+                            <div class="hw-mic-array-top">
+                                <div class="hw-mic" style="background:red;"></div><div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div>
+                            </div>
+                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">BizCard 2.0</span>
+                            <div class="hw-mic-array-bottom">
+                                <div class="hw-mic" style="background:#EAB308;"></div>
+                            </div>
+                        </div>
+                        <div class="hw-slider">
+                            <div class="eink-screen" id="s3-eink">
+                                <div class="eink-status"><span>录音中 14:22</span><span>🔴</span></div>
+                                <div style="text-align: center; margin-top: 40%; font-size:1.2rem;">正在聆听...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 7: SCENARIO 4 - POST-MEETING SUMMARY
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content grid-2">
+                <div class="reveal d-1" style="display: flex; justify-content: center;">
+                    <div class="chat-container" style="width: 100%;">
+                        <div class="chat-header">
+                            <div class="chat-header-dot"></div> Biz Assistant
+                        </div>
+                        <div class="chat-body" id="s4-chat">
+                            <!-- JS injected -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="reveal d-2" style="padding-left: 2rem;">
+                    <span class="tag">场景 4：会后流转</span>
+                    <h2>自动化总结与分发</h2>
+                    <p>告别繁琐的会后整理。Biz Assistant 可以不仅为你提取待办，还能直接代拟邮件并完成跨系统的分发操作，把执行力拉满。</p>
+                    <button class="btn btn-gold" style="margin-top: 2rem;" onclick="runScenario4(this)">演示: 会后一键跟进</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 8: SCENARIO 5 - PROACTIVE OUTREACH
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content grid-2">
+                <div class="reveal d-1">
+                    <span class="tag">场景 5：主动营销</span>
+                    <h2>线索挖掘与主动触达</h2>
+                    <p>基于庞大的历史人脉资产，用户可以反向发问。让 Agent 从通讯录中筛选特定标签的联系人，并针对性起草 Outreach 商业邮件。</p>
+                    <button class="btn" style="margin-top: 2rem;" onclick="runScenario5(this)">演示: 寻找 RWA 潜在客户</button>
+                </div>
+
+                <div class="reveal d-2" style="display: flex; justify-content: center;">
+                    <div class="chat-container" style="width: 100%;">
+                        <div class="chat-header">
+                            <div class="chat-header-dot"></div> Biz Assistant
+                        </div>
+                        <div class="chat-body" id="s5-chat">
+                            <!-- JS injected -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 9: CLOSING
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content" style="text-align: center; justify-content: center;">
+                <h1 class="reveal d-1" style="font-size: clamp(3rem, 7vw, 6rem);">不仅是名片，<br>更是你的<span class="gold-text">超级助理</span></h1>
+                <p class="reveal d-2" style="font-size: var(--h3-size); max-width: 800px; margin: 2rem auto;">
+                    通过 Biz Assistant 与 2.0 推拉墨水屏的软硬协同，BizCard 正式重塑商务全链路体验。
+                </p>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // --- Navigation Setup ---
+        class Presenter {
+            constructor() {
+                this.container = document.getElementById('presentation');
+                this.progressBar = document.getElementById('progress');
+                this.container.addEventListener('scroll', () => this.updateProgress());
+                this.setupObserver();
+            }
+            updateProgress() {
+                const scrollPos = this.container.scrollTop;
+                const max = this.container.scrollHeight - this.container.clientHeight;
+                this.progressBar.style.width = `${(scrollPos / max) * 100}%`;
+            }
+            setupObserver() {
+                const obs = new IntersectionObserver((entries) => {
+                    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+                }, { threshold: 0.3 });
+                document.querySelectorAll('.slide').forEach(s => obs.observe(s));
+            }
+        }
+        new Presenter();
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        const addChatBubble = async (containerId, type, html) => {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `bubble ${type}`;
+            div.innerHTML = html;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            await sleep(800);
+        };
+
+        const einkFlash = async (elementIdOrEl, newHtml) => {
+            const el = typeof elementIdOrEl === 'string' ? document.getElementById(elementIdOrEl) : elementIdOrEl;
+            if (!el) return;
+            el.classList.remove('flash');
+            void el.offsetWidth;
+            el.classList.add('flash');
+            await sleep(300); // Wait till screen is black
+            if (typeof newHtml === 'function') {
+                newHtml();
+            } else {
+                el.innerHTML = newHtml;
+            }
+            await sleep(300);
+        };
+
+        // --- Demo Functions ---
+
+        function toggleHardwareMode(mode) {
+            const hw = document.getElementById('hw-demo');
+            const status = document.getElementById('hw-demo-status');
+            const text = document.getElementById('hw-demo-text');
+            
+            // reset
+            hw.classList.remove('mode-memo', 'mode-meeting');
+            
+            setTimeout(() => {
+                if (mode === 'memo') {
+                    hw.classList.add('mode-memo');
+                    einkFlash(hw.querySelector('.eink-screen'), () => {
+                        status.innerHTML = '<span><i style="color:#EAB308;">●</i> Bone Conduction</span><span>100%</span>';
+                        text.innerHTML = 'Voice Memo / AI Instruction...';
+                    });
+                } else if (mode === 'meeting') {
+                    hw.classList.add('mode-meeting');
+                    einkFlash(hw.querySelector('.eink-screen'), () => {
+                        status.innerHTML = '<span><i style="color:red;">●</i> Ambient Mic Array</span><span>99%</span>';
+                        text.innerHTML = 'Recording Meeting...';
+                    });
+                }
+            }, 100);
+        }
+
+        async function runScenario1(btn) {
+            btn.disabled = true; btn.innerText = "同步中...";
+            document.getElementById('s1-icons').classList.add('active');
+            await sleep(1000);
+            await einkFlash('s1-eink', `
+                <div class="eink-status"><span>08:00 AM</span><span>Synced ✅</span></div>
+                <div style="font-weight:bold; font-size:1.4rem; margin-bottom:1rem;">🌞 Morning, Boss.</div>
+                <div style="font-size:0.9rem; line-height:1.8;">
+                    <strong>[钉钉]</strong> 10:00 产品周会<br>
+                    <strong>[Apple]</strong> 12:30 午餐(私人)<br>
+                    <strong>[飞书]</strong> 15:00 面见客户Kevin<br>
+                    <hr style="border:1px dashed #333; margin:10px 0;">
+                    💡 提示：Kevin 昨晚回复了您的邮件，请注意查收。
+                </div>
+            `);
+            btn.innerText = "重新生成晨报"; btn.disabled = false;
+        }
+
+        async function runScenario2(btn) {
+            btn.disabled = true;
+            const chat = document.getElementById('s2-chat');
+            chat.innerHTML = '';
+            
+            await addChatBubble('s2-chat', 'user', "马上要见 Kevin 了，帮我回忆下上次我们聊了什么？这次见面的核心目标是什么？");
+            await addChatBubble('s2-chat', 'agent', "⏳ 正在检索您与 Kevin (TechNova CEO) 的历史互动资产...");
+            await addChatBubble('s2-chat', 'agent', `
+                <strong>上次会议总结 (10月12日):</strong><br>
+                - 他对我们的 SaaS 方案感兴趣，但觉得部署成本高。<br>
+                - 提到他的团队主要痛点是“多平台数据割裂”。<br><br>
+                🎯 <strong>本次建议目标:</strong><br>
+                主推我们最新发布的“一键集成方案”，强调免部署优势。
+            `);
+            btn.disabled = false;
+        }
+
+        async function runScenario3(btn) {
+            btn.disabled = true; btn.innerText = "Agent 分析中...";
+            await sleep(800);
+            await einkFlash('s3-eink', `
+                <div class="eink-status"><span>Copilot 提词</span><span>⚡</span></div>
+                <div style="background:#111; color:#F3F4F6; padding:0.5rem; font-weight:bold; margin-bottom:0.5rem; display:inline-block;">
+                    🎯 推荐产品
+                </div>
+                <ul style="font-size:0.9rem; padding-left:1.2rem; margin-bottom:1rem;">
+                    <li><strong>平安 001 重疾险:</strong> 大品牌背书，符合客户信赖要求。</li>
+                    <li><strong>保诚 003:</strong> 费率在1万左右，完美匹配预算。</li>
+                </ul>
+                <p style="font-size:0.8rem; border-top:2px solid #111; padding-top:0.5rem;">
+                    <strong>💡 建议话术:</strong> "其实不用看别家，平安001和保诚003刚好卡在您的1万预算内，而且大牌理赔快。"
+                </p>
+            `);
+            btn.innerText = "触发 Agent 智能提词"; btn.disabled = false;
+        }
+
+        async function runScenario4(btn) {
+            btn.disabled = true;
+            const chat = document.getElementById('s4-chat');
+            chat.innerHTML = '';
+            
+            await addChatBubble('s4-chat', 'user', "会议结束了。帮我给参会的所有人发一封 Summary 邮件，并附上下一步的 Action Items。");
+            await addChatBubble('s4-chat', 'agent', "✅ 没问题，已提取录音结论并匹配参会人邮箱。");
+            await addChatBubble('s4-chat', 'agent', `
+                <div class="card-attachment">
+                    <strong>📧 邮件预览</strong><br>
+                    <strong>收件人:</strong> kevin@..., alice@...<br>
+                    <strong>标题:</strong> Meeting Summary & Next Steps<br>
+                    <strong>正文:</strong> 感谢各位的时间。今天我们确认了初步合作意向...<br>
+                    <i>[点击修改]</i> 或 <i>[确认发送]</i>
+                </div>
+            `);
+            btn.disabled = false;
+        }
+
+        async function runScenario5(btn) {
+            btn.disabled = true;
+            const chat = document.getElementById('s5-chat');
+            chat.innerHTML = '';
+            
+            await addChatBubble('s5-chat', 'user', "我想推一个 RWA 的项目。帮我找出联系人里聊过 RWA 话题的人，并起草一封简短的邀约邮件。");
+            await addChatBubble('s5-chat', 'agent', "🔍 正在扫描您的名片库与会议资产记录...");
+            await addChatBubble('s5-chat', 'agent', "找到了 3 位在过去半年内提及过 RWA 的高意向联系人：<br>1. David (CryptoFund合伙人)<br>2. Sarah (Web3研究员)<br>3. Kevin (TechNova)");
+            await addChatBubble('s5-chat', 'agent', `
+                <div class="card-attachment">
+                    <strong>📝 Outreach 草稿:</strong><br>
+                    Hi {Name}, <br>记得上次我们探讨过 RWA 的前景。我这里刚好有一个非常契合的标的...<br>
+                    [群发给这3人]
+                </div>
+            `);
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
