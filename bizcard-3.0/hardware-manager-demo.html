@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>E-ink Display Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f5f5f7;
+            --bg-card: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-muted: #86868b;
+            --accent-blue: #007aff;
+            --accent-red: #ff3b30;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: #1a1a2e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .iphone-frame {
+            width: 393px;
+            height: 852px;
+            background: #000;
+            border-radius: 55px;
+            padding: 12px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            border-radius: 44px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            padding: 54px 20px 16px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .back-btn {
+            font-size: 16px;
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .page-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Content */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        
+        .content::-webkit-scrollbar { display: none; }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        /* Current Display Mockup */
+        .hardware-mockup {
+            background: #e8e8e8;
+            border: 4px solid #a0a0a0;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 0 auto;
+            width: 80%;
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .eink-screen-preview {
+            background: #f8f8f8;
+            width: 100%;
+            height: 100%;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            color: #111;
+        }
+
+        .eink-header {
+            font-size: 10px;
+            font-weight: bold;
+            border-bottom: 2px solid #111;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .eink-body {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Gallery Grid */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .gallery-item {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.02);
+            box-shadow: var(--shadow-card);
+        }
+
+        .gallery-item.active {
+            border: 2px solid var(--accent-blue);
+        }
+
+        .gallery-item.active::after {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--accent-blue);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .gallery-preview {
+            background: #f8f8f8;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            height: 80px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 10px;
+            color: #333;
+            text-align: center;
+            padding: 4px;
+        }
+
+        .item-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: var(--accent-red);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        /* Action Button */
+        .push-btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+            margin-top: auto;
+            margin-bottom: 20px;
+        }
+
+        .push-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Toast */
+        .toast {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: #1a1a2e;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="iphone-frame">
+        <div class="iphone-screen">
+            <div class="top-bar">
+                <a href="#" class="back-btn" onclick="history.back()">‹ Back</a>
+                <div class="page-title">E-ink Display</div>
+                <div style="width: 50px;"></div>
+            </div>
+
+            <div class="content">
+                <div>
+                    <div class="section-title">Current Display (Live)</div>
+                    <div class="hardware-mockup">
+                        <div class="eink-screen-preview" id="live-preview">
+                            <div class="eink-header">
+                                <span>STANDBY</span>
+                                <span>10:42 AM</span>
+                            </div>
+                            <div class="eink-body">
+                                BizCard Ready
+                            </div>
+                        </div>
+                    </div>
+                    <p style="text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 8px;">
+                        Status: Connected · Battery: 85%
+                    </p>
+                </div>
+
+                <div>
+                    <div class="section-title">Content Gallery</div>
+                    <div class="gallery-grid">
+                        <!-- Item 1: Default Dashboard -->
+                        <div class="gallery-item active" onclick="selectItem(this, 'BizCard Ready', 'STANDBY')">
+                            <div class="gallery-preview">
+                                <b>BizCard Ready</b>
+                            </div>
+                            <div class="item-actions">
+                                <span class="item-name">Dashboard</span>
+                                <!-- Cannot delete default -->
+                            </div>
+                        </div>
+
+                        <!-- Item 2: Name Card -->
+                        <div class="gallery-item" onclick="selectItem(this, 'Dr. Evelyn Reed\nProduct Designer', 'NAME CARD')">
+                            <div class="gallery-preview">
+                                <b>Evelyn Reed</b><br>Designer
+                            </div>
+                            <div class="item-actions">
+                                <span class="item-name">My Card</span>
+                                <button class="delete-btn" onclick="deleteItem(event, this)">🗑</button>
+                            </div>
+                        </div>
+
+                        <!-- Item 3: QR Code Placeholder -->
+                        <div class="gallery-item" onclick="selectItem(this, '[ QR CODE ]\nScan to Connect', 'SHARE')">
+                            <div class="gallery-preview">
+                                ⬛⬛⬜⬛<br>
+                                ⬜⬛⬛⬜<br>
+                                ⬛⬜⬜⬛
+                            </div>
+                            <div class="item-actions">
+                                <span class="item-name">QR Code</span>
+                                <button class="delete-btn" onclick="deleteItem(event, this)">🗑</button>
+                            </div>
+                        </div>
+
+                        <!-- Item 4: AI Reminder -->
+                        <div class="gallery-item" onclick="selectItem(this, 'Follow up with\nKevin on RWA', 'AI REMINDER')">
+                            <div class="gallery-preview" style="background: #e0e0e0;">
+                                Follow up with Kevin...
+                            </div>
+                            <div class="item-actions">
+                                <span class="item-name">AI Memo</span>
+                                <button class="delete-btn" onclick="deleteItem(event, this)">🗑</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="push-btn" onclick="pushToHardware()">Push to Hardware</button>
+            </div>
+            
+            <div class="toast" id="toast"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentSelection = {
+            body: 'BizCard Ready',
+            header: 'STANDBY'
+        };
+
+        function selectItem(element, bodyText, headerText) {
+            // Remove active class from all
+            document.querySelectorAll('.gallery-item').forEach(el => el.classList.remove('active'));
+            // Add active to clicked
+            element.classList.add('active');
+            
+            currentSelection.body = bodyText.replace(/\n/g, '<br>');
+            currentSelection.header = headerText;
+        }
+
+        function deleteItem(event, buttonElement) {
+            event.stopPropagation(); // Prevent triggering selection
+            const item = buttonElement.closest('.gallery-item');
+            
+            if (confirm('Delete this cached image from App?')) {
+                item.style.display = 'none';
+                showToast('Image deleted from gallery');
+                
+                // If deleted was active, revert to default
+                if (item.classList.contains('active')) {
+                    const defaultItem = document.querySelector('.gallery-item');
+                    selectItem(defaultItem, 'BizCard Ready', 'STANDBY');
+                }
+            }
+        }
+
+        function pushToHardware() {
+            const btn = document.querySelector('.push-btn');
+            const preview = document.getElementById('live-preview');
+            
+            btn.innerText = 'Syncing via BLE...';
+            btn.style.opacity = '0.7';
+            
+            // Simulate App rendering bitmap and BLE transfer delay
+            setTimeout(() => {
+                // Flash effect simulating E-ink refresh
+                preview.style.background = '#111';
+                preview.style.color = '#f8f8f8';
+                
+                setTimeout(() => {
+                    preview.style.background = '#f8f8f8';
+                    preview.style.color = '#111';
+                    
+                    // Update content
+                    preview.innerHTML = `
+                        <div class="eink-header">
+                            <span>${currentSelection.header}</span>
+                            <span>10:45 AM</span>
+                        </div>
+                        <div class="eink-body" style="flex-direction: column;">
+                            ${currentSelection.body}
+                        </div>
+                    `;
+                    
+                    btn.innerText = 'Push to Hardware';
+                    btn.style.opacity = '1';
+                    showToast('Successfully synced to E-ink Screen');
+                }, 400);
+                
+            }, 1200);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+    </script>
+</body>
+</html>

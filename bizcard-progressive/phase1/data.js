@@ -75,19 +75,18 @@ const AppData = {
         }
     ],
 
-    // Meetings
-    meetings: [
+    // Notes (replaces Meetings)
+    notes: [
         {
-            id: 'meeting_001',
+            id: 'note_001',
             title: 'Product Design Sync',
             date: '2026-01-15',
             time: '11:30',
             duration: 45,
-            type: 'meeting',
+            type: 'MEETING',
             template: '通用',
             language: 'Chinese',
             contactIds: ['contact_kevin', 'contact_alice'],
-            // Detailed summary structure (matching screenshot)
             summaryData: {
                 overview: '此次会议主要讨论了 Contact 页面的设计，重点在于如何将 meeting summary 与人名关联，以便于检索。',
                 background: {
@@ -128,46 +127,46 @@ const AppData = {
             actionIds: ['action_001', 'action_002']
         },
         {
-            id: 'meeting_002',
-            title: 'Sales Review Call',
+            id: 'note_002',
+            title: 'Idea: Expand to B2B Market',
             date: '2026-01-15',
-            time: '10:00',
-            duration: 30,
-            type: 'voice',
-            contactIds: ['contact_bob'],
-            summary: 'Reviewed Q4 sales performance and discussed targets for Q1.',
-            actionIds: []
+            time: '14:05',
+            duration: 2,
+            type: 'VOICE_MEMO',
+            contactIds: ['self'],
+            summary: 'I thought of a good idea, which is to expand bizcard towards business professionals.',
+            actionIds: ['action_003']
         },
         {
-            id: 'meeting_003',
+            id: 'note_003',
             title: 'Agent Call - Partnership Inquiry',
             date: '2026-01-15',
             time: '09:30',
             duration: 5,
-            type: 'call',
+            type: 'MEETING',
             contactIds: [],
             summary: 'Incoming call asking about partnership opportunities.',
             voicemail: 'Hi, this is John from ABC Corp. Please call me back regarding potential partnership.',
             actionIds: ['action_004']
         },
         {
-            id: 'meeting_004',
-            title: 'Legal Review',
+            id: 'note_004',
+            title: 'Follow up with Sarah',
             date: '2026-01-10',
             time: '14:00',
-            duration: 60,
-            type: 'meeting',
-            contactIds: ['contact_charlie'],
-            summary: 'Reviewed contract terms and compliance requirements.',
+            duration: 0,
+            type: 'MANUAL',
+            contactIds: ['contact_alice'],
+            summary: 'Need to manually follow up regarding the new designs.',
             actionIds: ['action_005']
         },
         {
-            id: 'meeting_005',
+            id: 'note_005',
             title: 'Strategy Meeting',
             date: '2026-01-14',
             time: '16:00',
             duration: 90,
-            type: 'meeting',
+            type: 'MEETING',
             contactIds: [],
             summary: 'Internal strategy discussion for Q1 planning.',
             actionIds: ['action_006']
@@ -181,7 +180,7 @@ const AppData = {
             title: 'Follow up with Kevin and Alice on RWA compliance',
             status: 'pending',
             contactIds: ['contact_kevin', 'contact_alice'],  // 多联系人
-            meetingId: 'meeting_001',
+            noteId: 'note_001',
             dueDate: '2026-01-17',
             createdAt: '2026-01-15T11:30:00',
             source: 'ai_extracted',
@@ -192,7 +191,7 @@ const AppData = {
             title: 'Send updated proposal to team',
             status: 'pending',
             contactIds: ['contact_alice', 'contact_bob', 'contact_charlie'],  // 多联系人 (3人)
-            meetingId: 'meeting_001',
+            noteId: 'note_001',
             dueDate: '2026-01-15', // Today
             createdAt: '2026-01-15T11:30:00',
             source: 'ai_extracted',
@@ -203,7 +202,7 @@ const AppData = {
             title: 'Schedule demo for Acme Corp',
             status: 'pending',
             contactIds: ['contact_bob', 'contact_kevin'],  // 多联系人
-            meetingId: 'meeting_002',
+            noteId: 'note_002',
             dueDate: '2026-01-18',
             createdAt: '2026-01-15T10:00:00',
             source: 'manual'
@@ -213,7 +212,7 @@ const AppData = {
             title: 'Call back regarding partnership inquiry',
             status: 'pending',
             contactIds: [],
-            meetingId: 'meeting_003',
+            noteId: 'note_003',
             dueDate: null,
             createdAt: '2026-01-15T09:30:00',
             source: 'ai_extracted',  // Auto-generated follow up
@@ -224,7 +223,7 @@ const AppData = {
             title: 'Reply to legal team about contract terms',
             status: 'pending',
             contactIds: ['contact_charlie'],
-            meetingId: 'meeting_004',
+            noteId: 'note_004',
             dueDate: '2026-01-13', // Overdue
             createdAt: '2026-01-10T14:00:00',
             source: 'ai_extracted',
@@ -235,7 +234,7 @@ const AppData = {
             title: 'Research competitor pricing strategy',
             status: 'pending',
             contactIds: [],
-            meetingId: 'meeting_005',
+            noteId: 'note_005',
             dueDate: null,
             createdAt: '2026-01-14T16:00:00',
             source: 'manual'
@@ -245,7 +244,7 @@ const AppData = {
             title: 'Contact investor for Q1 planning',
             status: 'pending',
             contactIds: [],
-            meetingId: null,
+            noteId: null,
             dueDate: '2026-01-14', // Overdue
             createdAt: '2026-01-12T09:00:00',
             source: 'manual'
@@ -256,7 +255,7 @@ const AppData = {
             title: 'Send meeting notes to team',
             status: 'completed',
             contactIds: [],
-            meetingId: 'meeting_001',
+            noteId: 'note_001',
             dueDate: '2026-01-15',
             createdAt: '2026-01-15T11:30:00',
             completedAt: '2026-01-15T14:00:00',
@@ -267,7 +266,7 @@ const AppData = {
             title: 'Prepare Q4 presentation',
             status: 'completed',
             contactIds: [],
-            meetingId: null,
+            noteId: null,
             dueDate: '2026-01-14',
             createdAt: '2026-01-12T09:00:00',
             completedAt: '2026-01-14T15:30:00',
@@ -278,7 +277,7 @@ const AppData = {
             title: 'Review budget proposal',
             status: 'completed',
             contactIds: [],
-            meetingId: null,
+            noteId: null,
             dueDate: '2026-01-14',
             createdAt: '2026-01-13T10:00:00',
             completedAt: '2026-01-14T10:15:00',
@@ -291,8 +290,8 @@ const AppData = {
         return this.contacts.find(c => c.id === id);
     },
 
-    getMeeting(id) {
-        return this.meetings.find(m => m.id === id);
+    getNote(id) {
+        return this.notes.find(m => m.id === id);
     },
 
     getAction(id) {
@@ -311,13 +310,13 @@ const AppData = {
         return this.actions.filter(a => a.contactIds.includes(contactId));
     },
 
-    getActionsForMeeting(meetingId) {
-        return this.actions.filter(a => a.meetingId === meetingId);
+    getActionsForNote(noteId) {
+        return this.actions.filter(a => a.noteId === noteId);
     },
 
-    getTodayMeetings() {
+    getTodayNotes() {
         const today = '2026-01-15'; // Mock today
-        return this.meetings.filter(m => m.date === today);
+        return this.notes.filter(m => m.date === today);
     },
 
     // Action operations
@@ -336,7 +335,7 @@ const AppData = {
             title: data.title,
             status: 'pending',
             contactIds: data.contactIds || [],
-            meetingId: data.meetingId || null,
+            noteId: data.noteId || null,
             dueDate: data.dueDate || null,
             createdAt: new Date().toISOString(),
             source: 'manual'

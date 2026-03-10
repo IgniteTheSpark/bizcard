@@ -793,9 +793,9 @@
                 <button class="tab-item agent-tab" onclick="showToast('Opening Ask Agent...')">
                     <div class="agent-icon-wrap">🤖</div>
                 </button>
-                <button class="tab-item" onclick="navigateToTimeline()">
+                <button class="tab-item" onclick="navigateToCalendar()">
                     <span class="tab-icon">📅</span>
-                    <span class="tab-label">Timeline</span>
+                    <span class="tab-label">Calendar</span>
                 </button>
                 <button class="tab-item">
                     <span class="tab-icon">👤</span>
@@ -911,14 +911,14 @@
             }, 500);
         }
 
-        // Navigate to Timeline
-        function navigateToTimeline() {
-            showToast('Navigating to Timeline → Activities Tab');
+        // Navigate to Calendar
+        function navigateToCalendar() {
+            showToast('Navigating to Calendar → Activities Tab');
             
-            // In real app, this would navigate to Timeline
-            // For demo purposes, you can uncomment below to open timeline demo
+            // In real app, this would navigate to Calendar
+            // For demo purposes, you can uncomment below to open calendar demo
             setTimeout(() => {
-                window.open('../timeline-demo/demo.html', '_self');
+                window.open('calendar-demo.html', '_self');
             }, 1000);
         }
 
@@ -963,4 +963,3 @@
     </script>
 </body>
 </html>
-

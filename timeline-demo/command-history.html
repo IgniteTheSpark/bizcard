@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Voice Command History</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f5f5f7;
+            --bg-card: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-muted: #86868b;
+            --accent-blue: #007aff;
+            --accent-purple: #af52de;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: #1a1a2e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .iphone-frame {
+            width: 393px;
+            height: 852px;
+            background: #000;
+            border-radius: 55px;
+            padding: 12px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            border-radius: 44px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            padding: 54px 20px 16px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .back-btn {
+            font-size: 16px;
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .page-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Content */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .content::-webkit-scrollbar { display: none; }
+
+        .date-divider {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-align: center;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .date-divider::before, .date-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 30%;
+            height: 1px;
+            background: var(--border-color);
+        }
+        .date-divider::before { left: 0; }
+        .date-divider::after { right: 0; }
+
+        /* History Card */
+        .history-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .user-query {
+            display: flex;
+            gap: 12px;
+        }
+
+        .query-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(0, 122, 255, 0.1);
+            color: var(--accent-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .query-text {
+            flex: 1;
+            font-size: 15px;
+            color: var(--text-primary);
+            line-height: 1.4;
+            font-weight: 500;
+        }
+
+        .query-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .agent-response {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            border-left: 3px solid var(--accent-purple);
+        }
+
+        .agent-response strong {
+            color: var(--text-primary);
+        }
+
+        .contact-snippet {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+
+        .contact-snippet .avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="iphone-frame">
+        <div class="iphone-screen">
+            <div class="top-bar">
+                <a href="#" class="back-btn">‹ Back</a>
+                <div class="page-title">Voice Commands</div>
+                <div style="width: 50px;"></div> <!-- spacer -->
+            </div>
+
+            <div class="content">
+                <div class="date-divider">Today</div>
+
+                <!-- Card 1 -->
+                <div class="history-card">
+                    <div class="user-query">
+                        <div class="query-icon">🎙️</div>
+                        <div class="query-text">
+                            "帮我查询一下冯总的联系方式。"
+                            <div class="query-time">10:42 AM · From E-ink Device</div>
+                        </div>
+                    </div>
+                    <div class="agent-response">
+                        <strong>Biz Assistant:</strong> Found 1 matching contact for "冯总".
+                        <div class="contact-snippet">
+                            <div class="avatar">冯</div>
+                            <div style="flex:1;">
+                                <div style="font-weight:600; font-size:13px; color:#000;">冯建国 (Feng Jianguo)</div>
+                                <div style="font-size:11px; color:#666;">CEO @ TechNova | 138-xxxx-xxxx</div>
+                            </div>
+                            <div style="color:#007aff; font-size:16px;">📞</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="history-card">
+                    <div class="user-query">
+                        <div class="query-icon">🎙️</div>
+                        <div class="query-text">
+                            "找出最近聊过 RWA 项目的人，起草一封邀约邮件。"
+                            <div class="query-time">09:15 AM · From E-ink Device</div>
+                        </div>
+                    </div>
+                    <div class="agent-response">
+                        <strong>Biz Assistant:</strong> Scanned recent meeting notes. Found 3 contacts related to "RWA". Drafted an outreach email template.
+                        <div style="margin-top:8px; font-size:12px; color:#007aff; cursor:pointer;">
+                            [View Draft Email]
+                        </div>
+                    </div>
+                </div>
+
+                <div class="date-divider">Yesterday</div>
+
+                <!-- Card 3 -->
+                <div class="history-card">
+                    <div class="user-query">
+                        <div class="query-icon">🎙️</div>
+                        <div class="query-text">
+                            "提醒我明天下午两点开产品周会。"
+                            <div class="query-time">14:20 PM · From App</div>
+                        </div>
+                    </div>
+                    <div class="agent-response">
+                        <strong>Biz Assistant:</strong> Added to your reminders: "Product Weekly Meeting at 2:00 PM tomorrow".
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</body>
+</html>
