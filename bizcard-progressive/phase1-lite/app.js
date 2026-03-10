@@ -2633,18 +2633,18 @@ function acceptAISuggestion(meetingId, index, actionTitle, button) {
         return;
     }
     
-    // AI suggested 的 reminder 默认日期为今天
-    // TODO: 如果从会议中提取出时间字段则把 reminder 设在那天
-    const defaultDate = DateHelper.today;
+    // AI suggested 的 reminder 默认日期为会议发生的日期
+    // 因为参与人是录音结束后用户手动关联的，Agent 无法自动识别，所以默认关联 Self
+    const defaultDate = meeting.date || DateHelper.today;
     
-    // Accept - 添加到 My Calendar，默认日期为今天
+    // Accept - 添加到 My Calendar
     const newAction = {
         id: 'action_' + Date.now(),
         title: actionTitle,
         status: 'pending',
-        contactIds: meeting.contactIds || [],
+        contactIds: ['self'], // 默认 Self，用户可在详情页手动关联联系人
         meetingId: meetingId,
-        dueDate: defaultDate, // 默认今天（如果AI提取出时间则用提取的时间）
+        dueDate: defaultDate, // 默认会议发生的日期
         createdAt: new Date().toISOString(),
         source: 'ai_extracted',
         aiSuggested: true

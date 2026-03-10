@@ -723,6 +723,11 @@ Calendar 页面和首页使用统一的 Reminder 卡片样式：
 3. 显示 Toast："Added to My Calendar ✓"
 4. 如果所有建议都已处理，显示 "✨ All AI suggestions processed"
 
+**Accept 后的默认值**：
+- **日期**：默认为会议发生的日期（`meeting.date`）
+- **联系人**：默认为 `Self`（因为参与人是录音结束后用户手动关联的，Agent 无法自动从 contacts 中识别并关联）
+- 用户可以在 My Calendar 中点击 Reminder 卡片进入详情页，手动修改日期和关联联系人
+
 **点击 [✗ Dismiss] 后的流程**：
 1. 该建议项从 AI Suggested 区域消失（带淡出动效）
 2. 不会添加到 My Calendar

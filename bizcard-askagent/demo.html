@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BizCard Ask Agent Demo</title>
+  <title>MeCard Ask Agent Demo</title>
   <style>
     /* 基础重置 */
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -636,7 +636,7 @@
         <!-- 初始 Hint 视图 -->
         <div class="hint-view" id="hintView">
           <div class="hint-icon">✨</div>
-          <div class="hint-title" id="hintTitle">嗨，我是你的 BizCard Agent</div>
+          <div class="hint-title" id="hintTitle">嗨，我是你的硅基商务助理</div>
           <div class="hint-subtitle" id="hintSubtitle">你可以这样问我：</div>
           <div class="hint-list" id="hintList">
             <!-- Hints via JS -->
@@ -659,7 +659,7 @@
       <div class="bottom-tab" id="bottomTab">
         <div class="tab-item" onclick="showView('global')">
           <div class="tab-icon">📇</div>
-          <span>BizCard</span>
+          <span>MeCard</span>
         </div>
         <div class="tab-item" onclick="showView('global')">
           <div class="tab-icon">📅</div>
@@ -808,11 +808,11 @@
     const contexts = {
       global: {
         header: "Ask Agent",
-        hintTitle: "嗨，我是你的 BizCard Agent",
+        hintTitle: "嗨，我是你的硅基商务助理",
         hints: [
-          "📅 我明天有什么待办？",
-          "👤 帮我找一下 Kevin 的联系方式",
-          "📝 上次和 Alice 开会主要聊了什么？"
+          "📅 帮我看看最近哪些重要联系人该跟进了",
+          "👤 马上要和 Kevin 开会，给我一份简报",
+          "📝 帮我梳理一下这周的日程，哪些会议可以取消？"
         ]
       },
       meeting: {
@@ -820,17 +820,17 @@
         hintTitle: "关于这场会议，你可以这样问我：",
         hints: [
           "📝 请帮我按话题拆分这段会议摘要",
-          "✅ 总结这场会的待办并帮我添加提醒",
-          "📧 帮我起草一封跟进邮件"
+          "✅ 提取这场会议中的承诺并加入追踪",
+          "📧 基于刚才讨论的要点，起草跟进邮件"
         ]
       },
       contact: {
         header: "关于联系人 August.z",
         hintTitle: "关于 August.z，你可以这样问我：",
         hints: [
-          "📅 帮我整理出最近我和他的所有会议",
-          "✏️ 帮我更新他的电话号码",
-          "⏰ 帮我建一个下周跟进他的待办"
+          "📅 帮我梳理我和他之间的未兑现承诺",
+          "✏️ 我们快认识一周年了，起草一封问候邮件",
+          "⏰ 帮我看看谁能介绍我认识他的合伙人"
         ]
       }
     };

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BizCard 2.0: 全链路商务智能助理</title>
+    <title>MeCard: 全链路商务智能助理</title>
 
     <!-- Fonts -->
     <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
@@ -109,7 +109,7 @@
         h3 { font-size: var(--h3-size); margin-bottom: var(--element-gap); color: var(--accent); }
         p { font-size: var(--body-size); margin-bottom: var(--element-gap); color: var(--text-secondary); }
         
-        .gold-text { background: linear-gradient(90deg, #FDE68A, #D97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .gold-text { background: linear-gradient(90deg, #FDE68A, #D97706); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .tag { display: inline-block; padding: 0.3em 1em; border-radius: 100px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); font-size: var(--small-size); margin-bottom: 1rem; color: var(--text-secondary); }
 
         /* Layouts */
@@ -251,10 +251,10 @@
         <section class="slide">
             <div class="slide-content" style="text-align: center; align-items: center;">
                 <span class="tag reveal d-1">Product Strategy 2026</span>
-                <h1 class="reveal d-2">BizCard 2.0 <br><span class="gold-text">全链路商务外脑</span></h1>
-                <p class="reveal d-3" style="max-width: 600px; margin: 2rem auto; font-size: var(--h3-size);">
-                    不仅是智能名片盒，更是你的 <strong>Biz Assistant (专属 AI 助理)</strong>。<br>
-                    帮助高净值商务人士在营销与获客链路上 <span style="color: var(--accent);">多做一步</span>。
+                <h1 class="reveal d-2">MeCard <br><span class="gold-text">硅基商务助理</span></h1>
+                <p class="reveal d-3" style="max-width: 800px; margin: 2rem auto; font-size: var(--h3-size);">
+                    这是为你量身定制的 <strong>AI 个人助理</strong>。<br>
+                    不只是存联系人，更是帮你经营关系——记住每个人的故事，准备每场重要会议，追踪每个承诺，发现每个隐藏的机会。
                 </p>
                 <div class="reveal d-4" style="margin-top: 2rem;">
                     <p style="font-size: var(--small-size); color: #555;">Scroll or Use Arrow Keys to navigate</p>
@@ -263,68 +263,94 @@
         </section>
 
         <!-- ==========================================
-             SLIDE 2: THE VISION
+             SLIDE 2: THE PROBLEM
              ========================================== -->
         <section class="slide">
             <div class="slide-content">
-                <span class="tag reveal d-1">战略重塑</span>
-                <h2 class="reveal d-2">从“中间态记录”到“全链路驱动”</h2>
-                
-                <div class="grid-3 reveal d-3" style="margin-top: 2rem; gap: 2rem;">
-                    <div style="border-top: 2px solid #333; padding-top: 1.5rem;">
-                        <h3 style="color: var(--text-primary);">前链路 <span style="color: var(--text-secondary); font-size:0.8em; font-weight:normal;">(Pre-action)</span></h3>
-                        <p style="color: var(--accent); margin-bottom: 1rem; font-weight: 500;">主动准备与排期</p>
-                        <p style="font-size: var(--small-size);">打破日历孤岛，自动聚合钉钉/飞书/Apple日程。会前自动检索客户背景并推送晨报。</p>
+                <span class="tag reveal d-1">痛点剖析</span>
+                <h2 class="reveal d-2">当前商务管理与跟进的“四大断层”</h2>
+                <div class="grid-2 reveal d-3" style="margin-top: 2rem; gap: 2rem;">
+                    <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 12px; border-left: 4px solid #ef4444;">
+                        <h3 style="color: #ef4444; font-size: 1.2rem; margin-bottom: 0.5rem;">1. 信息分散，检索极难</h3>
+                        <p style="font-size: var(--small-size);">客户资料散落在微信、会议纪要、通讯录和邮箱里，拜访前找线索如大海捞针。</p>
                     </div>
-                    <div style="border-top: 2px solid var(--accent); padding-top: 1.5rem; background: linear-gradient(180deg, rgba(234,179,8,0.05), transparent); padding-left: 1rem; padding-right:1rem; border-radius: 8px;">
-                        <h3 style="color: var(--text-primary);">中链路 <span style="color: var(--text-secondary); font-size:0.8em; font-weight:normal;">(In-action)</span></h3>
-                        <p style="color: var(--accent); margin-bottom: 1rem; font-weight: 500;">实时 Copilot 提词</p>
-                        <p style="font-size: var(--small-size);">面对面交谈时，硬件推拉屏长亮。根据客户异议实时展现应对建议或产品推荐。</p>
+                    <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 12px; border-left: 4px solid #ef4444;">
+                        <h3 style="color: #ef4444; font-size: 1.2rem; margin-bottom: 0.5rem;">2. 跟进断档，执行脱节</h3>
+                        <p style="font-size: var(--small-size);">会后知道该发资料，但缺乏闭环的自动执行链路，对客户的承诺常常遗漏。</p>
                     </div>
-                    <div style="border-top: 2px solid #333; padding-top: 1.5rem;">
-                        <h3 style="color: var(--text-primary);">后链路 <span style="color: var(--text-secondary); font-size:0.8em; font-weight:normal;">(Post-action)</span></h3>
-                        <p style="color: var(--accent); margin-bottom: 1rem; font-weight: 500;">无人值守跟进</p>
-                        <p style="font-size: var(--small-size);">授权 Biz Assistant 拟写会议纪要、甚至跨系统撰写商务邮件并一键分发。</p>
+                    <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 12px; border-left: 4px solid #ef4444;">
+                        <h3 style="color: #ef4444; font-size: 1.2rem; margin-bottom: 0.5rem;">3. 排期割裂，时间打架</h3>
+                        <p style="font-size: var(--small-size);">公司用飞书/钉钉，个人用 Apple 日历，安排商机推进时要在多平台间来回比对。</p>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 12px; border-left: 4px solid #ef4444;">
+                        <h3 style="color: #ef4444; font-size: 1.2rem; margin-bottom: 0.5rem;">4. 复盘困难，缺乏量化</h3>
+                        <p style="font-size: var(--small-size);">无法评估关系健康度，不知道“重要客户已经 30 天没互动了”，转化效率全凭感觉。</p>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- ==========================================
-             SLIDE 3: COMPETITIVE DIFFERENTIATION
+             SLIDE 3: THE SOLUTION & VALUE CHAIN
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content">
+                <span class="tag reveal d-1">核心解决方案</span>
+                <h2 class="reveal d-2">升级为“个人商务助手”</h2>
+                <p class="reveal d-2" style="max-width: 900px; margin-top: 0.5rem; color: var(--text-secondary);">
+                    MeCard 本质上是你的专属商务助理。它不仅帮你跨平台聚拢数据，更通过<b>自带的轻量级个人向 CRM</b>，打通从会前准备到会后执行的完整闭环。
+                </p>
+                
+                <div class="grid-3 reveal d-3" style="margin-top: 2rem; gap: 2rem;">
+                    <div style="border-top: 2px solid #333; padding-top: 1.5rem;">
+                        <h3 style="color: var(--text-primary);">前链路 <span style="color: var(--text-secondary); font-size:0.8em; font-weight:normal;">(Pre-action)</span></h3>
+                        <p style="color: var(--accent); margin-bottom: 1rem; font-weight: 500;">主动准备与排期</p>
+                        <p style="font-size: var(--small-size);">聚合全平台日历，评估关系脉搏。会前推送参会人简报、历史承诺回顾及破冰话题。</p>
+                    </div>
+                    <div style="border-top: 2px solid var(--accent); padding-top: 1.5rem; background: linear-gradient(180deg, rgba(234,179,8,0.05), transparent); padding-left: 1rem; padding-right:1rem; border-radius: 8px;">
+                        <h3 style="color: var(--text-primary);">中链路 <span style="color: var(--text-secondary); font-size:0.8em; font-weight:normal;">(In-action)</span></h3>
+                        <p style="color: var(--accent); margin-bottom: 1rem; font-weight: 500;">实时 Copilot 提词</p>
+                        <p style="font-size: var(--small-size);">面对面交谈时硬件长亮。智能捕捉客户异议，实时在墨水屏推送应对建议与话术。</p>
+                    </div>
+                    <div style="border-top: 2px solid #333; padding-top: 1.5rem;">
+                        <h3 style="color: var(--text-primary);">后链路 <span style="color: var(--text-secondary); font-size:0.8em; font-weight:normal;">(Post-action)</span></h3>
+                        <p style="color: var(--accent); margin-bottom: 1rem; font-weight: 500;">闭环无人值守执行</p>
+                        <p style="font-size: var(--small-size);">提取双向承诺。自动跨系统找资料、撰写跟进邮件、锁定下一步日历并推进商机。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 3.5: INNOVATION HIGHLIGHTS
              ========================================== -->
         <section class="slide">
             <div class="slide-content">
                 <div class="reveal d-1" style="text-align: center; margin-bottom: 3rem;">
-                    <span class="tag">破局点分析</span>
-                    <h2>为什么我们不是下一个 Plaud / 钉钉 A1？</h2>
-                    <p style="color: var(--text-secondary); max-width: 600px; margin: 1rem auto 0;">传统 AI 硬件停留在“记录与总结”，而 BizCard 2.0 跃升为“全链路行动派”。</p>
+                    <span class="tag">核心能力</span>
+                    <h2>重塑助理体验的四大支撑</h2>
                 </div>
 
                 <div class="grid-2" style="gap: 2rem; align-items: stretch;">
-                    <!-- Competitors -->
                     <div class="reveal d-2" style="background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 16px; padding: 2rem;">
-                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🎙️</div>
-                        <h3 style="color: #888; font-size: 1.2rem; margin-bottom: 1.5rem;">传统 AI 录音硬件<br><span style="font-size: 0.9rem; font-weight: normal;">(Plaud, Ticnotes, 钉钉 A1)</span></h3>
-                        <ul style="list-style: none; color: #888; font-size: 0.95rem; display: flex; flex-direction: column; gap: 1rem;">
-                            <li style="border-bottom: 1px dashed #333; padding-bottom: 0.5rem;"><strong>定位：</strong> 被动记录器 (语音备忘录)</li>
-                            <li style="border-bottom: 1px dashed #333; padding-bottom: 0.5rem;"><strong>链路：</strong> 仅限“事后” (录音 -> ASR -> 总结)</li>
-                            <li style="border-bottom: 1px dashed #333; padding-bottom: 0.5rem;"><strong>硬件：</strong> 无屏盲操，只能塞在口袋或手机背面</li>
-                            <li style="border-bottom: 1px dashed #333; padding-bottom: 0.5rem;"><strong>AI 能力：</strong> 文本生成 (LLM Text Generation)</li>
-                        </ul>
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">🤖</div>
+                        <h3 style="color: var(--accent); font-size: 1.2rem; margin-bottom: 0.5rem;">全境跨域执行能力</h3>
+                        <p style="font-size: var(--small-size); color: var(--text-secondary);">突破传统问答，赋予 Agent 真实行动力（如：去外部网站下载最新研报，并用你的邮箱群发给客户）。</p>
                     </div>
-
-                    <!-- BizCard -->
-                    <div class="reveal d-3" style="background: linear-gradient(145deg, rgba(234,179,8,0.1), transparent); border: 1px solid var(--accent); border-radius: 16px; padding: 2rem; position: relative;">
-                        <div style="position: absolute; top: 1rem; right: 1rem; background: var(--accent); color: #000; font-size: 0.7rem; font-weight: bold; padding: 0.2rem 0.6rem; border-radius: 20px;">NEXT GEN</div>
-                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🧠</div>
-                        <h3 style="color: var(--accent); font-size: 1.2rem; margin-bottom: 1.5rem;">BizCard 2.0<br><span style="font-size: 0.9rem; font-weight: normal; color: #FFF;">(全链路商务外脑)</span></h3>
-                        <ul style="list-style: none; color: #FFF; font-size: 0.95rem; display: flex; flex-direction: column; gap: 1rem;">
-                            <li style="border-bottom: 1px dashed #444; padding-bottom: 0.5rem;"><strong>定位：</strong> 主动执行者 (促成交易/跟进)</li>
-                            <li style="border-bottom: 1px dashed #444; padding-bottom: 0.5rem;"><strong>链路：</strong> 事前准备 + 事中提词 + 事后闭环执行</li>
-                            <li style="border-bottom: 1px dashed #444; padding-bottom: 0.5rem;"><strong>硬件：</strong> E-ink 前置控制台，摆在桌面的辅助视窗</li>
-                            <li style="border-bottom: 1px dashed #444; padding-bottom: 0.5rem;"><strong>AI 能力：</strong> 智能体行动 (Agentic Action via OpenClaw)</li>
-                        </ul>
+                    <div class="reveal d-2" style="background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 16px; padding: 2rem;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">🧠</div>
+                        <h3 style="color: var(--accent); font-size: 1.2rem; margin-bottom: 0.5rem;">自带轻量级个人 CRM</h3>
+                        <p style="font-size: var(--small-size); color: var(--text-secondary);">无需繁琐建单。自动从会话中提取待办和承诺，为你构建清爽的关系脉搏与无缝跟进漏斗。</p>
+                    </div>
+                    <div class="reveal d-3" style="background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 16px; padding: 2rem;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">📅</div>
+                        <h3 style="color: var(--accent); font-size: 1.2rem; margin-bottom: 0.5rem;">多源日历 MCP 聚合</h3>
+                        <p style="font-size: var(--small-size); color: var(--text-secondary);">插拔式集成飞书、钉钉、Apple 日历，打破生态孤岛，提供全局视角的排期预算与冲突干预。</p>
+                    </div>
+                    <div class="reveal d-3" style="background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 16px; padding: 2rem;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">💬</div>
+                        <h3 style="color: var(--accent); font-size: 1.2rem; margin-bottom: 0.5rem;">Super Chatbox</h3>
+                        <p style="font-size: var(--small-size); color: var(--text-secondary);">颠覆传统的菜单导航，以自然语言对话框为唯一入口，一句话完成资产检索与复杂动作分发。</p>
                     </div>
                 </div>
             </div>
@@ -336,14 +362,14 @@
         <section class="slide">
             <div class="slide-content grid-2">
                 <div class="reveal d-1">
-                    <span class="tag">核心物理形态</span>
-                    <h2>极致超薄的推拉式伴随者</h2>
-                    <p>摒弃“后置记录器”的被动定位。BizCard 2.0 采用卡片级超薄双平板推拉设计，结合磁吸与 NFC，成为你桌面和随身的<strong>前置商务控制台</strong>。</p>
+                    <span class="tag">硬件能力跃升</span>
+                    <h2>单点录音硬件 vs<br>前置伴随控制台</h2>
+                    <p>摒弃只能装在口袋里盲操的“高级录音笔”。MeCard 采用卡片级超薄双平板推拉设计，成为你桌面和随身可视化的<strong>前置商务控制台</strong>。</p>
                     <ul style="margin-top: 1.5rem; list-style: none; color: var(--text-secondary); font-size: var(--body-size); display: flex; flex-direction: column; gap: 0.8rem;">
-                        <li>⬆️ <strong>向上推屏：</strong> 触发骨传导麦克风，进入“闪念/私密语音”强抗噪模式。</li>
-                        <li>⬇️ <strong>向下拉屏：</strong> 露出顶部环境麦克风阵列，进入“全向多人会议录音”模式。</li>
-                        <li>🔘 <strong>实体交互：</strong> 侧边具备墨水屏翻页键及收音模式物理滑块，支持盲操。</li>
-                        <li>🧲 <strong>碰一碰与磁吸：</strong> 内置 NFC 社交破冰，兼容 MagSafe 磁吸随身携带。</li>
+                        <li>👁️ <strong>从盲操到可视：</strong> 搭载 E-ink 墨水屏，实时呈现 Agent 提词、日程与晨报。</li>
+                        <li>🎤 <strong>从被动到双向：</strong> 突破单向录音。上推骨传导发指令，下拉阵列收音，屏幕实时反馈。</li>
+                        <li>🧠 <strong>从端侧到云脑：</strong> 复杂 AI 运算在手机与云端，硬件纯接收渲染指令，实现极致超薄与长续航。</li>
+                        <li>🧲 <strong>多态组合：</strong> 内置 NFC 社交碰一碰破冰，兼容 MagSafe 磁吸随身携带。</li>
                     </ul>
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                         <button class="btn btn-gold reveal d-3" onclick="toggleHardwareMode('memo')">演示上推 (闪念模式)</button>
@@ -363,7 +389,7 @@
                             <div class="hw-mic-array-top">
                                 <div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div>
                             </div>
-                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">BizCard 2.0</span>
+                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">MeCard</span>
                             <div class="hw-mic-array-bottom">
                                 <div class="hw-mic" style="background:#EAB308;"></div> <!-- Bone conduction indicator -->
                             </div>
@@ -391,9 +417,9 @@
         <section class="slide">
             <div class="slide-content grid-2">
                 <div class="reveal d-1">
-                    <span class="tag">场景 1：主动准备</span>
-                    <h2>跨平台日程聚合<br>& 每日晨报</h2>
-                    <p>国内职场人的痛点：内部用飞书/钉钉，外部用苹果日历。Biz Assistant 能够统一接管授权，在清晨为你生成专属的 E-ink 桌面仪表盘。</p>
+                    <span class="tag">场景 1：关系脉搏与晨报</span>
+                    <h2>跨平台日程聚合<br>& 自动评估健康度</h2>
+                    <p>不仅是排期，Me Assistant 每天清晨会在 E-ink 桌面仪表盘为你推送今日参会人简报，并主动预警那些“超过 30 天未互动”的重要联系人，把握触达时机。</p>
                     
                     <div class="icon-row" id="s1-icons">
                         <div class="icon-box">🍏</div>
@@ -414,7 +440,7 @@
                             <div class="hw-mic-array-top">
                                 <div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div>
                             </div>
-                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">BizCard 2.0</span>
+                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">MeCard</span>
                             <div class="hw-mic-array-bottom">
                                 <div class="hw-mic" style="background:#EAB308;"></div>
                             </div>
@@ -438,7 +464,7 @@
                 <div class="reveal d-1" style="display: flex; justify-content: center;">
                     <div class="chat-container" style="width: 100%;">
                         <div class="chat-header">
-                            <div class="chat-header-dot"></div> Biz Assistant
+                            <div class="chat-header-dot"></div> Me Assistant
                         </div>
                         <div class="chat-body" id="s2-chat">
                             <!-- JS injected -->
@@ -447,9 +473,9 @@
                 </div>
 
                 <div class="reveal d-2" style="padding-left: 2rem;">
-                    <span class="tag">场景 2：知己知彼</span>
-                    <h2>会前背景极速穿透</h2>
-                    <p>在即将踏入会议室前，无需翻找繁杂的历史记录。只需在 Super Chatbox 中对 Biz Assistant 问一句，它就能瞬间提取过往的核心 Context。</p>
+                    <span class="tag">场景 2：会前准备官</span>
+                    <h2>客户背景极速穿透</h2>
+                    <p>在踏入会议室前，无需翻找繁杂的历史记录。对 Me Assistant 问一句，它能瞬间为你提取上次见面的历史承诺、对方公司动态及共同认识的人，形成完美的破冰话题。</p>
                     <button class="btn btn-gold" style="margin-top: 2rem;" onclick="runScenario2(this)">演示: 询问客户背景</button>
                 </div>
             </div>
@@ -461,9 +487,9 @@
         <section class="slide">
             <div class="slide-content grid-2">
                 <div class="reveal d-1">
-                    <span class="tag">场景 3：实时辅助 (保险销售案例)</span>
+                    <span class="tag">场景 3：实时辅助与承诺追踪</span>
                     <h2>会中 Copilot 话术提词</h2>
-                    <p>硬件推开进入录音模式。手机端 ASR 实时上云，Agent 捕捉到客户需求后，向静音的 e-ink 屏幕下发<span class="gold-text">产品推荐与攻单话术</span>。</p>
+                    <p>硬件推开进入录音模式。Agent 捕捉到客户需求后，向静音墨水屏下发应对建议，并在会后自动把“我答应的”和“对方答应的”录入承诺追踪器。</p>
                     
                     <div style="background: var(--surface); padding: 1.5rem; border-radius: 12px; margin-top: 1.5rem; border-left: 4px solid var(--accent-alt);">
                         <p style="font-size: var(--small-size); color: var(--text-secondary); margin-bottom: 0.5rem;">🗣️ 客户原声 (实时识别中...)</p>
@@ -483,7 +509,7 @@
                             <div class="hw-mic-array-top">
                                 <div class="hw-mic" style="background:red;"></div><div class="hw-mic"></div><div class="hw-mic"></div><div class="hw-mic"></div>
                             </div>
-                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">BizCard 2.0</span>
+                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">MeCard</span>
                             <div class="hw-mic-array-bottom">
                                 <div class="hw-mic" style="background:#EAB308;"></div>
                             </div>
@@ -507,7 +533,7 @@
                 <div class="reveal d-1" style="display: flex; justify-content: center;">
                     <div class="chat-container" style="width: 100%;">
                         <div class="chat-header">
-                            <div class="chat-header-dot"></div> Biz Assistant
+                            <div class="chat-header-dot"></div> Me Assistant
                         </div>
                         <div class="chat-body" id="s4-chat">
                             <!-- JS injected -->
@@ -516,9 +542,9 @@
                 </div>
 
                 <div class="reveal d-2" style="padding-left: 2rem;">
-                    <span class="tag">场景 4：会后流转</span>
-                    <h2>自动化总结与分发</h2>
-                    <p>告别繁琐的会后整理。Biz Assistant 可以不仅为你提取待办，还能直接代拟邮件并完成跨系统的分发操作，把执行力拉满。</p>
+                    <span class="tag">场景 4：会议连续体与执行</span>
+                    <h2>自动化闭环跟进</h2>
+                    <p>告别孤立的会议。Me Assistant 自动将本次会议与该客户的历史议题相连形成时间线，并直接代拟跟进邮件，一键跨系统分发，把执行力拉满。</p>
                     <button class="btn btn-gold" style="margin-top: 2rem;" onclick="runScenario4(this)">演示: 会后一键跟进</button>
                 </div>
             </div>
@@ -530,19 +556,91 @@
         <section class="slide">
             <div class="slide-content grid-2">
                 <div class="reveal d-1">
-                    <span class="tag">场景 5：主动营销</span>
+                    <span class="tag">场景 5：人脉地图与机会挖掘</span>
                     <h2>线索挖掘与主动触达</h2>
-                    <p>基于庞大的历史人脉资产，用户可以反向发问。让 Agent 从通讯录中筛选特定标签的联系人，并针对性起草 Outreach 商业邮件。</p>
+                    <p>基于全局联络资产生成可视化人脉地图。你可以反向让 Agent 筛选提及过特定话题的二度连接联系人，并针对性起草介绍请求或商业邀约。</p>
                     <button class="btn" style="margin-top: 2rem;" onclick="runScenario5(this)">演示: 寻找 RWA 潜在客户</button>
                 </div>
 
                 <div class="reveal d-2" style="display: flex; justify-content: center;">
                     <div class="chat-container" style="width: 100%;">
                         <div class="chat-header">
-                            <div class="chat-header-dot"></div> Biz Assistant
+                            <div class="chat-header-dot"></div> Me Assistant
                         </div>
                         <div class="chat-body" id="s5-chat">
                             <!-- JS injected -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 8.5: ROADMAP
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content">
+                <span class="tag reveal d-1">演进路线</span>
+                <h2 class="reveal d-2">MeCard 落地节奏与生态延展</h2>
+                
+                <div class="grid-2 reveal d-3" style="margin-top: 2rem; gap: 2rem;">
+                    <!-- 已落地 -->
+                    <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 16px; padding: 2.5rem; position: relative;">
+                        <div style="position: absolute; top: -15px; left: 2rem; background: var(--success); color: #000; padding: 4px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">Phase 1 (已落地)</div>
+                        <h3 style="color: var(--success); font-size: 1.4rem; margin-bottom: 1.5rem;">记录与资产化底座</h3>
+                        <ul style="list-style: none; color: var(--text-secondary); font-size: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <li style="display: flex; align-items: center; gap: 10px;"><span>✅</span> 录音硬件 1.0 (便携盲操)</li>
+                            <li style="display: flex; align-items: center; gap: 10px;"><span>✅</span> 个人名片管理与沉淀</li>
+                            <li style="display: flex; align-items: center; gap: 10px;"><span>✅</span> 资产管理 (Contacts, Notes, Reminders)</li>
+                            <li style="display: flex; align-items: center; gap: 10px;"><span>✅</span> Ask Agent 基础交互能力搭建</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- 待落地 -->
+                    <div style="background: rgba(234, 179, 8, 0.05); border: 1px solid rgba(234, 179, 8, 0.2); border-radius: 16px; padding: 2.5rem; position: relative;">
+                        <div style="position: absolute; top: -15px; left: 2rem; background: var(--accent); color: #000; padding: 4px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">Phase 2 (规划中)</div>
+                        <h3 style="color: var(--accent); font-size: 1.4rem; margin-bottom: 1.5rem;">商务伴随与闭环执行</h3>
+                        <ul style="list-style: none; color: var(--text-secondary); font-size: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <li style="display: flex; align-items: center; gap: 10px;"><span>🚀</span> 3.0 前置伴随硬件 (E-ink) 开发及落地</li>
+                            <li style="display: flex; align-items: center; gap: 10px;"><span>🚀</span> Ask Agent App 端全量接入</li>
+                            <li style="display: flex; align-items: center; gap: 10px;"><span>🚀</span> 个人 OpenClaw 执行沙箱集成</li>
+                            <li style="display: flex; align-items: center; gap: 10px;"><span>🚀</span> 前后链路生态打通 (日历聚合/代发邮件)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SLIDE 8.6: ROADMAP Phase 3
+             ========================================== -->
+        <section class="slide">
+            <div class="slide-content">
+                <span class="tag reveal d-1">生态延展</span>
+                <h2 class="reveal d-2">无限延展的 Agent 技能生态</h2>
+                
+                <div class="reveal d-3" style="margin-top: 2rem;">
+                    <!-- 未来拓展 -->
+                    <div style="background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 16px; padding: 2.5rem; position: relative;">
+                        <div style="position: absolute; top: -15px; left: 2rem; background: var(--accent-alt); color: #000; padding: 4px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">Phase 3 (无限延展)</div>
+                        <h3 style="color: var(--accent-alt); font-size: 1.4rem; margin-bottom: 1.5rem;">Ask Agent + OpenClaw 协同效应</h3>
+                        <p style="color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 2rem;">底层架构已支持动态加载 Skills，理论上可以根据你的需求，不断长出新的“业务触手”：</p>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+                            <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid #333;">
+                                <div style="font-size: 2rem; margin-bottom: 1rem;">📄</div>
+                                <div style="color: #FFF; font-weight: 500; font-size: 1.1rem; margin-bottom: 0.5rem;">研报自动扒取</div>
+                                <div style="color: #888; font-size: 0.9rem;">“帮我去外网找一份最新的 RWA 行业分析并发给客户”</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid #333;">
+                                <div style="font-size: 2rem; margin-bottom: 1rem;">✈️</div>
+                                <div style="color: #FFF; font-weight: 500; font-size: 1.1rem; margin-bottom: 0.5rem;">差旅自动预订</div>
+                                <div style="color: #888; font-size: 0.9rem;">“帮我订下周二去北京的机票，并同步到日历”</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid #333;">
+                                <div style="font-size: 2rem; margin-bottom: 1rem;">📊</div>
+                                <div style="color: #FFF; font-weight: 500; font-size: 1.1rem; margin-bottom: 0.5rem;">竞品情报监控</div>
+                                <div style="color: #888; font-size: 0.9rem;">“每天早上把竞品的新闻摘要和我的晨报一起推送到墨水屏”</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -554,9 +652,9 @@
              ========================================== -->
         <section class="slide">
             <div class="slide-content" style="text-align: center; justify-content: center;">
-                <h1 class="reveal d-1" style="font-size: clamp(3rem, 7vw, 6rem);">不仅是名片，<br>更是你的<span class="gold-text">超级助理</span></h1>
+                <h1 class="reveal d-1" style="font-size: clamp(3rem, 7vw, 6rem);">不止记录，<br>更是你的<span class="gold-text">全能商务助手</span></h1>
                 <p class="reveal d-2" style="font-size: var(--h3-size); max-width: 800px; margin: 2rem auto;">
-                    通过 Biz Assistant 与 2.0 推拉墨水屏的软硬协同，BizCard 正式重塑商务全链路体验。
+                    自带轻量级 CRM 闭环。<br>通过 Me Assistant 与前置控制台的软硬协同，重塑商务体验。
                 </p>
             </div>
         </section>
@@ -616,6 +714,7 @@
 
         function toggleHardwareMode(mode) {
             const hw = document.getElementById('hw-demo');
+            if (!hw) return;
             const status = document.getElementById('hw-demo-status');
             const text = document.getElementById('hw-demo-text');
             
@@ -625,16 +724,20 @@
             setTimeout(() => {
                 if (mode === 'memo') {
                     hw.classList.add('mode-memo');
-                    einkFlash(hw.querySelector('.eink-screen'), () => {
-                        status.innerHTML = '<span><i style="color:#EAB308;">●</i> Bone Conduction</span><span>100%</span>';
-                        text.innerHTML = 'Voice Memo / AI Instruction...';
-                    });
+                    if(status && text) {
+                        einkFlash(hw.querySelector('.eink-screen'), () => {
+                            status.innerHTML = '<span><i style="color:#EAB308;">●</i> Bone Conduction</span><span>100%</span>';
+                            text.innerHTML = 'Voice Memo / AI Instruction...';
+                        });
+                    }
                 } else if (mode === 'meeting') {
                     hw.classList.add('mode-meeting');
-                    einkFlash(hw.querySelector('.eink-screen'), () => {
-                        status.innerHTML = '<span><i style="color:red;">●</i> Ambient Mic Array</span><span>99%</span>';
-                        text.innerHTML = 'Recording Meeting...';
-                    });
+                    if(status && text) {
+                        einkFlash(hw.querySelector('.eink-screen'), () => {
+                            status.innerHTML = '<span><i style="color:red;">●</i> Ambient Mic Array</span><span>99%</span>';
+                            text.innerHTML = 'Recording Meeting...';
+                        });
+                    }
                 }
             }, 100);
         }
@@ -718,7 +821,7 @@
             chat.innerHTML = '';
             
             await addChatBubble('s5-chat', 'user', "我想推一个 RWA 的项目。帮我找出联系人里聊过 RWA 话题的人，并起草一封简短的邀约邮件。");
-            await addChatBubble('s5-chat', 'agent', "🔍 正在扫描您的名片库与会议资产记录...");
+            await addChatBubble('s5-chat', 'agent', "🔍 正在扫描您的联系人库与会议资产记录...");
             await addChatBubble('s5-chat', 'agent', "找到了 3 位在过去半年内提及过 RWA 的高意向联系人：<br>1. David (CryptoFund合伙人)<br>2. Sarah (Web3研究员)<br>3. Kevin (TechNova)");
             await addChatBubble('s5-chat', 'agent', `
                 <div class="card-attachment">
