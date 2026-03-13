@@ -332,6 +332,18 @@
             color: var(--accent-orange);
         }
 
+        .note-item-add {
+            border: 1px dashed var(--border-color);
+            background: rgba(0, 122, 255, 0.04);
+        }
+
+        .note-item-add .note-icon-wrap.add {
+            background: rgba(0, 122, 255, 0.12);
+            color: var(--accent-blue);
+            font-size: 22px;
+            font-weight: 300;
+        }
+
         .note-content {
             flex: 1;
             min-width: 0;
@@ -427,64 +439,7 @@
             gap: 4px;
         }
 
-
-        /* Note: Sticky bar styles moved to after tab-bar */
-
-        .sticky-btn {
-            flex: 1;
-            padding: 14px;
-            border-radius: 14px;
-            border: none;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            transition: all 0.2s ease;
-            box-shadow: var(--shadow-elevated);
-        }
-
-        .sticky-btn.scan {
-            background: var(--bg-card);
-            color: var(--text-primary);
-        }
-
-        .sticky-btn.scan:hover {
-            background: #f0f0f0;
-        }
-
-        .sticky-btn.capture {
-            background: linear-gradient(135deg, #ff3b30 0%, #cc2d25 100%);
-            color: white;
-        }
-
-        .sticky-btn.capture:hover {
-            transform: scale(1.02);
-        }
-
-        .sticky-btn.capture.disabled {
-            background: #ccc;
-            color: #888;
-            cursor: not-allowed;
-        }
-
-        .sticky-btn.capture.disabled:hover {
-            transform: none;
-        }
-
-        /* Sticky Bar */
-        .sticky-bar-container {
-            padding: 8px 16px;
-            background: linear-gradient(0deg, rgba(245, 245, 247, 1) 70%, rgba(245, 245, 247, 0) 100%);
-            padding-top: 16px;
-        }
-
-        .sticky-bar {
-            display: flex;
-            gap: 12px;
-        }
+        /* Note: Sticky bar removed; recording entry is list-end Add New card */
 
         /* Tab Bar */
         .tab-bar {
@@ -599,9 +554,175 @@
         .recording-dot {
             animation: pulse 1.5s infinite;
         }
+
+        /* ========== 无数据/首次进入：欢迎区与运营位 ========== */
+        .welcome-hero {
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.08) 0%, rgba(175, 82, 222, 0.06) 100%);
+            border-radius: 20px;
+            padding: 20px 18px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(0, 122, 255, 0.12);
+        }
+
+        .welcome-hero .welcome-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .welcome-hero .welcome-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .welcome-hero .welcome-visual {
+            margin-top: 14px;
+            height: 56px;
+            background: linear-gradient(90deg, rgba(0, 122, 255, 0.15), rgba(175, 82, 222, 0.12));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 24px;
+        }
+
+        .welcome-hero-compact {
+            padding: 14px 18px;
+            margin-bottom: 16px;
+        }
+        .welcome-hero-compact .welcome-visual {
+            display: none;
+        }
+
+        .ops-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        .ops-banner .ops-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(52, 199, 89, 0.15), rgba(0, 122, 255, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .ops-banner .ops-text {
+            flex: 1;
+        }
+
+        .ops-banner .ops-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .ops-banner .ops-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .ops-banner .ops-arrow {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px 18px;
+            text-align: center;
+            border: 1px dashed var(--border-color);
+            margin-bottom: 12px;
+        }
+
+        .empty-state-card .empty-icon-wrap {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 12px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .empty-state-card .empty-icon-wrap.notes {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .empty-state-card .empty-icon-wrap.contacts {
+            background: rgba(175, 82, 222, 0.1);
+        }
+
+        .empty-state-card .empty-icon-wrap.reminders {
+            background: rgba(52, 199, 89, 0.12);
+        }
+
+        .empty-state-card .empty-headline {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .empty-state-card .empty-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .empty-state-card .empty-cta {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .empty-reminders-done {
+            background: linear-gradient(180deg, rgba(52, 199, 89, 0.06) 0%, transparent 100%);
+            border: 1px solid rgba(52, 199, 89, 0.15);
+        }
+
+        .empty-reminders-done .empty-icon-wrap {
+            font-size: 32px;
+        }
+
+        .view-toggle {
+            position: fixed;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            background: var(--bg-dark);
+            color: white;
+            padding: 8px 10px;
+            border-radius: 0 8px 8px 0;
+            font-size: 11px;
+            cursor: pointer;
+            z-index: 2000;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
+    <a class="view-toggle" id="viewToggle" href="?" title="切换有数据/无数据">无数据</a>
     <div class="iphone-frame">
         <div class="dynamic-island"></div>
         <div class="iphone-screen">
@@ -617,7 +738,13 @@
 
             <div class="app-container">
         <!-- Main Content -->
-        <div class="main-content">
+        <div class="main-content" id="mainContent">
+            <!-- 无数据时在 Header 下展示：轻量欢迎 + 示例说明 -->
+            <div id="welcomeBlock" style="display: none;" class="welcome-hero welcome-hero-compact">
+                <div class="welcome-title">欢迎使用 BizCard</div>
+                <div class="welcome-sub">以下为示例数据，让你先看看有数据时的样子。录下第一条或添加联系人后，这里会显示你的内容。</div>
+            </div>
+
             <!-- Top Minimal Header -->
             <div class="minimal-header" onclick="showToast('Opening Profile Settings...')">
                 <div class="header-profile">
@@ -642,43 +769,19 @@
                 </div>
             </div>
 
-            <!-- Contacts Section -->
-            <div class="asset-section">
-                <div class="asset-header">
-                    <span class="asset-title">👥 Recent Contacts</span>
-                    <span class="asset-action" onclick="showToast('View all contacts')">View All ›</span>
-                </div>
-                <div class="contacts-scroll">
-                    <div class="contact-card" onclick="showToast('Opening Contact: John Mitchell')">
-                        <div class="contact-avatar">JM</div>
-                        <span class="contact-name">John Mitchell</span>
-                        <span class="contact-time">Today, 11:30</span>
-                    </div>
-                    <div class="contact-card" onclick="showToast('Opening Contact: Sarah Chen')">
-                        <div class="contact-avatar" style="background: linear-gradient(135deg, #e0c3fc, #8ec5fc);">SC</div>
-                        <span class="contact-name">Sarah Chen</span>
-                        <span class="contact-time">Yesterday</span>
-                    </div>
-                    <div class="contact-card" onclick="showToast('Opening Contact: Kevin Du')">
-                        <div class="contact-avatar" style="background: linear-gradient(135deg, #f6d365, #fda085);">KD</div>
-                        <span class="contact-name">Kevin Du</span>
-                        <span class="contact-time">Oct 28</span>
-                    </div>
-                    <div class="contact-card" onclick="showToast('Scan new contact')">
-                        <div class="contact-avatar" style="background: var(--bg-primary); color: var(--text-muted);">+</div>
-                        <span class="contact-name">Add New</span>
-                        <span class="contact-time">Scan Card</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notes Section -->
-            <div class="asset-section">
+            <!-- Notes Section（首页主位：紧接 Header，以录音→总结为主锚点） -->
+            <div class="asset-section" id="notesSection">
                 <div class="asset-header">
                     <span class="asset-title">📝 Notes & Meetings</span>
                     <span class="asset-action" onclick="showToast('View all notes')">View All History ›</span>
                 </div>
-                
+                <div id="notesEmpty" style="display: none;" class="empty-state-card">
+                    <div class="empty-icon-wrap notes">🎙️</div>
+                    <div class="empty-headline">还没有记录</div>
+                    <div class="empty-desc">用设备录下的会议与闪念会出现在这里，并自动关联联系人与待办</div>
+                    <div class="empty-cta" onclick="showToast('开始录制')">点击下方 Add New 录第一条</div>
+                </div>
+                <div id="notesContent">
                 <div class="note-item" onclick="showToast('Opening Meeting Note')">
                     <div class="note-icon-wrap meeting">🎙️</div>
                     <div class="note-content">
@@ -722,42 +825,30 @@
                     </div>
                     <span style="color: var(--text-muted); font-size: 14px;">›</span>
                 </div>
+
+                <!-- 列表最后一张：Add New，点击开启录音 -->
+                <div class="note-item note-item-add" id="addNewCard" onclick="startCapture()">
+                    <div class="note-icon-wrap add">+</div>
+                    <div class="note-content">
+                        <div class="note-title">Add New</div>
+                        <div class="note-meta">
+                            <span>新记录 · 点击开启录音</span>
+                        </div>
+                    </div>
+                    <span style="color: var(--text-muted); font-size: 14px;">›</span>
+                </div>
+                </div>
             </div>
 
-            <!-- Reminders Section -->
-            <div class="asset-section">
-                <div class="asset-header">
-                    <span class="asset-title">✅ Reminders</span>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <span style="background: var(--accent-red); color: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold;">3</span>
-                        <span class="asset-action" onclick="showToast('View all reminders')">View All ›</span>
+            <!-- 有数据时展示：运营位（技巧/活动，仅一条） -->
+            <div id="opsTipBlock" style="display: none;" class="asset-section">
+                <div class="ops-banner" onclick="showToast('了解闪念')">
+                    <div class="ops-icon">💡</div>
+                    <div class="ops-text">
+                        <div class="ops-title">小技巧</div>
+                        <div class="ops-desc">长按设备可快速记一条闪念，无需打开 App</div>
                     </div>
-                </div>
-
-                <div class="reminder-list">
-                    <div class="reminder-item">
-                        <div class="reminder-checkbox" onclick="this.style.background='var(--accent-blue)'; this.style.borderColor='var(--accent-blue)'; showToast('Marked as complete')"></div>
-                        <div class="reminder-content">
-                            <div class="reminder-text">Send updated proposal to team</div>
-                            <div class="reminder-source">📅 Jan 22 · Product Design Sync</div>
-                        </div>
-                    </div>
-                    
-                    <div class="reminder-item">
-                        <div class="reminder-checkbox" onclick="this.style.background='var(--accent-blue)'; this.style.borderColor='var(--accent-blue)'; showToast('Marked as complete')"></div>
-                        <div class="reminder-content">
-                            <div class="reminder-text">Follow up with John on pricing</div>
-                            <div class="reminder-source">📅 Jan 23 · Exchange with John Mitchell</div>
-                        </div>
-                    </div>
-
-                    <div class="reminder-item">
-                        <div class="reminder-checkbox" onclick="this.style.background='var(--accent-blue)'; this.style.borderColor='var(--accent-blue)'; showToast('Marked as complete')"></div>
-                        <div class="reminder-content">
-                            <div class="reminder-text">Draft B2B strategy doc</div>
-                            <div class="reminder-source">💭 Jan 23 · Voice Memo</div>
-                        </div>
-                    </div>
+                    <span class="ops-arrow">›</span>
                 </div>
             </div>
         </div>
@@ -766,21 +857,7 @@
                 <div class="toast" id="toast"></div>
             </div>
 
-            <!-- Fixed Bottom: Sticky Bar + Tab Bar -->
-            <div class="sticky-bar-container">
-                <div class="sticky-bar">
-                    <button class="sticky-btn scan" onclick="showToast('Opening Camera to Scan...')">
-                        <span>📷</span>
-                        <span>Scan to Add</span>
-                    </button>
-                    <button class="sticky-btn capture" id="captureBtn" onclick="startCapture()">
-                        <span class="recording-dot">🔴</span>
-                        <span>Start Capture</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Tab Bar -->
+            <!-- Tab Bar（无悬浮 Scan / 录音，录音入口在列表末位 Add New） -->
             <div class="tab-bar">
                 <button class="tab-item active">
                     <span class="tab-icon">🏠</span>
@@ -922,43 +999,75 @@
             }, 1000);
         }
 
-        // Start Capture
+        // 列表末位 Add New 点击 → 开启录音
         function startCapture() {
-            const btn = document.getElementById('captureBtn');
-            
-            // Check if hardware is connected (simulated)
-            const isConnected = true; // Change to false to test disconnected state
-            
-            if (!isConnected) {
-                showToast('Please connect your BizCard device first');
+            var card = document.getElementById('addNewCard');
+            var isConnected = true;
+            if (!isConnected || (card && card.classList.contains('disabled'))) {
+                showToast('请先连接 BizCard 设备');
                 return;
             }
-            
-            // Toggle capture state
-            if (btn.classList.contains('recording')) {
-                btn.classList.remove('recording');
-                btn.innerHTML = '<span class="recording-dot">🔴</span><span>Start Capture</span>';
-                showToast('Capture stopped. Processing summary...');
+            if (card && card.classList.contains('recording')) {
+                card.classList.remove('recording');
+                card.querySelector('.note-title').textContent = 'Add New';
+                card.querySelector('.note-meta span').textContent = '新记录 · 点击开启录音';
+                showToast('录制已结束，正在处理...');
             } else {
-                btn.classList.add('recording');
-                btn.innerHTML = '<span class="recording-dot">⏹️</span><span>Stop Capture</span>';
-                showToast('Recording started...');
+                if (card) {
+                    card.classList.add('recording');
+                    card.querySelector('.note-title').textContent = '录音中...';
+                    card.querySelector('.note-meta span').textContent = '点击结束';
+                }
+                showToast('录音已开始');
             }
         }
 
-        // Simulate disconnected hardware
-        function toggleHardwareConnection() {
-            const captureBtn = document.getElementById('captureBtn');
-            captureBtn.classList.toggle('disabled');
-            
-            if (captureBtn.classList.contains('disabled')) {
-                captureBtn.onclick = function() {
-                    showToast('Please connect your BizCard device');
-                    // Could navigate to hardware connection page
-                };
+        // 无数据时：Mock 笔记 + 末位 Add New（仅顶部多一句示例说明）
+        function applyEmptyState(empty) {
+            var welcomeBlock = document.getElementById('welcomeBlock');
+            var notesContent = document.getElementById('notesContent');
+            var notesEmpty = document.getElementById('notesEmpty');
+            var opsTipBlock = document.getElementById('opsTipBlock');
+            var toggleLink = document.getElementById('viewToggle');
+
+            if (empty) {
+                if (welcomeBlock) welcomeBlock.style.display = 'block';
+                if (notesContent) notesContent.style.display = 'block';
+                if (notesEmpty) notesEmpty.style.display = 'none';
+                if (opsTipBlock) opsTipBlock.style.display = 'none';
+                if (toggleLink) { toggleLink.href = '?'; toggleLink.textContent = '有数据'; toggleLink.title = '切换为有数据首屏'; }
             } else {
-                captureBtn.onclick = startCapture;
+                if (welcomeBlock) welcomeBlock.style.display = 'none';
+                if (notesContent) notesContent.style.display = 'block';
+                if (notesEmpty) notesEmpty.style.display = 'none';
+                if (opsTipBlock) opsTipBlock.style.display = 'block';
+                if (toggleLink) { toggleLink.href = '?empty=1'; toggleLink.textContent = '无数据'; toggleLink.title = '切换为无数据/首次进入（Mock）'; }
             }
+        }
+
+        function initViewMode() {
+            var isEmpty = (location.search.indexOf('empty=1') !== -1);
+            applyEmptyState(isEmpty);
+            document.getElementById('viewToggle').onclick = function(e) {
+                e.preventDefault();
+                var welcomeBlock = document.getElementById('welcomeBlock');
+                var willBeEmpty = welcomeBlock && welcomeBlock.style.display !== 'none';
+                applyEmptyState(!willBeEmpty);
+                var newUrl = willBeEmpty ? '?empty=1' : '?';
+                history.replaceState({}, '', newUrl);
+            };
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initViewMode);
+        } else {
+            initViewMode();
+        }
+
+        // 可在此扩展：模拟设备未连接时禁用 Add New 卡片
+        function toggleHardwareConnection() {
+            var card = document.getElementById('addNewCard');
+            if (card) card.classList.toggle('disabled');
         }
     </script>
 </body>
