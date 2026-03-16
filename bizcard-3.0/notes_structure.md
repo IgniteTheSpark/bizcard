@@ -18,7 +18,7 @@
 ```typescript
 interface BaseNote {
     id: string;               // 唯一标识 (e.g., 'note_001')
-    type: NoteType;           // 核心枚举: 'MEETING' | 'VOICE_MEMO' | 'MANUAL'
+    type: NoteType;           // 核心枚举: 'MEETING' | 'VOICE_MEMO' | 'MANUAL' | 'IDEA'
     title: string;            // 标题 (AI生成或手动修改)
     date: string;             // 发生/创建日期 (YYYY-MM-DD)
     time: string;             // 发生/创建时间 (HH:MM)
@@ -99,10 +99,29 @@ interface ManualNote extends BaseNote {
 }
 ```
 
+#### D. Idea Payload (想法)
+由用户主动发起、基于一条或多条 Note、经 AI 生成的衍生产出；归类为 Note 的一种类型，在列表与筛选中与会议/闪念/手输并列。
+
+```typescript
+interface IdeaNote extends BaseNote {
+    type: 'IDEA';
+    
+    // 内容资产
+    content: string;          // 富文本或 Markdown，AI 生成的主体内容
+    ideaType?: 'plan' | 'report' | 'research' | 'other';  // 方案 / 报告 / 调研 等
+    
+    // 来源关联
+    sourceNoteIds: string[];  // 来源 Notes 的 id 列表（≥1）
+    
+    // 可选
+    status?: 'draft' | 'final';
+}
+```
+
 ---
 
 ## 数据管理优势总结
 
 1. **列表渲染极速**：首页或 Timeline 拉取列表时，只需按 `BaseNote` 的结构加载。不需要下载庞大的 `transcript` 和 `summaryData`，大幅减少接口带宽和前端渲染压力。
-2. **UI 拓展性高**：对于列表中的项，可以统一使用一种卡片组件，仅通过读取 `type` 属性更换图标（🎙️、💭、⌨️）；而在进入详情页 (Detail View) 时，则根据类型分发给不同的组件进行深度渲染（如播放器组件仅对 Meeting/Memo 呈现）。
+2. **UI 拓展性高**：对于列表中的项，可以统一使用一种卡片组件，仅通过读取 `type` 属性更换图标（🎙️、💭、⌨️、💡）；而在进入详情页 (Detail View) 时，则根据类型分发给不同的组件进行深度渲染（如播放器组件仅对 Meeting/Memo 呈现，Idea 展示内容与来源 Note 关联）。
 3. **数据一致性**：`contactIds` 和 `actionIds` 被强行约束在基类中，保证了无论是什么来源的记录，都能完美融合进“人脉视图”和“待办视图”中。

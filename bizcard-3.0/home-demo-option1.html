@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizCard Demo - Option 1</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Sora:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #eef2f8;
+            --text: #141a24;
+            --muted: #77819b;
+            --line: rgba(20, 26, 36, 0.1);
+            --card: #ffffff;
+            --blue: #3276ff;
+            --blue-2: #53c7ff;
+            --green: #2ac769;
+            --shadow: 0 12px 24px rgba(22, 34, 66, 0.1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+            background: #0f1330;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .phone {
+            width: 393px;
+            height: 852px;
+            border-radius: 50px;
+            background: #000;
+            padding: 12px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        .screen {
+            width: 100%;
+            height: 100%;
+            border-radius: 40px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #edf1f8 0%, var(--bg) 22%);
+            position: relative;
+        }
+        .screen::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background-image: radial-gradient(rgba(50, 118, 255, 0.08) 1px, transparent 1px);
+            background-size: 16px 16px;
+            opacity: 0.3;
+        }
+        .island {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 126px;
+            height: 36px;
+            border-radius: 20px;
+            background: #000;
+            z-index: 2;
+        }
+        .status {
+            position: absolute;
+            top: 12px;
+            left: 0;
+            right: 0;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+            color: #2b3242;
+            z-index: 3;
+        }
+        .content {
+            position: absolute;
+            inset: 44px 0 0 0;
+            overflow-y: auto;
+            padding: 16px 16px 150px;
+        }
+        .content::-webkit-scrollbar { display: none; }
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.78);
+            background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.68));
+            backdrop-filter: blur(18px);
+            box-shadow: var(--shadow);
+            margin-bottom: 14px;
+        }
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hardware-pill {
+            min-height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 0 11px;
+            background: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .top-round-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #2f4d89;
+            position: relative;
+        }
+        .top-round-btn .icon {
+            width: 16px;
+            height: 16px;
+        }
+        .account-btn {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            color: #2f4d89;
+        }
+        .account-label {
+            line-height: 1;
+        }
+        .account-gear {
+            position: absolute;
+            right: -1px;
+            bottom: -1px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid rgba(50,118,255,0.28);
+            background: #edf4ff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+        }
+        .account-gear-svg {
+            width: 9px;
+            height: 9px;
+            display: block;
+        }
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+        /* Notes 头部：仅标题行 + 添加按钮，筛选收敛至下拉内 */
+        .notes-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 8px 0 16px;
+            position: relative;
+            gap: 12px;
+        }
+        .notes-title-row {
+            flex: 1;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 0 8px;
+            margin: 0 -8px;
+            border-radius: 12px;
+            transition: background 0.15s ease;
+        }
+        .notes-title-row:hover { background: rgba(0,0,0,0.04); }
+        .notes-title-row:active { opacity: 0.9; }
+        .notes-title-row:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+        .notes-view-label {
+            font-family: "Sora", "IBM Plex Sans", sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.2px;
+            line-height: 1.2;
+        }
+        .notes-view-chevron {
+            color: var(--muted);
+            flex-shrink: 0;
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .notes-head.dropdown-open .notes-view-chevron { transform: rotate(180deg); }
+        .notes-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .type-filter-wrap { position: relative; }
+        .type-filter-btn {
+            min-height: 44px;
+            padding: 0 12px 0 14px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.9);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: background 0.15s ease, box-shadow 0.15s ease;
+        }
+        .type-filter-btn:hover { background: #fff; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
+        .type-filter-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+        .type-filter-btn .chevron {
+            color: var(--muted);
+            transition: transform 0.2s ease;
+        }
+        .type-filter-wrap.open .type-filter-btn .chevron { transform: rotate(180deg); }
+        .type-filter-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 6px);
+            min-width: 120px;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            box-shadow: 0 12px 28px rgba(15,23,42,0.12);
+            padding: 6px 0;
+            z-index: 102;
+        }
+        .type-filter-wrap.open .type-filter-dropdown { display: block; }
+        .type-filter-dropdown button {
+            width: 100%;
+            min-height: 44px;
+            padding: 0 16px;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s ease;
+        }
+        .type-filter-dropdown button:hover { background: rgba(0,0,0,0.05); }
+        .type-filter-dropdown button.active { background: rgba(50,118,255,0.08); color: var(--blue); }
+        .type-filter-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 101;
+        }
+        .type-filter-wrap.open .type-filter-backdrop { display: block; }
+        .add-btn {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            min-height: 44px;
+            border-radius: 50%;
+            border: 1px solid rgba(50, 118, 255, 0.25);
+            background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(232,240,255,0.9));
+            color: #2f4d89;
+            font-size: 22px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .add-btn:hover { box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12); }
+        .add-btn:active { transform: scale(0.96); }
+        .add-btn:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+        /* Plaud 式：从下弹起的近全屏 sheet，保证「…」菜单也在 sheet 内 */
+        .view-sheet-mask {
+            position: absolute;
+            inset: 0;
+            z-index: 98;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        .view-sheet-mask.show {
+            display: flex;
+            opacity: 1;
+        }
+        .view-sheet {
+            width: 100%;
+            /* 延展到接近「全部文件」位置，约从状态栏下缘到屏幕底 */
+            height: calc(100% - 52px);
+            max-height: none;
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.15);
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .view-sheet-mask.show .view-sheet {
+            transform: translateY(0);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .view-sheet { transition: transform 0.2s ease; }
+        }
+        .view-sheet-handle {
+            flex-shrink: 0;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .view-sheet-handle::after {
+            content: "";
+            width: 36px;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(0, 0, 0, 0.15);
+        }
+        .view-sheet-header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px 16px;
+            border-bottom: 1px solid var(--line);
+        }
+        .view-sheet-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .view-sheet-close {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: none;
+            border-radius: 50%;
+            color: var(--muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .view-sheet-close:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+        .view-sheet-body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 8px 0 32px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .notes-head.dropdown-open .notes-view-chevron { transform: rotate(180deg); }
+        .dropdown-section-label {
+            padding: 8px 16px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+        .dropdown-sort {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 44px;
+            padding: 0 16px;
+            font-size: 15px;
+            color: var(--text);
+        }
+        .dropdown-sort span { font-weight: 600; }
+        .dropdown-sort-btn {
+            min-width: 44px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .dropdown-sort-btn:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+        .dropdown-sort-btn:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+        .dropdown-divider { height: 1px; background: var(--line); margin: 8px 16px; }
+        .dropdown-option, .dropdown-folder-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 44px;
+            padding: 0 16px;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            transition: background 0.15s ease;
+        }
+        .dropdown-option:hover, .dropdown-folder-item:hover { background: rgba(0,0,0,0.04); }
+        .dropdown-option:focus-visible, .dropdown-folder-item:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: -2px;
+        }
+        .dropdown-option .icon-wrap, .dropdown-folder-item .icon-wrap {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .dropdown-option .count, .dropdown-folder-item .count {
+            margin-left: auto;
+            font-size: 14px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+        .dropdown-option.selected, .dropdown-folder-item.selected {
+            background: rgba(50,118,255,0.08);
+            color: var(--blue);
+        }
+        .dropdown-option.selected .count, .dropdown-folder-item.selected .count { color: var(--blue); }
+        .dropdown-option .check { margin-left: auto; color: var(--blue); flex-shrink: 0; }
+        .dropdown-folder-row {
+            display: flex;
+            align-items: center;
+            min-height: 44px;
+            padding: 0 8px 0 16px;
+            gap: 0;
+        }
+        .dropdown-folder-row .dropdown-folder-item {
+            flex: 1;
+            min-width: 0;
+            justify-content: flex-start;
+            padding-right: 4px;
+        }
+        .dropdown-folder-row .dropdown-folder-item .count { margin-left: auto; }
+        .dropdown-folder-row .dropdown-folder-item .check { margin-left: 0; }
+        .dropdown-folder-row .folder-more {
+            flex-shrink: 0;
+            margin-left: 0;
+        }
+        .dropdown-folders-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px 4px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+        .dropdown-folders-header .btn-new {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            min-height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--muted);
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .dropdown-folders-header .btn-new:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+        .dropdown-folders-header .btn-new:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+        .folder-more {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            min-height: 44px;
+            border: none;
+            background: none;
+            border-radius: 10px;
+            color: var(--muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .folder-more:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+        .folder-more:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+        .dropdown-folder-row-wrap { position: relative; }
+        /* 编辑/删除菜单向上展开，避免在 sheet 底部被裁切 */
+        .folder-more-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            bottom: 100%;
+            top: auto;
+            margin-bottom: 6px;
+            margin-top: 0;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            box-shadow: 0 -4px 20px rgba(15,23,42,0.12), 0 4px 12px rgba(15,23,42,0.08);
+            padding: 6px 0;
+            z-index: 102;
+            min-width: 140px;
+        }
+        .folder-more-menu.show { display: block; }
+        .folder-more-menu button {
+            width: 100%;
+            min-height: 44px;
+            padding: 0 16px;
+            border: none;
+            background: none;
+            font-size: 15px;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+            transition: background 0.15s ease;
+        }
+        .folder-more-menu button:hover { background: rgba(0,0,0,0.05); }
+        .folder-more-menu button:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: -2px;
+        }
+        .folder-more-menu button.danger { color: #c53030; }
+        .notes-title {
+            font-family: "Sora", "IBM Plex Sans", sans-serif;
+            font-size: 30px;
+            line-height: 1;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+        .group-head {
+            margin: 14px 4px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #687089;
+        }
+        .note-item {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 10px 20px rgba(22, 34, 66, 0.08);
+            padding: 13px 12px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .icon-wrap {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2f4d89;
+        }
+        .meeting { background: linear-gradient(145deg, #e9f3ff, #f4f9ff); }
+        .memo { background: linear-gradient(145deg, #f3edff, #f8f4ff); }
+        .idea { background: linear-gradient(145deg, #ecfdf5, #f0fdf4); }
+        .manual { background: linear-gradient(145deg, #fff6e8, #fffaf2); }
+        .icon-note { width: 18px; height: 18px; stroke-width: 2; }
+        .note-content { flex: 1; min-width: 0; }
+        .note-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .note-meta { font-size: 11px; color: var(--muted); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+        .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tag {
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 999px;
+            padding: 2px 8px;
+            background: rgba(0, 0, 0, 0.05);
+            color: #4f5b76;
+        }
+        .tag.blue { background: rgba(50, 118, 255, 0.12); color: #3276ff; }
+        .bottom {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 14px 16px 28px;
+            background: linear-gradient(180deg, rgba(239,242,248,0) 0%, rgba(239,242,248,0.92) 26%, #eff2f8 100%);
+        }
+        .bottom-row {
+            display: flex;
+            gap: 8px;
+            padding: 6px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            background: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.28));
+            backdrop-filter: blur(16px);
+            box-shadow: 0 14px 26px rgba(15, 23, 42, 0.12);
+        }
+        .record, .ask {
+            flex: 1;
+            min-height: 46px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            cursor: pointer;
+        }
+        .record {
+            background: linear-gradient(135deg, #1e2f54 0%, #283d67 100%);
+            color: #f5f8ff;
+        }
+        .ask {
+            background: linear-gradient(135deg, #5a8dff 0%, #53c7ff 100%);
+            color: #fff;
+        }
+        .record-dot { width: 10px; height: 10px; border-radius: 50%; background: #61b3ff; box-shadow: 0 0 0 4px rgba(97,179,255,0.22); }
+        .ask-icon { width: 18px; height: 18px; }
+        .upload-mask {
+            position: absolute;
+            inset: 0;
+            z-index: 1200;
+            background: rgba(0, 0, 0, 0.35);
+            display: none;
+        }
+        .upload-sheet {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+            padding: 14px 16px 24px;
+        }
+        .sheet-title { text-align: center; font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+        .sheet-item {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #fff;
+            text-align: left;
+            cursor: pointer;
+        }
+        .sheet-item.primary { border-color: rgba(50,118,255,0.24); background: #f2f7ff; color: #2f4d89; font-weight: 700; }
+        .launch-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 1400;
+            display: none;
+            opacity: 0;
+            pointer-events: none;
+            transform-origin: top left;
+            transform: translate(0,0) scale(0.2,0.1);
+            border-radius: 999px;
+            transition: transform 360ms cubic-bezier(0.22,1,0.36,1), border-radius 360ms cubic-bezier(0.22,1,0.36,1), opacity 120ms ease;
+        }
+        .launch-overlay.capture { background: linear-gradient(135deg, #1e2f54 0%, #2d4577 100%); }
+        .launch-overlay.ask { background: linear-gradient(135deg, #5a8dff 0%, #53c7ff 100%); }
+        /* 硬件未连接提醒弹窗 */
+        .hardware-reminder-mask {
+            position: absolute;
+            inset: 0;
+            z-index: 1300;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .hardware-reminder-mask.show { display: flex; }
+        .hardware-reminder-dialog {
+            width: 100%;
+            max-width: 320px;
+            background: #fff;
+            border-radius: 20px;
+            padding: 20px 20px 24px;
+            box-shadow: 0 20px 48px rgba(15, 23, 42, 0.2);
+        }
+        .hardware-reminder-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .hardware-reminder-title .icon-wrap {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(145deg, #e9f3ff, #f4f9ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #3276ff;
+        }
+        .hardware-reminder-dialog p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin-bottom: 20px;
+            padding-left: 46px;
+        }
+        .hardware-reminder-dialog .btn-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .hardware-reminder-dialog .btn {
+            width: 100%;
+            min-height: 46px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #fff;
+            color: var(--text);
+        }
+        .hardware-reminder-dialog .btn.primary {
+            background: linear-gradient(135deg, #1e2f54 0%, #283d67 100%);
+            color: #f5f8ff;
+            border: none;
+        }
+        .hardware-reminder-dialog .btn.secondary {
+            border-color: rgba(50, 118, 255, 0.24);
+            background: #f2f7ff;
+            color: #2f4d89;
+        }
+        .hardware-reminder-dialog .btn.cancel {
+            color: var(--muted);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="phone">
+        <div class="screen">
+            <div class="island"></div>
+            <div class="status"><span>9:41</span><span>5G · 100%</span></div>
+            <div class="content">
+                <div class="topbar">
+                    <button class="hardware-pill" onclick="toggleHardware()" title="Hardware">
+                        <i data-lucide="smartphone" style="width:14px;height:14px;"></i>
+                        <span id="hardwareLabel">Connected</span>
+                        <span class="dot" id="hardwareDot"></span>
+                    </button>
+                    <div class="top-actions">
+                        <button class="top-round-btn" onclick="openCalendarPage()" title="Calendar"><i data-lucide="calendar-days" class="icon"></i></button>
+                        <button class="top-round-btn account-btn" onclick="openSettings()" title="Settings">
+                            <span class="account-label">E</span>
+                            <span class="account-gear" aria-hidden="true">
+                                <svg class="account-gear-svg" viewBox="0 0 24 24" fill="none">
+                                    <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0 .286 1.181 1.53 1.86 2.667 1.459 1.693-.598 3.46 1.17 2.862 2.862-.401 1.138.278 2.381 1.459 2.667 1.756.426 1.756 2.924 0 3.35-1.181.286-1.86 1.53-1.459 2.667.598 1.693-1.17 3.46-2.862 2.862-1.138-.401-2.381.278-2.667 1.459-.426 1.756-2.924 1.756-3.35 0-.286-1.181-1.53-1.86-2.667-1.459-1.693.598-3.46-1.17-2.862-2.862.401-1.138-.278-2.381-1.459-2.667-1.756-.426-1.756-2.924 0-3.35 1.181-.286 1.86-1.53 1.459-2.667-.598-1.693 1.17-3.46 2.862-2.862 1.138.401 2.381-.278 2.667-1.459Z" stroke="#2f4d89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <circle cx="12" cy="12" r="3.5" stroke="#2f4d89" stroke-width="2"/>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="notes-head" id="notesHead">
+                    <button type="button" class="notes-title-row" id="notesTitleRow" onclick="toggleFilterDropdown()" aria-haspopup="true" aria-expanded="false" aria-label="筛选和排序：全部文件">
+                        <span class="notes-view-label" id="notesViewLabel">全部文件 (6)</span>
+                        <i data-lucide="chevron-down" class="notes-view-chevron" style="width:20px;height:20px;" aria-hidden="true"></i>
+                    </button>
+                    <div class="type-filter-wrap" id="typeFilterWrap">
+                        <div class="type-filter-backdrop" onclick="closeTypeFilter()"></div>
+                        <button type="button" class="type-filter-btn" id="typeFilterBtn" onclick="toggleTypeFilter()" aria-haspopup="true" aria-expanded="false" aria-label="按类型筛选">
+                            <span id="typeFilterLabel">全部</span>
+                            <i data-lucide="chevron-down" class="chevron" style="width:16px;height:16px;"></i>
+                        </button>
+                        <div class="type-filter-dropdown" id="typeFilterDropdown" onclick="event.stopPropagation()">
+                            <button type="button" class="active" data-type="all" onclick="setTypeFilter('all')">全部</button>
+                            <button type="button" data-type="meeting" onclick="setTypeFilter('meeting')">会议</button>
+                            <button type="button" data-type="memo" onclick="setTypeFilter('memo')">闪念</button>
+                            <button type="button" data-type="idea" onclick="setTypeFilter('idea')">想法</button>
+                        </div>
+                    </div>
+                    <button type="button" class="add-btn" onclick="openSheet()" aria-label="添加">+</button>
+                </div>
+
+                <!-- Plaud 式：从下弹起的近全屏 sheet，点「…」时菜单也在 sheet 内 -->
+                <div class="view-sheet-mask" id="viewSheetMask" onclick="closeViewSheet(event)">
+                    <div class="view-sheet" onclick="event.stopPropagation()" role="dialog" aria-label="筛选和排序">
+                        <div class="view-sheet-handle" aria-hidden="true"></div>
+                        <div class="view-sheet-header">
+                            <h2 class="view-sheet-title">筛选和排序</h2>
+                            <button type="button" class="view-sheet-close" onclick="closeViewSheet()" aria-label="关闭"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+                        </div>
+                        <div class="view-sheet-body">
+                            <div class="dropdown-section-label">排序</div>
+                            <div class="dropdown-sort">
+                                <span>修改时间</span>
+                                <button type="button" class="dropdown-sort-btn" onclick="toast('切换排序')" aria-label="切换升序或降序">
+                                    <i data-lucide="arrow-up" style="width:14px;height:14px;"></i>
+                                    <i data-lucide="arrow-down" style="width:14px;height:14px;"></i>
+                                </button>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <button type="button" class="dropdown-option selected" data-view="all" onclick="setView('all','全部文件 (6)')">
+                                <div class="icon-wrap meeting"><i data-lucide="folder" class="icon-note" style="width:14px;height:14px;"></i></div>
+                                <span>全部文件</span>
+                                <span class="count">(6)</span>
+                                <i data-lucide="check" class="check" style="width:18px;height:18px;"></i>
+                            </button>
+                            <div class="dropdown-folders-header">
+                                <span>文件夹</span>
+                                <button type="button" class="btn-new" onclick="toast('新建文件夹')" aria-label="新建文件夹">+</button>
+                            </div>
+                            <div class="dropdown-folder-row-wrap">
+                                <div class="dropdown-folder-row">
+                                    <button type="button" class="dropdown-folder-item" data-view="my-notes" onclick="setView('my-notes','My Notes (6)')">
+                                        <div class="icon-wrap memo"><i data-lucide="folder" class="icon-note" style="width:14px;height:14px;"></i></div>
+                                        <span>My Notes</span>
+                                        <span class="count">(6)</span>
+                                        <i data-lucide="check" class="check" style="width:18px;height:18px;display:none;"></i>
+                                    </button>
+                                    <button type="button" class="folder-more" onclick="event.stopPropagation(); toggleFolderMore(event)" aria-label="My Notes 更多操作"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></button>
+                                </div>
+                                <div class="folder-more-menu">
+                                    <button type="button" onclick="toast('编辑 My Notes'); closeFolderMore();"><i data-lucide="pencil" style="width:16px;height:16px;"></i> 编辑</button>
+                                    <button type="button" class="danger" onclick="toast('删除 My Notes'); closeFolderMore();"><i data-lucide="trash-2" style="width:16px;height:16px;"></i> 删除</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-folder-row-wrap">
+                                <div class="dropdown-folder-row">
+                                    <button type="button" class="dropdown-folder-item" data-view="folder-work" onclick="setView('folder-work','工作 (2)')">
+                                        <div class="icon-wrap meeting"><i data-lucide="folder" class="icon-note" style="width:14px;height:14px;"></i></div>
+                                        <span>工作</span>
+                                        <span class="count">(2)</span>
+                                        <i data-lucide="check" class="check" style="width:18px;height:18px;display:none;"></i>
+                                    </button>
+                                    <button type="button" class="folder-more" onclick="event.stopPropagation(); toggleFolderMore(event)" aria-label="工作文件夹更多操作"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></button>
+                                </div>
+                                <div class="folder-more-menu">
+                                    <button type="button" onclick="toast('编辑文件夹'); closeFolderMore();"><i data-lucide="pencil" style="width:16px;height:16px;"></i> 编辑</button>
+                                    <button type="button" class="danger" onclick="toast('删除文件夹'); closeFolderMore();"><i data-lucide="trash-2" style="width:16px;height:16px;"></i> 删除</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="group-head" id="headWeek">这周</div>
+                <div class="note-item" data-kind="meeting" data-group="week"><div class="icon-wrap meeting"><i data-lucide="mic" class="icon-note"></i></div><div class="note-content"><div class="note-title">Daily sync with design team</div><div class="note-meta">Today · 08:40</div><div class="tags"><span class="tag blue">2 Reminders</span><span class="tag">Meeting</span></div></div></div>
+                <div class="note-item" data-kind="meeting" data-group="week"><div class="icon-wrap meeting"><i data-lucide="mic" class="icon-note"></i></div><div class="note-content"><div class="note-title">Exchange with John Mitchell</div><div class="note-meta">Yesterday · 15:20</div><div class="tags"><span class="tag blue">1 Reminder</span><span class="tag">Meeting</span></div></div></div>
+                <div class="note-item" data-kind="memo" data-group="week"><div class="icon-wrap memo"><i data-lucide="message-circle" class="icon-note"></i></div><div class="note-content"><div class="note-title">Expand to B2B Market</div><div class="note-meta">3 days ago · 14:05</div><div class="tags"><span class="tag blue">3 Reminders</span><span class="tag">Voice Memo</span></div></div></div>
+                <div class="note-item" data-kind="idea" data-group="week"><div class="icon-wrap idea"><i data-lucide="lightbulb" class="icon-note"></i></div><div class="note-content"><div class="note-title">B2B 拓展方案摘要</div><div class="note-meta">2 days ago · 10:30</div><div class="tags"><span class="tag">想法</span></div></div></div>
+                <div class="group-head" id="headEarlier">更早</div>
+                <div class="note-item" data-kind="meeting" data-group="earlier"><div class="icon-wrap meeting"><i data-lucide="mic" class="icon-note"></i></div><div class="note-content"><div class="note-title">Weekly retro key points</div><div class="note-meta">4 days ago · 20:15</div><div class="tags"><span class="tag blue">1 Reminder</span><span class="tag">Meeting</span></div></div></div>
+                <div class="note-item" data-kind="meeting" data-group="earlier"><div class="icon-wrap meeting"><i data-lucide="mic" class="icon-note"></i></div><div class="note-content"><div class="note-title">Client Discovery Call · FinTech Team</div><div class="note-meta">5 days ago · 16:45</div><div class="tags"><span class="tag blue">2 Reminders</span><span class="tag">Meeting</span></div></div></div>
+            </div>
+
+            <div class="bottom">
+                <div class="bottom-row">
+                    <button class="record" onclick="openCapture(event)"><span class="record-dot"></span><span>Add note</span></button>
+                    <button class="ask" onclick="openAsk(event)"><i data-lucide="search" class="ask-icon"></i><span>Ask me anything</span></button>
+                </div>
+            </div>
+
+            <div class="upload-mask" id="sheetMask" onclick="closeSheet()">
+                <div class="upload-sheet" onclick="event.stopPropagation()">
+                    <div class="sheet-title">Add New</div>
+                    <button class="sheet-item primary" onclick="toast('Add Reminder')">Add Reminder</button>
+                    <button class="sheet-item" onclick="toast('Upload Audio')">Upload Audio</button>
+                </div>
+            </div>
+            <!-- 未连接硬件时点击 Add note 的提醒弹窗 -->
+            <div class="hardware-reminder-mask" id="hardwareReminderMask" onclick="closeHardwareReminder(event)">
+                <div class="hardware-reminder-dialog" onclick="event.stopPropagation()">
+                    <div class="hardware-reminder-title">
+                        <div class="icon-wrap"><i data-lucide="smartphone" style="width:18px;height:18px;"></i></div>
+                        请先连接硬件
+                    </div>
+                    <p>连接录音硬件后可开始实时采集；您也可以选择上传本地音频文件。</p>
+                    <div class="btn-row">
+                        <button type="button" class="btn primary" onclick="goToHardwareConnection()">
+                            <i data-lucide="link" style="width:18px;height:18px;"></i>
+                            前往连接硬件
+                        </button>
+                        <button type="button" class="btn secondary" onclick="openUploadFromHardwareReminder()">
+                            <i data-lucide="upload" style="width:18px;height:18px;"></i>
+                            上传音频
+                        </button>
+                        <button type="button" class="btn cancel" onclick="closeHardwareReminder()">取消</button>
+                    </div>
+                </div>
+            </div>
+            <div class="launch-overlay" id="launchOverlay"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        let connected = true;
+        function toast(msg) { console.log(msg); }
+        function toggleHardware() {
+            connected = !connected;
+            document.getElementById('hardwareLabel').textContent = connected ? 'Connected' : 'Disconnected';
+            document.getElementById('hardwareDot').style.background = connected ? '#2ac769' : '#8e8e93';
+        }
+        function openSettings() { toast('打开设置'); }
+        function applyNoteFilter(filter) {
+            document.querySelectorAll('.note-item[data-kind]').forEach((item) => {
+                const kind = item.getAttribute('data-kind');
+                item.style.display = (filter === 'all' || kind === filter) ? 'flex' : 'none';
+            });
+            var weekVisible = Array.from(document.querySelectorAll('.note-item[data-group="week"]')).some(function(el) { return el.style.display !== 'none'; });
+            var earlierVisible = Array.from(document.querySelectorAll('.note-item[data-group="earlier"]')).some(function(el) { return el.style.display !== 'none'; });
+            document.getElementById('headWeek').style.display = weekVisible ? 'block' : 'none';
+            document.getElementById('headEarlier').style.display = earlierVisible ? 'block' : 'none';
+        }
+        function toggleTypeFilter() {
+            var wrap = document.getElementById('typeFilterWrap');
+            var btn = document.getElementById('typeFilterBtn');
+            var isOpen = wrap.classList.contains('open');
+            wrap.classList.toggle('open', !isOpen);
+            if (btn) btn.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
+        }
+        function closeTypeFilter() {
+            document.getElementById('typeFilterWrap').classList.remove('open');
+            var btn = document.getElementById('typeFilterBtn');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+        var typeLabels = { all: '全部', meeting: '会议', memo: '闪念', idea: '想法' };
+        function setTypeFilter(filter) {
+            document.getElementById('typeFilterLabel').textContent = typeLabels[filter] || '全部';
+            document.querySelectorAll('#typeFilterDropdown button').forEach(function(el) {
+                el.classList.toggle('active', el.getAttribute('data-type') === filter);
+            });
+            applyNoteFilter(filter);
+            closeTypeFilter();
+        }
+        function openSheet() { document.getElementById('sheetMask').style.display = 'block'; }
+        function closeSheet() { document.getElementById('sheetMask').style.display = 'none'; }
+        function openViewSheet() {
+            document.getElementById('notesHead').classList.add('dropdown-open');
+            document.getElementById('viewSheetMask').classList.add('show');
+            document.getElementById('notesTitleRow').setAttribute('aria-expanded', 'true');
+            if (window.lucide) window.lucide.createIcons();
+        }
+        function closeViewSheet(e) {
+            if (e && e.target !== e.currentTarget) return;
+            document.getElementById('notesHead').classList.remove('dropdown-open');
+            document.getElementById('viewSheetMask').classList.remove('show');
+            document.getElementById('notesTitleRow').setAttribute('aria-expanded', 'false');
+            closeFolderMore();
+        }
+        function toggleFilterDropdown() {
+            var mask = document.getElementById('viewSheetMask');
+            if (mask.classList.contains('show')) closeViewSheet();
+            else openViewSheet();
+        }
+        function setView(id, label) {
+            document.getElementById('notesViewLabel').textContent = label;
+            document.querySelectorAll('.dropdown-option').forEach(function(el) {
+                var sel = el.getAttribute('data-view') === id;
+                el.classList.toggle('selected', sel);
+                var c = el.querySelector('.check'); if (c) c.style.display = sel ? 'block' : 'none';
+            });
+            document.querySelectorAll('.dropdown-folder-item').forEach(function(el) {
+                var sel = el.getAttribute('data-view') === id;
+                el.classList.toggle('selected', sel);
+                var c = el.querySelector('.check'); if (c) c.style.display = sel ? 'block' : 'none';
+            });
+            closeViewSheet();
+        }
+        function toggleFolderMore(e) {
+            var wrap = e.target.closest('.dropdown-folder-row-wrap');
+            var menu = wrap && wrap.querySelector('.folder-more-menu');
+            var isShow = menu && menu.classList.contains('show');
+            document.querySelectorAll('.folder-more-menu').forEach(function(m) { m.classList.remove('show'); });
+            if (menu && !isShow) {
+                menu.classList.add('show');
+                if (window.lucide) window.lucide.createIcons();
+            }
+            e.stopPropagation();
+        }
+        function closeFolderMore() {
+            document.querySelectorAll('.folder-more-menu').forEach(function(m) { m.classList.remove('show'); });
+        }
+        document.addEventListener('click', function() { closeFolderMore(); });
+        function openCapture(e) {
+            if (!connected) {
+                document.getElementById('hardwareReminderMask').classList.add('show');
+                if (window.lucide) window.lucide.createIcons();
+                return;
+            }
+            launchToPage(e.currentTarget, 'capture-demo.html', 'capture');
+        }
+        function closeHardwareReminder(e) {
+            if (e && e.target !== e.currentTarget) return;
+            document.getElementById('hardwareReminderMask').classList.remove('show');
+        }
+        function goToHardwareConnection() {
+            closeHardwareReminder();
+            window.location.href = 'hardware-connection.html';
+        }
+        function openUploadFromHardwareReminder() {
+            closeHardwareReminder();
+            toast('Upload Audio');
+            document.getElementById('sheetMask').style.display = 'block';
+        }
+        function openAsk(e) { launchToPage(e.currentTarget, 'ask-agent-demo.html', 'ask'); }
+        function openCalendarPage() { window.location.href = 'calendar-option1.html'; }
+        function launchToPage(triggerEl, targetUrl, type) {
+            const screen = document.querySelector('.screen');
+            const overlay = document.getElementById('launchOverlay');
+            const screenRect = screen.getBoundingClientRect();
+            const rect = triggerEl.getBoundingClientRect();
+            overlay.classList.remove('capture', 'ask');
+            overlay.classList.add(type === 'ask' ? 'ask' : 'capture');
+            overlay.style.display = 'block';
+            overlay.style.opacity = '1';
+            overlay.style.transform = `translate(${rect.left - screenRect.left}px, ${rect.top - screenRect.top}px) scale(${rect.width / screenRect.width}, ${rect.height / screenRect.height})`;
+            overlay.style.borderRadius = '999px';
+            void overlay.offsetWidth;
+            overlay.style.transform = 'translate(0px, 0px) scale(1, 1)';
+            overlay.style.borderRadius = '40px';
+            setTimeout(() => { window.location.href = targetUrl; }, 320);
+        }
+        if (window.lucide) window.lucide.createIcons();
+    </script>
+</body>
+</html>
