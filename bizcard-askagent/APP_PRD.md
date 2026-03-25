@@ -5,6 +5,7 @@
 **关联**：
 - [DISPLAY_AND_CONTRACT.md](./DISPLAY_AND_CONTRACT.md)（展示与契约细节）
 - [MCP_PRD.md](./MCP_PRD.md)（Agent MCP Tools 与逻辑架构说明）
+- [LOCAL_OPENCLAW_AND_CLOUD_MODES.md](./LOCAL_OPENCLAW_AND_CLOUD_MODES.md)（本地 OpenClaw 与云端模型双模式：用户可配置本地模型作为对话后端，连接本地时仍可查询 BizCard 内 Notes/Reminders/Contacts）
 
 ---
 
