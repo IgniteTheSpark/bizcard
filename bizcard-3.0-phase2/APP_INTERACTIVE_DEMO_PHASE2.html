@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BizCard Calendar Demo · Phase2</title>
+  <style>
+    :root {
+      --bg: #0d1430;
+      --shell: #f5f8fd;
+      --card: #ffffff;
+      --line: rgba(15, 23, 42, 0.1);
+      --line-soft: #eef2f8;
+      --text: #132034;
+      --muted: #7987a0;
+      --blue: #2f76ff;
+      --blue-soft: #edf4ff;
+      --green: #18b76f;
+      --orange: #ff9f2f;
+      --danger: #f2546b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: "PingFang SC", "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 25% 0%, #2a3570, var(--bg) 52%);
+      color: var(--text);
+    }
+    .demo-wrap {
+      width: min(1040px, 100%);
+      display: grid;
+      grid-template-columns: 393px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    .phone {
+      width: 393px;
+      height: 852px;
+      border-radius: 46px;
+      background: #000;
+      padding: 12px;
+      box-shadow: 0 30px 60px rgba(0,0,0,.55);
+    }
+    .screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 34px;
+      overflow: hidden;
+      position: relative;
+      background: var(--shell);
+    }
+    .status {
+      height: 42px;
+      padding: 10px 16px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #2f3b56;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .header {
+      background: linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,255,255,.52));
+      border-bottom: 1px solid var(--line);
+      padding: 0 14px 10px;
+    }
+    .header-top {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .left-back {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      color: #4f5d78;
+      font-weight: 900;
+    }
+    .right-actions { display: flex; gap: 8px; }
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #4f5d78;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+    .icon-btn.active {
+      color: var(--blue);
+      border-color: rgba(47,118,255,.28);
+      background: #f3f8ff;
+    }
+    .month-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .month-label {
+      margin: 0;
+      font-size: 44px;
+      line-height: 1;
+      letter-spacing: -1.2px;
+      font-weight: 860;
+    }
+    .today-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 5px 11px;
+      color: #5e6d88;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .weekday-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .day-pill {
+      min-height: 60px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #5a6987;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all .18s ease;
+    }
+    .day-pill .w { font-size: 10px; color: #9aa6bc; }
+    .day-pill .d { font-size: 29px; line-height: 1; font-weight: 820; }
+    .day-pill .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--blue);
+      margin-top: 3px;
+    }
+    .day-pill.selected {
+      background: #1f2634;
+      color: #fff;
+    }
+    .day-pill.selected .w, .day-pill.selected .d { color: #fff; }
+    .type-toggle {
+      display: inline-flex;
+      gap: 6px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px;
+      margin-bottom: 2px;
+    }
+    .type-btn {
+      border: 1px solid transparent;
+      background: transparent;
+      color: #657593;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 820;
+      cursor: pointer;
+      transition: all .18s ease;
+    }
+    .type-btn.active {
+      background: var(--blue-soft);
+      border-color: rgba(47,118,255,.22);
+      color: #24539f;
+    }
+    .main {
+      position: absolute;
+      inset: 258px 0 78px;
+      overflow-y: auto;
+      padding: 8px 12px 12px;
+    }
+    .main::-webkit-scrollbar { display: none; }
+
+    /* Events timeline */
+    .day-grid {
+      position: relative;
+      margin-left: 40px;
+      border-left: 1px solid #e4ebf6;
+      padding-left: 10px;
+      padding-top: 2px;
+      border-top: 1px solid #eef2f8;
+    }
+    .hour-row {
+      min-height: 68px;
+      position: relative;
+      border-top: 1px solid var(--line-soft);
+      cursor: crosshair;
+    }
+    .hour-label {
+      position: absolute;
+      left: -54px;
+      top: -7px;
+      width: 42px;
+      text-align: right;
+      color: #8a97af;
+      font-size: 11px;
+      font-weight: 720;
+    }
+    .hour-tip {
+      position: absolute;
+      right: 8px;
+      top: 6px;
+      font-size: 10px;
+      color: #93a0b8;
+      opacity: 0;
+      transition: opacity .14s ease;
+      pointer-events: none;
+    }
+    .hour-row:hover .hour-tip { opacity: 1; }
+    .event-block, .draft-block {
+      position: absolute;
+      left: 2px;
+      right: 6px;
+      border-radius: 8px;
+      background: #fff;
+      padding: 7px 8px;
+      overflow: hidden;
+      box-shadow: 0 6px 12px rgba(17,24,39,.06);
+    }
+    .event-block {
+      border: 1px solid rgba(24,183,111,.24);
+      border-left: 3px solid var(--green);
+      cursor: pointer;
+    }
+    .event-block .t {
+      font-size: 13px;
+      font-weight: 820;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .event-block .s {
+      font-size: 10px;
+      color: #7786a0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .event-block .src {
+      margin-top: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: #5d6b86;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .event-block.split {
+      padding: 6px 6px;
+    }
+    .event-block.split .src {
+      margin-top: 3px;
+      font-size: 9px;
+    }
+    .source-logo {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      display: inline-grid;
+      place-items: center;
+      font-size: 9px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .source-logo.google { background: #4285f4; }
+    .source-logo.outlook { background: #0078d4; }
+    .source-logo.apple { background: #444; }
+    .source-logo.bizcard { background: #2f76ff; }
+    .timeline-empty {
+      position: absolute;
+      left: 2px;
+      right: 6px;
+      top: 74px;
+      border: 1px dashed #d5deec;
+      border-radius: 10px;
+      background: #f9fbff;
+      color: #6c7d9b;
+      font-size: 12px;
+      font-weight: 760;
+      padding: 10px 12px;
+      pointer-events: none;
+    }
+    .timeline-empty small {
+      display: block;
+      margin-top: 3px;
+      font-size: 10px;
+      color: #8d9ab3;
+      font-weight: 700;
+    }
+    .draft-block {
+      border: 1px solid rgba(47,118,255,.45);
+      border-left: 3px solid var(--blue);
+      background: #f9fcff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      cursor: pointer;
+    }
+    .draft-block .t {
+      font-size: 13px;
+      font-weight: 820;
+      color: #2c63c2;
+      margin-bottom: 3px;
+    }
+    .draft-block .s {
+      font-size: 10px;
+      color: #7083a6;
+    }
+
+    /* Reminder list */
+    .rem-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 4px 0 12px;
+      gap: 8px;
+    }
+    .rem-toolbar-title {
+      font-size: 12px;
+      color: #5f6f8d;
+      font-weight: 780;
+    }
+    .done-chip {
+      border: 1px solid #dfe6f3;
+      border-radius: 999px;
+      background: #fff;
+      color: #677795;
+      font-size: 11px;
+      font-weight: 820;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    .done-chip.active {
+      background: #1f2634;
+      border-color: #1f2634;
+      color: #fff;
+    }
+    .rem-groups { display: grid; gap: 12px; }
+    .rem-group {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+    .rem-date-rail {
+      color: #6f7f9d;
+      text-align: left;
+      padding-top: 2px;
+      line-height: 1.1;
+    }
+    .rem-date-rail .m {
+      font-size: 11px;
+      font-weight: 740;
+      margin-bottom: 4px;
+    }
+    .rem-date-rail .d {
+      font-size: 34px;
+      font-weight: 860;
+      letter-spacing: -.6px;
+      color: #1f2a40;
+    }
+    .rem-date-rail .w {
+      font-size: 12px;
+      margin-top: 2px;
+      color: #9aa6bc;
+      font-weight: 700;
+    }
+    .rem-group-items { min-width: 0; }
+    .rem-item {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(17,24,39,.05);
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .rem-check-wrap {
+      margin-top: 2px;
+      display: grid;
+      place-items: center;
+    }
+    .rem-check {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: #1f2634;
+      cursor: pointer;
+    }
+    .rem-main {
+      flex: 1;
+      min-width: 0;
+    }
+    .rem-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+    .rem-time {
+      color: #61718f;
+      font-size: 11px;
+      font-weight: 720;
+    }
+    .rem-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 820;
+      color: #162136;
+    }
+    .rem-item.done {
+      background: #f7f9fc;
+      border-color: #e8edf6;
+      box-shadow: none;
+    }
+    .rem-item.done .rem-title,
+    .rem-item.done .rem-time {
+      color: #a6b1c6;
+      text-decoration: line-through;
+    }
+    .scroll-top-btn {
+      position: absolute;
+      right: 16px;
+      bottom: 94px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid #d8e0ee;
+      background: #fff;
+      color: #223251;
+      font-size: 18px;
+      line-height: 1;
+      display: none;
+      place-items: center;
+      box-shadow: 0 8px 16px rgba(16,24,40,.12);
+      cursor: pointer;
+      z-index: 12;
+    }
+    .scroll-top-btn.show { display: grid; }
+
+    /* Event detail */
+    .event-detail {
+      display: none;
+      padding: 8px 12px;
+    }
+    .detail-head, .detail-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .detail-title {
+      margin: 4px 0 0;
+      font-size: 22px;
+      font-weight: 840;
+      letter-spacing: -.3px;
+    }
+    .detail-meta {
+      margin-top: 7px;
+      color: #536281;
+      font-size: 13px;
+    }
+    .detail-tabs {
+      display: flex;
+      gap: 14px;
+      border-bottom: 1px solid var(--line-soft);
+      margin: 10px -12px 0;
+      padding: 0 12px;
+    }
+    .detail-tab {
+      border: none;
+      background: transparent;
+      color: #7e8ba4;
+      font-size: 14px;
+      font-weight: 760;
+      padding: 10px 0 9px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .detail-tab.active {
+      color: #162136;
+      border-bottom-color: #162136;
+    }
+    .detail-panel { display: none; padding-top: 10px; }
+    .detail-panel.active { display: block; }
+    .detail-inline {
+      margin-top: 6px;
+      color: #536281;
+      font-size: 12px;
+      font-weight: 720;
+    }
+    .detail-inline a {
+      color: #2f76ff;
+      text-decoration: none;
+    }
+    .detail-card h4 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+    .empty-hint {
+      border: 1px dashed #d7e1f2;
+      border-radius: 10px;
+      background: #f8fbff;
+      padding: 10px;
+      color: #6f7f9c;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .kv {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 0;
+      border-top: 1px solid var(--line-soft);
+      font-size: 12px;
+    }
+    .kv:first-of-type { border-top: none; }
+    .kv .k { color: #6e7e9c; font-weight: 700; }
+    .kv .v { color: #1a2740; font-weight: 760; }
+    .asset-list { display: grid; gap: 8px; }
+    .asset-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: #fff;
+    }
+    .asset-item .t {
+      font-size: 13px;
+      font-weight: 800;
+      color: #162136;
+    }
+    .asset-item .s {
+      margin-top: 3px;
+      font-size: 11px;
+      color: #7383a2;
+    }
+    .attendee-list { display: grid; gap: 8px; }
+    .attendee-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+    }
+    .attendee-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #162136;
+    }
+    .attendee-email {
+      margin-top: 3px;
+      font-size: 11px;
+      color: #7a889f;
+    }
+    .attendee-status {
+      font-size: 11px;
+      font-weight: 760;
+      color: #4f6082;
+    }
+    .attendee-q {
+      border: 1px solid #ffd1d8;
+      background: #fff5f7;
+      color: #8b3241;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 820;
+      padding: 4px 8px;
+      cursor: pointer;
+      min-height: 30px;
+    }
+    .attendee-q.matched {
+      border-color: #d8e6fb;
+      background: #f2f7ff;
+      color: #2f76ff;
+    }
+    .notes-feed { display: grid; gap: 10px; }
+    .note-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 6px 12px rgba(17,24,39,.04);
+      padding: 11px 12px;
+    }
+    .note-title {
+      font-size: 13px;
+      font-weight: 820;
+      color: #162136;
+      margin-bottom: 6px;
+    }
+    .note-meta {
+      font-size: 12px;
+      color: #7a889f;
+      margin-bottom: 8px;
+    }
+    .note-tags { display: flex; gap: 8px; }
+    .note-tag {
+      font-size: 11px;
+      font-weight: 760;
+      border-radius: 8px;
+      padding: 3px 8px;
+      border: 1px solid #dce5f7;
+      background: #f2f7ff;
+      color: #24539f;
+    }
+    .note-tag.type {
+      border-color: #dbeeda;
+      background: #effbef;
+      color: #356f3a;
+    }
+    .agent-hint-inline {
+      margin-top: 10px;
+      border: 1px solid #d8e6fb;
+      border-radius: 10px;
+      background: #f1f7ff;
+      padding: 9px 10px;
+      color: #436291;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .chips { margin-top: 4px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      color: #546381;
+      padding: 5px 9px;
+      margin-right: 6px;
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 740;
+    }
+    .chip.unmatched {
+      border-color: #ffd1d8;
+      background: #fff5f7;
+      color: #8b3241;
+      cursor: pointer;
+    }
+    .q {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      margin-left: 6px;
+      font-size: 10px;
+      color: #fff;
+      background: var(--danger);
+    }
+    .event-create {
+      display: none;
+      position: absolute;
+      inset: 42px 0 0;
+      overflow-y: auto;
+      background: var(--shell);
+      padding: 10px 12px 92px;
+    }
+    .create-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .head-link {
+      border: none;
+      background: transparent;
+      color: #6f7f9b;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 2px;
+    }
+    .head-link.primary { color: var(--blue); font-weight: 800; }
+    .create-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .create-row {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 8px;
+      align-items: start;
+      padding: 10px 0;
+      border-top: 1px solid var(--line-soft);
+    }
+    .create-row:first-child { border-top: none; padding-top: 2px; }
+    .create-ico {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: #7d8ca8;
+      font-size: 12px;
+      font-weight: 900;
+      background: #f3f7ff;
+      border: 1px solid #e2eaf7;
+    }
+    .create-field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      color: #7c8aa3;
+      font-weight: 700;
+    }
+    .create-input, .create-textarea, .create-select {
+      width: 100%;
+      border: 1px solid #dbe4f3;
+      border-radius: 10px;
+      background: #fff;
+      color: #1a2740;
+      font-size: 13px;
+      padding: 9px 10px;
+      outline: none;
+    }
+    .create-time-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .create-textarea {
+      min-height: 84px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .create-file-entry {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+    .add-file-btn {
+      border: 1px solid #dbe4f3;
+      border-radius: 10px;
+      background: #fff;
+      color: #2f76ff;
+      font-size: 12px;
+      font-weight: 760;
+      padding: 0 12px;
+      min-height: 40px;
+      cursor: pointer;
+    }
+    .file-list {
+      margin-top: 8px;
+      display: grid;
+      gap: 6px;
+    }
+    .file-item {
+      border: 1px solid #dce5f7;
+      border-radius: 8px;
+      background: #f8fbff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+      color: #2a3a58;
+    }
+    .file-item button {
+      border: none;
+      background: transparent;
+      color: #7e8ba5;
+      font-size: 14px;
+      cursor: pointer;
+      line-height: 1;
+      min-width: 24px;
+      min-height: 24px;
+    }
+
+    /* Bottom actions */
+    .bottom-bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, rgba(245,248,253,0), #f5f8fd 44%);
+    }
+    .agent-hint-bubble {
+      position: absolute;
+      bottom: 78px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 280px;
+      background: #ffffff;
+      border: 1px solid #dbe4f3;
+      border-radius: 12px;
+      box-shadow: 0 10px 20px rgba(17,24,39,.12);
+      padding: 8px 10px;
+      color: #4a5d82;
+      font-size: 12px;
+      display: none;
+      z-index: 13;
+    }
+    .agent-hint-bubble.show { display: block; }
+    .pill {
+      border-radius: 999px;
+      background: #101a39;
+      border: 1px solid rgba(255,255,255,.22);
+      padding: 6px;
+      display: flex;
+      gap: 8px;
+    }
+    .pill-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: #fff;
+      font-size: 17px;
+      cursor: pointer;
+    }
+    .pill-btn.center {
+      background: radial-gradient(circle, #67d1ff, #356eff);
+      box-shadow: 0 0 20px rgba(78,174,255,.8);
+    }
+    .pill-btn.add {
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.07);
+    }
+
+    /* Modals */
+    .modal-mask {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: flex-end;
+      background: rgba(8, 13, 26, 0.45);
+      padding: 12px;
+    }
+    .modal {
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .modal h3 { margin: 0 0 6px; font-size: 42px; line-height: 1; letter-spacing: -0.8px; font-weight: 880; }
+    .modal .sub { color: var(--muted); font-size: 12px; margin-bottom: 2px; }
+    .opt {
+      width: 100%;
+      margin-top: 8px;
+      border: 1px solid #e2e8f3;
+      border-radius: 12px;
+      background: #fff;
+      text-align: left;
+      padding: 11px 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .notes {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      padding: 12px;
+      color: #dbe3f5;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .notes h2 { margin: 0 0 8px; font-size: 15px; color: #fff; }
+    .notes ul { margin: 0; padding-left: 18px; }
+    @media (max-width: 980px) {
+      .demo-wrap { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-wrap">
+    <div class="phone">
+      <div class="screen">
+        <div class="status"><span>9:41</span><span>5G · 100%</span></div>
+        <div class="header" id="calendarHeader">
+          <div class="header-top">
+            <span class="left-back">‹</span>
+            <div class="right-actions">
+              <button class="icon-btn active" id="calendarViewBtn" title="日历视图">📅</button>
+              <button class="icon-btn" id="reminderViewBtn" title="提醒列表">☰</button>
+            </div>
+          </div>
+          <div class="month-row">
+            <h1 class="month-label">May 2026</h1>
+            <button class="today-btn" id="todayBtn">Back to today</button>
+          </div>
+          <div class="weekday-row" id="dayRow"></div>
+          <div class="type-toggle" id="typeToggle">
+            <button class="type-btn active" data-type="events">Events</button>
+            <button class="type-btn" data-type="reminders">Reminders</button>
+          </div>
+        </div>
+
+        <div class="main" id="calendarMain"></div>
+        <button class="scroll-top-btn" id="scrollTopBtn" title="回到顶部">↑</button>
+
+        <div class="event-detail" id="eventDetail">
+          <div class="detail-head">
+            <div class="row">
+              <button class="icon-btn" id="backToCal">‹</button>
+              <button class="today-btn" id="detailEditBtn">编辑</button>
+            </div>
+            <h3 class="detail-title" id="detailTitle">Homepage Reconstruction</h3>
+            <div class="detail-meta" id="detailTime">2026-05-05 16:00 - 17:00 (GMT+8)</div>
+            <div class="detail-inline" id="detailLocationLine">地点：暂无</div>
+            <div class="detail-inline" id="detailLinkLine">会议链接：暂无</div>
+            <div class="detail-inline" id="detailSource">来源：BizCard</div>
+            <div class="detail-tabs" id="detailTabs">
+              <button class="detail-tab active" data-tab="attendees">参会人</button>
+              <button class="detail-tab" data-tab="notes">Notes</button>
+              <button class="detail-tab" data-tab="reminders">Reminders</button>
+            </div>
+            <div class="detail-panel active" data-panel="attendees">
+              <div class="detail-card">
+                <h4>参会人列表</h4>
+                <div class="attendee-list" id="detailAttendeesList"></div>
+              </div>
+            </div>
+            <div class="detail-panel" data-panel="notes">
+              <div class="detail-card">
+                <h4>挂载 Notes</h4>
+                <div class="notes-feed" id="detailNotesList"></div>
+                <div class="agent-hint-inline" id="notesInlineHint"></div>
+              </div>
+            </div>
+            <div class="detail-panel" data-panel="reminders">
+              <div class="detail-card">
+                <h4>挂载 Reminders</h4>
+                <div class="asset-list" id="detailRemindersList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="event-create" id="eventCreate">
+          <div class="create-head">
+            <button class="head-link" id="createEventCancel">取消</button>
+            <button class="head-link primary" id="createEventSave">保存</button>
+          </div>
+          <div class="create-card">
+            <div class="create-row">
+              <div class="create-ico">T</div>
+              <div class="create-field">
+                <label>添加主题</label>
+                <input class="create-input" id="newEventTitle" placeholder="请输入 Event 标题" />
+              </div>
+            </div>
+            <div class="create-row">
+              <div class="create-ico">⏰</div>
+              <div class="create-field">
+                <label>选择时间</label>
+                <div class="create-time-grid">
+                  <input class="create-input" id="newEventDate" type="date" />
+                  <select class="create-select" id="newEventTimezone">
+                    <option value="GMT+8">GMT+8</option>
+                    <option value="GMT+0">GMT+0</option>
+                  </select>
+                </div>
+                <div class="create-time-grid" style="margin-top:8px;">
+                  <input class="create-input" id="newEventStart" type="time" />
+                  <input class="create-input" id="newEventEnd" type="time" />
+                </div>
+              </div>
+            </div>
+            <div class="create-row">
+              <div class="create-ico">👥</div>
+              <div class="create-field">
+                <label>添加参与者</label>
+                <input class="create-input" id="newEventGuests" placeholder="email 或姓名，逗号分隔" />
+              </div>
+            </div>
+            <div class="create-row">
+              <div class="create-ico">↻</div>
+              <div class="create-field">
+                <label>是否重复</label>
+                <select class="create-select" id="newEventRepeat">
+                  <option value="不重复">不重复</option>
+                  <option value="每天">每天</option>
+                  <option value="每周">每周</option>
+                  <option value="每月">每月</option>
+                </select>
+              </div>
+            </div>
+            <div class="create-row">
+              <div class="create-ico">🔗</div>
+              <div class="create-field">
+                <label>会议链接</label>
+                <input class="create-input" id="newEventMeetingLink" placeholder="https://..." />
+              </div>
+            </div>
+            <div class="create-row">
+              <div class="create-ico">📍</div>
+              <div class="create-field">
+                <label>会议地点</label>
+                <input class="create-input" id="newEventLocation" placeholder="线下地址 / 在线会议室" />
+              </div>
+            </div>
+            <div class="create-row">
+              <div class="create-ico">≡</div>
+              <div class="create-field">
+                <label>添加描述</label>
+                <textarea class="create-textarea" id="newEventDesc" placeholder="输入会议背景、议程、预期产出"></textarea>
+              </div>
+            </div>
+            <div class="create-row">
+              <div class="create-ico">📎</div>
+              <div class="create-field">
+                <label>添加附件</label>
+                <div class="create-file-entry">
+                  <input class="create-input" id="newEventFiles" placeholder="输入附件名后点击添加" />
+                  <button class="add-file-btn" id="addFileBtn">添加</button>
+                </div>
+                <div class="file-list" id="newEventFileList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-bar">
+          <div class="agent-hint-bubble" id="agentHintBubble"></div>
+          <div class="pill">
+            <button class="pill-btn">🎤</button>
+            <button class="pill-btn center">✦</button>
+            <button class="pill-btn add" id="quickAddBtn">＋</button>
+          </div>
+        </div>
+
+        <div class="modal-mask" id="contactModal">
+          <div class="modal">
+            <h3 style="font-size:22px;letter-spacing:0;">未匹配参会人</h3>
+            <div class="sub" id="modalSub"></div>
+            <button class="opt" id="createBtn">新建为联系人</button>
+            <button class="opt" id="bindBtn">绑定已有联系人</button>
+            <button class="opt" id="cancelBtn">取消</button>
+          </div>
+        </div>
+        <div class="modal-mask" id="quickAddModal">
+          <div class="modal">
+            <h3 style="font-size:22px;letter-spacing:0;">快速新建</h3>
+            <div class="sub">选择创建 Event 或 Reminder</div>
+            <button class="opt" id="quickAddEventBtn">新建 Event</button>
+            <button class="opt" id="quickAddReminderBtn">新建 Reminder</button>
+            <button class="opt" id="quickAddCancelBtn">取消</button>
+          </div>
+        </div>
+        <div class="modal-mask" id="attendeePickerModal">
+          <div class="modal">
+            <h3 style="font-size:22px;letter-spacing:0;">选择联系人</h3>
+            <div class="sub">选择后将作为参会人挂载到当前 Event</div>
+            <div id="attendeePickerList"></div>
+            <button class="opt" id="attendeePickerCloseBtn">完成</button>
+          </div>
+        </div>
+        <div class="modal-mask" id="notePickerModal">
+          <div class="modal">
+            <h3 style="font-size:22px;letter-spacing:0;">关联已有 Notes</h3>
+            <div class="sub">可多选关联到当前 Event</div>
+            <div id="notePickerList"></div>
+            <button class="opt" id="notePickerCloseBtn">完成</button>
+          </div>
+        </div>
+        <div class="modal-mask" id="detailAddModal">
+          <div class="modal">
+            <h3 style="font-size:22px;letter-spacing:0;">添加到当前 Event</h3>
+            <button class="opt" id="detailAddNoteBtn">添加 Notes</button>
+            <button class="opt" id="detailAddAttendeeBtn">添加联系人</button>
+            <button class="opt" id="detailAddReminderBtn">添加 Reminder</button>
+            <button class="opt" id="detailAddCancelBtn">取消</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h2>这版 Demo 对齐点</h2>
+      <ul>
+        <li>无 Day/Timeline 视图切换，每一天即独立时间轴。</li>
+        <li>`Events` 用时间流 block 展示区间事件。</li>
+        <li>右上角图标切换：日历容器 / 全量 reminders 列表。</li>
+        <li>日历容器内保留当日 `Events/Reminders` 切换。</li>
+        <li>空白时间区点击创建 30 分钟临时“新建日程”占位。</li>
+        <li>同一时间轴只保留一个临时占位；切换日期或打开其它 event 时清除。</li>
+        <li>底部 `+` 为唯一新建入口，无“默认一小时”话术。</li>
+      </ul>
+    </aside>
+  </div>
+
+  <script>
+    const SLOT_HEIGHT = 68;
+    const START_HOUR = 9;
+    const END_HOUR = 23;
+
+    const days = [
+      { w: "Sun", d: 3 },
+      { w: "Mon", d: 4 },
+      { w: "Tue", d: 5, selected: true, dot: true },
+      { w: "Wed", d: 6, dot: true },
+      { w: "Thu", d: 7, dot: true },
+      { w: "Fri", d: 8 },
+      { w: "Sat", d: 9 }
+    ];
+
+    const eventsByDayOffset = {
+      "-2": [
+        { id: "e-sun-1", start: "11:00", end: "12:00", title: "主页评审", sub: "设计同步", source: "bizcard" }
+      ],
+      "-1": [
+        { id: "e-mon-1", start: "15:00", end: "16:30", title: "需求澄清会", sub: "产品讨论", source: "outlook" }
+      ],
+      "0": [
+        { id: "e-tue-1", start: "10:00", end: "12:00", title: "龙华会议&学习友", sub: "线下会面", source: "google" },
+        { id: "e-tue-2", start: "14:00", end: "18:00", title: "卓翼南山&学习友（待定）", sub: "客户同步", source: "apple" },
+        { id: "e-tue-3", start: "19:00", end: "21:00", title: "CARD周会", sub: "内部周会", source: "bizcard" }
+      ],
+      "1": [],
+      "2": [
+        { id: "e-thu-1", start: "14:00", end: "16:00", title: "方案评审 A", sub: "冲突示例", source: "google" },
+        { id: "e-thu-2", start: "15:00", end: "17:00", title: "供应商沟通", sub: "冲突示例", source: "outlook" },
+        { id: "e-thu-3", start: "16:30", end: "18:00", title: "研发排期确认", sub: "冲突示例", source: "bizcard" }
+      ],
+      "3": [
+        { id: "e-fri-1", start: "09:30", end: "11:00", title: "周五站会", sub: "内部例会", source: "bizcard" }
+      ],
+      "4": [
+        { id: "e-sat-1", start: "16:00", end: "17:00", title: "客户回访", sub: "外部沟通", source: "google" }
+      ]
+    };
+    const eventAssetsById = {
+      "e-tue-1": {
+        attendees: [
+          { name: "Emily Chen", email: "emily.chen@example.com", matched: true },
+          { name: "Kevin Zhao", email: "kevin.zhao@example.com", matched: false },
+          { name: "Maya Lin", email: "maya.lin@startup.io", matched: false }
+        ],
+        repeat: "每周",
+        meetingLink: "https://meet.google.com/abc-defg-hij",
+        location: "龙华线下会议室",
+        desc: "与学习友对齐合作边界、确认下周交付节奏。",
+        notes: [
+          { title: "会前准备清单", meta: "Today 10:20 · 00:32", reminders: 2, tag: "Meeting" },
+          { title: "会议纪要 v1", meta: "Today 12:15 · 00:40", reminders: 1, tag: "Memo" }
+        ],
+        reminders: [
+          { id: "er-1", title: "会前带电脑与转接头", sub: "13:30", state: "待处理" },
+          { id: "er-2", title: "会后发 proposal", sub: "18:10", state: "待处理" }
+        ],
+        files: [
+          { title: "合作方案草稿.pdf", sub: "1.2MB · 已挂载" },
+          { title: "录音_20260505.m4a", sub: "音频 · 可生成 Summary" }
+        ]
+      }
+    };
+    const contactsLibrary = [
+      { name: "Emily Chen", email: "emily.chen@example.com" },
+      { name: "Kevin Zhao", email: "kevin.zhao@example.com" },
+      { name: "Maya Lin", email: "maya.lin@startup.io" },
+      { name: "Alex Wu", email: "alex.wu@bizcard.ai" }
+    ];
+    const notesLibrary = [
+      { id: "n-lib-1", title: "会前行业背景 Briefing", meta: "Today 08:20 · 00:45", reminders: 1, tag: "Briefing" },
+      { id: "n-lib-2", title: "客户历史合作复盘", meta: "Yesterday 19:10 · 00:36", reminders: 0, tag: "Recap" },
+      { id: "n-lib-3", title: "Q4 业务关键风险清单", meta: "3 days ago · 00:28", reminders: 2, tag: "Meeting" }
+    ];
+
+    const TODAY_DAY_INDEX = 2;
+    const remindersAll = [
+      { id: "r1", dayOffset: 2, time: "16:16", title: "Homepage Reconstruction", sub: "Product Design Sync", state: "待处理" },
+      { id: "r2", dayOffset: 2, time: "16:26", title: "Send updated proposal to team", sub: "Product Design Sync", state: "待处理" },
+      { id: "r3", dayOffset: 1, time: "11:00", title: "会前带电脑与转接头", sub: "Meeting Task", state: "待处理" },
+      { id: "r4", dayOffset: 1, time: "17:16", title: "Ask agent capability", sub: "Product Design Sync", state: "已完成" },
+      { id: "r5", dayOffset: 0, time: "09:40", title: "14:00 会前 30 分钟提醒", sub: "Meeting Task", state: "待处理" },
+      { id: "r6", dayOffset: 0, time: "18:10", title: "会后发送纪要", sub: "Meeting Task", state: "待处理" },
+      { id: "r7", dayOffset: -1, time: "16:26", title: "回访邮件发送", sub: "Follow-up", state: "待处理" },
+      { id: "r8", dayOffset: -1, time: "17:16", title: "确认会议室设备", sub: "Ops", state: "已完成" }
+    ];
+
+    const dayRow = document.getElementById("dayRow");
+    const calendarMain = document.getElementById("calendarMain");
+    const typeToggle = document.getElementById("typeToggle");
+    const calendarHeader = document.getElementById("calendarHeader");
+    const eventDetail = document.getElementById("eventDetail");
+    const eventCreate = document.getElementById("eventCreate");
+    const calendarViewBtn = document.getElementById("calendarViewBtn");
+    const reminderViewBtn = document.getElementById("reminderViewBtn");
+    const todayBtn = document.getElementById("todayBtn");
+    const scrollTopBtn = document.getElementById("scrollTopBtn");
+    const detailTitle = document.getElementById("detailTitle");
+    const detailTime = document.getElementById("detailTime");
+    const detailSource = document.getElementById("detailSource");
+    const detailLocationLine = document.getElementById("detailLocationLine");
+    const detailLinkLine = document.getElementById("detailLinkLine");
+    const detailAttendeesList = document.getElementById("detailAttendeesList");
+    const detailNotesList = document.getElementById("detailNotesList");
+    const detailRemindersList = document.getElementById("detailRemindersList");
+    const notesInlineHint = document.getElementById("notesInlineHint");
+    const agentHintBubble = document.getElementById("agentHintBubble");
+    const detailTabs = document.querySelectorAll(".detail-tab");
+    const detailPanels = document.querySelectorAll(".detail-panel");
+    const newEventFilesInput = document.getElementById("newEventFiles");
+    const newEventFileList = document.getElementById("newEventFileList");
+
+    let pageMode = "calendar"; // calendar | reminders_all
+    let type = "events";
+    let reminderShowDoneInAll = false;
+    let draftEvent = null; // {startMin,endMin}
+    let selectedEventId = null;
+    let editingEventId = null;
+    let draftFileTitles = [];
+    let currentDetailTab = "attendees";
+
+    function parseTime(str) {
+      const [h, m] = str.split(":").map(Number);
+      return h * 60 + m;
+    }
+    function fmtTime(mins) {
+      const h = String(Math.floor(mins / 60)).padStart(2, "0");
+      const m = String(mins % 60).padStart(2, "0");
+      return `${h}:${m}`;
+    }
+    function minsToTop(mins) {
+      return (mins - START_HOUR * 60) / 60 * SLOT_HEIGHT;
+    }
+    function clearDraft() {
+      draftEvent = null;
+    }
+    function getSelectedDayIndex() {
+      return days.findIndex((d) => d.selected);
+    }
+    function getSelectedDayOffset() {
+      return getSelectedDayIndex() - TODAY_DAY_INDEX;
+    }
+    function getDateLabelByOffset(offset) {
+      if (offset === 0) return "今天";
+      if (offset === 1) return "明天";
+      if (offset === -1) return "昨天";
+      const idx = TODAY_DAY_INDEX + offset;
+      return days[idx] ? `${days[idx].w} ${days[idx].d}` : `+${offset}天`;
+    }
+    function getSourceMeta(source) {
+      if (source === "google") return { logoClass: "google", logo: "G", label: "Google Calendar" };
+      if (source === "outlook") return { logoClass: "outlook", logo: "O", label: "Outlook" };
+      if (source === "apple") return { logoClass: "apple", logo: "A", label: "Apple Calendar" };
+      return { logoClass: "bizcard", logo: "B", label: "BizCard" };
+    }
+    function getSelectedDayEvents() {
+      return eventsByDayOffset[String(getSelectedDayOffset())] || [];
+    }
+    function getAllEvents() {
+      return Object.entries(eventsByDayOffset).flatMap(([offset, list]) => list.map((e) => ({ ...e, dayOffset: Number(offset) })));
+    }
+    function getEventById(id) {
+      return getAllEvents().find((e) => e.id === id) || null;
+    }
+    function getDateByOffset(offset) {
+      const base = new Date("2026-05-05T00:00:00");
+      const d = new Date(base);
+      d.setDate(base.getDate() + offset);
+      return d;
+    }
+    function toDateInputValue(offset) {
+      const d = getDateByOffset(offset);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    function offsetFromDateInput(v) {
+      if (!v) return getSelectedDayOffset();
+      const d = new Date(`${v}T00:00:00`);
+      const base = new Date("2026-05-05T00:00:00");
+      return Math.round((d - base) / (24 * 60 * 60 * 1000));
+    }
+    function renderAttendeesList(arr) {
+      detailAttendeesList.innerHTML = arr && arr.length
+        ? arr.map((a) => `
+          <div class="attendee-item">
+            <div>
+              <div class="attendee-name">${a.name}</div>
+              <div class="attendee-email">${a.email || "-"}</div>
+            </div>
+            ${a.matched
+              ? `<span class="attendee-status">已匹配联系人</span>`
+              : `<button class="attendee-q unmatched" data-name="${a.name}" data-email="${a.email || ""}">?</button>`}
+          </div>
+        `).join("")
+        : `<div class="asset-item"><div class="s">暂无参会人</div></div>`;
+    }
+    function renderNotesFeed(arr) {
+      detailNotesList.innerHTML = arr && arr.length
+        ? arr.map((n) => `
+          <div class="note-card">
+            <div class="note-title">${n.title}</div>
+            <div class="note-meta">${n.meta || "Today 08:40 · 00:32"}</div>
+            <div class="note-tags">
+              <span class="note-tag">${(n.reminders || 0)} Reminders</span>
+              <span class="note-tag type">${n.tag || "Meeting"}</span>
+            </div>
+          </div>
+        `).join("")
+        : `<div class="asset-item"><div class="s">暂无挂载 Notes</div></div>`;
+      notesInlineHint.textContent = arr && arr.length
+        ? "可继续使用 Ask-Agent 生成 recap，自动沉淀会议结论。"
+        : "暂无 Notes。可用 Ask-Agent 基于会议信息生成 briefing。";
+    }
+    function renderEventReminderCards(eventId, arr) {
+      detailRemindersList.innerHTML = arr && arr.length
+        ? arr.map((r, idx) => `
+          <div class="rem-item ${r.state === "已完成" ? "done" : ""}">
+            <label class="rem-check-wrap">
+              <input class="rem-check event-rem-check" type="checkbox" data-event-id="${eventId}" data-rem-idx="${idx}" ${r.state === "已完成" ? "checked" : ""}>
+            </label>
+            <div class="rem-main">
+              <p class="rem-title">${r.title}</p>
+              <span class="rem-time">${r.sub || ""}</span>
+            </div>
+          </div>
+        `).join("")
+        : `<div class="asset-item"><div class="s">暂无挂载 Reminders</div></div>`;
+      document.querySelectorAll(".event-rem-check").forEach((check) => {
+        check.addEventListener("change", () => {
+          const item = eventAssetsById[check.dataset.eventId]?.reminders?.[Number(check.dataset.remIdx)];
+          if (!item) return;
+          item.state = check.checked ? "已完成" : "待处理";
+          openEventDetail(check.dataset.eventId);
+          switchDetailTab("reminders");
+        });
+      });
+    }
+    function switchDetailTab(tab) {
+      currentDetailTab = tab;
+      detailTabs.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tab));
+      detailPanels.forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === tab));
+      refreshAgentHintBubble();
+    }
+    function refreshAgentHintBubble() {
+      const inDetail = eventDetail.style.display === "block";
+      if (!inDetail) {
+        agentHintBubble.classList.remove("show");
+        return;
+      }
+      const asset = eventAssetsById[selectedEventId] || {};
+      const hasNotes = (asset.notes || []).length > 0;
+      let text = "点击 + 可添加 Notes、联系人、Reminder";
+      if (currentDetailTab === "notes") {
+        text = hasNotes ? "Ask-Agent 可继续生成 recap。" : "Ask-Agent 可生成 briefing。";
+      } else if (currentDetailTab === "attendees") {
+        text = "可通过 + 快速添加参会人。";
+      } else if (currentDetailTab === "reminders") {
+        text = "可通过 + 快速补充会议提醒。";
+      }
+      agentHintBubble.textContent = text;
+      agentHintBubble.classList.add("show");
+    }
+    function renderAttendeePicker() {
+      const wrap = document.getElementById("attendeePickerList");
+      const existing = new Set((eventAssetsById[selectedEventId]?.attendees || []).map((x) => x.email));
+      wrap.innerHTML = contactsLibrary.map((c) => `
+        <button class="opt pick-attendee-btn" data-name="${c.name}" data-email="${c.email}" ${existing.has(c.email) ? "disabled" : ""}>
+          ${c.name} · ${c.email}${existing.has(c.email) ? "（已添加）" : ""}
+        </button>
+      `).join("");
+      wrap.querySelectorAll(".pick-attendee-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const asset = eventAssetsById[selectedEventId] || (eventAssetsById[selectedEventId] = { attendees: [], notes: [], reminders: [], files: [] });
+          asset.attendees = asset.attendees || [];
+          if (!asset.attendees.some((a) => a.email === btn.dataset.email)) {
+            asset.attendees.push({ name: btn.dataset.name, email: btn.dataset.email, matched: true });
+          }
+          renderAttendeesList(asset.attendees);
+          renderAttendeePicker();
+          refreshAgentHintBubble();
+        });
+      });
+    }
+    function renderNotePicker() {
+      const wrap = document.getElementById("notePickerList");
+      const existing = new Set((eventAssetsById[selectedEventId]?.notes || []).map((x) => x.title));
+      wrap.innerHTML = notesLibrary.map((n) => `
+        <button class="opt pick-note-btn" data-note-id="${n.id}" ${existing.has(n.title) ? "disabled" : ""}>
+          ${n.title}<br><span style="font-size:11px;color:#7a889f;">${n.meta}</span>${existing.has(n.title) ? "（已关联）" : ""}
+        </button>
+      `).join("");
+      wrap.querySelectorAll(".pick-note-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const note = notesLibrary.find((n) => n.id === btn.dataset.noteId);
+          if (!note) return;
+          const asset = eventAssetsById[selectedEventId] || (eventAssetsById[selectedEventId] = { attendees: [], notes: [], reminders: [], files: [] });
+          asset.notes = asset.notes || [];
+          if (!asset.notes.some((x) => x.title === note.title)) asset.notes.push({ ...note });
+          renderNotesFeed(asset.notes);
+          renderNotePicker();
+          refreshAgentHintBubble();
+        });
+      });
+    }
+    function renderCreateFileList() {
+      newEventFileList.innerHTML = draftFileTitles.length
+        ? draftFileTitles.map((name, idx) => `
+          <div class="file-item">
+            <span>${name}</span>
+            <button type="button" data-file-idx="${idx}" title="移除">×</button>
+          </div>
+        `).join("")
+        : "";
+      newEventFileList.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          draftFileTitles.splice(Number(btn.dataset.fileIdx), 1);
+          renderCreateFileList();
+        });
+      });
+    }
+    function commitFileInputToList() {
+      const raw = newEventFilesInput.value.trim();
+      if (!raw) return;
+      const parts = raw.split(",").map((x) => x.trim()).filter(Boolean);
+      parts.forEach((p) => {
+        if (!draftFileTitles.includes(p)) draftFileTitles.push(p);
+      });
+      newEventFilesInput.value = "";
+      renderCreateFileList();
+    }
+    function renderHeaderForMode() {
+      const isCalendarMode = pageMode === "calendar";
+      dayRow.style.display = isCalendarMode ? "grid" : "none";
+      typeToggle.style.display = isCalendarMode ? "inline-flex" : "none";
+      todayBtn.style.display = "inline-flex";
+      calendarMain.style.inset = isCalendarMode ? "258px 0 78px" : "168px 0 78px";
+      calendarViewBtn.classList.toggle("active", isCalendarMode);
+      reminderViewBtn.classList.toggle("active", !isCalendarMode);
+    }
+
+    function renderDays() {
+      dayRow.innerHTML = days.map((d, idx) => `
+        <button class="day-pill ${d.selected ? "selected" : ""}" data-idx="${idx}">
+          <span class="w">${d.w}</span>
+          <span class="d">${d.d}</span>
+          ${d.dot ? '<span class="dot"></span>' : '<span class="dot" style="opacity:0"></span>'}
+        </button>
+      `).join("");
+      document.querySelectorAll(".day-pill").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          days.forEach((x) => { x.selected = false; });
+          days[Number(btn.dataset.idx)].selected = true;
+          clearDraft();
+          renderDays();
+          renderMainView();
+        });
+      });
+    }
+
+    function openEventDetail(eventId) {
+      selectedEventId = eventId || selectedEventId;
+      const ev = getEventById(selectedEventId);
+      if (!ev) return;
+      const source = getSourceMeta(ev.source);
+      const asset = eventAssetsById[ev.id] || {};
+      detailTitle.textContent = ev.title;
+      detailTime.textContent = `${toDateInputValue(ev.dayOffset)} ${ev.start} - ${ev.end} (GMT+8)`;
+      detailSource.textContent = `来源：${source.label}`;
+      detailLocationLine.textContent = `地点：${asset.location || "暂无"}`;
+      detailLinkLine.innerHTML = asset.meetingLink
+        ? `会议链接：<a href="${asset.meetingLink}" target="_blank">${asset.meetingLink}</a>`
+        : "会议链接：暂无";
+      renderAttendeesList(asset.attendees || []);
+      renderNotesFeed(asset.notes || []);
+      renderEventReminderCards(ev.id, asset.reminders || []);
+      switchDetailTab("attendees");
+      clearDraft();
+      calendarHeader.style.display = "none";
+      calendarMain.style.display = "none";
+      eventCreate.style.display = "none";
+      scrollTopBtn.classList.remove("show");
+      eventDetail.style.display = "block";
+      refreshAgentHintBubble();
+    }
+    document.getElementById("backToCal").addEventListener("click", () => {
+      eventDetail.style.display = "none";
+      eventCreate.style.display = "none";
+      agentHintBubble.classList.remove("show");
+      calendarHeader.style.display = "block";
+      calendarMain.style.display = "block";
+      renderMainView();
+    });
+    function openEventCreate(prefill = null, eventId = null) {
+      editingEventId = eventId;
+      const event = eventId ? getEventById(eventId) : null;
+      const dateOffset = event ? event.dayOffset : getSelectedDayOffset();
+      document.getElementById("newEventTitle").value = event ? event.title : "";
+      document.getElementById("newEventDate").value = toDateInputValue(dateOffset);
+      document.getElementById("newEventTimezone").value = "GMT+8";
+      document.getElementById("newEventStart").value = event ? event.start : (prefill ? fmtTime(prefill.startMin) : "18:00");
+      document.getElementById("newEventEnd").value = event ? event.end : (prefill ? fmtTime(prefill.endMin) : "18:30");
+      document.getElementById("newEventGuests").value = (eventAssetsById[eventId]?.attendees || []).map((a) => a.email || a.name).join(", ");
+      document.getElementById("newEventRepeat").value = eventAssetsById[eventId]?.repeat || "不重复";
+      document.getElementById("newEventMeetingLink").value = eventAssetsById[eventId]?.meetingLink || "";
+      document.getElementById("newEventLocation").value = eventAssetsById[eventId]?.location || "";
+      document.getElementById("newEventDesc").value = eventAssetsById[eventId]?.desc || "";
+      draftFileTitles = (eventAssetsById[eventId]?.files || []).map((f) => f.title);
+      newEventFilesInput.value = "";
+      renderCreateFileList();
+      calendarHeader.style.display = "none";
+      calendarMain.style.display = "none";
+      eventDetail.style.display = "none";
+      scrollTopBtn.classList.remove("show");
+      eventCreate.style.display = "block";
+    }
+
+    function buildHourRows() {
+      const rows = [];
+      for (let h = START_HOUR; h <= END_HOUR; h++) {
+        rows.push(`<div class="hour-row" data-hour="${h}"><span class="hour-label">${String(h).padStart(2, "0")}:00</span><span class="hour-tip">点击新建</span></div>`);
+      }
+      return rows.join("");
+    }
+
+    function renderEventsTimeline() {
+      const dayEvents = getSelectedDayEvents();
+      const normalized = dayEvents
+        .map((e) => {
+          const startMin = parseTime(e.start);
+          const endMin = parseTime(e.end);
+          return { ...e, startMin, endMin, top: minsToTop(startMin), height: Math.max(40, minsToTop(endMin) - minsToTop(startMin) - 2) };
+        })
+        .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+      // Cluster overlapping events, then split each cluster into columns.
+      const clusters = [];
+      let current = null;
+      normalized.forEach((ev) => {
+        if (!current || ev.startMin >= current.maxEnd) {
+          current = { events: [ev], maxEnd: ev.endMin };
+          clusters.push(current);
+        } else {
+          current.events.push(ev);
+          current.maxEnd = Math.max(current.maxEnd, ev.endMin);
+        }
+      });
+
+      const placed = [];
+      clusters.forEach((cluster) => {
+        const colsEnd = [];
+        let maxCols = 0;
+        cluster.events.forEach((ev) => {
+          let col = colsEnd.findIndex((endAt) => endAt <= ev.startMin);
+          if (col === -1) {
+            col = colsEnd.length;
+            colsEnd.push(ev.endMin);
+          } else {
+            colsEnd[col] = ev.endMin;
+          }
+          maxCols = Math.max(maxCols, colsEnd.length);
+          placed.push({ ...ev, col, cols: maxCols });
+        });
+        // Update cluster column count to final max for each member.
+        placed.forEach((p) => {
+          if (cluster.events.some((x) => x.id === p.id)) p.cols = maxCols;
+        });
+      });
+
+      const blocks = placed.map((e) => {
+        const source = getSourceMeta(e.source);
+        const split = e.cols > 1;
+        const unit = 100 / e.cols;
+        const left = e.col * unit;
+        const width = unit;
+        return `<div class="event-block ${split ? "split" : ""}" data-event="${e.id}" style="top:${e.top}px;height:${e.height}px;left:calc(${left}% + 2px);width:calc(${width}% - 4px);right:auto;">
+          <div class="t">${e.title}</div>
+          <div class="s">${e.start} - ${e.end}</div>
+          <div class="src"><span class="source-logo ${source.logoClass}">${source.logo}</span>${split ? "" : source.label}</div>
+        </div>`;
+      }).join("");
+
+      const draft = draftEvent ? (() => {
+        const top = minsToTop(draftEvent.startMin);
+        const h = minsToTop(draftEvent.endMin) - top - 2;
+        return `<div class="draft-block" id="draftBlock" style="top:${top}px;height:${h}px;">
+          <div class="t">新建日程</div>
+          <div class="s">${fmtTime(draftEvent.startMin)} - ${fmtTime(draftEvent.endMin)} · 点击继续</div>
+        </div>`;
+      })() : "";
+
+      const empty = dayEvents.length === 0 && !draftEvent
+        ? `<div class="timeline-empty">当日无日程<small>可点击空白时间快速新建</small></div>`
+        : "";
+      calendarMain.innerHTML = `<div class="day-grid">${buildHourRows()}${blocks}${draft}${empty}</div>`;
+
+      document.querySelectorAll(".event-block").forEach((node) => node.addEventListener("click", () => openEventDetail(node.dataset.event)));
+      document.querySelectorAll(".hour-row").forEach((row) => {
+        row.addEventListener("click", (ev) => {
+          if (ev.target.closest(".event-block") || ev.target.closest("#draftBlock")) return;
+          const rect = row.getBoundingClientRect();
+          const offsetY = ev.clientY - rect.top;
+          const hour = Number(row.dataset.hour);
+          const startMin = hour * 60 + (offsetY < SLOT_HEIGHT / 2 ? 0 : 30);
+          draftEvent = { startMin, endMin: startMin + 30 };
+          renderEventsTimeline();
+        });
+      });
+      const draftNode = document.getElementById("draftBlock");
+      if (draftNode) {
+        draftNode.addEventListener("click", () => {
+          pageMode = "calendar";
+          type = "events";
+          openEventCreate(draftEvent || { startMin: 18 * 60, endMin: 18 * 60 + 30 });
+        });
+      }
+    }
+
+    function renderReminderList(scope = "day") {
+      const base = scope === "day"
+        ? remindersAll.filter((r) => r.dayOffset === getSelectedDayOffset())
+        : remindersAll;
+      const doneCount = base.filter((r) => r.state === "已完成").length;
+      const filtered = scope === "all"
+        ? (reminderShowDoneInAll ? base : base.filter((r) => r.state !== "已完成"))
+        : base;
+
+      const sorted = filtered
+        .slice()
+        .sort((a, b) => {
+          if (a.dayOffset !== b.dayOffset) return b.dayOffset - a.dayOffset;
+          return a.time.localeCompare(b.time);
+        });
+      const groups = [];
+      sorted.forEach((r) => {
+        let g = groups.find((x) => x.offset === r.dayOffset);
+        if (!g) {
+          g = { offset: r.dayOffset, items: [] };
+          groups.push(g);
+        }
+        g.items.push(r);
+      });
+
+      calendarMain.innerHTML = `
+        <div class="rem-toolbar">
+          <div class="rem-toolbar-title">${scope === "day" ? "当日提醒" : "全部提醒"}</div>
+          ${scope === "all" ? `<button class="done-chip ${reminderShowDoneInAll ? "active" : ""}" id="doneToggleBtn">Done (${doneCount})</button>` : "<span></span>"}
+        </div>
+        <div class="rem-groups">
+          ${scope === "day"
+            ? (filtered.map((r) => `
+                <div class="rem-item ${r.state === "已完成" ? "done" : ""}" data-id="${r.id}">
+                  <label class="rem-check-wrap">
+                    <input class="rem-check" type="checkbox" data-id="${r.id}" ${r.state === "已完成" ? "checked" : ""}>
+                  </label>
+                  <div class="rem-main">
+                    <p class="rem-title">${r.title}</p>
+                    <span class="rem-time">${r.sub || "Reminder"} · ${r.time}</span>
+                  </div>
+                </div>
+              `).join("") || `<div class="rem-item"><div class="rem-main"><p class="rem-title" style="font-weight:760;color:#8a98b3;">当日暂无提醒</p></div></div>`)
+            : groups.map((g) => {
+            const dayIdx = TODAY_DAY_INDEX + g.offset;
+            const dayNum = days[dayIdx] ? String(days[dayIdx].d).padStart(2, "0") : "--";
+            const week = days[dayIdx] ? days[dayIdx].w : "";
+            const month = g.offset >= 0 ? "May" : "";
+            return `
+              <section class="rem-group" id="${g.offset === 0 ? "todayReminderGroup" : `remGroup${g.offset}`}">
+                <div class="rem-date-rail">
+                  <div class="m">${month}</div>
+                  <div class="d">${dayNum}</div>
+                  <div class="w">${week}</div>
+                </div>
+                <div class="rem-group-items">
+                  ${g.items.map((r) => `
+                    <div class="rem-item ${r.state === "已完成" ? "done" : ""}" data-id="${r.id}">
+                      <label class="rem-check-wrap">
+                        <input class="rem-check" type="checkbox" data-id="${r.id}" ${r.state === "已完成" ? "checked" : ""}>
+                      </label>
+                      <div class="rem-main">
+                        <p class="rem-title">${r.title}</p>
+                        <span class="rem-time">${r.sub || "Reminder"} · ${r.time}</span>
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+              </section>
+            `;
+          }).join("") || `<div class="rem-item"><div class="rem-main"><p class="rem-title" style="font-weight:760;color:#8a98b3;">暂无提醒</p></div></div>`}
+        </div>
+      `;
+
+      const doneToggleBtn = document.getElementById("doneToggleBtn");
+      if (doneToggleBtn) {
+        doneToggleBtn.addEventListener("click", () => {
+          reminderShowDoneInAll = !reminderShowDoneInAll;
+          renderReminderList(scope);
+        });
+      }
+      document.querySelectorAll(".rem-check").forEach((check) => {
+        check.addEventListener("change", () => {
+          const item = remindersAll.find((r) => r.id === check.dataset.id);
+          if (!item) return;
+          item.state = check.checked ? "已完成" : "待处理";
+          renderReminderList(scope);
+        });
+      });
+    }
+
+    function renderCalendarContent() {
+      document.querySelectorAll(".type-btn").forEach((b) => b.classList.toggle("active", b.dataset.type === type));
+      if (type === "events") renderEventsTimeline();
+      else renderReminderList("day");
+    }
+    function renderMainView() {
+      renderHeaderForMode();
+      if (pageMode === "calendar") renderCalendarContent();
+      else renderReminderList("all");
+    }
+
+    [calendarViewBtn, reminderViewBtn].forEach((btn) => {
+      btn.addEventListener("click", () => {
+        pageMode = btn.id === "calendarViewBtn" ? "calendar" : "reminders_all";
+        if (pageMode === "reminders_all") reminderShowDoneInAll = false;
+        clearDraft();
+        renderMainView();
+      });
+    });
+
+    typeToggle.querySelectorAll(".type-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        type = btn.dataset.type;
+        clearDraft();
+        renderMainView();
+      });
+    });
+
+    todayBtn.addEventListener("click", () => {
+      if (pageMode === "reminders_all") {
+        const todayGroup = document.getElementById("todayReminderGroup");
+        if (todayGroup) todayGroup.scrollIntoView({ behavior: "smooth", block: "start" });
+        else calendarMain.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      days.forEach((d, i) => { d.selected = i === TODAY_DAY_INDEX; });
+      clearDraft();
+      renderDays();
+      renderMainView();
+    });
+
+    // Contact fallback modal
+    const contactModal = document.getElementById("contactModal");
+    const modalSub = document.getElementById("modalSub");
+    let currentChip = null;
+    document.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip.unmatched, .attendee-q.unmatched");
+      if (!chip) return;
+      currentChip = chip;
+      modalSub.textContent = chip.dataset.name + " · " + chip.dataset.email;
+      contactModal.style.display = "flex";
+    });
+    function resolveChip(text) {
+      if (!currentChip) return;
+      currentChip.classList.remove("unmatched");
+      if (currentChip.classList.contains("attendee-q")) {
+        currentChip.classList.add("matched");
+        currentChip.textContent = "已匹配";
+      } else {
+        currentChip.innerHTML = text;
+      }
+      currentChip = null;
+      contactModal.style.display = "none";
+    }
+    document.getElementById("createBtn").addEventListener("click", () => resolveChip("已创建联系人"));
+    document.getElementById("bindBtn").addEventListener("click", () => resolveChip("已绑定已有联系人"));
+    document.getElementById("cancelBtn").addEventListener("click", () => {
+      currentChip = null;
+      contactModal.style.display = "none";
+    });
+    contactModal.addEventListener("click", (e) => {
+      if (e.target === contactModal) {
+        currentChip = null;
+        contactModal.style.display = "none";
+      }
+    });
+
+    detailTabs.forEach((btn) => {
+      btn.addEventListener("click", () => switchDetailTab(btn.dataset.tab));
+    });
+    document.getElementById("attendeePickerCloseBtn").addEventListener("click", () => {
+      document.getElementById("attendeePickerModal").style.display = "none";
+    });
+    document.getElementById("notePickerCloseBtn").addEventListener("click", () => {
+      document.getElementById("notePickerModal").style.display = "none";
+    });
+    document.getElementById("attendeePickerModal").addEventListener("click", (e) => {
+      if (e.target.id === "attendeePickerModal") e.target.style.display = "none";
+    });
+    document.getElementById("notePickerModal").addEventListener("click", (e) => {
+      if (e.target.id === "notePickerModal") e.target.style.display = "none";
+    });
+    document.getElementById("addFileBtn").addEventListener("click", () => {
+      commitFileInputToList();
+      newEventFilesInput.focus();
+    });
+    newEventFilesInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === ",") {
+        e.preventDefault();
+        commitFileInputToList();
+      }
+    });
+
+    // Quick add: bottom plus with modal
+    const quickAddModal = document.getElementById("quickAddModal");
+    document.getElementById("quickAddBtn").addEventListener("click", () => {
+      clearDraft();
+      if (eventDetail.style.display === "block") {
+        document.getElementById("detailAddModal").style.display = "flex";
+        return;
+      }
+      quickAddModal.style.display = "flex";
+    });
+    document.getElementById("quickAddEventBtn").addEventListener("click", () => {
+      quickAddModal.style.display = "none";
+      pageMode = "calendar";
+      type = "events";
+      openEventCreate(draftEvent || { startMin: 18 * 60, endMin: 18 * 60 + 30 });
+    });
+    document.getElementById("quickAddReminderBtn").addEventListener("click", () => {
+      quickAddModal.style.display = "none";
+      remindersAll.unshift({
+        id: "r" + Date.now(),
+        dayOffset: getSelectedDayOffset(),
+        time: "18:30",
+        title: "新建提醒",
+        sub: "Quick Add",
+        state: "待处理"
+      });
+      pageMode = "calendar";
+      type = "reminders";
+      reminderShowDoneInAll = false;
+      renderMainView();
+    });
+    document.getElementById("quickAddCancelBtn").addEventListener("click", () => {
+      quickAddModal.style.display = "none";
+    });
+    quickAddModal.addEventListener("click", (e) => {
+      if (e.target === quickAddModal) quickAddModal.style.display = "none";
+    });
+    document.getElementById("detailAddNoteBtn").addEventListener("click", () => {
+      document.getElementById("detailAddModal").style.display = "none";
+      if (!selectedEventId) return;
+      renderNotePicker();
+      document.getElementById("notePickerModal").style.display = "flex";
+    });
+    document.getElementById("detailAddAttendeeBtn").addEventListener("click", () => {
+      document.getElementById("detailAddModal").style.display = "none";
+      if (!selectedEventId) return;
+      renderAttendeePicker();
+      document.getElementById("attendeePickerModal").style.display = "flex";
+    });
+    document.getElementById("detailAddReminderBtn").addEventListener("click", () => {
+      document.getElementById("detailAddModal").style.display = "none";
+      if (!selectedEventId) return;
+      const asset = eventAssetsById[selectedEventId] || (eventAssetsById[selectedEventId] = { attendees: [], notes: [], reminders: [], files: [] });
+      asset.reminders = asset.reminders || [];
+      asset.reminders.unshift({ id: "er-" + Date.now(), title: "新建会议提醒", sub: "18:30", state: "待处理" });
+      renderEventReminderCards(selectedEventId, asset.reminders);
+      switchDetailTab("reminders");
+    });
+    document.getElementById("detailAddCancelBtn").addEventListener("click", () => {
+      document.getElementById("detailAddModal").style.display = "none";
+    });
+    document.getElementById("detailAddModal").addEventListener("click", (e) => {
+      if (e.target.id === "detailAddModal") e.target.style.display = "none";
+    });
+    document.getElementById("detailEditBtn").addEventListener("click", () => {
+      if (!selectedEventId) return;
+      openEventCreate(null, selectedEventId);
+    });
+    document.getElementById("createEventCancel").addEventListener("click", () => {
+      draftFileTitles = [];
+      newEventFilesInput.value = "";
+      renderCreateFileList();
+      eventCreate.style.display = "none";
+      calendarHeader.style.display = "block";
+      calendarMain.style.display = "block";
+      renderMainView();
+    });
+    document.getElementById("createEventSave").addEventListener("click", () => {
+      const title = document.getElementById("newEventTitle").value.trim() || "新建 Event";
+      const dayOffset = offsetFromDateInput(document.getElementById("newEventDate").value);
+      const start = document.getElementById("newEventStart").value || "18:00";
+      const end = document.getElementById("newEventEnd").value || "18:30";
+      const repeat = document.getElementById("newEventRepeat").value || "不重复";
+      const meetingLink = document.getElementById("newEventMeetingLink").value.trim();
+      const location = document.getElementById("newEventLocation").value.trim();
+      const desc = document.getElementById("newEventDesc").value.trim();
+      commitFileInputToList();
+      const fileTitles = draftFileTitles.slice();
+      const key = String(dayOffset);
+      if (!eventsByDayOffset[key]) eventsByDayOffset[key] = [];
+
+      let targetId = editingEventId;
+      if (editingEventId) {
+        Object.keys(eventsByDayOffset).forEach((k) => {
+          eventsByDayOffset[k] = eventsByDayOffset[k].filter((e) => e.id !== editingEventId);
+        });
+      } else {
+        targetId = "e-local-" + Date.now();
+      }
+      eventsByDayOffset[key].push({
+        id: targetId,
+        start,
+        end,
+        title,
+        sub: location || "手动创建",
+        source: "bizcard"
+      });
+      eventsByDayOffset[key].sort((a, b) => parseTime(a.start) - parseTime(b.start));
+      eventAssetsById[targetId] = {
+        attendees: (document.getElementById("newEventGuests").value.trim() || "")
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean)
+          .map((x) => ({
+            name: x.includes("@") ? x.split("@")[0] : x,
+            email: x.includes("@") ? x : `${x.toLowerCase().replace(/\s+/g, ".")}@example.com`,
+            matched: false
+          })),
+        repeat,
+        meetingLink: meetingLink || "无",
+        location: location || "无",
+        desc: desc || "暂无描述",
+        notes: [{ title: "新建事件草稿", meta: "Today 18:30 · 00:12", reminders: 0, tag: "Meeting" }],
+        reminders: [],
+        files: fileTitles.map((f) => ({ title: f, sub: "手动添加附件" }))
+      };
+      draftEvent = null;
+      editingEventId = null;
+      draftFileTitles = [];
+      renderCreateFileList();
+      eventCreate.style.display = "none";
+      calendarHeader.style.display = "block";
+      calendarMain.style.display = "block";
+      pageMode = "calendar";
+      type = "events";
+      const targetIdx = TODAY_DAY_INDEX + dayOffset;
+      const safeIdx = targetIdx >= 0 && targetIdx < days.length ? targetIdx : TODAY_DAY_INDEX;
+      days.forEach((d, i) => { d.selected = i === safeIdx; });
+      renderDays();
+      renderMainView();
+    });
+    scrollTopBtn.addEventListener("click", () => {
+      calendarMain.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    calendarMain.addEventListener("scroll", () => {
+      const show = calendarMain.scrollTop > Math.max(260, calendarMain.clientHeight);
+      scrollTopBtn.classList.toggle("show", show);
+    });
+
+    renderDays();
+    renderCreateFileList();
+    renderMainView();
+  </script>
+</body>
+</html>

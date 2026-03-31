@@ -1,10 +1,10 @@
-# 用户资产结构、关联关系与 Note 挂载（Phase 2）
+# 用户资产结构、关联关系与 Note-File 模型（Phase 2）
 
 ## 1. 文档目的
 
-- 统一 **Note / Event / Reminder / Contact** 及 **Note 下挂载资源** 的职责边界与可选关联。
+- 统一 **Note / Event / Reminder / Contact / Files** 的职责边界与可选关联。
 - 用图示固化 **实体间关系**，避免日历接入后与「捕捉记录」混写。
-- **第一阶段**：**一条 Note 至多一条主文件挂载**（一次多选 → **多条 Note**）；**单 Note 多挂载 + 融合摘要** 见后续 **§5、§7**。
+- **第一阶段**：**一条 Note 至多关联一条 File**（一次多选 → **多条 Note**）；File 类型仅支持 **`audio`**。
 - **Note**：单一实体，承载挂载（0..n）与可选正文；用 **`tag`** 区分来源与形态——**固定三类** `meeting` / `memo` / `self`，以及 **Agent 侧可扩展标签**（如 `briefing` / `recap` / `idea` 等），见 §4.1。
 
 ---
@@ -13,11 +13,11 @@
 
 | 实体 | 职责（一句话） |
 |------|----------------|
-| **Note** | 可带 **正文** 与 **挂载**；**`tag`** 区分来源与形态。**第一阶段**：有文件时 **一条 Note 一条主文件**；**`briefing` / `recap` 等** 与 **self / meeting** 同为 **Note 的生成方式**，挂载规则一致（§7.1）。 |
+| **Note** | 可带 **正文** 与 **File 关联**；**`tag`** 区分来源与形态。**第一阶段**：有文件时 **一条 Note 一条 File**；**`briefing` / `recap` 等** 与 **self / meeting** 同为 **Note 的生成方式**，关联规则一致（§7.1）。 |
 | **Event** | 日历上 **一段时间占用**（可来自外部同步）；**不挂文件**。录音与文件在 **`event_id` 关联的 Note** 上。 |
-| **Reminder** | 带时间的 **待办/承诺**：可溯源 Note，可关联 Event，可关联多人。 |
+| **Reminder** | 带时间的 **待办/承诺**：可溯源 Note，也可直接关联 Event，可关联多人。 |
 | **Contact** | **人脉**：与多条 Note、Event、Reminder **多对多** 聚合。 |
-| **挂载资源** | 归在 **Note** 下：`attachments[]` / 子表；音频也可先用 **主音频字段** 表达，与 **`kind=audio`** 单条挂载语义一致。 |
+| **Files** | 统一文件资产层（用户上传或录音笔导入）；每个文件有 `file_id`。**第一阶段仅 `audio`**。 |
 
 ---
 
@@ -25,33 +25,44 @@
 
 下列关系为 **逻辑模型**（实现可用外键 + 关联表）。**可选**表示业务上允许为空。
 
-**总览（关联方向一眼图）**：虚线表示「可选外键」。
+### 3.0 图例（先看这个）
+
+| 标记 | 含义 |
+|------|------|
+| `A -> B` | A 持有指向 B 的外键（或等价引用） |
+| `A --- B` | A 与 B 多对多（关联表实现） |
+| `0..1` | 可为空，最多一个 |
+| `0..n` | 可为空，可多个 |
+| `n..m` | 双向多对多 |
+| 虚线箭头 | 可选外键 |
+
+**总览图（按职责分区）**：
 
 ```mermaid
-flowchart TB
-  subgraph capture[捕捉与记录]
-    N[Note]
-  end
-  subgraph calendar[日历]
+flowchart LR
+  subgraph CAL[Calendar]
     E[Event]
   end
-  subgraph action[待办]
+  subgraph CAP[Capture]
+    N[Note]
+    F[File\n(v1: kind=audio)]
+  end
+  subgraph ACT[Action]
     R[Reminder]
   end
-  subgraph people[人脉]
+  subgraph PEO[People]
     C[Contact]
   end
-  subgraph mounts[挂载]
-    ATT[NoteAttachment 或等价]
-  end
 
-  E -.->|optional event_id| N
-  N -->|0..n source_note_id| R
-  E -->|0..n related_event_id| R
+  N -.->|event_id 0..1| E
+  R -.->|source_note_id 0..1| N
+  R -.->|related_event_id 0..1| E
+
   N ---|n..m| C
   E ---|n..m| C
   R ---|n..m| C
-  N -->|0..n| ATT
+
+  N -->|file_id 0..1 (v1)| F
 ```
 
 **ER 示意**（Note→Event 为 **多对一可选**）：
@@ -63,7 +74,7 @@ erDiagram
   Note ||--o{ Reminder : "source_note_id optional"
   Event ||--o{ Reminder : "related_event_id optional"
   Reminder }o--o{ Contact : "reminder_contacts"
-  Note ||--o{ NoteAttachment : "0..n unified mounts"
+  Note ||--o| File : "file_id optional in v1"
 
   Note {
     string id PK
@@ -88,11 +99,11 @@ erDiagram
     string id PK
   }
 
-  NoteAttachment {
+  File {
     string id PK
-    string note_id FK
-    string kind "audio image pdf markdown_file ..."
-    string extracted_text "optional"
+    string kind "v1 only audio"
+    string storage_url
+    string parse_status "optional"
   }
 ```
 
@@ -102,13 +113,41 @@ erDiagram
 |------|------|------|
 | Note → Event | 0..1 | 该条 Note 对应某段日程；闪念常为空。 |
 | Event → Note | 0..n | 同一段会议可有 **多条** Note（实录、会前 Agent 写入、会后补记等）。 |
-| Reminder → Note | 0..1 | `source_note_id`；纯手建待办可无。 |
-| Reminder → Event | 0..1 | `related_event_id`。 |
+| Reminder → Note | 0..1 | `source_note_id`（即 `note_id` 关联项）；用于内容溯源。 |
+| Reminder → Event | 0..1 | `related_event_id`（即 `event_id` 关联项）；用于日程上下文（可直接从 Event 页创建）。 |
 | Note ↔ Contact | n..m | 参与者/提及的人。 |
 | Event ↔ Contact | n..m | 日历参与者与通讯录对齐。 |
 | Reminder ↔ Contact | n..m | 交办对象、相关人、含自己。 |
-| Note → NoteAttachment | 0..n | **第一阶段** 有附件时 **一条 Note 一条主挂载**（§7.1）；模型层仍允许多条，供后续阶段。 |
-| Event → NoteAttachment | — | Event **无**附件表。 |
+| Note → File | 0..1 | **第一阶段** 有文件时 **一条 Note 一条 File**；`kind` 仅支持 `audio`。 |
+| Event → File | — | Event **无**文件挂载。 |
+
+### 3.2 Reminder 关联规则（简化版）
+
+**结论**：Reminder 结构里保留两个可选关联项：`source_note_id`（notes 关联项）和 `related_event_id`（event 关联项）。
+
+#### 3.2.1 自动关联规则（核心）
+
+1. 若 Reminder 有 `source_note_id`，且该 Note 有 `event_id`，则系统**自动写入/补齐** `related_event_id = Note.event_id`。  
+2. 若 Reminder 在 Event 详情页直接创建（无 Note），仅写 `related_event_id`。  
+3. 若 Reminder 从 Note 派生且 Note 无 Event，则仅写 `source_note_id`。
+
+#### 3.2.2 最小约束
+
+1. Reminder 必须至少包含 `title + due_at`。  
+2. `source_note_id` 与 `related_event_id` 至少一个可为空（允许手动待办无关联）。  
+3. 若两者都存在且不一致，以 `source_note_id -> Note.event_id` 为准，并回写修正 `related_event_id`。  
+4. Event/Note 删除或失效时，不硬删 Reminder，只清理失效关联或标记状态。
+
+### 3.3 四类资产字段参考（v1）
+
+> 目标：统一“最小可用字段”，降低跨模块对齐成本。最终以 PRD 为准。
+
+| 资产 | 最小必备字段（建议） | 建议补充字段 |
+|------|----------------------|--------------|
+| **Event** | `id`, `source`, `source_event_id`, `title`, `start_at`, `end_at`, `timezone`, `is_all_day`, `status`, `description`, `contacts`, `created_at`, `updated_at` | `attendees`, `meeting_url`, `recurrence_rule`, `source_updated_at`, `source_etag_or_version`, `sync_status` |
+| **Note** | `id`, `tag`, `title`, `summary`, `content?`, `transcript?`, `event_id?`, `created_at`, `updated_at` | `source_note_ids`, `upload_session_id`, `contacts`, `action_ids` |
+| **Reminder** | `id`, `title`, `due_at`, `status`, `priority`, `source_note_id?`, `related_event_id?`, `created_at`, `updated_at` | `contacts`, `source_ref`, `completed_at`, `assignee` |
+| **Contact** | `id`, `display_name`, `created_at`, `updated_at` | `email`, `phone`, `aliases`, `source`, `confidence`, `merged_to` |
 
 ---
 
@@ -141,17 +180,21 @@ erDiagram
 
 后续还可增加如 **`followup`**、**`digest`** 等标签；新产品形态通过 **扩展 `tag` 词汇** 接入即可。
 
-### 4.2 挂载种类（`kind` 示例）
+### 4.2 Files 类型（`kind`）
 
 | `kind` | 说明 | 供 AI 使用的典型文本来源 |
 |--------|------|---------------------------|
-| **audio** | 硬件或 App 上传的录音 | **transcript**（ASR）；可选时间轴/说话人 |
-| **image** | PNG/JPG 等 | **OCR** 或视觉理解输出的文本描述（由管线定义） |
-| **pdf** | PDF 文件 | **全文或分页抽取文本**；过大时需截断或先缩略 |
-| **markdown_file** | 上传的 `.md` | 解析后的纯文本 |
-| （扩展） | 其他 Office 等 | 抽取文本策略单独定义 |
+| **audio** | 硬件或 App 上传/导入的音频文件 | 可触发 ASR 与 AI 总结，产物写入 Note |
 
-**第一阶段**：用户一次选 **多个文件**（入口不限，含会前场景）→ **每个文件一条 Note**、**每条一条主挂载**、**各自摘要**；可选 **`upload_session_id`** 成组。纯 Agent 生成、**无上传** 的 Note（如仅正文 Briefing）→ **可无挂载**。
+**第一阶段**：仅支持 `kind=audio`。用户一次选 **多个音频文件**（入口不限，含会前场景）→ **每个文件一条 Note**、**每条一条 File 关联**、**各自摘要**；可选 **`upload_session_id`** 成组。纯 Agent 生成、**无上传** 的 Note（如仅正文 Briefing）→ **可无 File**。
+
+### 4.3 从 Files 到 Notes 的生成流程（v1）
+
+1. 用户上传音频文件（或录音笔导入），先创建 **File**。  
+2. 列表中可见该 File，用户在 File 页面触发 `generate summary`。  
+3. 系统执行解析：`audio -> ASR`，再做 AI 总结。  
+4. 生成一条 **Note**，并建立 `note.file_id = file.id`。  
+5. 解析产物归属：**`transcript` 与 `ai summary` 挂在 Note 主体**；File 仅存源文件与处理状态。
 
 **后续阶段**：**单条 Note** 上 **多挂载**（如录音 + PDF）→ **§5** 融合摘要与待办。
 
@@ -244,13 +287,14 @@ flowchart TB
 
 ---
 
-## 6. 音频与 Transcript（作为挂载的一种）
+## 6. 音频与 Transcript（在 Note 层）
 
 | 问题 | 结论 |
 |------|------|
-| 音频挂哪？ | **`kind=audio` 的 NoteAttachment**，或等价的 **主音频字段**。 |
-| Transcript？ | **与该音频挂载绑定**（1:1 或 1:多版本）；不挂在 Event 上。 |
-| 列表接口 | 列表只拉 **轻量字段**；不默认带全文 transcript / 大文件。 |
+| 音频挂哪？ | 统一进入 **File 资产层**（`kind=audio`），由 Note 通过 `file_id` 关联。 |
+| Transcript？ | **挂在 Note 上**（如 `note.transcript` 或 `note.blocks`）；不挂在 Event 上。 |
+| Summary？ | **挂在 Note 上**（`note.summary` + 可选详细结构化内容）。 |
+| 列表接口 | File 列表只拉轻量元信息；Note 列表默认可返回短 summary，不返回 transcript 全文。 |
 | 与 Event | **可选** `event_id`；无日历则仅 Note。 |
 
 ---
@@ -275,7 +319,7 @@ flowchart TB
 
 ## 8. Reminder / Contact 摘要
 
-- **Reminder**：必有截止时间等；可选 `source_note_id`、`related_event_id`；可选多 Contact；允许无 Note/Event 的纯手动待办。  
+- **Reminder**：必有截止时间等；可选 `source_note_id`、`related_event_id`；若 `source_note_id` 对应的 Note 存在 `event_id`，则自动同步到 `related_event_id`；可选多 Contact；允许无 Note/无 Event 的纯手动待办。  
 - **Contact**：通过 Note / Event / Reminder 多对多聚合。
 
 ---
