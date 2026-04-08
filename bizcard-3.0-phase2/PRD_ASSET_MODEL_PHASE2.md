@@ -191,6 +191,23 @@ flowchart TD
 - 覆盖决策统一基于“最新更新时间优先”（Last Updated Wins）。  
 - 手动刷新与定时刷新复用同一套比较逻辑。
 
+### 5.4 客户端展示约束（与资产模型一致）
+
+以下规则属于客户端呈现口径，但与本模型中 `Event/Reminder/source` 字段强相关，需作为一致性约束：
+
+- Calendar 顶部通过单一“筛选与设置”入口打开侧边栏，统一管理视图、我的过滤与订阅日历。
+- 视图范围收敛为 `单日` 与 `日程`：
+  - 单日：`Event` 与 `Reminder` 都作为时间块参与同一冲突分栏算法；
+  - 日程：按周分组，周内无安排不展开逐日条目。
+- 颜色语义固定：`Event`（蓝）/`Reminder`（绿），避免来源色与任务语义冲突。
+- `source` 维度筛选在“订阅日历”分区完成；条目需展示 provider 名称 + 账号，并支持 `重新同步` / `取消订阅`。
+- 日程流允许向未来持续滚动（增量加载），并且顶部月份标题需与当前焦点日期联动更新。
+
+详细交互、流程与验收见：
+
+- `PRD_CALENDAR_EVENT_DETAIL_AND_CREATE.md`
+- `PRD_CALENDAR_INTEGRATION_ENTRY_AND_MANAGEMENT.md`
+
 ---
 
 ## 6. 非范围（Out of Scope）

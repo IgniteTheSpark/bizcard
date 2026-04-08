@@ -182,6 +182,55 @@
       border-color: rgba(47,118,255,.22);
       color: #24539f;
     }
+    .provider-filter-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      margin-top: 6px;
+      padding-bottom: 2px;
+    }
+    .provider-filter-row::-webkit-scrollbar { display: none; }
+    .provider-chip {
+      border: 1px solid #dbe4f3;
+      border-radius: 999px;
+      background: #fff;
+      color: #5b6c8b;
+      font-size: 11px;
+      font-weight: 740;
+      padding: 5px 10px;
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .provider-chip.active {
+      border-color: rgba(47,118,255,.28);
+      background: #f1f7ff;
+      color: #24539f;
+    }
+    .provider-chip .st {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-grid;
+      place-items: center;
+      font-size: 9px;
+      font-weight: 900;
+    }
+    .provider-chip .st.connected {
+      background: #e9f9ef;
+      color: #1b9958;
+    }
+    .provider-chip .st.syncing {
+      background: #eef4ff;
+      color: #2f76ff;
+    }
+    .provider-chip .st.failed {
+      background: #fff2f4;
+      color: #cf3c57;
+    }
     .main {
       position: absolute;
       inset: 258px 0 78px;
@@ -237,10 +286,18 @@
       box-shadow: 0 6px 12px rgba(17,24,39,.06);
     }
     .event-block {
-      border: 1px solid rgba(24,183,111,.24);
-      border-left: 3px solid var(--green);
+      border: 1px solid rgba(47,118,255,.28);
+      border-left: 3px solid var(--blue);
+      background: var(--blue-soft);
       cursor: pointer;
     }
+    .event-block .t { color: #1e56b5; }
+    .event-block.rem-card {
+      border-color: rgba(24,183,111,.26);
+      border-left-color: var(--green);
+      background: #eefcf5;
+    }
+    .event-block.rem-card .t { color: #147a50; }
     .event-block .t {
       font-size: 13px;
       font-weight: 820;
@@ -645,16 +702,6 @@
       background: #effbef;
       color: #356f3a;
     }
-    .agent-hint-inline {
-      margin-top: 10px;
-      border: 1px solid #d8e6fb;
-      border-radius: 10px;
-      background: #f1f7ff;
-      padding: 9px 10px;
-      color: #436291;
-      font-size: 12px;
-      line-height: 1.45;
-    }
     .chips { margin-top: 4px; }
     .chip {
       display: inline-flex;
@@ -808,6 +855,295 @@
       min-width: 24px;
       min-height: 24px;
     }
+    .integration-manage {
+      display: none;
+      position: absolute;
+      inset: 42px 0 0;
+      overflow-y: auto;
+      background: var(--shell);
+      padding: 10px 12px 92px;
+    }
+    .integration-title {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 840;
+      letter-spacing: -.2px;
+      color: #162136;
+    }
+    .provider-list { display: grid; gap: 8px; }
+    .provider-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+    }
+    .provider-name {
+      font-size: 13px;
+      font-weight: 820;
+      color: #162136;
+    }
+    .provider-meta {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #7a889f;
+    }
+    .provider-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .provider-badge {
+      font-size: 10px;
+      font-weight: 760;
+      border-radius: 999px;
+      padding: 3px 8px;
+      border: 1px solid #dce5f7;
+      background: #f1f7ff;
+      color: #2f76ff;
+    }
+    .provider-badge.failed {
+      border-color: #ffd8de;
+      background: #fff5f7;
+      color: #bf4560;
+    }
+    .mini-btn {
+      border: 1px solid #dbe4f3;
+      border-radius: 8px;
+      background: #fff;
+      color: #556887;
+      font-size: 11px;
+      font-weight: 740;
+      padding: 5px 8px;
+      cursor: pointer;
+      min-height: 30px;
+    }
+    .side-mask {
+      align-items: stretch;
+      justify-content: flex-end;
+      padding: 0;
+    }
+    .side-panel {
+      width: 320px;
+      max-width: 88vw;
+      background: #fff;
+      border-left: 1px solid #e2eaf7;
+      height: 100%;
+      padding: 14px 12px 16px;
+      overflow-y: auto;
+    }
+    .side-title {
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 820;
+      color: #18233a;
+    }
+    .side-sec {
+      margin-bottom: 14px;
+      border-bottom: 1px solid #eef2f8;
+      padding-bottom: 12px;
+    }
+    .side-sec-title {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 780;
+      color: #8a97b3;
+      letter-spacing: .2px;
+    }
+    .view-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .view-btn {
+      border: 1px solid #dbe4f3;
+      background: #fff;
+      border-radius: 10px;
+      min-height: 54px;
+      font-size: 12px;
+      color: #5d6f8f;
+      font-weight: 760;
+      cursor: pointer;
+    }
+    .view-btn.active {
+      border-color: rgba(47,118,255,.35);
+      background: #f1f7ff;
+      color: #24539f;
+    }
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #425470;
+    }
+    .switch-row input { width: 16px; height: 16px; }
+    .sub-cal-list {
+      display: grid;
+      gap: 8px;
+    }
+    .sub-cal-item {
+      border: 1px solid #e3ebf9;
+      border-radius: 10px;
+      background: #fff;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: 26px 1fr 32px;
+      gap: 8px;
+      align-items: center;
+    }
+    .sub-cal-item.active {
+      border-color: #bfd4ff;
+      background: #f5f9ff;
+    }
+    .sub-toggle {
+      border: 1px solid #d5e2f8;
+      background: #fff;
+      border-radius: 999px;
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+      color: #2f76ff;
+      cursor: pointer;
+    }
+    .sub-info {
+      cursor: pointer;
+      min-width: 0;
+    }
+    .sub-info .n {
+      font-size: 13px;
+      color: #1a2842;
+      font-weight: 780;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sub-info .a {
+      font-size: 12px;
+      color: #7c8aa6;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .sub-more {
+      border: 0;
+      background: transparent;
+      color: #7f8eab;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      min-height: 30px;
+    }
+    .agenda-wrap { display: grid; gap: 12px; }
+    .agenda-date {
+      font-size: 12px;
+      color: #7383a2;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .agenda-week {
+      font-size: 12px;
+      color: #8c9ab4;
+      font-weight: 760;
+      margin: 8px 0 6px;
+    }
+    .agenda-month {
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 880;
+      color: #1b2438;
+      margin: 10px 0 14px;
+      letter-spacing: -.6px;
+    }
+    .agenda-week-block {
+      margin-bottom: 10px;
+    }
+    .agenda-day-row {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 10px;
+      align-items: start;
+      margin-bottom: 10px;
+    }
+    .agenda-day-rail {
+      text-align: left;
+      padding-top: 2px;
+      color: #7b8aa6;
+      line-height: 1.1;
+    }
+    .agenda-day-rail .d {
+      font-size: 30px;
+      font-weight: 860;
+      letter-spacing: -.5px;
+      color: #1f2a40;
+    }
+    .agenda-day-rail .w {
+      margin-top: 2px;
+      font-size: 12px;
+      font-weight: 760;
+      color: #8d9ab6;
+    }
+    .agenda-day-items { min-width: 0; }
+    .agenda-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      box-shadow: 0 4px 10px rgba(17,24,39,.04);
+    }
+    .agenda-item.event {
+      border-color: rgba(47,118,255,.24);
+      background: var(--blue-soft);
+    }
+    .agenda-item.event .t { color: #1f5bc1; }
+    .agenda-item .t {
+      font-size: 13px;
+      font-weight: 820;
+      color: #162136;
+    }
+    .agenda-item .s {
+      margin-top: 5px;
+      font-size: 12px;
+      color: #6f7f9e;
+    }
+    .agenda-item.todo {
+      border-color: rgba(24,183,111,.24);
+      border-left: 3px solid var(--green);
+      background: #eefcf5;
+    }
+    .agenda-item.todo .t {
+      color: #157d52;
+    }
+    .agenda-empty {
+      border: 1px dashed #d7e1f2;
+      border-radius: 10px;
+      background: #fbfdff;
+      color: #8c9ab4;
+      font-size: 12px;
+      font-weight: 740;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
+    .three-day-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(180px, 1fr));
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+    .three-col {
+      min-width: 180px;
+      background: #f8faff;
+      border: 1px solid #e6eefb;
+      border-radius: 12px;
+      padding: 8px;
+    }
 
     /* Bottom actions */
     .bottom-bar {
@@ -920,12 +1256,11 @@
           <div class="header-top">
             <span class="left-back">‹</span>
             <div class="right-actions">
-              <button class="icon-btn active" id="calendarViewBtn" title="日历视图">📅</button>
-              <button class="icon-btn" id="reminderViewBtn" title="提醒列表">☰</button>
+              <button class="icon-btn" id="filterPanelBtn" title="筛选与设置">☰</button>
             </div>
           </div>
           <div class="month-row">
-            <h1 class="month-label">May 2026</h1>
+            <h1 class="month-label" id="monthLabel">May 2026</h1>
             <button class="today-btn" id="todayBtn">Back to today</button>
           </div>
           <div class="weekday-row" id="dayRow"></div>
@@ -956,20 +1291,16 @@
             </div>
             <div class="detail-panel active" data-panel="attendees">
               <div class="detail-card">
-                <h4>参会人列表</h4>
                 <div class="attendee-list" id="detailAttendeesList"></div>
               </div>
             </div>
             <div class="detail-panel" data-panel="notes">
               <div class="detail-card">
-                <h4>挂载 Notes</h4>
                 <div class="notes-feed" id="detailNotesList"></div>
-                <div class="agent-hint-inline" id="notesInlineHint"></div>
               </div>
             </div>
             <div class="detail-panel" data-panel="reminders">
               <div class="detail-card">
-                <h4>挂载 Reminders</h4>
                 <div class="asset-list" id="detailRemindersList"></div>
               </div>
             </div>
@@ -1058,8 +1389,22 @@
             </div>
           </div>
         </div>
+        <div class="integration-manage" id="integrationManage">
+          <div class="create-head">
+            <button class="head-link" id="integrationBackBtn">✕</button>
+            <h3 class="integration-title">添加第三方日历</h3>
+            <button class="head-link primary" id="integrationDoneBtn">完成</button>
+          </div>
+          <div class="create-card">
+            <div class="provider-list" id="providerAddList"></div>
+            <div style="margin-top:8px;color:#93a1bb;font-size:12px;">支持添加 Exchange、Office 365、Outlook、Hotmail 等邮箱账号</div>
+          </div>
+          <div class="create-card">
+            <div class="provider-list" id="providerLocalList"></div>
+          </div>
+        </div>
 
-        <div class="bottom-bar">
+        <div class="bottom-bar" id="bottomBar">
           <div class="agent-hint-bubble" id="agentHintBubble"></div>
           <div class="pill">
             <button class="pill-btn">🎤</button>
@@ -1111,6 +1456,37 @@
             <button class="opt" id="detailAddCancelBtn">取消</button>
           </div>
         </div>
+        <div class="modal-mask side-mask" id="calendarSidePanelMask">
+          <div class="side-panel">
+            <div class="side-sec">
+              <div class="side-sec-title">视图</div>
+              <div class="view-grid" id="viewGrid">
+                <button class="view-btn" data-view="day">日</button>
+                <button class="view-btn" data-view="agenda">日程</button>
+              </div>
+            </div>
+            <div class="side-sec">
+              <div class="side-sec-title">我的</div>
+              <div class="switch-row"><span>显示日程</span><input type="checkbox" id="showEventsSwitch" checked></div>
+              <div class="switch-row"><span>显示代办</span><input type="checkbox" id="showRemindersSwitch" checked></div>
+              <div class="switch-row"><span>显示已完成代办</span><input type="checkbox" id="showDoneRemindersSwitch"></div>
+            </div>
+            <div class="side-sec">
+              <div class="side-sec-title">订阅日历</div>
+              <div class="sub-cal-list" id="sideProviderFilterList"></div>
+              <button class="opt" id="openIntegrationManageFromPanel">添加第三方日历</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-mask" id="calendarSubMenuModal">
+          <div class="modal">
+            <h3 style="font-size:22px;letter-spacing:0;">日历操作</h3>
+            <div class="sub" id="calendarSubMenuMeta"></div>
+            <button class="opt" id="calendarResyncBtn">重新同步</button>
+            <button class="opt" id="calendarUnsubscribeBtn">取消订阅</button>
+            <button class="opt" id="calendarSubMenuCancelBtn">取消</button>
+          </div>
+        </div>
 
       </div>
     </div>
@@ -1118,13 +1494,11 @@
     <aside class="notes">
       <h2>这版 Demo 对齐点</h2>
       <ul>
-        <li>无 Day/Timeline 视图切换，每一天即独立时间轴。</li>
-        <li>`Events` 用时间流 block 展示区间事件。</li>
-        <li>右上角图标切换：日历容器 / 全量 reminders 列表。</li>
-        <li>日历容器内保留当日 `Events/Reminders` 切换。</li>
+        <li>右上角仅保留一个筛选入口，打开统一侧边栏。</li>
+        <li>侧边栏仅支持“日 / 日程”两种视图切换。</li>
+        <li>侧边栏统一管理：日程/代办显示、第三方日历筛选、添加入口。</li>
+        <li>日程视图支持连续滚动，顶部日期框高亮跟随中间可视日期。</li>
         <li>空白时间区点击创建 30 分钟临时“新建日程”占位。</li>
-        <li>同一时间轴只保留一个临时占位；切换日期或打开其它 event 时清除。</li>
-        <li>底部 `+` 为唯一新建入口，无“默认一小时”话术。</li>
       </ul>
     </aside>
   </div>
@@ -1181,13 +1555,25 @@
         location: "龙华线下会议室",
         desc: "与学习友对齐合作边界、确认下周交付节奏。",
         notes: [
-          { title: "会前准备清单", meta: "Today 10:20 · 00:32", reminders: 2, tag: "Meeting" },
-          { title: "会议纪要 v1", meta: "Today 12:15 · 00:40", reminders: 1, tag: "Memo" }
+          {
+            title: "会前准备清单",
+            meta: "Today 10:20 · 00:32",
+            tag: "Meeting",
+            reminderItems: [
+              { title: "会前带电脑与转接头", sub: "13:30", state: "待处理" },
+              { title: "打印合作方案摘要", sub: "13:45", state: "待处理" }
+            ]
+          },
+          {
+            title: "会议纪要 v1",
+            meta: "Today 12:15 · 00:40",
+            tag: "Memo",
+            reminderItems: [
+              { title: "会后发 proposal", sub: "18:10", state: "待处理" }
+            ]
+          }
         ],
-        reminders: [
-          { id: "er-1", title: "会前带电脑与转接头", sub: "13:30", state: "待处理" },
-          { id: "er-2", title: "会后发 proposal", sub: "18:10", state: "待处理" }
-        ],
+        reminders: [],
         files: [
           { title: "合作方案草稿.pdf", sub: "1.2MB · 已挂载" },
           { title: "录音_20260505.m4a", sub: "音频 · 可生成 Summary" }
@@ -1201,9 +1587,39 @@
       { name: "Alex Wu", email: "alex.wu@bizcard.ai" }
     ];
     const notesLibrary = [
-      { id: "n-lib-1", title: "会前行业背景 Briefing", meta: "Today 08:20 · 00:45", reminders: 1, tag: "Briefing" },
-      { id: "n-lib-2", title: "客户历史合作复盘", meta: "Yesterday 19:10 · 00:36", reminders: 0, tag: "Recap" },
-      { id: "n-lib-3", title: "Q4 业务关键风险清单", meta: "3 days ago · 00:28", reminders: 2, tag: "Meeting" }
+      {
+        id: "n-lib-1",
+        title: "会前行业背景 Briefing",
+        meta: "Today 08:20 · 00:45",
+        tag: "Briefing",
+        reminderItems: [{ title: "提前 30 分钟检查材料", sub: "09:30", state: "待处理" }]
+      },
+      {
+        id: "n-lib-2",
+        title: "客户历史合作复盘",
+        meta: "Yesterday 19:10 · 00:36",
+        tag: "Recap",
+        reminderItems: []
+      },
+      {
+        id: "n-lib-3",
+        title: "Q4 业务关键风险清单",
+        meta: "3 days ago · 00:28",
+        tag: "Meeting",
+        reminderItems: [
+          { title: "确认风险 owner", sub: "10:00", state: "待处理" },
+          { title: "同步缓解方案", sub: "10:30", state: "待处理" }
+        ]
+      }
+    ];
+    const providerLibrary = [
+      { key: "google", name: "Google Calendar", accountHint: "abc@gmail.com" },
+      { key: "outlook", name: "Outlook Calendar", accountHint: "alex@outlook.com" },
+      { key: "apple", name: "Apple Calendar", accountHint: "iPhone Local Calendar" }
+    ];
+    const integrations = [
+      { key: "google", status: "connected", account: "abc@gmail.com", lastSyncedAt: "2026-05-06 09:20" },
+      { key: "outlook", status: "syncing", account: "alex@outlook.com", lastSyncedAt: "2026-05-05 21:10" }
     ];
 
     const TODAY_DAY_INDEX = 2;
@@ -1224,8 +1640,10 @@
     const calendarHeader = document.getElementById("calendarHeader");
     const eventDetail = document.getElementById("eventDetail");
     const eventCreate = document.getElementById("eventCreate");
-    const calendarViewBtn = document.getElementById("calendarViewBtn");
-    const reminderViewBtn = document.getElementById("reminderViewBtn");
+    const integrationManage = document.getElementById("integrationManage");
+    const filterPanelBtn = document.getElementById("filterPanelBtn");
+    const monthLabel = document.getElementById("monthLabel");
+    const bottomBar = document.getElementById("bottomBar");
     const todayBtn = document.getElementById("todayBtn");
     const scrollTopBtn = document.getElementById("scrollTopBtn");
     const detailTitle = document.getElementById("detailTitle");
@@ -1236,21 +1654,32 @@
     const detailAttendeesList = document.getElementById("detailAttendeesList");
     const detailNotesList = document.getElementById("detailNotesList");
     const detailRemindersList = document.getElementById("detailRemindersList");
-    const notesInlineHint = document.getElementById("notesInlineHint");
     const agentHintBubble = document.getElementById("agentHintBubble");
     const detailTabs = document.querySelectorAll(".detail-tab");
     const detailPanels = document.querySelectorAll(".detail-panel");
     const newEventFilesInput = document.getElementById("newEventFiles");
     const newEventFileList = document.getElementById("newEventFileList");
 
-    let pageMode = "calendar"; // calendar | reminders_all
+    let pageMode = "calendar";
     let type = "events";
+    let viewMode = "day"; // day | agenda
+    let showEventsInCalendar = true;
+    let showRemindersInCalendar = true;
+    let showDoneRemindersInCalendar = false;
     let reminderShowDoneInAll = false;
     let draftEvent = null; // {startMin,endMin}
     let selectedEventId = null;
     let editingEventId = null;
     let draftFileTitles = [];
     let currentDetailTab = "attendees";
+    let inIntegrationManage = false;
+    let providerFilterState = {};
+    let agendaFocusOffset = days.findIndex((d) => d.selected) - TODAY_DAY_INDEX;
+    let agendaNeedAlign = true;
+    let agendaRangeStartOffset = -15;
+    let agendaRangeEndOffset = 45;
+    let agendaIsAppendingFuture = false;
+    let subMenuProviderKey = null;
 
     function parseTime(str) {
       const [h, m] = str.split(":").map(Number);
@@ -1271,20 +1700,121 @@
       return days.findIndex((d) => d.selected);
     }
     function getSelectedDayOffset() {
+      if (viewMode === "agenda") return agendaFocusOffset;
       return getSelectedDayIndex() - TODAY_DAY_INDEX;
+    }
+    function setSelectedDayByOffset(offset) {
+      const idx = TODAY_DAY_INDEX + offset;
+      const safe = Math.max(0, Math.min(days.length - 1, idx));
+      days.forEach((d, i) => { d.selected = i === safe; });
     }
     function getDateLabelByOffset(offset) {
       if (offset === 0) return "今天";
       if (offset === 1) return "明天";
       if (offset === -1) return "昨天";
-      const idx = TODAY_DAY_INDEX + offset;
-      return days[idx] ? `${days[idx].w} ${days[idx].d}` : `+${offset}天`;
+      const d = getDateByOffset(offset);
+      const week = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+      return `${week} ${d.getDate()}`;
+    }
+    function renderMonthLabel() {
+      const offset = viewMode === "agenda" ? agendaFocusOffset : (getSelectedDayIndex() - TODAY_DAY_INDEX);
+      const d = getDateByOffset(offset);
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      monthLabel.textContent = `${months[d.getMonth()]} ${d.getFullYear()}`;
+    }
+    function getWeekInfoByOffset(offset) {
+      const d = getDateByOffset(offset);
+      const day = d.getDay();
+      const mondayShift = day === 0 ? -6 : 1 - day;
+      const weekStart = new Date(d);
+      weekStart.setDate(d.getDate() + mondayShift);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      const jan4 = new Date(weekStart.getFullYear(), 0, 4);
+      const jan4Day = jan4.getDay() || 7;
+      const week1Start = new Date(jan4);
+      week1Start.setDate(jan4.getDate() - jan4Day + 1);
+      const diffWeeks = Math.floor((weekStart - week1Start) / (7 * 24 * 60 * 60 * 1000)) + 1;
+      return {
+        weekNo: diffWeeks,
+        startLabel: `${weekStart.getMonth() + 1}月${weekStart.getDate()}日`,
+        endLabel: `${weekEnd.getMonth() + 1}月${weekEnd.getDate()}日`,
+        dayLabel: `${d.getMonth() + 1}月${d.getDate()}日`,
+        weekday: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][d.getDay()]
+      };
     }
     function getSourceMeta(source) {
       if (source === "google") return { logoClass: "google", logo: "G", label: "Google Calendar" };
       if (source === "outlook") return { logoClass: "outlook", logo: "O", label: "Outlook" };
       if (source === "apple") return { logoClass: "apple", logo: "A", label: "Apple Calendar" };
       return { logoClass: "bizcard", logo: "B", label: "BizCard" };
+    }
+    function getIntegrationStatusSymbol(status) {
+      if (status === "connected") return "✓";
+      if (status === "syncing") return "↻";
+      if (status === "failed") return "!";
+      return "·";
+    }
+    function ensureProviderFilterState() {
+      integrations.forEach((it) => {
+        if (providerFilterState[it.key] === undefined) providerFilterState[it.key] = true;
+      });
+    }
+    function renderSidePanel() {
+      ensureProviderFilterState();
+      const viewGrid = document.getElementById("viewGrid");
+      const sideProviderFilterList = document.getElementById("sideProviderFilterList");
+      document.getElementById("showEventsSwitch").checked = showEventsInCalendar;
+      document.getElementById("showRemindersSwitch").checked = showRemindersInCalendar;
+      document.getElementById("showDoneRemindersSwitch").checked = showDoneRemindersInCalendar;
+      viewGrid.querySelectorAll(".view-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.view === viewMode);
+      });
+      sideProviderFilterList.innerHTML = integrations.map((it) => {
+        const p = providerLibrary.find((x) => x.key === it.key);
+        const active = providerFilterState[it.key] !== false;
+        return `
+          <div class="sub-cal-item ${active ? "active" : ""}" data-provider="${it.key}">
+            <button class="sub-toggle" data-provider="${it.key}" title="显示/隐藏">${active ? "✓" : "○"}</button>
+            <div class="sub-info" data-provider="${it.key}">
+              <div class="n">${p ? p.name : it.key}</div>
+              <div class="a">${it.account || p?.accountHint || "-"}</div>
+            </div>
+            <button class="sub-more" data-provider="${it.key}" title="更多">⋯</button>
+          </div>
+        `;
+      }).join("");
+      sideProviderFilterList.querySelectorAll(".sub-toggle, .sub-info").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const key = btn.closest("[data-provider]").dataset.provider;
+          providerFilterState[key] = !providerFilterState[key];
+          renderSidePanel();
+          renderMainView();
+        });
+      });
+      sideProviderFilterList.querySelectorAll(".sub-more").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          openSubCalendarMenu(btn.dataset.provider);
+        });
+      });
+    }
+    function openSidePanel() {
+      renderSidePanel();
+      document.getElementById("calendarSidePanelMask").style.display = "flex";
+    }
+    function closeSidePanel() {
+      document.getElementById("calendarSidePanelMask").style.display = "none";
+    }
+    function openSubCalendarMenu(providerKey) {
+      subMenuProviderKey = providerKey;
+      const p = providerLibrary.find((x) => x.key === providerKey);
+      const item = integrations.find((x) => x.key === providerKey);
+      document.getElementById("calendarSubMenuMeta").textContent = `${p ? p.name : providerKey} · ${item?.account || p?.accountHint || "-"}`;
+      document.getElementById("calendarSubMenuModal").style.display = "flex";
+    }
+    function closeSubCalendarMenu() {
+      subMenuProviderKey = null;
+      document.getElementById("calendarSubMenuModal").style.display = "none";
     }
     function getSelectedDayEvents() {
       return eventsByDayOffset[String(getSelectedDayOffset())] || [];
@@ -1336,22 +1866,28 @@
             <div class="note-title">${n.title}</div>
             <div class="note-meta">${n.meta || "Today 08:40 · 00:32"}</div>
             <div class="note-tags">
-              <span class="note-tag">${(n.reminders || 0)} Reminders</span>
+              <span class="note-tag">${((n.reminderItems && n.reminderItems.length) || n.reminders || 0)} Reminders</span>
               <span class="note-tag type">${n.tag || "Meeting"}</span>
             </div>
           </div>
         `).join("")
         : `<div class="asset-item"><div class="s">暂无挂载 Notes</div></div>`;
-      notesInlineHint.textContent = arr && arr.length
-        ? "可继续使用 Ask-Agent 生成 recap，自动沉淀会议结论。"
-        : "暂无 Notes。可用 Ask-Agent 基于会议信息生成 briefing。";
     }
-    function renderEventReminderCards(eventId, arr) {
-      detailRemindersList.innerHTML = arr && arr.length
-        ? arr.map((r, idx) => `
+    function getEventReminderItems(asset) {
+      const fromNotes = (asset.notes || []).flatMap((n, noteIdx) => {
+        const items = n.reminderItems || [];
+        return items.map((r, rIdx) => ({ ...r, sourceType: "note", noteIdx, reminderIdx: rIdx }));
+      });
+      const manual = (asset.reminders || []).map((r, idx) => ({ ...r, sourceType: "manual", reminderIdx: idx }));
+      return [...fromNotes, ...manual];
+    }
+    function renderEventReminderCards(eventId, asset) {
+      const allItems = getEventReminderItems(asset);
+      detailRemindersList.innerHTML = allItems.length
+        ? allItems.map((r, idx) => `
           <div class="rem-item ${r.state === "已完成" ? "done" : ""}">
             <label class="rem-check-wrap">
-              <input class="rem-check event-rem-check" type="checkbox" data-event-id="${eventId}" data-rem-idx="${idx}" ${r.state === "已完成" ? "checked" : ""}>
+              <input class="rem-check event-rem-check" type="checkbox" data-event-id="${eventId}" data-source="${r.sourceType}" data-note-idx="${r.noteIdx ?? ""}" data-rem-idx="${r.reminderIdx}" ${r.state === "已完成" ? "checked" : ""}>
             </label>
             <div class="rem-main">
               <p class="rem-title">${r.title}</p>
@@ -1362,7 +1898,14 @@
         : `<div class="asset-item"><div class="s">暂无挂载 Reminders</div></div>`;
       document.querySelectorAll(".event-rem-check").forEach((check) => {
         check.addEventListener("change", () => {
-          const item = eventAssetsById[check.dataset.eventId]?.reminders?.[Number(check.dataset.remIdx)];
+          const assetRef = eventAssetsById[check.dataset.eventId];
+          if (!assetRef) return;
+          let item = null;
+          if (check.dataset.source === "note") {
+            item = assetRef.notes?.[Number(check.dataset.noteIdx)]?.reminderItems?.[Number(check.dataset.remIdx)];
+          } else {
+            item = assetRef.reminders?.[Number(check.dataset.remIdx)];
+          }
           if (!item) return;
           item.state = check.checked ? "已完成" : "待处理";
           openEventDetail(check.dataset.eventId);
@@ -1394,6 +1937,74 @@
       }
       agentHintBubble.textContent = text;
       agentHintBubble.classList.add("show");
+    }
+    function renderIntegrationManage() {
+      const providerAddList = document.getElementById("providerAddList");
+      const providerLocalList = document.getElementById("providerLocalList");
+      const connectedKeys = new Set(integrations.map((x) => x.key));
+      const providerMeta = {
+        google: { label: "谷歌日历", logo: "G" },
+        outlook: { label: "Exchange 日历", logo: "E" },
+        apple: { label: "本地日历", logo: "⌂" }
+      };
+      providerAddList.innerHTML = ["google", "outlook"].map((key) => {
+        const item = providerMeta[key];
+        return `
+          <button class="provider-item mini-connect-btn" data-key="${key}" ${connectedKeys.has(key) ? "disabled" : ""}>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="source-logo ${key === "google" ? "google" : "outlook"}">${item.logo}</span>
+              <span class="provider-name">${item.label}${connectedKeys.has(key) ? "（已接入）" : ""}</span>
+            </div>
+            <span style="color:#9babca;font-size:18px;">›</span>
+          </button>
+        `;
+      }).join("");
+      providerLocalList.innerHTML = `
+        <button class="provider-item mini-connect-btn" data-key="apple" ${connectedKeys.has("apple") ? "disabled" : ""}>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="source-logo apple">${providerMeta.apple.logo}</span>
+            <span class="provider-name">${providerMeta.apple.label}${connectedKeys.has("apple") ? "（已接入）" : ""}</span>
+          </div>
+          <span style="color:#9babca;font-size:18px;">›</span>
+        </button>
+      `;
+      document.querySelectorAll(".mini-connect-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (connectedKeys.has(btn.dataset.key)) return;
+          const p = providerLibrary.find((x) => x.key === btn.dataset.key);
+          integrations.push({
+            key: btn.dataset.key,
+            status: "syncing",
+            account: p?.accountHint || "new-account@example.com",
+            lastSyncedAt: "2026-05-06 11:35"
+          });
+          providerFilterState[btn.dataset.key] = true;
+          renderIntegrationManage();
+          renderSidePanel();
+          renderMainView();
+        });
+      });
+    }
+    function openIntegrationManage() {
+      closeSidePanel();
+      inIntegrationManage = true;
+      calendarHeader.style.display = "none";
+      calendarMain.style.display = "none";
+      eventDetail.style.display = "none";
+      eventCreate.style.display = "none";
+      integrationManage.style.display = "block";
+      scrollTopBtn.classList.remove("show");
+      agentHintBubble.classList.remove("show");
+      bottomBar.style.display = "none";
+      renderIntegrationManage();
+    }
+    function closeIntegrationManage() {
+      inIntegrationManage = false;
+      integrationManage.style.display = "none";
+      calendarHeader.style.display = "block";
+      calendarMain.style.display = "block";
+      bottomBar.style.display = "flex";
+      renderMainView();
     }
     function renderAttendeePicker() {
       const wrap = document.getElementById("attendeePickerList");
@@ -1464,16 +2075,39 @@
       renderCreateFileList();
     }
     function renderHeaderForMode() {
-      const isCalendarMode = pageMode === "calendar";
-      dayRow.style.display = isCalendarMode ? "grid" : "none";
-      typeToggle.style.display = isCalendarMode ? "inline-flex" : "none";
+      dayRow.style.display = "grid";
+      typeToggle.style.display = "none";
       todayBtn.style.display = "inline-flex";
-      calendarMain.style.inset = isCalendarMode ? "258px 0 78px" : "168px 0 78px";
-      calendarViewBtn.classList.toggle("active", isCalendarMode);
-      reminderViewBtn.classList.toggle("active", !isCalendarMode);
+      calendarMain.style.inset = "286px 0 78px";
+      renderMonthLabel();
     }
 
     function renderDays() {
+      if (viewMode === "agenda") {
+        const offsets = Array.from({ length: 7 }, (_, i) => agendaFocusOffset - 3 + i);
+        dayRow.innerHTML = offsets.map((offset) => {
+          const d = getDateByOffset(offset);
+          const week = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+          return `
+            <button class="day-pill ${offset === agendaFocusOffset ? "selected" : ""}" data-offset="${offset}">
+              <span class="w">${week}</span>
+              <span class="d">${d.getDate()}</span>
+              <span class="dot" style="${offset === agendaFocusOffset ? "" : "opacity:0"}"></span>
+            </button>
+          `;
+        }).join("");
+        dayRow.querySelectorAll(".day-pill").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            agendaFocusOffset = Number(btn.dataset.offset);
+            setSelectedDayByOffset(agendaFocusOffset);
+            agendaNeedAlign = true;
+            clearDraft();
+            renderDays();
+            renderMainView();
+          });
+        });
+        return;
+      }
       dayRow.innerHTML = days.map((d, idx) => `
         <button class="day-pill ${d.selected ? "selected" : ""}" data-idx="${idx}">
           <span class="w">${d.w}</span>
@@ -1485,6 +2119,7 @@
         btn.addEventListener("click", () => {
           days.forEach((x) => { x.selected = false; });
           days[Number(btn.dataset.idx)].selected = true;
+          agendaFocusOffset = getSelectedDayOffset();
           clearDraft();
           renderDays();
           renderMainView();
@@ -1493,6 +2128,7 @@
     }
 
     function openEventDetail(eventId) {
+      inIntegrationManage = false;
       selectedEventId = eventId || selectedEventId;
       const ev = getEventById(selectedEventId);
       if (!ev) return;
@@ -1507,25 +2143,30 @@
         : "会议链接：暂无";
       renderAttendeesList(asset.attendees || []);
       renderNotesFeed(asset.notes || []);
-      renderEventReminderCards(ev.id, asset.reminders || []);
+      renderEventReminderCards(ev.id, asset);
       switchDetailTab("attendees");
       clearDraft();
       calendarHeader.style.display = "none";
       calendarMain.style.display = "none";
       eventCreate.style.display = "none";
+      integrationManage.style.display = "none";
       scrollTopBtn.classList.remove("show");
       eventDetail.style.display = "block";
+      bottomBar.style.display = "flex";
       refreshAgentHintBubble();
     }
     document.getElementById("backToCal").addEventListener("click", () => {
       eventDetail.style.display = "none";
       eventCreate.style.display = "none";
+      integrationManage.style.display = "none";
       agentHintBubble.classList.remove("show");
       calendarHeader.style.display = "block";
       calendarMain.style.display = "block";
+      bottomBar.style.display = "flex";
       renderMainView();
     });
     function openEventCreate(prefill = null, eventId = null) {
+      inIntegrationManage = false;
       editingEventId = eventId;
       const event = eventId ? getEventById(eventId) : null;
       const dateOffset = event ? event.dayOffset : getSelectedDayOffset();
@@ -1545,8 +2186,10 @@
       calendarHeader.style.display = "none";
       calendarMain.style.display = "none";
       eventDetail.style.display = "none";
+      integrationManage.style.display = "none";
       scrollTopBtn.classList.remove("show");
       eventCreate.style.display = "block";
+      bottomBar.style.display = "flex";
     }
 
     function buildHourRows() {
@@ -1558,19 +2201,56 @@
     }
 
     function renderEventsTimeline() {
-      const dayEvents = getSelectedDayEvents();
-      const normalized = dayEvents
-        .map((e) => {
-          const startMin = parseTime(e.start);
-          const endMin = parseTime(e.end);
-          return { ...e, startMin, endMin, top: minsToTop(startMin), height: Math.max(40, minsToTop(endMin) - minsToTop(startMin) - 2) };
-        })
-        .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+      if (calendarMain._agendaScrollHandler) {
+        calendarMain.removeEventListener("scroll", calendarMain._agendaScrollHandler);
+        calendarMain._agendaScrollHandler = null;
+      }
+      const dayEvents = getSelectedDayEvents().filter((e) => {
+        if (!showEventsInCalendar) return false;
+        if (e.source === "bizcard") return true;
+        if (providerFilterState[e.source] === undefined) return true;
+        return providerFilterState[e.source];
+      });
+      const eventItems = dayEvents.map((e) => {
+        const startMin = parseTime(e.start);
+        const endMin = parseTime(e.end);
+        return {
+          kind: "event",
+          id: e.id,
+          title: e.title,
+          start: e.start,
+          end: e.end,
+          source: e.source,
+          startMin,
+          endMin,
+          top: minsToTop(startMin),
+          height: Math.max(40, minsToTop(endMin) - minsToTop(startMin) - 2)
+        };
+      });
+      const dayReminders = showRemindersInCalendar
+        ? remindersAll.filter((r) => r.dayOffset === getSelectedDayOffset() && (showDoneRemindersInCalendar || r.state !== "已完成"))
+        : [];
+      const reminderItems = dayReminders.map((r) => {
+        const startMin = parseTime(r.time);
+        const endMin = startMin + 30;
+        return {
+          kind: "reminder",
+          id: r.id,
+          title: r.title,
+          state: r.state,
+          time: r.time,
+          startMin,
+          endMin,
+          top: minsToTop(startMin),
+          height: Math.max(30, minsToTop(endMin) - minsToTop(startMin) - 2)
+        };
+      });
+      const merged = [...eventItems, ...reminderItems].sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
 
-      // Cluster overlapping events, then split each cluster into columns.
+      // Cluster overlapping timeline items, then split each cluster into columns.
       const clusters = [];
       let current = null;
-      normalized.forEach((ev) => {
+      merged.forEach((ev) => {
         if (!current || ev.startMin >= current.maxEnd) {
           current = { events: [ev], maxEnd: ev.endMin };
           clusters.push(current);
@@ -1602,11 +2282,17 @@
       });
 
       const blocks = placed.map((e) => {
-        const source = getSourceMeta(e.source);
+        const source = e.kind === "event" ? getSourceMeta(e.source) : null;
         const split = e.cols > 1;
         const unit = 100 / e.cols;
         const left = e.col * unit;
         const width = unit;
+        if (e.kind === "reminder") {
+          return `<div class="event-block rem-card ${split ? "split" : ""} ${e.state === "已完成" ? "done" : ""}" data-reminder="${e.id}" style="top:${e.top}px;height:${e.height}px;left:calc(${left}% + 2px);width:calc(${width}% - 4px);right:auto;">
+            <div class="t">${e.title}</div>
+            <div class="s">${e.time} · Reminder</div>
+          </div>`;
+        }
         return `<div class="event-block ${split ? "split" : ""}" data-event="${e.id}" style="top:${e.top}px;height:${e.height}px;left:calc(${left}% + 2px);width:calc(${width}% - 4px);right:auto;">
           <div class="t">${e.title}</div>
           <div class="s">${e.start} - ${e.end}</div>
@@ -1622,13 +2308,12 @@
           <div class="s">${fmtTime(draftEvent.startMin)} - ${fmtTime(draftEvent.endMin)} · 点击继续</div>
         </div>`;
       })() : "";
-
-      const empty = dayEvents.length === 0 && !draftEvent
+      const empty = merged.length === 0 && !draftEvent
         ? `<div class="timeline-empty">当日无日程<small>可点击空白时间快速新建</small></div>`
         : "";
       calendarMain.innerHTML = `<div class="day-grid">${buildHourRows()}${blocks}${draft}${empty}</div>`;
 
-      document.querySelectorAll(".event-block").forEach((node) => node.addEventListener("click", () => openEventDetail(node.dataset.event)));
+      document.querySelectorAll(".event-block[data-event]").forEach((node) => node.addEventListener("click", () => openEventDetail(node.dataset.event)));
       document.querySelectorAll(".hour-row").forEach((row) => {
         row.addEventListener("click", (ev) => {
           if (ev.target.closest(".event-block") || ev.target.closest("#draftBlock")) return;
@@ -1648,6 +2333,175 @@
           openEventCreate(draftEvent || { startMin: 18 * 60, endMin: 18 * 60 + 30 });
         });
       }
+    }
+    function renderAgendaMode() {
+      if (agendaFocusOffset < agendaRangeStartOffset + 3) agendaRangeStartOffset = agendaFocusOffset - 15;
+      if (agendaFocusOffset > agendaRangeEndOffset - 3) agendaRangeEndOffset = agendaFocusOffset + 45;
+      const total = agendaRangeEndOffset - agendaRangeStartOffset + 1;
+      const range = Array.from({ length: total }, (_, i) => agendaRangeStartOffset + i);
+      const dayEntries = range.map((offset) => {
+        const weekInfo = getWeekInfoByOffset(offset);
+        const eventItems = showEventsInCalendar
+          ? (eventsByDayOffset[String(offset)] || [])
+              .filter((e) => e.source === "bizcard" || providerFilterState[e.source] !== false)
+              .map((e) => ({ kind: "event", title: e.title, start: e.start, end: e.end, source: getSourceMeta(e.source).label }))
+          : [];
+        const todoItems = showRemindersInCalendar
+          ? remindersAll
+              .filter((r) => r.dayOffset === offset && (showDoneRemindersInCalendar || r.state !== "已完成"))
+              .map((r) => ({ kind: "todo", title: r.title, time: r.time, sub: r.state }))
+          : [];
+        const items = [...eventItems, ...todoItems].sort((a, b) => {
+          const aKey = a.kind === "event" ? a.start : a.time;
+          const bKey = b.kind === "event" ? b.start : b.time;
+          return aKey.localeCompare(bKey);
+        });
+        return { offset, weekInfo, items };
+      });
+
+      const weekGroups = [];
+      dayEntries.forEach((entry) => {
+        const key = `${entry.weekInfo.weekNo}-${entry.weekInfo.startLabel}-${entry.weekInfo.endLabel}`;
+        let g = weekGroups.find((x) => x.key === key);
+        if (!g) {
+          g = {
+            key,
+            weekInfo: entry.weekInfo,
+            startOffset: entry.offset,
+            days: [],
+            hasItems: false
+          };
+          weekGroups.push(g);
+        }
+        if (entry.items.length) g.hasItems = true;
+        g.days.push(entry);
+      });
+
+      const html = weekGroups.map((group, idx) => {
+        const month = getDateByOffset(group.startOffset).getMonth() + 1;
+        const prevMonth = idx > 0 ? (getDateByOffset(weekGroups[idx - 1].startOffset).getMonth() + 1) : null;
+        const showMonthTitle = idx === 0 || month !== prevMonth;
+        const dayRows = group.days
+          .filter((d) => d.items.length > 0)
+          .map((d) => {
+            const todayFlag = d.offset === 0 ? "今天" : d.weekInfo.weekday;
+            const dayNo = getDateByOffset(d.offset).getDate();
+            return `
+              <div class="agenda-day-row agenda-group" data-offset="${d.offset}" id="agenda-day-${d.offset}">
+                <div class="agenda-day-rail">
+                  <div class="d">${String(dayNo).padStart(2, "0")}</div>
+                  <div class="w">${todayFlag}</div>
+                </div>
+                <div class="agenda-day-items">
+                  ${d.items.map((x) => `
+                    <div class="agenda-item ${x.kind === "todo" ? "todo" : "event"}">
+                      <div class="t">${x.title}</div>
+                      <div class="s">${x.kind === "event" ? `${x.start}-${x.end}${x.source ? ` · ${x.source}` : ""}` : `${x.time} · ${x.sub}`}</div>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            `;
+          }).join("");
+
+        return `
+          ${showMonthTitle ? `<h3 class="agenda-month">${month}月</h3>` : ""}
+          <section class="agenda-week-block agenda-group" data-offset="${group.startOffset}" id="agenda-week-${group.startOffset}">
+            <div class="agenda-week">第${group.weekInfo.weekNo}周，${group.weekInfo.startLabel} - ${group.weekInfo.endLabel}</div>
+            ${group.hasItems ? dayRows : ""}
+          </section>
+        `;
+      }).join("");
+      calendarMain.innerHTML = `<div class="agenda-wrap">${html}</div>`;
+      if (calendarMain._agendaScrollHandler) {
+        calendarMain.removeEventListener("scroll", calendarMain._agendaScrollHandler);
+      }
+      const onScroll = () => {
+        if (!agendaIsAppendingFuture) {
+          const remain = calendarMain.scrollHeight - (calendarMain.scrollTop + calendarMain.clientHeight);
+          if (remain < 260) {
+            agendaIsAppendingFuture = true;
+            const keepTop = calendarMain.scrollTop;
+            agendaRangeEndOffset += 28;
+            agendaNeedAlign = false;
+            renderAgendaMode();
+            calendarMain.scrollTop = keepTop;
+            requestAnimationFrame(() => {
+              calendarMain.scrollTop = keepTop;
+              agendaIsAppendingFuture = false;
+              if (calendarMain._agendaScrollHandler) calendarMain._agendaScrollHandler();
+            });
+            return;
+          }
+        }
+        const groups = Array.from(calendarMain.querySelectorAll(".agenda-group"));
+        if (!groups.length) return;
+        const centerY = calendarMain.scrollTop + calendarMain.clientHeight / 2;
+        let best = null;
+        groups.forEach((el) => {
+          const mid = el.offsetTop + el.offsetHeight / 2;
+          const dist = Math.abs(mid - centerY);
+          if (!best || dist < best.dist) best = { dist, offset: Number(el.dataset.offset) };
+        });
+        if (!best) return;
+        if (agendaFocusOffset !== best.offset) {
+          agendaFocusOffset = best.offset;
+          setSelectedDayByOffset(agendaFocusOffset);
+          renderDays();
+          renderMonthLabel();
+        }
+      };
+      calendarMain._agendaScrollHandler = onScroll;
+      calendarMain.addEventListener("scroll", onScroll, { passive: true });
+      if (agendaNeedAlign) {
+        let anchor = document.getElementById(`agenda-day-${agendaFocusOffset}`);
+        if (!anchor) {
+          const candidates = Array.from(calendarMain.querySelectorAll(".agenda-group[data-offset]"));
+          let best = null;
+          candidates.forEach((el) => {
+            const offset = Number(el.dataset.offset);
+            const dist = Math.abs(offset - agendaFocusOffset);
+            if (!best || dist < best.dist) best = { dist, el };
+          });
+          anchor = best ? best.el : null;
+        }
+        if (anchor) {
+          calendarMain.scrollTop = Math.max(0, anchor.offsetTop - calendarMain.clientHeight / 2 + anchor.offsetHeight / 2);
+        }
+        agendaNeedAlign = false;
+        onScroll();
+      }
+    }
+    function renderThreeDayMode() {
+      const current = getSelectedDayOffset();
+      const html = Array.from({ length: 3 }, (_, i) => current + i).map((offset) => {
+        const dateLabel = getDateLabelByOffset(offset);
+        const events = showEventsInCalendar
+          ? (eventsByDayOffset[String(offset)] || []).filter((e) => e.source === "bizcard" || providerFilterState[e.source] !== false)
+          : [];
+        const todos = showRemindersInCalendar
+          ? remindersAll.filter((r) => r.dayOffset === offset)
+          : [];
+        return `
+          <div class="three-col">
+            <div class="agenda-date">${dateLabel}</div>
+            ${events.map((e) => `<div class="agenda-item"><div class="t">${e.title}</div><div class="s">${e.start}-${e.end}</div></div>`).join("")}
+            ${todos.map((r) => `<div class="agenda-item todo"><div class="t">${r.title}</div><div class="s">${r.time} · ${r.state}</div></div>`).join("")}
+          </div>
+        `;
+      }).join("");
+      calendarMain.innerHTML = `<div class="three-day-grid">${html}</div>`;
+    }
+    function renderMonthMode() {
+      const current = getSelectedDayOffset();
+      const cells = Array.from({ length: 14 }, (_, i) => current - 3 + i).map((offset) => {
+        const events = showEventsInCalendar
+          ? (eventsByDayOffset[String(offset)] || []).filter((e) => e.source === "bizcard" || providerFilterState[e.source] !== false).length
+          : 0;
+        const todos = showRemindersInCalendar ? remindersAll.filter((r) => r.dayOffset === offset).length : 0;
+        return `<div class="agenda-item"><div class="t">${getDateLabelByOffset(offset)}</div><div class="s">日程 ${events} · 代办 ${todos}</div></div>`;
+      }).join("");
+      calendarMain.innerHTML = `<div class="agenda-wrap">${cells}</div>`;
     }
 
     function renderReminderList(scope = "day") {
@@ -1742,41 +2596,94 @@
     }
 
     function renderCalendarContent() {
-      document.querySelectorAll(".type-btn").forEach((b) => b.classList.toggle("active", b.dataset.type === type));
-      if (type === "events") renderEventsTimeline();
-      else renderReminderList("day");
+      if (viewMode === "day") renderEventsTimeline();
+      else renderAgendaMode();
     }
     function renderMainView() {
+      pageMode = "calendar";
       renderHeaderForMode();
-      if (pageMode === "calendar") renderCalendarContent();
-      else renderReminderList("all");
+      renderCalendarContent();
     }
 
-    [calendarViewBtn, reminderViewBtn].forEach((btn) => {
-      btn.addEventListener("click", () => {
-        pageMode = btn.id === "calendarViewBtn" ? "calendar" : "reminders_all";
-        if (pageMode === "reminders_all") reminderShowDoneInAll = false;
-        clearDraft();
-        renderMainView();
-      });
+    filterPanelBtn.addEventListener("click", () => {
+      if (inIntegrationManage) return;
+      openSidePanel();
+    });
+    document.getElementById("integrationBackBtn").addEventListener("click", () => {
+      closeIntegrationManage();
+    });
+    document.getElementById("integrationDoneBtn").addEventListener("click", () => {
+      closeIntegrationManage();
     });
 
-    typeToggle.querySelectorAll(".type-btn").forEach((btn) => {
+    document.getElementById("calendarSidePanelMask").addEventListener("click", (e) => {
+      if (e.target.id === "calendarSidePanelMask") closeSidePanel();
+    });
+    document.getElementById("openIntegrationManageFromPanel").addEventListener("click", () => {
+      closeSidePanel();
+      openIntegrationManage();
+    });
+    document.getElementById("calendarResyncBtn").addEventListener("click", () => {
+      if (!subMenuProviderKey) return;
+      const item = integrations.find((x) => x.key === subMenuProviderKey);
+      if (!item) return;
+      item.status = "syncing";
+      item.lastSyncedAt = "2026-05-06 12:00";
+      closeSubCalendarMenu();
+      renderIntegrationManage();
+      renderSidePanel();
+      renderMainView();
+    });
+    document.getElementById("calendarUnsubscribeBtn").addEventListener("click", () => {
+      if (!subMenuProviderKey) return;
+      const idx = integrations.findIndex((x) => x.key === subMenuProviderKey);
+      if (idx > -1) integrations.splice(idx, 1);
+      delete providerFilterState[subMenuProviderKey];
+      closeSubCalendarMenu();
+      renderIntegrationManage();
+      renderSidePanel();
+      renderMainView();
+    });
+    document.getElementById("calendarSubMenuCancelBtn").addEventListener("click", closeSubCalendarMenu);
+    document.getElementById("calendarSubMenuModal").addEventListener("click", (e) => {
+      if (e.target.id === "calendarSubMenuModal") closeSubCalendarMenu();
+    });
+    document.getElementById("showEventsSwitch").addEventListener("change", (e) => {
+      showEventsInCalendar = !!e.target.checked;
+      renderMainView();
+    });
+    document.getElementById("showRemindersSwitch").addEventListener("change", (e) => {
+      showRemindersInCalendar = !!e.target.checked;
+      renderMainView();
+    });
+    document.getElementById("showDoneRemindersSwitch").addEventListener("change", (e) => {
+      showDoneRemindersInCalendar = !!e.target.checked;
+      renderMainView();
+    });
+    document.querySelectorAll("#viewGrid .view-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        type = btn.dataset.type;
+        const prev = viewMode;
+        viewMode = btn.dataset.view;
+        if (viewMode === "agenda" && prev !== "agenda") {
+          agendaFocusOffset = getSelectedDayIndex() - TODAY_DAY_INDEX;
+          agendaRangeStartOffset = agendaFocusOffset - 15;
+          agendaRangeEndOffset = agendaFocusOffset + 45;
+          agendaNeedAlign = true;
+        }
+        if (viewMode === "day" && prev === "agenda") {
+          setSelectedDayByOffset(agendaFocusOffset);
+        }
+        renderSidePanel();
         clearDraft();
+        renderDays();
         renderMainView();
       });
     });
 
     todayBtn.addEventListener("click", () => {
-      if (pageMode === "reminders_all") {
-        const todayGroup = document.getElementById("todayReminderGroup");
-        if (todayGroup) todayGroup.scrollIntoView({ behavior: "smooth", block: "start" });
-        else calendarMain.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
       days.forEach((d, i) => { d.selected = i === TODAY_DAY_INDEX; });
+      agendaFocusOffset = 0;
+      if (viewMode === "agenda") agendaNeedAlign = true;
       clearDraft();
       renderDays();
       renderMainView();
@@ -1899,7 +2806,7 @@
       const asset = eventAssetsById[selectedEventId] || (eventAssetsById[selectedEventId] = { attendees: [], notes: [], reminders: [], files: [] });
       asset.reminders = asset.reminders || [];
       asset.reminders.unshift({ id: "er-" + Date.now(), title: "新建会议提醒", sub: "18:30", state: "待处理" });
-      renderEventReminderCards(selectedEventId, asset.reminders);
+      renderEventReminderCards(selectedEventId, asset);
       switchDetailTab("reminders");
     });
     document.getElementById("detailAddCancelBtn").addEventListener("click", () => {
@@ -1966,7 +2873,7 @@
         meetingLink: meetingLink || "无",
         location: location || "无",
         desc: desc || "暂无描述",
-        notes: [{ title: "新建事件草稿", meta: "Today 18:30 · 00:12", reminders: 0, tag: "Meeting" }],
+        notes: [{ title: "新建事件草稿", meta: "Today 18:30 · 00:12", tag: "Meeting", reminderItems: [] }],
         reminders: [],
         files: fileTitles.map((f) => ({ title: f, sub: "手动添加附件" }))
       };
