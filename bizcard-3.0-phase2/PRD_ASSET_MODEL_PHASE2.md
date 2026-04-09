@@ -4,7 +4,7 @@
 |------|------|
 | 状态 | 草案 |
 | 目标 | 建立统一的 `Files / Notes / Events / Reminders / Contacts` 后台模型 |
-| 本期范围 | 引入 `Files` 资产层；`Note` 关联 `File`（0..1）；`File.kind` 仅 `audio`；日历单向导入 |
+| 本期范围 | 引入 `Files` 资产层；`Note` 主关联 `File`（0..1）；`Event` 软关联 `File`（n..m）；`File.kind` 仅 `audio`；日历单向导入 |
 | 权威关系图 | `ASSET_MODEL_AND_RELATIONS.md`（如有冲突，以本 PRD 为准） |
 
 ---
@@ -21,6 +21,7 @@
 
 - **输入与产物分离**：`Files` 存输入文件，`Notes` 存解析结果。  
 - **职责清晰**：`Event` 管时间占位，`Note` 管内容，`Reminder` 管任务。  
+- **软关联优先**：资产之间以 **可解除的关联**（关联表 / 可空引用）为主，**不**采用「强绑定、级联独占、唯一所有者」语义；删除或解绑一端时，默认 **解除关联** 而非销毁他端实体（具体策略见实现）。  
 - **单向同步**：来源日历 -> BizCard；本期不回写来源日历。  
 - **MVP 收敛**：本期仅支持 `audio` 文件类型。
 
@@ -42,11 +43,20 @@
 
 | 关系 | 约束 |
 |------|------|
-| `Note -> File` | 0..1（本期单 Note 单 File） |
+| `Note -> File` | 0..1（本期单 Note 单「主」解析用 File；与 Event 挂载的 File **独立计数**） |
+| `Event <-> File` | n..m（**软关联**；创建日程或详情页上传的 File **默认**与该 Event 关联） |
 | `Note -> Event` | 0..1 |
 | `Reminder -> Note` | 0..1（`source_note_id`） |
 | `Reminder -> Event` | 0..1（`related_event_id`） |
 | `Note/Event/Reminder <-> Contact` | n..m |
+
+### 2.2.1 Event 挂载 File 与同 Event 下 Note 的关系
+
+- 用户在 **新建日程** 或 **Event 详情** 中上传的 File，**默认**写入 **`Event <-> File`** 关联，不表示该 File 被某条 Note「独占」。  
+- 同一 Event 下若有多条 **Note**（`note.event_id` 指向该 Event）：**不要求**自动把 Event 上的 Files 再挂到每条 Note 上。  
+  - **默认**：Note 仍只保留 **本条 Note 自己的** `Note -> File`（例如录音解析链路产生的 0..1 条）。  
+  - **可选**：用户或 Agent **显式**将某 File 关联到某条 Note（第二条软链，如 `note_linked_file_ids` / 关联表），用于「这份材料对应这条纪要」等场景；**不**做「Event 上所有附件自动出现在所有 Note」的全量继承。  
+- 与 §1.2 **软关联** 一致：解除 Event–File 或 Note–File 时，以 **解除关联** 为主，避免隐式级联删除他端资产。
 
 ### 2.3 Reminder 自动关联规则（最终版）
 
@@ -224,6 +234,7 @@ flowchart TD
 - `File` 是输入资产；`Note` 是解析产物。  
 - 本期 `File.kind` 仅 `audio`。  
 - `transcript + summary` 挂在 `Note` 主体。  
+- **Event 与 File 为 n..m 软关联**（日程创建/详情上传默认挂 Event）；同 Event 下 **Note 不默认继承** Event 附件，除非显式再关联。  
 - Reminder 同时支持 Note/Event 关联，并执行自动回填规则。  
 - Event 同步为单向导入，不回写来源日历。
 - Event 更新入口包含手动刷新与定时刷新，按更新时间决定覆盖。  
@@ -237,3 +248,4 @@ flowchart TD
 | 日期 | 说明 |
 |------|------|
 | 2026-03-25 | 重构文档结构：去冗余、统一术语、收敛为可评审版本 |
+| 2026-04-08 | 补充全应用 **软关联** 原则；**Event ↔ File（n..m）**；明确同 Event 下 Note 对 Event 附件 **不默认全量关联**、可显式二次关联 |

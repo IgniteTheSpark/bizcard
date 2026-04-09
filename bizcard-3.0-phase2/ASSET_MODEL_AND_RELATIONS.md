@@ -3,6 +3,7 @@
 ## 1. 文档目的
 
 - 统一 **Note / Event / Reminder / Contact / Files** 的职责边界与可选关联。
+- **全应用资产关系以软关联为主**：多对多用关联表、可空引用；**不**表达「唯一所有者、强绑定、删一端必毁另一端」；解除关联 ≠ 删除实体（除非产品另有显式「从库中删除文件」动作）。
 - 用图示固化 **实体间关系**，避免日历接入后与「捕捉记录」混写。
 - **第一阶段**：**一条 Note 至多关联一条 File**（一次多选 → **多条 Note**）；File 类型仅支持 **`audio`**。
 - **Note**：单一实体，承载挂载（0..n）与可选正文；用 **`tag`** 区分来源与形态——**固定三类** `meeting` / `memo` / `self`，以及 **Agent 侧可扩展标签**（如 `briefing` / `recap` / `idea` 等），见 §4.1。
@@ -13,8 +14,8 @@
 
 | 实体 | 职责（一句话） |
 |------|----------------|
-| **Note** | 可带 **正文** 与 **File 关联**；**`tag`** 区分来源与形态。**第一阶段**：有文件时 **一条 Note 一条 File**；**`briefing` / `recap` 等** 与 **self / meeting** 同为 **Note 的生成方式**，关联规则一致（§7.1）。 |
-| **Event** | 日历上 **一段时间占用**（可来自外部同步）；**不挂文件**。录音与文件在 **`event_id` 关联的 Note** 上。 |
+| **Note** | 可带 **正文** 与 **File 关联**；**`tag`** 区分来源与形态。**第一阶段**：有文件时 **一条 Note 一条「主」File**（解析/摘要链路）；**`briefing` / `recap` 等** 与 **self / meeting** 同为 **Note 的生成方式**，关联规则一致（§7.1）。 |
+| **Event** | 日历上 **一段时间占用**（可来自外部同步）；可与 **多条 File 软关联**（创建/详情上传默认挂 Event）。**不**把「Event 附件」自动写进同 Event 下每条 Note，除非 **显式**再建 Note–File 关联（§3.1）。 |
 | **Reminder** | 带时间的 **待办/承诺**：可溯源 Note，也可直接关联 Event，可关联多人。 |
 | **Contact** | **人脉**：与多条 Note、Event、Reminder **多对多** 聚合。 |
 | **Files** | 统一文件资产层（用户上传或录音笔导入）；每个文件有 `file_id`。**第一阶段仅 `audio`**。 |
@@ -62,7 +63,8 @@ flowchart LR
   E ---|n..m| C
   R ---|n..m| C
 
-  N -->|file_id 0..1 (v1)| F
+  N -->|主 file_id 0..1 v1| F
+  E ---|n..m 软关联| F
 ```
 
 **ER 示意**（Note→Event 为 **多对一可选**）：
@@ -70,11 +72,12 @@ flowchart LR
 ```mermaid
 erDiagram
   Event ||--o{ Note : "event_id on Note optional"
+  Event }o--o{ File : "event_files soft"
   Note }o--o{ Contact : "note_contacts"
   Note ||--o{ Reminder : "source_note_id optional"
   Event ||--o{ Reminder : "related_event_id optional"
   Reminder }o--o{ Contact : "reminder_contacts"
-  Note ||--o| File : "file_id optional in v1"
+  Note ||--o| File : "primary file_id optional v1"
 
   Note {
     string id PK
@@ -118,8 +121,9 @@ erDiagram
 | Note ↔ Contact | n..m | 参与者/提及的人。 |
 | Event ↔ Contact | n..m | 日历参与者与通讯录对齐。 |
 | Reminder ↔ Contact | n..m | 交办对象、相关人、含自己。 |
-| Note → File | 0..1 | **第一阶段** 有文件时 **一条 Note 一条 File**；`kind` 仅支持 `audio`。 |
-| Event → File | — | Event **无**文件挂载。 |
+| Note → File | 0..1 | **第一阶段** 有文件时 **一条 Note 一条「主」File**（ASR/摘要输入）；`kind` 仅支持 `audio`。 |
+| Event ↔ File | n..m | **软关联**（如 `event_files`）；创建日程或详情页上传 **默认**挂到该 Event。 |
+| Note ↔ File（同 Event 上下文） | 可选第二条 | **不默认**把 Event 上全部 File 同步为每条 Note 的 `file_id`；需要时由用户/Agent **显式**增加 Note–File 关联（可与主 `file_id` 并存或演进为多挂载，见 §5）。 |
 
 ### 3.2 Reminder 关联规则（简化版）
 
@@ -296,6 +300,7 @@ flowchart TB
 | Summary？ | **挂在 Note 上**（`note.summary` + 可选详细结构化内容）。 |
 | 列表接口 | File 列表只拉轻量元信息；Note 列表默认可返回短 summary，不返回 transcript 全文。 |
 | 与 Event | **可选** `event_id`；无日历则仅 Note。 |
+| Event 上附件 | 走 **Event ↔ File** 软关联；**不**自动要求同 Event 下每条 Note 都挂同一批 File。 |
 
 ---
 
@@ -329,3 +334,4 @@ flowchart TB
 | 日期 | 说明 |
 |------|------|
 | 2026-03-20 | 初稿；第一阶段全局 **一 Note 一主文件**；Event 不挂文件；§5 为后续多挂载。 |
+| 2026-04-08 | **Event ↔ File（n..m）** 软关联；全篇对齐 **软关联** 原则；明确 Note **不默认继承** Event 附件、可显式二次关联 |

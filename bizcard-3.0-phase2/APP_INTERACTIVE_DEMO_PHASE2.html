@@ -240,6 +240,53 @@
     .main::-webkit-scrollbar { display: none; }
 
     /* Events timeline */
+    .allday-wrap {
+      margin-left: 40px;
+      padding-left: 10px;
+      margin-bottom: 10px;
+    }
+    .allday-strip {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      border: 1px dashed rgba(47, 118, 255, 0.35);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #f4f8ff 0%, #eef4ff 100%);
+      padding: 8px 10px;
+    }
+    .allday-label {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 820;
+      color: #4f6a9e;
+      padding-top: 4px;
+    }
+    .allday-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+    .allday-event {
+      border: 1px solid rgba(47, 118, 255, 0.35);
+      border-radius: 10px;
+      background: #fff;
+      padding: 7px 10px;
+      text-align: left;
+      cursor: pointer;
+      max-width: 100%;
+      box-shadow: 0 4px 10px rgba(17, 24, 39, 0.05);
+    }
+    .allday-event .t {
+      font-size: 13px;
+      font-weight: 820;
+      color: #1e56b5;
+    }
+    .allday-event .s {
+      margin-top: 2px;
+      font-size: 10px;
+      color: #7786a0;
+    }
     .day-grid {
       position: relative;
       margin-left: 40px;
@@ -401,20 +448,10 @@
       color: #5f6f8d;
       font-weight: 780;
     }
-    .done-chip {
-      border: 1px solid #dfe6f3;
-      border-radius: 999px;
-      background: #fff;
-      color: #677795;
+    .rem-done-stat {
       font-size: 11px;
-      font-weight: 820;
-      padding: 6px 12px;
-      cursor: pointer;
-    }
-    .done-chip.active {
-      background: #1f2634;
-      border-color: #1f2634;
-      color: #fff;
+      font-weight: 760;
+      color: #8a97b3;
     }
     .rem-groups { display: grid; gap: 12px; }
     .rem-group {
@@ -553,20 +590,25 @@
     }
     .detail-tabs {
       display: flex;
-      gap: 14px;
+      gap: 10px;
       border-bottom: 1px solid var(--line-soft);
       margin: 10px -12px 0;
       padding: 0 12px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      flex-wrap: nowrap;
     }
     .detail-tab {
       border: none;
       background: transparent;
       color: #7e8ba4;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 760;
       padding: 10px 0 9px;
       cursor: pointer;
       border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .detail-tab.active {
       color: #162136;
@@ -702,6 +744,42 @@
       background: #effbef;
       color: #356f3a;
     }
+    .files-feed { display: grid; gap: 10px; }
+    .file-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 6px 12px rgba(17,24,39,.04);
+      padding: 10px 12px;
+    }
+    .file-card-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+    .file-card-ico { font-size: 22px; line-height: 1; }
+    .file-card-title {
+      font-size: 13px;
+      font-weight: 820;
+      color: #162136;
+    }
+    .file-card-sub {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #7a889f;
+    }
+    .file-card-remove {
+      border: 1px solid var(--line-soft);
+      background: #f8fafc;
+      color: #5a6b86;
+      font-size: 11px;
+      font-weight: 760;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .file-card-remove:active { opacity: 0.85; }
     .chips { margin-top: 4px; }
     .chip {
       display: inline-flex;
@@ -1070,6 +1148,14 @@
       align-items: start;
       margin-bottom: 10px;
     }
+    .agenda-day-row.agenda-day-empty {
+      display: block;
+      min-height: 1px;
+      margin-bottom: 0;
+      padding: 0;
+      border: none;
+      overflow: hidden;
+    }
     .agenda-day-rail {
       text-align: left;
       padding-top: 2px;
@@ -1119,6 +1205,17 @@
     }
     .agenda-item.todo .t {
       color: #157d52;
+    }
+    .agenda-item.todo.done {
+      background: #f7f9fc;
+      border-color: #e8edf6;
+      border-left-color: #c5d4e8;
+      box-shadow: none;
+    }
+    .agenda-item.todo.done .t,
+    .agenda-item.todo.done .s {
+      color: #a6b1c6;
+      text-decoration: line-through;
     }
     .agenda-empty {
       border: 1px dashed #d7e1f2;
@@ -1288,6 +1385,7 @@
               <button class="detail-tab active" data-tab="attendees">参会人</button>
               <button class="detail-tab" data-tab="notes">Notes</button>
               <button class="detail-tab" data-tab="reminders">Reminders</button>
+              <button class="detail-tab" data-tab="files">文件</button>
             </div>
             <div class="detail-panel active" data-panel="attendees">
               <div class="detail-card">
@@ -1302,6 +1400,11 @@
             <div class="detail-panel" data-panel="reminders">
               <div class="detail-card">
                 <div class="asset-list" id="detailRemindersList"></div>
+              </div>
+            </div>
+            <div class="detail-panel" data-panel="files">
+              <div class="detail-card">
+                <div class="files-feed" id="detailFilesList"></div>
               </div>
             </div>
           </div>
@@ -1453,6 +1556,7 @@
             <button class="opt" id="detailAddNoteBtn">添加 Notes</button>
             <button class="opt" id="detailAddAttendeeBtn">添加联系人</button>
             <button class="opt" id="detailAddReminderBtn">添加 Reminder</button>
+            <button class="opt" id="detailAddFileBtn">上传附件</button>
             <button class="opt" id="detailAddCancelBtn">取消</button>
           </div>
         </div>
@@ -1469,7 +1573,6 @@
               <div class="side-sec-title">我的</div>
               <div class="switch-row"><span>显示日程</span><input type="checkbox" id="showEventsSwitch" checked></div>
               <div class="switch-row"><span>显示代办</span><input type="checkbox" id="showRemindersSwitch" checked></div>
-              <div class="switch-row"><span>显示已完成代办</span><input type="checkbox" id="showDoneRemindersSwitch"></div>
             </div>
             <div class="side-sec">
               <div class="side-sec-title">订阅日历</div>
@@ -1496,9 +1599,11 @@
       <ul>
         <li>右上角仅保留一个筛选入口，打开统一侧边栏。</li>
         <li>侧边栏仅支持“日 / 日程”两种视图切换。</li>
-        <li>侧边栏统一管理：日程/代办显示、第三方日历筛选、添加入口。</li>
+        <li>侧边栏统一管理：日程/代办显示、第三方日历筛选、添加入口；已完成代办始终与未完成同列，删除线区分（无「显示已完成」开关）。</li>
         <li>日程视图支持连续滚动，顶部日期框高亮跟随中间可视日期。</li>
         <li>空白时间区点击创建 30 分钟临时“新建日程”占位。</li>
+        <li>Event 详情为四个 Tab：参会人 / Notes / Reminders / <strong>文件</strong>（Event ↔ File 卡片，可移除关联）；<code>+</code> 含「上传附件」。</li>
+        <li>示例数据：<strong>6 月 1 日</strong>（相对基准日 5/5 的 offset=27）有一条 <strong>全天 Event</strong>；请在 <strong>日程</strong> 中滚动到 6 月，用顶部日期条点到 6/1，列表与详情可查看；单日视图当前日期条仅覆盖约一周范围，看 6/1 全天请以日程为准。</li>
       </ul>
     </aside>
   </div>
@@ -1541,6 +1646,15 @@
       ],
       "4": [
         { id: "e-sat-1", start: "16:00", end: "17:00", title: "客户回访", sub: "外部沟通", source: "google" }
+      ],
+      "27": [
+        {
+          id: "e-jun1-allday",
+          allDay: true,
+          title: "儿童节 · 公司全天活动",
+          sub: "全天",
+          source: "bizcard"
+        }
       ]
     };
     const eventAssetsById = {
@@ -1578,6 +1692,15 @@
           { title: "合作方案草稿.pdf", sub: "1.2MB · 已挂载" },
           { title: "录音_20260505.m4a", sub: "音频 · 可生成 Summary" }
         ]
+      },
+      "e-jun1-allday": {
+        location: "总部大会议室 / 线上同步",
+        meetingLink: "https://meet.bizcard.ai/jun1",
+        desc: "Demo：6 月 1 日全天日程占位，对应 PRD 全天 Event。",
+        attendees: [{ name: "活动组", email: "events@bizcard.ai", matched: true }],
+        notes: [],
+        reminders: [],
+        files: []
       }
     };
     const contactsLibrary = [
@@ -1654,6 +1777,7 @@
     const detailAttendeesList = document.getElementById("detailAttendeesList");
     const detailNotesList = document.getElementById("detailNotesList");
     const detailRemindersList = document.getElementById("detailRemindersList");
+    const detailFilesList = document.getElementById("detailFilesList");
     const agentHintBubble = document.getElementById("agentHintBubble");
     const detailTabs = document.querySelectorAll(".detail-tab");
     const detailPanels = document.querySelectorAll(".detail-panel");
@@ -1665,8 +1789,6 @@
     let viewMode = "day"; // day | agenda
     let showEventsInCalendar = true;
     let showRemindersInCalendar = true;
-    let showDoneRemindersInCalendar = false;
-    let reminderShowDoneInAll = false;
     let draftEvent = null; // {startMin,endMin}
     let selectedEventId = null;
     let editingEventId = null;
@@ -1766,7 +1888,6 @@
       const sideProviderFilterList = document.getElementById("sideProviderFilterList");
       document.getElementById("showEventsSwitch").checked = showEventsInCalendar;
       document.getElementById("showRemindersSwitch").checked = showRemindersInCalendar;
-      document.getElementById("showDoneRemindersSwitch").checked = showDoneRemindersInCalendar;
       viewGrid.querySelectorAll(".view-btn").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.view === viewMode);
       });
@@ -1873,6 +1994,45 @@
         `).join("")
         : `<div class="asset-item"><div class="s">暂无挂载 Notes</div></div>`;
     }
+    function fileCardIcon(title) {
+      if (/\.pdf$/i.test(title || "")) return "📄";
+      if (/\.(m4a|mp3|wav|aac)$/i.test(title || "")) return "🎧";
+      return "📎";
+    }
+    function renderFilesFeed(files) {
+      const arr = files || [];
+      detailFilesList.innerHTML = arr.length
+        ? arr.map((f, idx) => `
+          <div class="file-card" data-file-title="${encodeURIComponent(f.title)}" style="cursor:pointer;">
+            <div class="file-card-row">
+              <div class="file-card-ico">${fileCardIcon(f.title)}</div>
+              <div class="file-card-main">
+                <div class="file-card-title">${f.title}</div>
+                <div class="file-card-sub">${f.sub || "audio · Event 挂载"}</div>
+              </div>
+              <button type="button" class="file-card-remove" data-file-idx="${idx}">移除</button>
+            </div>
+          </div>
+        `).join("")
+        : `<div class="asset-item"><div class="s">暂无会议文件</div></div>`;
+      detailFilesList.querySelectorAll(".file-card").forEach((card) => {
+        card.addEventListener("click", (e) => {
+          if (e.target.closest(".file-card-remove")) return;
+          const raw = card.dataset.fileTitle;
+          if (raw) window.alert(`（Demo）将打开 File 详情 / 播放器：\n${decodeURIComponent(raw)}`);
+        });
+      });
+      detailFilesList.querySelectorAll(".file-card-remove").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const asset = eventAssetsById[selectedEventId];
+          if (!asset || !asset.files) return;
+          asset.files.splice(Number(btn.dataset.fileIdx), 1);
+          renderFilesFeed(asset.files);
+          refreshAgentHintBubble();
+        });
+      });
+    }
     function getEventReminderItems(asset) {
       const fromNotes = (asset.notes || []).flatMap((n, noteIdx) => {
         const items = n.reminderItems || [];
@@ -1927,13 +2087,16 @@
       }
       const asset = eventAssetsById[selectedEventId] || {};
       const hasNotes = (asset.notes || []).length > 0;
-      let text = "点击 + 可添加 Notes、联系人、Reminder";
+      const hasFiles = (asset.files || []).length > 0;
+      let text = "点击 + 可添加 Notes、联系人、Reminder、上传附件";
       if (currentDetailTab === "notes") {
         text = hasNotes ? "Ask-Agent 可继续生成 recap。" : "Ask-Agent 可生成 briefing。";
       } else if (currentDetailTab === "attendees") {
         text = "可通过 + 快速添加参会人。";
       } else if (currentDetailTab === "reminders") {
         text = "可通过 + 快速补充会议提醒。";
+      } else if (currentDetailTab === "files") {
+        text = hasFiles ? "点击文件可查看；移除仅解除与本会议的关联。" : "暂无会议文件：可通过 + 上传附件。";
       }
       agentHintBubble.textContent = text;
       agentHintBubble.classList.add("show");
@@ -2135,7 +2298,9 @@
       const source = getSourceMeta(ev.source);
       const asset = eventAssetsById[ev.id] || {};
       detailTitle.textContent = ev.title;
-      detailTime.textContent = `${toDateInputValue(ev.dayOffset)} ${ev.start} - ${ev.end} (GMT+8)`;
+      detailTime.textContent = ev.allDay
+        ? `${toDateInputValue(ev.dayOffset)} 全天 (GMT+8)`
+        : `${toDateInputValue(ev.dayOffset)} ${ev.start} - ${ev.end} (GMT+8)`;
       detailSource.textContent = `来源：${source.label}`;
       detailLocationLine.textContent = `地点：${asset.location || "暂无"}`;
       detailLinkLine.innerHTML = asset.meetingLink
@@ -2144,6 +2309,7 @@
       renderAttendeesList(asset.attendees || []);
       renderNotesFeed(asset.notes || []);
       renderEventReminderCards(ev.id, asset);
+      renderFilesFeed(asset.files || []);
       switchDetailTab("attendees");
       clearDraft();
       calendarHeader.style.display = "none";
@@ -2173,8 +2339,12 @@
       document.getElementById("newEventTitle").value = event ? event.title : "";
       document.getElementById("newEventDate").value = toDateInputValue(dateOffset);
       document.getElementById("newEventTimezone").value = "GMT+8";
-      document.getElementById("newEventStart").value = event ? event.start : (prefill ? fmtTime(prefill.startMin) : "18:00");
-      document.getElementById("newEventEnd").value = event ? event.end : (prefill ? fmtTime(prefill.endMin) : "18:30");
+      document.getElementById("newEventStart").value = event
+        ? (event.allDay ? "00:00" : event.start)
+        : (prefill ? fmtTime(prefill.startMin) : "18:00");
+      document.getElementById("newEventEnd").value = event
+        ? (event.allDay ? "23:59" : event.end)
+        : (prefill ? fmtTime(prefill.endMin) : "18:30");
       document.getElementById("newEventGuests").value = (eventAssetsById[eventId]?.attendees || []).map((a) => a.email || a.name).join(", ");
       document.getElementById("newEventRepeat").value = eventAssetsById[eventId]?.repeat || "不重复";
       document.getElementById("newEventMeetingLink").value = eventAssetsById[eventId]?.meetingLink || "";
@@ -2211,7 +2381,23 @@
         if (providerFilterState[e.source] === undefined) return true;
         return providerFilterState[e.source];
       });
-      const eventItems = dayEvents.map((e) => {
+      const allDayEvents = dayEvents.filter((e) => e.allDay);
+      const timedDayEvents = dayEvents.filter((e) => !e.allDay);
+      const allDayHtml = allDayEvents.length
+        ? `<div class="allday-wrap"><div class="allday-strip">
+            <span class="allday-label">全天</span>
+            <div class="allday-chips">
+              ${allDayEvents.map((e) => {
+                const src = getSourceMeta(e.source);
+                return `<button type="button" class="allday-event" data-event="${e.id}">
+                  <div class="t">${e.title}</div>
+                  <div class="s">${src.label} · 全天</div>
+                </button>`;
+              }).join("")}
+            </div>
+          </div></div>`
+        : "";
+      const eventItems = timedDayEvents.map((e) => {
         const startMin = parseTime(e.start);
         const endMin = parseTime(e.end);
         return {
@@ -2228,7 +2414,7 @@
         };
       });
       const dayReminders = showRemindersInCalendar
-        ? remindersAll.filter((r) => r.dayOffset === getSelectedDayOffset() && (showDoneRemindersInCalendar || r.state !== "已完成"))
+        ? remindersAll.filter((r) => r.dayOffset === getSelectedDayOffset())
         : [];
       const reminderItems = dayReminders.map((r) => {
         const startMin = parseTime(r.time);
@@ -2308,15 +2494,21 @@
           <div class="s">${fmtTime(draftEvent.startMin)} - ${fmtTime(draftEvent.endMin)} · 点击继续</div>
         </div>`;
       })() : "";
-      const empty = merged.length === 0 && !draftEvent
+      const empty = merged.length === 0 && !draftEvent && !allDayEvents.length
         ? `<div class="timeline-empty">当日无日程<small>可点击空白时间快速新建</small></div>`
         : "";
-      calendarMain.innerHTML = `<div class="day-grid">${buildHourRows()}${blocks}${draft}${empty}</div>`;
+      calendarMain.innerHTML = `${allDayHtml}<div class="day-grid">${buildHourRows()}${blocks}${draft}${empty}</div>`;
 
+      document.querySelectorAll(".allday-event[data-event]").forEach((node) => {
+        node.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          openEventDetail(node.dataset.event);
+        });
+      });
       document.querySelectorAll(".event-block[data-event]").forEach((node) => node.addEventListener("click", () => openEventDetail(node.dataset.event)));
       document.querySelectorAll(".hour-row").forEach((row) => {
         row.addEventListener("click", (ev) => {
-          if (ev.target.closest(".event-block") || ev.target.closest("#draftBlock")) return;
+          if (ev.target.closest(".event-block") || ev.target.closest("#draftBlock") || ev.target.closest(".allday-event")) return;
           const rect = row.getBoundingClientRect();
           const offsetY = ev.clientY - rect.top;
           const hour = Number(row.dataset.hour);
@@ -2344,16 +2536,23 @@
         const eventItems = showEventsInCalendar
           ? (eventsByDayOffset[String(offset)] || [])
               .filter((e) => e.source === "bizcard" || providerFilterState[e.source] !== false)
-              .map((e) => ({ kind: "event", title: e.title, start: e.start, end: e.end, source: getSourceMeta(e.source).label }))
+              .map((e) => ({
+                kind: "event",
+                title: e.title,
+                start: e.start,
+                end: e.end,
+                allDay: !!e.allDay,
+                source: getSourceMeta(e.source).label
+              }))
           : [];
         const todoItems = showRemindersInCalendar
           ? remindersAll
-              .filter((r) => r.dayOffset === offset && (showDoneRemindersInCalendar || r.state !== "已完成"))
-              .map((r) => ({ kind: "todo", title: r.title, time: r.time, sub: r.state }))
+              .filter((r) => r.dayOffset === offset)
+              .map((r) => ({ kind: "todo", title: r.title, time: r.time, sub: r.state, done: r.state === "已完成" }))
           : [];
         const items = [...eventItems, ...todoItems].sort((a, b) => {
-          const aKey = a.kind === "event" ? a.start : a.time;
-          const bKey = b.kind === "event" ? b.start : b.time;
+          const aKey = a.kind === "event" ? (a.allDay ? "00:00" : a.start) : a.time;
+          const bKey = b.kind === "event" ? (b.allDay ? "00:00" : b.start) : b.time;
           return aKey.localeCompare(bKey);
         });
         return { offset, weekInfo, items };
@@ -2382,8 +2581,12 @@
         const prevMonth = idx > 0 ? (getDateByOffset(weekGroups[idx - 1].startOffset).getMonth() + 1) : null;
         const showMonthTitle = idx === 0 || month !== prevMonth;
         const dayRows = group.days
-          .filter((d) => d.items.length > 0)
           .map((d) => {
+            if (d.items.length === 0) {
+              return `
+              <div class="agenda-day-row agenda-group agenda-day-empty" data-offset="${d.offset}" id="agenda-day-${d.offset}" aria-hidden="true"></div>
+            `;
+            }
             const todayFlag = d.offset === 0 ? "今天" : d.weekInfo.weekday;
             const dayNo = getDateByOffset(d.offset).getDate();
             return `
@@ -2394,9 +2597,11 @@
                 </div>
                 <div class="agenda-day-items">
                   ${d.items.map((x) => `
-                    <div class="agenda-item ${x.kind === "todo" ? "todo" : "event"}">
+                    <div class="agenda-item ${x.kind === "todo" ? `todo${x.done ? " done" : ""}` : "event"}">
                       <div class="t">${x.title}</div>
-                      <div class="s">${x.kind === "event" ? `${x.start}-${x.end}${x.source ? ` · ${x.source}` : ""}` : `${x.time} · ${x.sub}`}</div>
+                      <div class="s">${x.kind === "event"
+                        ? (x.allDay ? `全天${x.source ? ` · ${x.source}` : ""}` : `${x.start}-${x.end}${x.source ? ` · ${x.source}` : ""}`)
+                        : `${x.time} · ${x.sub}`}</div>
                     </div>
                   `).join("")}
                 </div>
@@ -2406,9 +2611,9 @@
 
         return `
           ${showMonthTitle ? `<h3 class="agenda-month">${month}月</h3>` : ""}
-          <section class="agenda-week-block agenda-group" data-offset="${group.startOffset}" id="agenda-week-${group.startOffset}">
+          <section class="agenda-week-block" data-week-start="${group.startOffset}" id="agenda-week-${group.startOffset}">
             <div class="agenda-week">第${group.weekInfo.weekNo}周，${group.weekInfo.startLabel} - ${group.weekInfo.endLabel}</div>
-            ${group.hasItems ? dayRows : ""}
+            ${dayRows}
           </section>
         `;
       }).join("");
@@ -2434,11 +2639,11 @@
             return;
           }
         }
-        const groups = Array.from(calendarMain.querySelectorAll(".agenda-group"));
-        if (!groups.length) return;
+        const dayRowEls = Array.from(calendarMain.querySelectorAll(".agenda-day-row[data-offset]"));
+        if (!dayRowEls.length) return;
         const centerY = calendarMain.scrollTop + calendarMain.clientHeight / 2;
         let best = null;
-        groups.forEach((el) => {
+        dayRowEls.forEach((el) => {
           const mid = el.offsetTop + el.offsetHeight / 2;
           const dist = Math.abs(mid - centerY);
           if (!best || dist < best.dist) best = { dist, offset: Number(el.dataset.offset) };
@@ -2456,7 +2661,7 @@
       if (agendaNeedAlign) {
         let anchor = document.getElementById(`agenda-day-${agendaFocusOffset}`);
         if (!anchor) {
-          const candidates = Array.from(calendarMain.querySelectorAll(".agenda-group[data-offset]"));
+          const candidates = Array.from(calendarMain.querySelectorAll(".agenda-day-row[data-offset]"));
           let best = null;
           candidates.forEach((el) => {
             const offset = Number(el.dataset.offset);
@@ -2469,7 +2674,7 @@
           calendarMain.scrollTop = Math.max(0, anchor.offsetTop - calendarMain.clientHeight / 2 + anchor.offsetHeight / 2);
         }
         agendaNeedAlign = false;
-        onScroll();
+        renderMonthLabel();
       }
     }
     function renderThreeDayMode() {
@@ -2486,7 +2691,7 @@
           <div class="three-col">
             <div class="agenda-date">${dateLabel}</div>
             ${events.map((e) => `<div class="agenda-item"><div class="t">${e.title}</div><div class="s">${e.start}-${e.end}</div></div>`).join("")}
-            ${todos.map((r) => `<div class="agenda-item todo"><div class="t">${r.title}</div><div class="s">${r.time} · ${r.state}</div></div>`).join("")}
+            ${todos.map((r) => `<div class="agenda-item todo${r.state === "已完成" ? " done" : ""}"><div class="t">${r.title}</div><div class="s">${r.time} · ${r.state}</div></div>`).join("")}
           </div>
         `;
       }).join("");
@@ -2509,9 +2714,7 @@
         ? remindersAll.filter((r) => r.dayOffset === getSelectedDayOffset())
         : remindersAll;
       const doneCount = base.filter((r) => r.state === "已完成").length;
-      const filtered = scope === "all"
-        ? (reminderShowDoneInAll ? base : base.filter((r) => r.state !== "已完成"))
-        : base;
+      const filtered = base;
 
       const sorted = filtered
         .slice()
@@ -2532,7 +2735,7 @@
       calendarMain.innerHTML = `
         <div class="rem-toolbar">
           <div class="rem-toolbar-title">${scope === "day" ? "当日提醒" : "全部提醒"}</div>
-          ${scope === "all" ? `<button class="done-chip ${reminderShowDoneInAll ? "active" : ""}" id="doneToggleBtn">Done (${doneCount})</button>` : "<span></span>"}
+          ${scope === "all" ? `<span class="rem-done-stat">已完成 ${doneCount}</span>` : "<span></span>"}
         </div>
         <div class="rem-groups">
           ${scope === "day"
@@ -2578,13 +2781,6 @@
         </div>
       `;
 
-      const doneToggleBtn = document.getElementById("doneToggleBtn");
-      if (doneToggleBtn) {
-        doneToggleBtn.addEventListener("click", () => {
-          reminderShowDoneInAll = !reminderShowDoneInAll;
-          renderReminderList(scope);
-        });
-      }
       document.querySelectorAll(".rem-check").forEach((check) => {
         check.addEventListener("change", () => {
           const item = remindersAll.find((r) => r.id === check.dataset.id);
@@ -2654,10 +2850,6 @@
     });
     document.getElementById("showRemindersSwitch").addEventListener("change", (e) => {
       showRemindersInCalendar = !!e.target.checked;
-      renderMainView();
-    });
-    document.getElementById("showDoneRemindersSwitch").addEventListener("change", (e) => {
-      showDoneRemindersInCalendar = !!e.target.checked;
       renderMainView();
     });
     document.querySelectorAll("#viewGrid .view-btn").forEach((btn) => {
@@ -2779,7 +2971,6 @@
       });
       pageMode = "calendar";
       type = "reminders";
-      reminderShowDoneInAll = false;
       renderMainView();
     });
     document.getElementById("quickAddCancelBtn").addEventListener("click", () => {
@@ -2808,6 +2999,18 @@
       asset.reminders.unshift({ id: "er-" + Date.now(), title: "新建会议提醒", sub: "18:30", state: "待处理" });
       renderEventReminderCards(selectedEventId, asset);
       switchDetailTab("reminders");
+    });
+    document.getElementById("detailAddFileBtn").addEventListener("click", () => {
+      document.getElementById("detailAddModal").style.display = "none";
+      if (!selectedEventId) return;
+      const name = window.prompt("（Demo）输入附件显示名", `会议录音_${Date.now()}.m4a`);
+      if (name == null || !String(name).trim()) return;
+      const asset = eventAssetsById[selectedEventId] || (eventAssetsById[selectedEventId] = { attendees: [], notes: [], reminders: [], files: [] });
+      asset.files = asset.files || [];
+      asset.files.push({ title: String(name).trim(), sub: "音频 · 刚上传（Demo）" });
+      renderFilesFeed(asset.files);
+      switchDetailTab("files");
+      refreshAgentHintBubble();
     });
     document.getElementById("detailAddCancelBtn").addEventListener("click", () => {
       document.getElementById("detailAddModal").style.display = "none";

@@ -13,12 +13,18 @@
 - 新增动作完成后应自动回到当前页面，并刷新当前列表/详情。
 - 若新增对象与当前上下文存在关联，系统应自动带入关联字段。
 - 文案命名统一使用单数：`Add Note`、`Add Event`、`Add Reminder`（避免 `Notes/Events` 混用）。
+- **文件类动作**与资产模型一致：写入 **`File` 实体**后，再按场景挂 **`Note → File`（主解析链路）** 或 **`Event ↔ File`（软关联）**；解除关联不隐含删除文件库（见 `PRD_ASSET_MODEL_PHASE2.md`）。
 
 ### 2.1 「添加参会人」语义区分
 
 - 在 `Note` 详情中，`添加参会人` 指给该 Note 绑定联系人关系（Note-Contact 聚合）。
 - 在 `Event` 详情中，`添加参会人` 指给会议补充 attendee（Event-Attendees），并尝试匹配到 Contact。
 - 两者是不同数据写入路径，不应复用同一提交逻辑。
+
+### 2.2 「上传文件 / 附件」语义区分
+
+- 在 **Note** 详情中上传音频：走 **`Note` 主 `file_id`（0..1）** 及既有 ASR/摘要链路；**不**自动写入同 `event_id` 的 Event 附件列表（除非产品另有「同步到日程资料」显式动作）。
+- 在 **Event** 详情（或新建日程流程）中上传：走 **`Event ↔ File` 软关联**（默认关联当前 Event）；**不**自动给同 Event 下每条 Note 写入相同 `file_id`，Note 需 **显式**再关联（见 `ASSET_MODEL_AND_RELATIONS.md` §3.1）。
 
 ---
 
@@ -60,15 +66,17 @@
 
 ## 3.2.3 Event 详情
 
-弹窗项：
-1. `添加与该会议相关 Reminder`
-2. `添加 Note`
-3. `添加参会人`
+弹窗项（与 `PRD_CALENDAR_EVENT_DETAIL_AND_CREATE.md` §1.4 对齐）：
+1. `添加 Note`
+2. `添加联系人`
+3. `添加 Reminder`
+4. `上传附件`（Phase 2：仅 `audio`；后续可扩展类型）
 
 关联建议：
-- Reminder：`related_event_id = current_event_id`
 - Note：`event_id = current_event_id`
-- 参会人：写入 Event 参与人列表，并触发 Contact 匹配流程（若可用）
+- 联系人：写入 Event 参与人/与会者列表，并触发 Contact 匹配流程（若可用）
+- Reminder：`related_event_id = current_event_id`（若从 Note 派生则同时遵守 `source_note_id` 与自动补齐规则）
+- 附件：创建 `File` 后写入 **`Event ↔ File`** 软关联；**不**自动挂到同 Event 下已有 Notes；完成后刷新 Event 详情 **「文件」Tab** 卡片列表（与编辑页附件列表同源）
 
 ## 3.2.4 Reminder 详情
 
@@ -93,7 +101,9 @@
 
 弹窗项：
 1. `添加 Reminder`
-2. `添加 Events`
+2. `添加 Event`
+
+说明：时间线空白处直达新建 Event、与底部 `+` 快速新建等规则以 `PRD_CALENDAR_EVENT_DETAIL_AND_CREATE.md` §1.2.2 为准。
 
 ---
 
@@ -111,3 +121,12 @@
 - 详情类新增动作完成后，关联关系正确写入。
 - 用户取消后无副作用。
 - 新增对象在对应页面即时可见，并可被 Ask Agent 检索。
+
+---
+
+## 6. 修订记录
+
+| 日期 | 说明 |
+|------|------|
+| 2026-04-08 | 对齐 Event 详情 `+` 与日历 PRD；补充 **Event ↔ File** 与 **Note / Event 上传语义**（§2.2、§3.2.3）；Calendar 列表项改为单数 `添加 Event` |
+| 2026-04-08 | Event 详情新增 **「文件」Tab** 与上传后刷新说明（对齐日历 PRD v1.3+） |
