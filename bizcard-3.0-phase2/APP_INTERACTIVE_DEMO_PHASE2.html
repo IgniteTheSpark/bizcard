@@ -87,6 +87,27 @@
       font-weight: 900;
     }
     .right-actions { display: flex; gap: 8px; }
+    .icon-btn.with-badge {
+      position: relative;
+    }
+    .icon-btn .badge {
+      position: absolute;
+      right: -3px;
+      top: -3px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: #f2546b;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 16px;
+      text-align: center;
+      border: 1px solid #fff;
+      display: none;
+    }
+    .icon-btn .badge.show { display: inline-block; }
     .icon-btn {
       width: 34px;
       height: 34px;
@@ -345,6 +366,15 @@
       background: #eefcf5;
     }
     .event-block.rem-card .t { color: #147a50; }
+    .event-block.rem-card.done {
+      background: #f4f7f9;
+      border-color: #dde6ef;
+    }
+    .event-block.rem-card.done .t,
+    .event-block.rem-card.done .s {
+      color: #9aa7bb;
+      text-decoration: line-through;
+    }
     .event-block .t {
       font-size: 13px;
       font-weight: 820;
@@ -1207,6 +1237,15 @@
       color: #157d52;
     }
     .agenda-item.todo.done {
+      background: #f4f7f9;
+      border-color: #dde6ef;
+    }
+    .agenda-item.todo.done .t,
+    .agenda-item.todo.done .s {
+      color: #9aa7bb;
+      text-decoration: line-through;
+    }
+    .agenda-item.todo.done {
       background: #f7f9fc;
       border-color: #e8edf6;
       border-left-color: #c5d4e8;
@@ -1240,6 +1279,107 @@
       border: 1px solid #e6eefb;
       border-radius: 12px;
       padding: 8px;
+    }
+    .notification-hub {
+      display: none;
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
+      padding: 10px 12px 90px;
+      background: #f5f8fd;
+    }
+    .hub-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .hub-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 860;
+      color: #1d2940;
+    }
+    .hub-section {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #8a99b6;
+      font-weight: 760;
+    }
+    .hub-list { margin-top: 8px; display: grid; gap: 8px; }
+    .hub-item {
+      border: 1px solid #dfe7f5;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px 12px;
+    }
+    .hub-item.unread {
+      border-color: #bdd3ff;
+      background: #f4f8ff;
+    }
+    .hub-item .t {
+      font-size: 13px;
+      font-weight: 820;
+      color: #1a2740;
+    }
+    .hub-item .s {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #7182a0;
+    }
+    .hub-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .hub-act-btn {
+      border: 1px solid #d7e2f4;
+      background: #fff;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #46608d;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+    .toast-layer {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      top: 86px;
+      z-index: 45;
+      pointer-events: none;
+    }
+    .toast-card {
+      border: 1px solid #bcd2ff;
+      background: #f4f8ff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: 0 10px 20px rgba(17,24,39,.14);
+      pointer-events: auto;
+    }
+    .toast-card .t {
+      font-size: 13px;
+      font-weight: 840;
+      color: #1f5bc1;
+    }
+    .toast-card .s {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #61759b;
+    }
+    .toast-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .toast-btn {
+      border: 1px solid #cddaf1;
+      background: #fff;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #3c5380;
+      padding: 6px 8px;
+      cursor: pointer;
     }
 
     /* Bottom actions */
@@ -1353,6 +1493,7 @@
           <div class="header-top">
             <span class="left-back">‹</span>
             <div class="right-actions">
+              <button class="icon-btn with-badge" id="notifBellBtn" title="通知中心">🔔<span class="badge" id="notifBadge">0</span></button>
               <button class="icon-btn" id="filterPanelBtn" title="筛选与设置">☰</button>
             </div>
           </div>
@@ -1506,6 +1647,17 @@
             <div class="provider-list" id="providerLocalList"></div>
           </div>
         </div>
+        <div class="notification-hub" id="notificationHub">
+          <div class="hub-head">
+            <button class="icon-btn" id="notificationHubBackBtn">‹</button>
+            <h3 class="hub-title">通知中心</h3>
+            <button class="today-btn" id="triggerToastDemoBtn">触发Toast</button>
+          </div>
+          <div class="hub-section">今天</div>
+          <div class="hub-list" id="notificationListToday"></div>
+          <div class="hub-section">更早</div>
+          <div class="hub-list" id="notificationListEarlier"></div>
+        </div>
 
         <div class="bottom-bar" id="bottomBar">
           <div class="agent-hint-bubble" id="agentHintBubble"></div>
@@ -1573,6 +1725,7 @@
               <div class="side-sec-title">我的</div>
               <div class="switch-row"><span>显示日程</span><input type="checkbox" id="showEventsSwitch" checked></div>
               <div class="switch-row"><span>显示代办</span><input type="checkbox" id="showRemindersSwitch" checked></div>
+              <button class="opt" id="triggerToastFromPanelBtn">触发通知 Toast（Demo）</button>
             </div>
             <div class="side-sec">
               <div class="side-sec-title">订阅日历</div>
@@ -1590,6 +1743,23 @@
             <button class="opt" id="calendarSubMenuCancelBtn">取消</button>
           </div>
         </div>
+        <div class="modal-mask" id="lateRecordConfirmModal">
+          <div class="modal">
+            <h3 style="font-size:22px;letter-spacing:0;">会议已开始较久</h3>
+            <div class="sub" id="lateRecordConfirmText">当前会议已开始超过 120 分钟，是否继续开启录音？</div>
+            <button class="opt" id="lateRecordContinueBtn">继续录音</button>
+            <button class="opt" id="lateRecordCancelBtn">取消</button>
+          </div>
+        </div>
+        <div class="modal-mask" id="recordingErrorModal">
+          <div class="modal">
+            <h3 style="font-size:22px;letter-spacing:0;">录音开启失败</h3>
+            <div class="sub" id="recordingErrorText">未能连接录音设备，请检查设备状态后重试。</div>
+            <button class="opt" id="recordingRetryBtn">重试</button>
+            <button class="opt" id="recordingErrorCloseBtn">我知道了</button>
+          </div>
+        </div>
+        <div class="toast-layer" id="toastLayer"></div>
 
       </div>
     </div>
@@ -1764,7 +1934,10 @@
     const eventDetail = document.getElementById("eventDetail");
     const eventCreate = document.getElementById("eventCreate");
     const integrationManage = document.getElementById("integrationManage");
+    const notificationHub = document.getElementById("notificationHub");
     const filterPanelBtn = document.getElementById("filterPanelBtn");
+    const notifBellBtn = document.getElementById("notifBellBtn");
+    const notifBadge = document.getElementById("notifBadge");
     const monthLabel = document.getElementById("monthLabel");
     const bottomBar = document.getElementById("bottomBar");
     const todayBtn = document.getElementById("todayBtn");
@@ -1802,6 +1975,16 @@
     let agendaRangeEndOffset = 45;
     let agendaIsAppendingFuture = false;
     let subMenuProviderKey = null;
+    let inNotificationHub = false;
+    let notifications = [
+      { id: "ntf-1", category: "event", title: "CARD周会 即将开始", subtitle: "19:00 · 点击可开启录音", createdAt: new Date(Date.now() - 3 * 60 * 1000).toISOString(), read: false, status: "pending", late: false, forceError: false },
+      { id: "ntf-2", category: "event", title: "需求澄清会 已过较久", subtitle: "15:00 · 点击可开启录音", createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), read: false, status: "pending", late: true, forceError: false },
+      { id: "ntf-3", category: "reminder", title: "会后发送纪要 到期", subtitle: "18:10 · Reminder", createdAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(), read: true, status: "pending", late: false, forceError: false }
+    ];
+    let toastHideTimer = null;
+    let activeToastNotificationId = null;
+    let pendingLateNotificationId = null;
+    let pendingRetryNotificationId = null;
 
     function parseTime(str) {
       const [h, m] = str.split(":").map(Number);
@@ -2243,6 +2426,193 @@
       todayBtn.style.display = "inline-flex";
       calendarMain.style.inset = "286px 0 78px";
       renderMonthLabel();
+      updateNotificationBadge();
+    }
+    function updateNotificationBadge() {
+      const unread = notifications.filter((n) => !n.read).length;
+      notifBadge.textContent = unread > 99 ? "99+" : String(unread);
+      notifBadge.classList.toggle("show", unread > 0);
+    }
+    function pushNotification(item) {
+      notifications.unshift({
+        id: "ntf-" + Date.now(),
+        read: false,
+        status: "pending",
+        late: false,
+        forceError: false,
+        createdAt: new Date().toISOString(),
+        ...item
+      });
+      updateNotificationBadge();
+      if (inNotificationHub) renderNotificationHub();
+      return notifications[0];
+    }
+    function renderNotificationHub() {
+      const todayWrap = document.getElementById("notificationListToday");
+      const earlierWrap = document.getElementById("notificationListEarlier");
+      const now = new Date();
+      const isSameDay = (iso) => {
+        const d = new Date(iso);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+      };
+      const fmt = (iso) => {
+        const d = new Date(iso);
+        return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      };
+      const draw = (list) => list.length ? list.map((n) => `
+        <div class="hub-item ${n.read ? "" : "unread"}" data-id="${n.id}">
+          <div class="t">${n.title}</div>
+          <div class="s">${fmt(n.createdAt)} · ${n.subtitle}</div>
+          <div class="hub-actions">
+            ${n.category === "event" ? `<button class="hub-act-btn" data-act="record" data-id="${n.id}">开启录音</button>` : `<button class="hub-act-btn" data-act="done" data-id="${n.id}">标记已处理</button>`}
+            <button class="hub-act-btn" data-act="snooze" data-id="${n.id}">稍后10分钟</button>
+            <button class="hub-act-btn" data-act="read" data-id="${n.id}">标记已读</button>
+          </div>
+        </div>
+      `).join("") : `<div class="asset-item"><div class="s">暂无通知</div></div>`;
+      todayWrap.innerHTML = draw(notifications.filter((n) => isSameDay(n.createdAt)));
+      earlierWrap.innerHTML = draw(notifications.filter((n) => !isSameDay(n.createdAt)));
+      document.querySelectorAll(".hub-act-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const item = notifications.find((x) => x.id === btn.dataset.id);
+          if (!item) return;
+          if (btn.dataset.act === "read") {
+            item.read = true;
+          } else if (btn.dataset.act === "snooze") {
+            item.read = true;
+            pushNotification({
+              category: item.category,
+              title: item.title,
+              subtitle: "已稍后 10 分钟（Demo）",
+              late: item.late,
+              forceError: item.forceError
+            });
+          } else if (btn.dataset.act === "done") {
+            item.read = true;
+            item.status = "acted";
+          } else if (btn.dataset.act === "record") {
+            handleRecordFromNotification(item.id);
+          }
+          updateNotificationBadge();
+          renderNotificationHub();
+        });
+      });
+    }
+    function openNotificationHub() {
+      inNotificationHub = true;
+      closeSidePanel();
+      eventDetail.style.display = "none";
+      eventCreate.style.display = "none";
+      integrationManage.style.display = "none";
+      calendarHeader.style.display = "none";
+      calendarMain.style.display = "none";
+      notificationHub.style.display = "block";
+      bottomBar.style.display = "none";
+      renderNotificationHub();
+      updateNotificationBadge();
+    }
+    function closeNotificationHub() {
+      inNotificationHub = false;
+      notificationHub.style.display = "none";
+      calendarHeader.style.display = "block";
+      calendarMain.style.display = "block";
+      bottomBar.style.display = "flex";
+      renderMainView();
+    }
+    function closeToast() {
+      const toastLayer = document.getElementById("toastLayer");
+      toastLayer.innerHTML = "";
+      activeToastNotificationId = null;
+      if (toastHideTimer) {
+        clearTimeout(toastHideTimer);
+        toastHideTimer = null;
+      }
+    }
+    function showToastForNotification(item) {
+      closeToast();
+      activeToastNotificationId = item.id;
+      const toastLayer = document.getElementById("toastLayer");
+      toastLayer.innerHTML = `
+        <div class="toast-card">
+          <div class="t">${item.title}</div>
+          <div class="s">${item.subtitle}</div>
+          <div class="toast-actions">
+            ${item.category === "event" ? `<button class="toast-btn" id="toastRecordBtn">开启录音</button>` : `<button class="toast-btn" id="toastDoneBtn">标记已处理</button>`}
+            <button class="toast-btn" id="toastSnoozeBtn">稍后10分钟</button>
+            <button class="toast-btn" id="toastCloseBtn">关闭</button>
+          </div>
+        </div>
+      `;
+      const actRecord = document.getElementById("toastRecordBtn");
+      const actDone = document.getElementById("toastDoneBtn");
+      if (actRecord) actRecord.addEventListener("click", () => handleRecordFromNotification(item.id, true));
+      if (actDone) actDone.addEventListener("click", () => {
+        const n = notifications.find((x) => x.id === item.id);
+        if (n) {
+          n.read = true;
+          n.status = "acted";
+        }
+        updateNotificationBadge();
+        closeToast();
+      });
+      document.getElementById("toastSnoozeBtn").addEventListener("click", () => {
+        const n = notifications.find((x) => x.id === item.id);
+        if (n) n.read = true;
+        pushNotification({
+          category: item.category,
+          title: item.title,
+          subtitle: "已稍后 10 分钟（Demo）",
+          late: item.late,
+          forceError: item.forceError
+        });
+        closeToast();
+      });
+      document.getElementById("toastCloseBtn").addEventListener("click", closeToast);
+      toastHideTimer = setTimeout(closeToast, 6000);
+    }
+    function handleRecordFromNotification(notificationId, closeAfter = false) {
+      const n = notifications.find((x) => x.id === notificationId);
+      if (!n) return;
+      n.read = true;
+      updateNotificationBadge();
+      if (n.late) {
+        pendingLateNotificationId = n.id;
+        document.getElementById("lateRecordConfirmModal").style.display = "flex";
+        if (closeAfter) closeToast();
+        return;
+      }
+      attemptStartRecording(notificationId, closeAfter);
+    }
+    function attemptStartRecording(notificationId, closeAfter = false) {
+      const n = notifications.find((x) => x.id === notificationId);
+      if (!n) return;
+      if (n.forceError) {
+        pendingRetryNotificationId = n.id;
+        n.status = "failed";
+        document.getElementById("recordingErrorModal").style.display = "flex";
+        if (closeAfter) closeToast();
+        if (inNotificationHub) renderNotificationHub();
+        return;
+      }
+      n.status = "acted";
+      pushNotification({
+        category: "system",
+        title: "已开启硬件录音（Demo）",
+        subtitle: n.title,
+        read: true
+      });
+      if (closeAfter) closeToast();
+      if (inNotificationHub) renderNotificationHub();
+    }
+    function triggerDemoToast() {
+      const sample = pushNotification({
+        category: "event",
+        title: "会议即将开始 · CARD周会",
+        subtitle: "19:00 · 点击可开启录音",
+        late: false,
+        forceError: false
+      });
+      showToastForNotification(sample);
     }
 
     function renderDays() {
@@ -2805,6 +3175,16 @@
       if (inIntegrationManage) return;
       openSidePanel();
     });
+    notifBellBtn.addEventListener("click", () => {
+      if (inIntegrationManage) return;
+      openNotificationHub();
+    });
+    document.getElementById("notificationHubBackBtn").addEventListener("click", closeNotificationHub);
+    document.getElementById("triggerToastDemoBtn").addEventListener("click", triggerDemoToast);
+    document.getElementById("triggerToastFromPanelBtn").addEventListener("click", () => {
+      triggerDemoToast();
+      closeSidePanel();
+    });
     document.getElementById("integrationBackBtn").addEventListener("click", () => {
       closeIntegrationManage();
     });
@@ -2843,6 +3223,42 @@
     document.getElementById("calendarSubMenuCancelBtn").addEventListener("click", closeSubCalendarMenu);
     document.getElementById("calendarSubMenuModal").addEventListener("click", (e) => {
       if (e.target.id === "calendarSubMenuModal") closeSubCalendarMenu();
+    });
+    document.getElementById("lateRecordContinueBtn").addEventListener("click", () => {
+      const id = pendingLateNotificationId;
+      pendingLateNotificationId = null;
+      document.getElementById("lateRecordConfirmModal").style.display = "none";
+      if (id) attemptStartRecording(id, true);
+    });
+    document.getElementById("lateRecordCancelBtn").addEventListener("click", () => {
+      pendingLateNotificationId = null;
+      document.getElementById("lateRecordConfirmModal").style.display = "none";
+    });
+    document.getElementById("lateRecordConfirmModal").addEventListener("click", (e) => {
+      if (e.target.id === "lateRecordConfirmModal") {
+        pendingLateNotificationId = null;
+        e.target.style.display = "none";
+      }
+    });
+    document.getElementById("recordingRetryBtn").addEventListener("click", () => {
+      const id = pendingRetryNotificationId;
+      pendingRetryNotificationId = null;
+      document.getElementById("recordingErrorModal").style.display = "none";
+      if (id) {
+        const item = notifications.find((x) => x.id === id);
+        if (item) item.forceError = false;
+        attemptStartRecording(id, true);
+      }
+    });
+    document.getElementById("recordingErrorCloseBtn").addEventListener("click", () => {
+      pendingRetryNotificationId = null;
+      document.getElementById("recordingErrorModal").style.display = "none";
+    });
+    document.getElementById("recordingErrorModal").addEventListener("click", (e) => {
+      if (e.target.id === "recordingErrorModal") {
+        pendingRetryNotificationId = null;
+        e.target.style.display = "none";
+      }
     });
     document.getElementById("showEventsSwitch").addEventListener("change", (e) => {
       showEventsInCalendar = !!e.target.checked;

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Work Detail Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --line: rgba(17,24,39,.12); --text:#111827; --muted:#6b7280; --bg:#f4f7fc; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:radial-gradient(circle at 20% 0%, #23356f 0%, #111b3f 50%, #0a1028 100%); font-family:"Noto Sans SC",sans-serif; }
+    .phone { width:430px; max-width:96vw; height:890px; background:#000; border-radius:42px; padding:10px; box-shadow:0 26px 60px rgba(0,0,0,.45); }
+    .screen { height:100%; border-radius:33px; overflow:hidden; background:var(--bg); display:flex; flex-direction:column; position:relative; }
+    .status { height:32px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; background:#fff; border-bottom:1px solid #e9eef7; color:#374151; font-size:12px; }
+    .top { background:#fff; border-bottom:1px solid #dde5f2; padding:10px; }
+    .top-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .title { margin:0; color:var(--text); font-size:15px; font-weight:700; font-family:"Sora",sans-serif; }
+    .pill { border:1px solid #c7d2fe; background:#eef2ff; color:#3443a3; border-radius:999px; padding:2px 9px; font-size:11px; font-weight:700; }
+    .demo-shell { display:flex; flex-direction:column; gap:12px; align-items:center; }
+    .entry-switch { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+    .section-switch { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
+    .section-switch::-webkit-scrollbar { display:none; }
+    .btn { border:1px solid #dbe3f5; background:#fff; border-radius:999px; padding:6px 12px; font-size:12px; color:#46516a; white-space:nowrap; cursor:pointer; }
+    .btn.active { border-color:rgba(47,118,255,.38); background:#edf3ff; color:#1f56b4; font-weight:700; }
+    .btn.home-icon { min-width:36px; padding:6px 10px; text-align:center; }
+    .content { flex:1; overflow-y:auto; padding:12px 12px 100px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:12px; box-shadow:0 8px 18px rgba(17,24,39,.06); margin-bottom:10px; }
+    .sec { margin:0 0 8px; color:#111827; font-size:14px; font-weight:700; }
+    .h1 { margin:0 0 8px; color:var(--text); font-family:"Sora",sans-serif; font-size:21px; line-height:1.3; }
+    .meta { color:var(--muted); font-size:12px; }
+    .row { border:1px solid #e5e7eb; border-radius:12px; padding:10px; margin-top:8px; background:#fff; }
+    .t { color:#111827; font-weight:700; font-size:14px; }
+    .s { color:#6b7280; font-size:12px; margin-top:4px; }
+    .tab-mini { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; margin-bottom:8px; }
+    .tab-mini::-webkit-scrollbar { display:none; }
+    .meta-chip { display:inline-flex; align-items:center; gap:6px; border:1px solid #dbe3f5; border-radius:999px; padding:4px 9px; font-size:11px; color:#4b5563; background:#f8faff; margin-top:8px; }
+    .source-card { border:1px dashed #bfd3ff; background:#f5f9ff; }
+    .source-link { color:#1f56b4; font-weight:700; }
+    .list-card { border:1px solid #e5e7eb; border-radius:12px; padding:10px; margin-top:8px; background:#fff; }
+    .check-row { display:flex; align-items:flex-start; gap:10px; }
+    .check-row input { margin-top:2px; width:16px; height:16px; }
+    .contact-row { display:flex; align-items:flex-start; gap:10px; }
+    .avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#2f76ff,#6ba8ff); color:#fff; display:grid; place-items:center; font-size:13px; font-weight:700; flex:0 0 36px; }
+    .badge-q { display:inline-block; margin-left:6px; border-radius:999px; border:1px solid #f0b429; color:#b45309; background:#fff7ed; padding:1px 6px; font-size:10px; font-weight:700; }
+    .kv { display:flex; gap:8px; align-items:center; margin-top:5px; color:#6b7280; font-size:12px; }
+    .type-pill { border:1px solid #dbe3f5; color:#374151; border-radius:999px; padding:1px 8px; font-size:11px; background:#f9fbff; }
+    .dock { position:absolute; left:12px; right:12px; bottom:14px; border-radius:16px; background:rgba(17,24,39,.92); border:1px solid rgba(255,255,255,.16); padding:8px; display:flex; gap:8px; }
+    .dock button { border:none; border-radius:10px; padding:10px 8px; color:#e5e7eb; background:#303847; font-size:12px; cursor:pointer; flex:1; }
+    .dock .record { background:linear-gradient(135deg,#2f76ff,#4da8ff); color:#fff; font-weight:700; }
+    .dock .plus { flex:0 0 44px; width:44px; min-width:44px; padding:0; line-height:44px; font-size:24px; background:#3b4252; }
+  </style>
+</head>
+<body>
+  <div class="demo-shell">
+    <div class="entry-switch" id="switch"></div>
+    <div class="phone">
+      <div class="screen">
+        <div class="status"><span>9:41</span><span>5G · 100%</span></div>
+        <div class="top">
+          <div class="top-row">
+            <h3 class="title" id="title">Work 详情</h3>
+            <span class="pill" id="pill">file_id:2</span>
+          </div>
+          <div class="section-switch" id="sectionTabs"></div>
+        </div>
+        <div class="content" id="content"></div>
+        <div class="dock">
+          <button class="record">录音</button>
+          <button>Ask Agent</button>
+          <button class="plus">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const views = {
+      file: {
+        title: "File 详情",
+        pill: "file_id:2",
+        sections: [
+          {
+            name: "Main Content",
+            html: `<article class="card"><h4 class="sec">Main Content</h4><h2 class="h1">客户评审会录音</h2><div class="meta">audio · 00:42:13 · 上传于 2026-04-09 09:18</div><div class="row"><div class="t">Transcript</div><div class="s">我们今天先看预算与排期，重点是下周版本冻结前的交付边界。先确认风险清单，再确定负责人和回传时间点...</div><div class="meta-chip">▶ 00:10 / 42:13 · 可播放</div></div></article>`
+          },
+          {
+            name: "Source",
+            html: `<article class="card source-card"><h4 class="sec">Source</h4><div class="row source-card"><div class="t">meeting_recorded</div><div class="s">硬件会议录音来源（仅展示文本来源类型）</div></div></article>`
+          },
+          {
+            name: "Note",
+            html: `<article class="card"><h4 class="sec">Note</h4><div class="tab-mini" id="noteTabs"></div><div class="row" id="notePanel"></div></article>`
+          },
+          {
+            name: "Reminder",
+            html: `<article class="card"><h4 class="sec">Reminder</h4><div class="list-card"><label class="check-row"><input type="checkbox"><div><div class="t">会前 30 分钟检查演示环境</div><div class="s">截止时间：明天 09:30</div></div></label></div><div class="list-card"><label class="check-row"><input type="checkbox" checked><div><div class="t">补齐客户预算对比数据</div><div class="s">截止时间：今天 20:00</div></div></label></div></article>`
+          },
+          {
+            name: "Events",
+            html: `<article class="card"><h4 class="sec">Events</h4><div class="list-card"><div class="t">Q4 Business Review</div><div class="kv"><span>10:00 - 11:00</span><span>会议室 A</span><span>6 人</span></div></div><div class="list-card"><div class="t">预算对齐会</div><div class="kv"><span>15:00 - 15:45</span><span>Zoom</span><span>4 人</span></div></div></article>`
+          },
+          {
+            name: "Contacts",
+            html: `<article class="card"><h4 class="sec">Contacts</h4><div class="list-card"><div class="contact-row"><div class="avatar">EC</div><div><div class="t">Emily Chen</div><div class="s">Product Lead · BizCard</div></div></div></div><div class="list-card"><div class="contact-row"><div class="avatar">KZ</div><div><div class="t">Kevin Zhao<span class="badge-q">?</span></div><div class="s">Finance · 未绑定联系人</div></div></div></div></article>`
+          },
+          {
+            name: "Files",
+            html: `<article class="card"><h4 class="sec">Files</h4><div class="list-card"><div class="t">客户评审会录音</div><div class="kv"><span class="type-pill">audio</span><span>上传于 2026-04-09 09:18</span></div></div><div class="list-card"><div class="t">会前资料.md</div><div class="kv"><span class="type-pill">md</span><span>上传于 2026-04-09 09:20</span></div></div><div class="list-card"><div class="t">白板拍照_01.jpg</div><div class="kv"><span class="type-pill">image</span><span>上传于 2026-04-09 10:58</span></div></div></article>`
+          }
+        ]
+      },
+      note: {
+        title: "Note 详情",
+        pill: "note_id:1",
+        sections: [
+          {
+            name: "Main Content",
+            html: `<article class="card"><h4 class="sec">Main Content</h4><h2 class="h1">Q4 会前 Briefing</h2><div class="meta">updated Today 08:40 · tag=briefing</div><div class="row"><div class="s">本季度营收完成率 108%，但续约风险集中在客户 A 与客户 C。会议建议先确认降本范围，再锁定下周版本冻结前的交付边界。建议按“风险等级→资源投入→回传时间”推进讨论。</div></div></article>`
+          },
+          {
+            name: "Source",
+            html: `<article class="card source-card"><h4 class="sec">Source</h4><div class="row source-card"><div class="t source-link">录音来源：客户评审会录音</div><div class="s">可回跳到 File 详情（file_id:2）</div></div></article>`
+          },
+          {
+            name: "Reminder",
+            html: `<article class="card"><h4 class="sec">Reminder</h4><div class="list-card"><label class="check-row"><input type="checkbox"><div><div class="t">会前 30 分钟准备材料</div><div class="s">截止时间：明天 09:30</div></div></label></div><div class="list-card"><label class="check-row"><input type="checkbox"><div><div class="t">确认客户 A 风险备选方案</div><div class="s">截止时间：明天 08:00</div></div></label></div></article>`
+          },
+          {
+            name: "Events",
+            html: `<article class="card"><h4 class="sec">Events</h4><div class="list-card"><div class="t">Q4 Business Review</div><div class="kv"><span>10:00 - 11:00</span><span>会议室 A</span><span>6 人</span></div></div></article>`
+          },
+          {
+            name: "Contacts",
+            html: `<article class="card"><h4 class="sec">Contacts</h4><div class="list-card"><div class="contact-row"><div class="avatar">EC</div><div><div class="t">Emily Chen</div><div class="s">Product Lead · BizCard</div></div></div></div><div class="list-card"><div class="contact-row"><div class="avatar">AW</div><div><div class="t">Alex Wu</div><div class="s">Sales Director · ByteBridge</div></div></div></div></article>`
+          },
+          {
+            name: "Files",
+            html: `<article class="card"><h4 class="sec">Files</h4><div class="list-card"><div class="t">客户评审会录音</div><div class="kv"><span class="type-pill">audio</span><span>上传于 2026-04-09 09:18</span></div></div></article>`
+          }
+        ]
+      },
+      reminder: {
+        title: "Reminder 详情",
+        pill: "reminder_id:1",
+        sections: [
+          {
+            name: "Main Content",
+            html: `<article class="card"><h4 class="sec">Main Content</h4><div class="list-card"><label class="check-row"><input type="checkbox"><div><div class="t">会前 30 分钟准备材料</div><div class="s">截止时间：明天 09:30 · 状态：pending</div></div></label></div></article>`
+          },
+          {
+            name: "Source",
+            html: `<article class="card source-card"><h4 class="sec">Source</h4><div class="row source-card"><div class="t source-link">Ask Agent 会话 #A-102</div><div class="s">source=user_request_session · 可回跳会话</div></div></article>`
+          },
+          {
+            name: "Events",
+            html: `<article class="card"><h4 class="sec">Events</h4><div class="list-card"><div class="t">Q4 Business Review</div><div class="kv"><span>10:00 - 11:00</span><span>会议室 A</span><span>6 人</span></div></div></article>`
+          },
+          {
+            name: "Note",
+            html: `<article class="card"><h4 class="sec">Note</h4><div class="tab-mini" id="noteTabs"></div><div class="row" id="notePanel"></div></article>`
+          },
+          {
+            name: "Contacts",
+            html: `<article class="card"><h4 class="sec">Contacts</h4><div class="list-card"><div class="contact-row"><div class="avatar">EC</div><div><div class="t">Emily Chen</div><div class="s">Product Lead · BizCard</div></div></div></div></article>`
+          },
+          {
+            name: "Files",
+            html: `<article class="card"><h4 class="sec">Files</h4><div class="list-card"><div class="t">客户评审会录音</div><div class="kv"><span class="type-pill">audio</span><span>上传于 2026-04-09 09:18</span></div></div></article>`
+          }
+        ]
+      },
+      event: {
+        title: "Event 详情",
+        pill: "event_id:4",
+        sections: [
+          {
+            name: "Main Content",
+            html: `<article class="card"><h4 class="sec">Main Content</h4><h2 class="h1">Q4 Business Review</h2><div class="meta">Tomorrow 10:00 - 11:00 · 会议室 A · 6 人</div><div class="row"><div class="s">目标：确认预算与交付边界，聚焦风险条目和负责人承诺。</div></div></article>`
+          },
+          {
+            name: "Source",
+            html: `<article class="card source-card"><h4 class="sec">Source</h4><div class="row source-card"><div class="t">third_party</div><div class="s">Google Calendar 同步（文本来源展示）</div></div></article>`
+          },
+          {
+            name: "Contacts",
+            html: `<article class="card"><h4 class="sec">Contacts</h4><div class="list-card"><div class="contact-row"><div class="avatar">EC</div><div><div class="t">Emily Chen</div><div class="s">Product Lead · BizCard</div></div></div></div><div class="list-card"><div class="contact-row"><div class="avatar">KZ</div><div><div class="t">Kevin Zhao<span class="badge-q">?</span></div><div class="s">Finance · 邮箱匹配待确认</div></div></div></div></article>`
+          },
+          {
+            name: "Reminder",
+            html: `<article class="card"><h4 class="sec">Reminder</h4><div class="list-card"><label class="check-row"><input type="checkbox"><div><div class="t">会前 30 分钟准备材料</div><div class="s">截止时间：明天 09:30</div></div></label></div></article>`
+          },
+          {
+            name: "Note",
+            html: `<article class="card"><h4 class="sec">Note</h4><div class="tab-mini" id="noteTabs"></div><div class="row" id="notePanel"></div></article>`
+          },
+          {
+            name: "Files",
+            html: `<article class="card"><h4 class="sec">Files</h4><div class="list-card"><div class="t">会前材料.md</div><div class="kv"><span class="type-pill">md</span><span>上传于 2026-04-09 09:20</span></div></div><div class="list-card"><div class="t">白板拍照_01.jpg</div><div class="kv"><span class="type-pill">image</span><span>上传于 2026-04-09 10:58</span></div></div></article>`
+          }
+        ]
+      },
+      contact: {
+        title: "Contact 详情",
+        pill: "contact_id:5",
+        sections: [
+          {
+            name: "Main Content",
+            html: `<article class="card"><h4 class="sec">Main Content</h4><div class="contact-row"><div class="avatar">EC</div><div><div class="h1" style="font-size:20px;margin:0;">Emily Chen</div><div class="meta">Product Lead · BizCard</div><div class="meta">emily.chen@example.com</div></div></div></article>`
+          },
+          {
+            name: "Source",
+            html: `<article class="card source-card"><h4 class="sec">Source</h4><div class="row source-card"><div class="t source-link">交换名片导入</div><div class="s">source=user_exchanged</div></div></article>`
+          },
+          {
+            name: "Events",
+            html: `<article class="card"><h4 class="sec">Events</h4><div class="list-card"><div class="t">Q4 Business Review</div><div class="kv"><span>10:00 - 11:00</span><span>会议室 A</span><span>6 人</span></div></div></article>`
+          },
+          {
+            name: "Reminder",
+            html: `<article class="card"><h4 class="sec">Reminder</h4><div class="list-card"><label class="check-row"><input type="checkbox"><div><div class="t">会前 30 分钟准备材料</div><div class="s">截止时间：明天 09:30</div></div></label></div></article>`
+          },
+          {
+            name: "Note",
+            html: `<article class="card"><h4 class="sec">Note</h4><div class="tab-mini" id="noteTabs"></div><div class="row" id="notePanel"></div></article>`
+          },
+          {
+            name: "Files",
+            html: `<article class="card"><h4 class="sec">Files</h4><div class="list-card"><div class="t">客户评审会录音</div><div class="kv"><span class="type-pill">audio</span><span>上传于 2026-04-09 09:18</span></div></div></article>`
+          }
+        ]
+      }
+    };
+
+    const noteSets = {
+      file: [
+        { key: "note_1", title: "Q4 会前 Briefing", body: "本季度营收完成率 108%，建议优先讨论续约风险与资源投入边界。先确认 A/C 客户风险，再敲定下周冻结前交付边界。" },
+        { key: "note_2", title: "会议纪要草稿", body: "已确认两条风险路径与负责人：A 线由产品团队推进，B 线由商务团队回传客户诉求，截止明晚 20:00。" },
+        { key: "note_3", title: "风险补充说明", body: "客户 A 续约概率下滑，建议提供降配方案与分阶段签约方案，避免一次性压价造成毛利损失。" }
+      ],
+      reminder: [
+        { key: "note_1", title: "提醒来源 Note", body: "该 reminder 由 Ask Agent 在会前 briefing 场景中直接创建，目标是确保会议前准备动作可执行。" }
+      ],
+      event: [
+        { key: "note_1", title: "会前摘要", body: "会议目标是确认预算和交付边界。建议先看风险条目，再核对资源投入和回传节点。" },
+        { key: "note_2", title: "会后纪要草稿", body: "会后需在 24h 内补齐行动项 owner 与时间，避免跨团队执行偏差。" }
+      ],
+      contact: [
+        { key: "note_1", title: "联系人会前备注", body: "Emily 关注版本风险与客户反馈闭环，会议中建议优先对齐风险升级路径和响应时效。" }
+      ]
+    };
+
+    let currentType = "file";
+    let currentSectionIdx = 0;
+    let currentNoteIdx = 0;
+    const order = ["file", "note", "reminder", "event", "contact"];
+    const labels = { file: "File", note: "Note", reminder: "Reminder", event: "Event", contact: "Contact" };
+    const switchEl = document.getElementById("switch");
+    const sectionTabsEl = document.getElementById("sectionTabs");
+    const titleEl = document.getElementById("title");
+    const pillEl = document.getElementById("pill");
+    const contentEl = document.getElementById("content");
+
+    function getRenderableSections(view) {
+      const mainSection = view.sections.find((s) => s.name === "Main Content");
+      const sourceSection = view.sections.find((s) => s.name === "Source");
+      const otherSections = view.sections.filter((s) => s.name !== "Main Content" && s.name !== "Source");
+      if (!mainSection) return view.sections.filter((s) => s.name !== "Source");
+      const mergedMain = sourceSection ? { ...mainSection, html: `${mainSection.html}${sourceSection.html}` } : mainSection;
+      return [mergedMain, ...otherSections];
+    }
+
+    function renderSwitch() {
+      switchEl.innerHTML = order.map((k) => `<button class="btn ${k === currentType ? "active" : ""}" data-k="${k}">${labels[k]}</button>`).join("");
+      switchEl.querySelectorAll(".btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          currentType = btn.dataset.k;
+          currentSectionIdx = 0;
+          currentNoteIdx = 0;
+          renderAll();
+        });
+      });
+    }
+
+    function renderSectionTabs() {
+      const v = views[currentType];
+      const renderableSections = getRenderableSections(v);
+      sectionTabsEl.innerHTML = renderableSections.map((s, i) => {
+        const isHome = s.name === "Main Content";
+        const text = isHome ? "⌂" : s.name;
+        const extraClass = isHome ? " home-icon" : "";
+        return `<button class="btn${extraClass} ${i === currentSectionIdx ? "active" : ""}" data-i="${i}" title="${s.name}">${text}</button>`;
+      }).join("");
+      sectionTabsEl.querySelectorAll(".btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          currentSectionIdx = Number(btn.dataset.i);
+          renderContent();
+          renderSectionTabs();
+        });
+      });
+    }
+
+    function renderNoteTabs() {
+      const tabs = document.getElementById("noteTabs");
+      const panel = document.getElementById("notePanel");
+      if (!tabs || !panel) return;
+      const notes = noteSets[currentType] || [];
+      if (!notes.length) {
+        tabs.innerHTML = "";
+        panel.innerHTML = `<div class="s">暂无 Note</div>`;
+        return;
+      }
+      currentNoteIdx = Math.min(currentNoteIdx, notes.length - 1);
+      tabs.innerHTML = notes.map((n, i) => `<button class="btn ${i === currentNoteIdx ? "active" : ""}" data-i="${i}">${n.key}</button>`).join("");
+      const cur = notes[currentNoteIdx];
+      panel.innerHTML = `<div class="t">${cur.title}</div><div class="s">${cur.body}</div>`;
+      tabs.querySelectorAll(".btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          currentNoteIdx = Number(btn.dataset.i);
+          renderNoteTabs();
+        });
+      });
+    }
+
+    function renderContent() {
+      const v = views[currentType];
+      const renderableSections = getRenderableSections(v);
+      const section = renderableSections[currentSectionIdx] || renderableSections[0];
+      titleEl.textContent = v.title;
+      pillEl.textContent = v.pill;
+      contentEl.innerHTML = section.html;
+      renderNoteTabs();
+    }
+
+    function renderAll() {
+      renderSwitch();
+      renderSectionTabs();
+      renderContent();
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>
+
