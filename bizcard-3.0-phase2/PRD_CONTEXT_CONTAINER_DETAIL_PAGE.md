@@ -3,7 +3,7 @@
 | 属性 | 内容 |
 |------|------|
 | 状态 | 评审版 |
-| 版本 | v5.8 |
+| 版本 | v5.16 |
 | 目标 | 用用户可感知的方式统一 File / Note / Reminder / Event / Contact 的展示与关联逻辑 |
 | 关联文档 | `PRD_ASSET_MODEL_PHASE2.md`、`PRD_CALENDAR_EVENT_DETAIL_AND_CREATE.md`、`context-container-demo.html` |
 
@@ -38,7 +38,12 @@
 
 ## 2.2 术语
 
-- `source`：资产来源。不同资产允许不同来源类型，详见“5.7 各资产 Source 类型矩阵”。
+- `source`：统一采用二元结构：
+  - `source.trigger`：触发方式（谁/什么触发了资产创建），如 `user_uploaded` / `ai_generated` / `ask_agent` / `user_created` / `3rd_party` / `user_scanned` / `user_exchanged`。
+  - `source.context`：来源标识；按 trigger 解释：
+    - `ai_generated`：上游资产 `asset_id`
+    - `ask_agent`：`session_id`
+    - 其他 trigger：`asset_id` 或 `null`
 - `explicit relation`：用户或系统显式建立的关系。
 - `derived relation`：仅展示层推导关系（不自动落库）。
 
@@ -164,8 +169,8 @@ Tab：
 - Contacts
 
 规则：
-- Note 必须有来源（file 或 user_request_session）。
-- 基于 note 二次生成并确认的资产，显式关联到该 note。
+- Note 必须有 `source.trigger`，且 `source.context` 需可解释（`asset_id` / `null`）。
+- 基于 note 二次生成的资产，自动落库并显式关联到该 note。
 
 ## 5.3 Reminder 详情
 
@@ -173,7 +178,7 @@ Tab：
 - 标题、DDL、状态
 
 Tab：
-- Source（可无）
+- Source（必有，context 可空）
 - Files
 - Note
 - Events
@@ -185,7 +190,7 @@ Tab：
 - 主题、时间、地点、描述
 
 Tab：
-- Source（可无）
+- Source（必有，context 可空）
 - Files
 - Note
 - Reminder
@@ -197,7 +202,7 @@ Tab：
 - 姓名、联系方式、组织信息
 
 Tab：
-- Source（可无）
+- Source（必有，context 可空）
 - Files
 - Note
 - Reminder
@@ -205,58 +210,57 @@ Tab：
 
 ## 5.6 Source 回跳规则（新增）
 
-当详情页展示 Source 时，需提供明确回跳入口：
+当详情页展示 Source 时，回跳依据 `source.context` 的类型：
 
-1. Source = `file`
-   - 点击 Source 卡片，跳转到对应 `File` 详情页（同 `file_id`）。
-2. Source = `user_request_session`
-   - 点击 Source 卡片，跳转回对应 Ask Agent 对话会话（同 `session_id`）。
+1. `source.context = asset_id`
+   - 点击 Source 卡片，跳转到对应资产详情页。
+2. `source.context = null`
+   - 仅展示 trigger 信息，无回跳入口。
+3. `source.context = session_id`（常见于 `trigger=ask_agent`）
+   - Source 区提供“回到会话”入口，跳转对应 Ask Agent 会话。
 
 补充：
-- 若 Source 缺失或不可访问，入口置灰并提示“来源不可用”。
-- Note 页因 Source 必有，必须提供可点击回跳入口。
+- 所有资产都必须有 `source.trigger`，仅 `source.context` 允许为 `null`。
+- 当 `source.trigger = ai_generated` 且 `source.context` 指向对象被删除，当前资产按级联规则删除。
 
-## 5.7 各资产 Source 类型矩阵（最终口径）
+## 5.7 各资产 Source（trigger/context）矩阵（最终口径）
 
-为避免歧义，以下 Source 类型按资产定义：
+为避免“来源语义混用”，统一按 `source.trigger + source.context` 描述：
 
-1. **File 的 Source**
-   - `user_uploaded`
-   - `meeting_recorded`
-   - `flash_recorded`
+1. **File**
+   - 例：用户上传 `file1`
+   - `source.trigger = user_uploaded`
+   - `source.context = null`
 
-2. **Note 的 Source**
-   - `file`
-   - `user_request_session`
+2. **由任意资产 context 解析出的资产（note/reminder/event/contact）**
+   - 例：`context = asset_x` 的解析任务生成 `note1`
+   - `source.trigger = ai_generated`
+   - `source.context = asset_x`
 
-3. **Reminder 的 Source**
-   - `user`
-   - `file`
-   - `user_request_session`
-   - `note`
-   - `event`
+3. **基于任意资产 context 发起 Ask Agent 生成资产**
+   - 例：在 `asset_x` 场景生成 `note2`
+   - `source.trigger = ask_agent`
+   - `source.context = session1`
+   - 同时可与 `asset_x` 建立显式关系（用于入口展示）
 
-4. **Event 的 Source**
-   - `user`
-   - `third_party`
-   - `file`
-   - `user_request_session`
-   - `note`
+4. **用户手动创建资产（`+`）**
+   - `source.trigger = user_created`
+   - `source.context = 当前详情资产`（若在详情页创建）/ `null`（若全局创建）
 
-5. **Contact 的 Source**
-   - `user_created`
-   - `user_scanned`
-   - `user_exchanged`
-   - `file`
-   - `user_request_session`
-   - `note`
-   - `reminder`
-   - `event`
+5. **Event 的第三方同步创建**
+   - `source.trigger = 3rd_party`
+   - `source.context = 外部事件标识（若可用）/ null`
 
-## 5.8 Source 确认规则（suggested vs direct）
+6. **Contact 的用户创建细分**
+   - `source.trigger = user_created`（手动新建）
+   - `source.trigger = user_scanned`（扫描名片）
+   - `source.trigger = user_exchanged`（交换名片）
+   - `source.context = 当前详情资产`（若有）/ `null`
 
-1. 来自 `file/note/event` 的 AI 建议资产，需用户确认后才最终创建，确认后来源同时确认。  
-2. 来自 `user_request_session` 且用户明确“直接创建”的请求，可直接创建，无需二次确认。  
+## 5.8 Source 落库规则（最终口径）
+
+1. 来自 `file/note/event` 上下文的 AI 产物，统一自动落库，写入 `source.trigger=ai_generated` 与对应 `source.context`。  
+2. 来自 Ask Agent 的创建结果，统一自动落库，写入 `source.trigger=ask_agent`、`source.context=session_id`。  
 3. 同一会话内多个新资产默认不自动互相关联，除非用户显式要求关联。  
 
 ---
@@ -266,20 +270,20 @@ Tab：
 1. 同源不等于互相关联。  
 2. 资产详情页中新增/删除关联，只影响当前资产。  
 3. 不自动把关系扩散到其他资产。  
-4. 展示层可显示 derived 关系，但需明确标识 `derived`。  
+4. 本期不展示 `derived` 关系，仅展示显式关系（explicit）。  
 
-## 6.1 联系人挂载优先级（补充）
+## 6.1 Reminder-Contact 解析与匹配规则（补充）
 
-当 AI 从 `file` 中抽取 reminder/event 并识别到“责任人/参与人”时，联系人关系挂载规则如下：
-
-1. 若联系人语义来自某条 `reminder`（例如“冯总让我们下周五前提交报告”），优先建立：
-   - `reminder <-> contact`
-2. 同批次解析中，不因该 reminder 识别到联系人而自动建立：
-   - `file <-> contact`（除非另有明确证据或用户确认）
-3. 若同一联系人同时被 event 参会人或 note 明确提及，可分别建立：
-   - `event <-> contact`
-   - `note <-> contact`
-4. 仍遵循“同源不等于互相关联”：一个 reminder 新增联系人，不自动扩散到同 file 下其他 reminder/note/event。
+1. 从 `file1` 解析出的 `reminder1`，默认建立 `file1 <-> reminder1`。  
+2. 后台在生成 `reminder1` 时，同步抽取参与人并先填充到 `file1` 关联的 Reminders 列表中（以 reminder 为载体）。  
+3. 系统对 `reminder1` 的参与人与用户现有 Contacts 做匹配：
+   - 命中已有联系人：替换为现有 Contact 并建立 `reminder1 <-> contact_x`；
+   - 未命中：保留解析名并带 `?` 展示。  
+4. 用户点击 `?` 可快速创建联系人：
+   - 新联系人 `source.trigger = user_created`
+   - `source.context = reminder1`
+   - 建立 `reminder1 <-> new_contact`。
+5. 不因 reminder 识别到参与人而自动建立 `file <-> contact`。
 
 ## 6.2 联系人 `?` 标识规则（补充）
 
@@ -326,11 +330,11 @@ Tab：
 规则：
 
 1. 新资产来源按场景判定：  
-   - 用户在对话中明确“直接创建” -> `source = user_request_session`  
-   - AI 从 `file/note/event` 推导建议 -> `source = file/note/event`（确认后生效）  
+   - 用户在对话中明确“直接创建” -> `source.trigger=ask_agent`，`source.context=session_id`
+   - AI 从 `file/note/event` 推导生成 -> `source.trigger=ai_generated`，`source.context=上游资产id`（自动落库）  
 2. 若创建入口来自某个详情页，新资产显式关联当前详情页资产（当前上下文）。  
 3. 同一请求中多个新资产默认不自动互相关联。  
-4. 若为 AI suggested 的 reminder/event/contact，需用户确认后才落库。  
+4. AI 生成资产本期默认直接落库，不再要求用户二次确认。  
 
 ## 7.2 修改（Update）
 
@@ -342,21 +346,21 @@ Tab：
 
 ## 7.3 来源与默认关联统一决策规则（入口 + 上传）
 
-为避免实现歧义，新增资产的 `source` 与默认关联统一按“触发入口”判定：
+为避免实现歧义，新增资产的 Source 与默认关联统一按“触发入口”判定：
 
-| 触发入口 | 新资产 source | 默认关联行为 | 补充说明 |
-|------|------|------|------|
-| 详情页内 Ask Agent 创建 | `user_request_session` | 新资产默认关联当前详情资产 | 来源是 session，关联来自入口上下文 |
-| 全局 Ask Agent 创建（非详情页） | `user_request_session` | 默认无关联 | 仅在用户显式要求时建立关联 |
-| 详情页 `+` 创建资产 | `user` | 新资产默认关联当前详情资产 | 典型：在 event 详情手动创建 reminder |
-| 详情页 `+` 关联已有资产 | 不变（不新建 source） | 当前详情资产与被选资产建立关系 | 只新增关系，不新建资产 |
-| 全局上传文件 | `user_uploaded` | 新 file 默认无关联 | 不与既有资产自动建立关系 |
-| 详情页内上传文件 | `user_uploaded` | 新 file 默认关联当前详情资产 | 属于入口上下文关联，不改变 source 类型 |
+| 触发入口 | `source.trigger` | `source.context` | 默认关联行为 | 补充说明 |
+|------|------|------|------|------|
+| 详情页内 Ask Agent 创建 | `ask_agent` | `session_id` | 新资产默认关联当前详情资产 | 回跳会话直接用 `source.context` |
+| 全局 Ask Agent 创建（非详情页） | `ask_agent` | `session_id` | 默认无关联 | 仅在用户显式要求时建立关联 |
+| 详情页 `+` 创建资产 | `user_created` | `当前详情资产_id` | 新资产默认关联当前详情资产 | 属于手动创建 |
+| 详情页 `+` 关联已有资产 | 不变（不新建 source） | 不变 | 当前详情资产与被选资产建立关系 | 只新增关系，不新建资产 |
+| 全局上传文件 | `user_uploaded` | `null` | 新 file 默认无关联 | 不与既有资产自动建立关系 |
+| 详情页内上传文件 | `user_uploaded` | `当前详情资产_id` | 新 file 默认关联当前详情资产 | 便于删除时按 context 追踪 |
 
 上传后的解析补充（第一期）：
 
 1. `audio` 解析得到的产物默认关联该 file，不默认互相关联。  
-2. AI suggested 产物需要确认的，确认后才落库并建立与 file 的关系。  
+2. AI 产物默认自动落库并建立与 file 的关系。  
 3. `image/md` 第一阶段不触发生成，不新增关联资产。  
 
 关系范围约束（沿用）：
@@ -372,7 +376,7 @@ Tab：
 结果：
 
 - 新建 `note_n1`
-- `note_n1.source = user_request_session`
+- `note_n1.source.trigger = ask_agent`，`note_n1.source.context = session_s1`
 - 默认建立 `note_n1 <-> event_e1`
 - `note_n1` 可在 `event_e1` 的 Note Tab 中看到
 
@@ -383,18 +387,18 @@ Tab：
 结果：
 
 - 新建 `reminder_r1`
-- `reminder_r1.source = user_request_session`
+- `reminder_r1.source.trigger = ask_agent`，`reminder_r1.source.context = session_s2`
 - 默认不关联任何 note/event/contact/file
 - 若用户补充“关联到 Kevin”，则再建立 `reminder_r1 <-> contact_kevin`
 
-### 示例 C：详情页 `+` 创建资产（source=user）
+### 示例 C：详情页 `+` 创建资产（source=user_created）
 
 前置：用户在 `note_n2` 详情页。  
 操作：点击 `+`，手动创建 reminder。  
 结果：
 
 - 新建 `reminder_r2`
-- `reminder_r2.source = user`
+- `reminder_r2.source.trigger = user_created`，`reminder_r2.source.context = note_n2`
 - 默认建立 `reminder_r2 <-> note_n2`
 
 ### 示例 D：详情页 `+` 关联已有资产（只建关系）
@@ -413,9 +417,41 @@ Tab：
 操作：同一条请求创建 `note_n3` 与 `reminder_r4`。  
 结果：
 
-- 两者 `source` 均为 `user_request_session`
+- 两者 `source.trigger` 均为 `ask_agent`，`source.context` 均为同一 `session_id`
 - 两者都默认关联 `file_f1`
 - 不自动建立 `note_n3 <-> reminder_r4`（除非用户明确要求）
+
+## 7.5 删除任意资产后的关系解耦与级联规则（trigger/context 模型）
+
+删除任意资产 `asset_x` 时，统一基于 `source.context` 执行：
+
+### 7.5.1 关系解耦
+
+1. 删除 `asset_x` 后，先移除其直接关系：`asset_x <-> *`。  
+2. 不自动扩散改写其他资产之间的关系。
+
+### 7.5.2 级联删除规则（核心）
+
+1. 级联删除集合：所有满足 `source.trigger = ai_generated` 且 `source.context = asset_x` 的资产。  
+2. 保留集合：`source.trigger in {ask_agent, user_created}` 的资产，即使 `source.context = asset_x`，也不级联删除。  
+3. 对保留集合仅解除与 `asset_x` 的显式关系，并保留资产本体。  
+4. 为避免误删，执行前必须展示“删除预估清单”（按资产类型与数量），并要求用户二次确认。
+
+### 7.5.3 Session 冻结规则
+
+当 `asset_x` 被删除时，与其绑定的上下文会话（如 `session.context = asset_x`）进入只读冻结：
+
+1. 允许跳转查看历史消息；  
+2. 禁止继续发送新消息或继续在该上下文上生成资产。
+
+### 7.5.4 级联边界说明
+
+1. `source.context = null` 的资产不在本次级联链中。  
+2. `source.trigger = ask_agent/user_created` 的资产保留并可继续访问：
+   - `note` 继续在首页 Note 流；
+   - `reminder` 继续在 Calendar；
+   - `event` 继续在 Event/Calendar 列表；
+   - `contact` 继续在 Contacts 列表。
 
 ---
 
@@ -425,17 +461,16 @@ Tab：
 
 输入：`file1`  
 产出：`note1`、`reminder1/2`  
-AI suggested：`reminder3/4`
+AI generated：`reminder3/4`
 
 规则：
 
-- `note1/reminder1/reminder2` 默认都只关联 `file1`。  
-- `reminder3/4` 未确认前不落库。  
-- 确认后 `reminder3/4` 关联 `file1`。  
+- `note1/reminder1/reminder2/reminder3/reminder4` 均自动落库并关联 `file1`。  
+- 同一 file 下产出默认并列，不自动互相关联。  
 
 ## 8.2 基于 note 二次生成场景
 
-在 `note1` 详情中生成并确认 `reminder5/6`：
+在 `note1` 详情中生成 `reminder5/6`：
 
 - `reminder5/6 <-> note1`
 - `reminder5/6` 的 source 记为 `note1`（不回挂为 `file1`）
@@ -449,14 +484,15 @@ AI suggested：`reminder3/4`
 
 - 对话中先显示主结果。  
 - 用户点击“应用为 Note”后创建 note。  
-- reminder 可走 direct create 或 suggested confirm。  
+- reminder 可走 direct create 或 AI generated 自动落库。  
 - note 与 reminder 默认不自动互挂，除非用户显式建立。  
 
 ## 8.4 基于 event 生成会前摘要
 
 - 在 event 详情发起 Ask Agent 生成会前摘要。  
 - 生成 note 后：
-  - `source = session_id`
+  - `source.trigger = ask_agent`
+  - `source.context = session_id`
   - 显式关联当前 event
 - 用户可从 note 的 Source 区“回到对话”。
 
@@ -478,7 +514,7 @@ AI suggested：`reminder3/4`
 - `reminder_r1 <-> contact_me`
 - `reminder_r1 <-> contact_feng(?)`
 
-不自动落库：
+不自动建立关系：
 
 - `file1 <-> contact_feng(?)`（除非后续有明确规则/确认触发）
 
@@ -491,7 +527,7 @@ AI suggested：`reminder3/4`
 
 规则：
 
-1. `note2.source = user_request_session`（来源是会话，不是 file）。  
+1. `note2.source.trigger = ask_agent`，`note2.source.context = session_id`。  
 2. 因为创建入口在 `file1` 详情，建立显式关联：`file1 <-> note2`。  
 3. 因此 `note2` 会出现在 `file1` 的 Note Tab 中。  
 4. `note2` 详情的 Source 区应展示并可回跳对应 session。  
@@ -519,6 +555,24 @@ AI suggested：`reminder3/4`
     - `file_a2 <-> reminder_r20`
     - 不自动建立 `reminder_r20 <-> note_n20`（除非用户显式建立）
 
+## 8.8 删除资产场景（trigger/context 级联）
+
+场景：
+
+- `audio_file1` 解析得到：`note1`、`reminder1/2/3`、`event1`（这些资产 `source.trigger=ai_generated`，`source.context=audio_file1`）。  
+- 用户在该 file 上通过 Ask Agent 生成：`note2`（`source.trigger=ask_agent`，`source.context=session_s1`，并关联 `audio_file1`）。  
+- 用户手动上传并关联：`pic1/pic2`（独立 file）。
+
+执行：删除 `audio_file1`（作为被删资产）。
+
+结果：
+
+1. 删除 `audio_file1` 后，优先移除其直接关系。  
+2. 满足 `source.trigger = ai_generated` 且 `source.context = audio_file1` 的解析衍生产物进入级联删除集合。  
+3. `note2` 的 `source.trigger = ask_agent`（即使关联了 `audio_file1`）仍默认保留，仅解除 `note2 <-> audio_file1` 关系。  
+4. `session_s1` 若 `session.context = audio_file1`，则冻结为只读（可查看，不可继续提问）。  
+5. `pic1/pic2` 作为独立上传 file（不满足 `source.context = audio_file1` 时）保留，并继续在 File 流可见。  
+
 ---
 
 ## 9. 关联关系思维导图（Mermaid）
@@ -537,10 +591,10 @@ flowchart TD
   E --> E2["Tabs: Note/Reminder/Events/Contacts"]
 
   F --> H["Note 详情（必有 Source）"]
-  G --> I["对象详情（Source 可无）"]
+  G --> I["对象详情（Source 必有，context 可空）"]
 
   H --> J["可二次生成 Reminder/Event/Contact"]
-  J --> K["确认后落库并建立显式关联"]
+  J --> K["自动落库并建立显式关联"]
 ```
 
 ---
@@ -550,13 +604,11 @@ flowchart TD
 ```mermaid
 flowchart LR
   U["用户在任意详情页发起 Ask Agent"] --> P{"动作类型"}
-  P -->|Create| C1["生成新资产（候选）"]
-  C1 --> C2{"是否需要确认"}
-  C2 -->|是| C3["用户确认"]
-  C2 -->|否| C4["直接落库"]
-  C3 --> C4
-  C4 --> C5["source=session_id"]
-  C5 --> C6["关联当前详情资产"]
+  P -->|Create| C1["生成新资产"]
+  C1 --> C2["自动落库"]
+  C2 --> C3["写入 source.trigger=ask_agent"]
+  C3 --> C4["写入 source.context=session_id"]
+  C4 --> C5["关联当前详情资产（若有）"]
 
   P -->|Update| U1["更新目标资产内容"]
   U1 --> U2["保留原 source 不变"]
@@ -572,12 +624,14 @@ flowchart LR
 4. `audio` 未解析前展示 `generate summary` CTA；`image/md` 不展示生成 CTA 与关联资产。  
 5. Note 详情可验证 Source 必有。  
 6. 关联修改仅影响当前资产，不自动扩散。  
-7. AI suggested 资产确认前不落库。  
+7. AI 生成资产默认自动落库。  
 8. Ask Agent 在任意详情页下均可执行统一增改规则。  
 9. 从 file 解析出的联系人若未唯一确认，需以 `?` 标识并优先挂在触发资产（如 reminder/event）而非 file。  
-10. 在 file 详情中经 session 创建的 note，需满足“source=session + 显式关联 file”并在 file 的 Note Tab 可见。
+10. 在 file 详情中经 session 创建的 note，需满足“source.trigger=ask_agent、source.context=session + 显式关联 file”并在 file 的 Note Tab 可见。
 11. 入口驱动规则可验证：详情页 Ask Agent/`+创建` 会默认关联当前资产；全局 Ask Agent 创建默认无关联；`+关联` 只新增当前对关系。
 12. 用户上传规则可验证：全局上传 file 默认无关联；详情页上传 file 默认关联当前资产；上传解析产物默认只关联该 file。
+13. 删除任意资产规则可验证：先关系解耦；仅 `ai_generated + context=被删资产` 级联删除；`ask_agent/user_created` 资产保留并去耦；`ask_agent` 资产可通过 `source.context(session_id)` 回到会话。  
+14. Source 规则可验证：所有资产必须有 `source.trigger`，仅 `source.context` 可为空。  
 
 ---
 
@@ -594,4 +648,12 @@ flowchart LR
 | v5.6 | 2026-03-25 | 补充入口驱动示例（A-E）：覆盖详情页 Ask Agent、全局 Ask Agent、`+创建`、`+关联` 与多产物边界场景 |
 | v5.7 | 2026-03-25 | 补充用户上传资产规则：全局上传与详情页上传的 source/默认关联差异，及上传解析产物的关系边界 |
 | v5.8 | 2026-03-25 | 合并规则章节：将入口驱动与上传驱动合并为统一决策规则（表格化），减少分散阅读成本 |
+| v5.9 | 2026-03-25 | 新增删除 file 规则：session 只读冻结、Ask Agent 主动创建资产保留去耦、独立上传 file 保留；补充对应场景示例 |
+| v5.10 | 2026-03-25 | 将删除规则升级为“删除任意资产”：先关系解耦，再按“用户主动 Ask-Agent 产物 / 资产直接衍生产物”分流处理，并补充 session 冻结条件 |
+| v5.11 | 2026-03-25 | Source 定义升级为二元模型（`trigger + context`），并将创建/示例/删除规则统一映射到该模型 |
+| v5.12 | 2026-03-25 | trigger 口径调整：手动创建统一为 `user_created`，补充 Event `3rd_party` 与 Contact `user_created/user_scanned/user_exchanged`；取消 AI 二次确认并改为自动落库 |
+| v5.13 | 2026-03-25 | 强化 Source/级联口径：trigger 必有、context 可空；context 命中执行递归级联删除；重写 reminder-contact 解析匹配与 `?` 快速创建流程 |
+| v5.14 | 2026-03-25 | 删除规则改为“触发器分流”：仅 `ai_generated+context=x` 级联删除；`ask_agent/user_created` 保留并解除关系，同时明确保留资产的入口归位 |
+| v5.15 | 2026-03-25 | 补齐 Ask-Agent 回跳漏洞：完善会话回跳规则并同步到示例与流程图 |
+| v5.16 | 2026-03-25 | 简化 Source 模型：移除 `source.session_ref`，统一由 `source.context=session_id` 承载 Ask-Agent 会话回跳；保留资产上下文通过显式关联表达 |
 
