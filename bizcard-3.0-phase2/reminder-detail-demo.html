@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reminder Detail Demo</title>
+    <style>
+      :root{
+        --bg:#f5f6f8;
+        --card:#ffffff;
+        --text:#101828;
+        --muted:#667085;
+        --line:#eaecf0;
+        --primary:#2563eb;
+        --danger:#dc2626;
+        --shadow: 0 10px 26px rgba(16,24,40,.10);
+        --radius: 14px;
+        --pill: 999px;
+      }
+      *{box-sizing:border-box}
+      body{
+        margin:0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans", sans-serif;
+        background:var(--bg);
+        color:var(--text);
+      }
+      .wrap{ max-width: 520px; margin: 18px auto; padding: 0 14px 110px; }
+      .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; }
+      .iconbtn{
+        border:none; background:transparent; color:var(--muted);
+        padding:10px; border-radius:10px; cursor:pointer;
+      }
+      .iconbtn:hover{ background: rgba(102,112,133,.08); }
+      .title{ font-weight: 900; letter-spacing:.2px; }
+      .card{
+        background:var(--card);
+        border:1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 10px rgba(16,24,40,.04);
+      }
+      .section{ padding: 14px; margin-top: 10px; }
+      .headerCard{ padding: 14px; }
+      .h1{ font-size: 18px; font-weight: 900; margin: 0 0 8px; line-height:1.25; }
+      .row{ display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+      .label{ font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+      .labelSource{ color: #98a2b3; margin-bottom: 5px; font-weight: 600; }
+      .pill{
+        border:1px solid var(--line);
+        background:#fafafa;
+        border-radius: var(--pill);
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 800;
+        color:#344054;
+        white-space:nowrap;
+      }
+      .pill.done{ background:#ecfdf3; border-color:#abefc6; color:#027a48; }
+      .pill.todo{ background:#eff6ff; border-color:#dbeafe; color:#1d4ed8; }
+      .field{
+        border:1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background:#fff;
+      }
+      .muted{ color: var(--muted); }
+      .tokenLink{
+        display:inline-block;
+        padding: 1px 6px;
+        border-radius: 8px;
+        border: 1px solid rgba(37,99,235,.20);
+        background: rgba(37,99,235,.06);
+        color: #1d4ed8;
+        font-weight: 900;
+        cursor: pointer;
+      }
+      .tokenLink:hover{ background: rgba(37,99,235,.10); }
+      .tokenLink:active{ transform: translateY(1px); }
+      .avatar{
+        width: 22px; height: 22px; border-radius: 999px;
+        display:grid; place-items:center;
+        background:#eef2ff; border:1px solid #c7d2fe;
+        color:#1e3a8a; font-weight: 900; font-size: 12px;
+      }
+      /* 来源：轻量附属信息，视觉层级低于 .field 主内容 */
+      .sourceCard{
+        display:block;
+        border: 1px dashed #e4e7ec;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #f8fafc;
+        box-shadow: none;
+      }
+      .sourceRow{
+        display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;
+      }
+      .sourceLeft{ min-width:0; }
+      .sourceTitle{ margin:0; font-weight: 700; font-size: 13px; color:#344054; }
+      .sourceSub{ margin:5px 0 0; font-size: 12px; color: #98a2b3; line-height:1.4; }
+      .sourceHint{
+        font-size: 11px;
+        color: #98a2b3;
+        font-weight: 600;
+        white-space: nowrap;
+        align-self: center;
+      }
+      .sourceCard .linkbtn{
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--primary);
+        border-color: rgba(37,99,235,.22);
+      }
+      .sourceCard .linkbtn:hover{
+        background: rgba(37,99,235,.06);
+      }
+      .transcriptLite{
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(234,236,240,.9);
+      }
+      .transcriptLite .meta{
+        font-size: 11px;
+        color: #98a2b3;
+        font-weight: 600;
+        margin-bottom: 4px;
+        letter-spacing: .01em;
+      }
+      .linkbtn{
+        border:1px solid var(--line);
+        background:#fff;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 900;
+        cursor:pointer;
+        white-space:nowrap;
+      }
+      .linkbtn:hover{ background:#f8fafc; }
+      .transcriptLite .quote{
+        font-size: 12px;
+        line-height: 1.5;
+        font-weight: 400;
+        color: #667085;
+        margin: 0;
+        white-space: pre-wrap;
+      }
+      .banner{
+        margin-top: 10px;
+        border: 1px dashed #cbd5e1;
+        background:#f8fafc;
+        color:#334155;
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      /* Tabs (meeting-style) */
+      .tabs{
+        margin-top: 12px;
+        display:flex;
+        gap: 16px;
+        padding: 0 4px;
+        overflow:auto;
+        scrollbar-width: none;
+      }
+      .tabs::-webkit-scrollbar{display:none}
+      .tab{
+        white-space:nowrap;
+        padding: 10px 2px 12px;
+        border:none;
+        background:transparent;
+        cursor:pointer;
+        color:var(--muted);
+        font-weight: 900;
+        border-bottom: 2px solid transparent;
+      }
+      .tab.active{
+        color: var(--text);
+        border-bottom-color: var(--text);
+      }
+      .panel{
+        margin-top: 10px;
+        padding: 14px;
+      }
+      .panelTitle{
+        font-weight: 1000;
+        margin: 0 0 12px;
+        font-size: 14px;
+      }
+
+      /* Attachment sub-tabs */
+      .subtabs{
+        display:flex;
+        gap: 10px;
+        overflow:auto;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+        scrollbar-width: none;
+      }
+      .subtabs::-webkit-scrollbar{display:none}
+      .subtab{
+        border: 1px solid var(--line);
+        background:#fff;
+        border-radius: 10px;
+        padding: 8px 10px;
+        cursor:pointer;
+        color:#344054;
+        font-weight: 1000;
+        font-size: 12px;
+        white-space:nowrap;
+      }
+      .subtab.active{
+        border-color: #c7d2fe;
+        background:#eef2ff;
+        color:#1e3a8a;
+      }
+
+      /* List rows (attachments) */
+      .list{ display:flex; flex-direction:column; gap:10px; }
+      .rowCard{
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        display:flex;
+        justify-content:space-between;
+        gap: 10px;
+        background: #fff;
+        cursor: default;
+      }
+      .rowCard.btn{ cursor:pointer; }
+      .rowCard.btn:hover{ background:#f8fafc; }
+      .rowMain{ min-width:0; display:flex; align-items:center; gap:10px; }
+      .rowTxt{ min-width:0; }
+      .rowTxt .t{ margin:0; font-weight:1000; font-size: 13px; }
+      .rowTxt .s{ margin:6px 0 0; font-size: 12px; color: var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 320px; }
+      .badge{
+        border:1px solid var(--line);
+        background:#fafafa;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 1000;
+        color:#344054;
+        white-space:nowrap;
+        align-self:flex-start;
+      }
+
+      /* Floating bar (record / agent / +) */
+      .fab{
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 18px;
+        width: min(520px, calc(100% - 28px));
+        display:flex;
+        justify-content:center;
+        pointer-events:none;
+      }
+      .fabInner{
+        pointer-events:auto;
+        background:#0b1220;
+        color:#fff;
+        padding: 10px;
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        display:flex;
+        gap: 10px;
+        align-items:center;
+      }
+      .fabBtn{
+        width: 46px;
+        height: 40px;
+        border-radius: 14px;
+        border: none;
+        cursor:pointer;
+        background: rgba(255,255,255,.10);
+        color:#fff;
+        font-weight: 1000;
+      }
+      .fabBtn:hover{ background: rgba(255,255,255,.16); }
+      .fabBtn.primary{
+        background: radial-gradient(80% 90% at 30% 20%, #9ae6ff 0%, #4f46e5 52%, #111827 100%);
+      }
+
+      /* Drawer */
+      .overlay{
+        position: fixed; inset: 0;
+        background: rgba(16,24,40,.45);
+        display:none;
+        align-items:flex-end;
+        justify-content:center;
+        padding: 0 14px 14px;
+      }
+      .overlay.show{ display:flex; }
+      .drawer{
+        width: min(520px, 100%);
+        background:#fff;
+        border-radius: 16px;
+        border:1px solid var(--line);
+        box-shadow: var(--shadow);
+        overflow:hidden;
+      }
+      .drawerHead{
+        padding: 12px 14px;
+        border-bottom:1px solid var(--line);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 10px;
+      }
+      .drawerTitle{ font-weight: 1000; }
+      .drawerBody{ padding: 12px 14px 14px; }
+      .menu{ display:flex; flex-direction:column; gap: 10px; }
+      .menuItem{
+        display:flex; justify-content:space-between; align-items:center; gap: 10px;
+        border:1px solid var(--line); border-radius: 12px; padding: 12px; background:#fff;
+        cursor:pointer;
+      }
+      .menuItem:hover{ background:#f8fafc; }
+      .menuItem .l .t{ margin:0; font-weight: 1000; font-size: 13px; }
+      .menuItem .l .s{ margin:4px 0 0; font-size: 12px; color: var(--muted); }
+      .menuItem .r{ color: var(--muted); font-weight: 1000; }
+      .menuSep{
+        height: 1px;
+        background: var(--line);
+        margin: 2px 2px;
+      }
+
+      .toast{
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 88px;
+        background: rgba(16,24,40,.92);
+        color:#fff;
+        padding: 10px 12px;
+        border-radius: 12px;
+        box-shadow: 0 10px 24px rgba(0,0,0,.18);
+        font-weight: 900;
+        font-size: 12px;
+        display:none;
+        z-index: 60;
+        max-width: min(520px, calc(100% - 28px));
+        text-align:center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <button class="iconbtn" id="backBtn">‹</button>
+        <div class="title">Reminder Details</div>
+        <button class="iconbtn" id="menuBtn">⋯</button>
+      </div>
+
+      <!-- Header (meeting-style): source + content + time + status -->
+      <div class="card headerCard" id="headerCard">
+        <div class="row" style="margin-bottom: 10px;">
+          <div class="pill" id="statusPill">未完成</div>
+          <button class="linkbtn" id="toggleDoneBtn">Mark as done</button>
+        </div>
+
+        <div class="label labelSource">Source</div>
+        <div class="sourceCard" id="sourceCard"></div>
+
+        <div style="height: 10px"></div>
+
+        <div class="label">Reminder</div>
+        <div class="field">
+          <div class="h1" id="reminderTitle">明晚6点与冯总吃饭</div>
+          <div class="muted" style="font-size:13px" id="reminderDesc">人名与上下文写在标题/说明中；不维护「关联人」</div>
+        </div>
+
+        <div style="height: 10px"></div>
+
+        <div class="label">时间</div>
+        <div class="field row">
+          <div style="font-weight: 900;" id="dueText">2026-05-22</div>
+          <div class="muted" style="font-weight: 900;">×</div>
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs"></div>
+      <div class="card panel" id="panel"></div>
+    </div>
+
+    <div class="fab">
+      <div class="fabInner" role="toolbar" aria-label="reminder actions">
+        <button class="fabBtn" id="btnRecord" title="录音">🎙</button>
+        <button class="fabBtn primary" id="btnAgent" title="Ask Agent">✦</button>
+        <button class="fabBtn" id="btnPlus" title="更多">＋</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay" aria-hidden="true">
+      <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+        <div class="drawerHead">
+          <div class="drawerTitle" id="drawerTitle">菜单</div>
+          <button class="iconbtn" id="closeDrawer">✕</button>
+        </div>
+        <div class="drawerBody" id="drawerBody"></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const state = {
+        done: false,
+        // 三种来源：manual / ask_agent / ai_meeting
+        sourceMode: "ai_meeting",
+        activeTab: "attachment",
+        // 会议侧：speaker 占位符到人名的映射（来自 transcript 的手动标记/设置）
+        speakerAliases: {
+          // e.g. "Speaker1": "小王"
+        },
+        reminder: {
+          title: "冯总让Speaker1明天一起吃饭",
+          desc: "从会议总结提取：若 Speaker 未命名，标题可快速替换；一旦在 transcript 中给 Speaker 命名，需联动更新。",
+        },
+        dueText: "2026-05-22",
+        // 仅当待办从会议 transcript 抽取且有可引用句段时展示引用；否则为 null
+        transcriptRef: {
+          speaker: "Speaker1",
+          tcode: "00:12",
+          text: "冯总组织明天6点吃饭。",
+        },
+        attachments: [
+          { id: "a1", kind: "img", name: "whiteboard_1.jpg", meta: "Uploaded 2026-04-09" },
+          { id: "a2", kind: "md", name: "meeting_notes.md", meta: "Uploaded 2026-04-09" },
+        ],
+        attachmentType: "img", // img | md
+        // 单 reminder 单 session
+        session: null,
+      };
+
+      const elTabs = document.getElementById("tabs");
+      const elPanel = document.getElementById("panel");
+      const elSourceCard = document.getElementById("sourceCard");
+      const elStatusPill = document.getElementById("statusPill");
+      const elToggleDoneBtn = document.getElementById("toggleDoneBtn");
+      const elReminderTitle = document.getElementById("reminderTitle");
+      const elReminderDesc = document.getElementById("reminderDesc");
+      const elDueText = document.getElementById("dueText");
+
+      const overlay = document.getElementById("overlay");
+      const drawerBody = document.getElementById("drawerBody");
+
+      function esc(s){
+        return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+      }
+
+      function isSpeakerToken(s){
+        return /^Speaker\d+$/i.test(String(s || "").trim());
+      }
+
+      function resolveSpeakerLabel(label){
+        const key = String(label || "").trim();
+        if (!key) return "";
+        const mapped = state.speakerAliases?.[key];
+        return mapped ? mapped : key;
+      }
+
+      function replaceSpeakerTokens(text){
+        const s = String(text || "");
+        return s.replace(/\bSpeaker\d+\b/gi, (m) => resolveSpeakerLabel(m));
+      }
+
+      function renderTextWithSpeakerTokens(text){
+        const s = String(text || "");
+        return s.replace(/\bSpeaker\d+\b/gi, (m) => {
+          const key = String(m).trim();
+          const mapped = state.speakerAliases?.[key];
+          if (mapped) return esc(mapped);
+          return `<span class="tokenLink" role="button" tabindex="0" data-speaker="${esc(key)}">${esc(key)}</span>`;
+        });
+      }
+
+      function toast(msg){
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.style.display = "block";
+        clearTimeout(toast._t);
+        toast._t = setTimeout(()=>{ el.style.display="none"; }, 1600);
+      }
+
+      function renderStatus(){
+        if (state.done){
+          elStatusPill.textContent = "已完成";
+          elStatusPill.className = "pill done";
+          elToggleDoneBtn.textContent = "Mark as undone";
+        }else{
+          elStatusPill.textContent = "未完成";
+          elStatusPill.className = "pill todo";
+          elToggleDoneBtn.textContent = "Mark as done";
+        }
+      }
+
+      const TABS = [
+        { id: "attachment", label: "Attachment" },
+      ];
+
+      function renderTabs(){
+        elTabs.innerHTML = "";
+        for (const t of TABS){
+          const b = document.createElement("button");
+          b.className = "tab" + (state.activeTab === t.id ? " active" : "");
+          b.textContent = t.label;
+          b.onclick = () => { state.activeTab = t.id; render(); };
+          elTabs.appendChild(b);
+        }
+      }
+
+      function renderAttachmentPanel(){
+        const itemsAll = state.attachments || [];
+        const kinds = [
+          { id: "img", label: "Image" },
+          { id: "md", label: "MD文档" },
+        ];
+        const kindsWithData = kinds.filter(k => itemsAll.some(x => x.kind === k.id));
+        if (!kindsWithData.some(k => k.id === state.attachmentType)) {
+          state.attachmentType = (kindsWithData[0]?.id || "img");
+        }
+        const subtabsHtml = kindsWithData.map(k => `
+          <button class="subtab ${state.attachmentType === k.id ? "active" : ""}" data-kind="${esc(k.id)}">
+            ${esc(k.label)}
+          </button>
+        `).join("");
+
+        const items = itemsAll.filter(x => x.kind === state.attachmentType);
+        const listHtml = items.length
+          ? items.map(x => `
+              <div class="rowCard">
+                <div class="rowMain">
+                  <span class="avatar">${x.kind === "img" ? "I" : "M"}</span>
+                  <div class="rowTxt">
+                    <p class="t">${esc(x.name)}</p>
+                    <p class="s">${esc(x.meta)}</p>
+                  </div>
+                </div>
+                <div class="badge">${esc(x.kind === "img" ? "IMG" : "MD")}</div>
+              </div>
+            `).join("")
+          : `<div class="banner" style="margin-top:0">暂无文件</div>`;
+
+        elPanel.innerHTML = `
+          <div class="panelTitle">Attachment</div>
+          ${kindsWithData.length ? `<div class="subtabs" id="attSubtabs">${subtabsHtml}</div>` : ""}
+          <div class="list" id="attachmentList">${listHtml}</div>
+        `;
+
+        const elSub = document.getElementById("attSubtabs");
+        elSub?.addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-kind]");
+          if (!btn) return;
+          state.attachmentType = btn.getAttribute("data-kind");
+          render();
+        });
+      }
+
+      function renderPanels(){
+        return renderAttachmentPanel();
+      }
+
+      function renderTranscriptInSource(){
+        const tr = state.transcriptRef;
+        if (!tr || !tr.text) return "";
+        const sp = resolveSpeakerLabel(tr.speaker || "Speaker");
+        return `
+          <div class="transcriptLite">
+            <div class="meta">${esc(sp)} · ${esc(tr.tcode || "00:00")}</div>
+            <p class="quote">${esc(replaceSpeakerTokens(tr.text))}</p>
+          </div>
+        `;
+      }
+
+      // Demo：点击 Speaker token → 打开联系人选择器 → 选中后写入会议级 speaker 映射
+      function openSpeakerAliasEditor(speakerKey){
+        const key = String(speakerKey || "").trim();
+        if (!key) return;
+        const cur = state.speakerAliases?.[key] || "";
+        const box = document.createElement("div");
+        box.className = "menu";
+
+        const CONTACTS = [
+          { id:"c1", name:"冯总", meta:"Bizcard · 已保存" },
+          { id:"c2", name:"张总", meta:"Bizcard · 已保存" },
+          { id:"c3", name:"小王", meta:"最近联系" },
+          { id:"c4", name:"李老师", meta:"最近联系" },
+          { id:"c5", name:"Alice", meta:"外部联系人" },
+          { id:"c6", name:"Bob", meta:"外部联系人" },
+        ];
+
+        function renderContactRows(list){
+          const items = list.map(c => `
+            <div class="rowCard btn" data-contact-id="${esc(c.id)}" style="align-items:center">
+              <div class="rowMain" style="align-items:center">
+                <span class="avatar">${esc(String(c.name || "?").slice(0, 1))}</span>
+                <div class="rowTxt">
+                  <p class="t">${esc(c.name)}</p>
+                  <p class="s">${esc(c.meta || "")}</p>
+                </div>
+              </div>
+              <div class="badge">选择</div>
+            </div>
+          `).join("");
+          return items || `<div class="banner" style="margin-top:0">无匹配联系人</div>`;
+        }
+
+        function rebuildList(){
+          const q = (box.querySelector("#contactSearch")?.value || "").trim();
+          const list = q
+            ? CONTACTS.filter(c => (c.name || "").toLowerCase().includes(q.toLowerCase()))
+            : CONTACTS;
+          const host = box.querySelector("#contactList");
+          if (host) host.innerHTML = renderContactRows(list);
+        }
+
+        box.innerHTML = `
+          <div class="banner" style="margin-top:0">
+            选择一个联系人来替换 <b>${esc(key)}</b>。该选择代表“会议 transcript 里的 speaker 映射”，会联动更新该会议派生的内容。
+          </div>
+          <div class="field row" style="gap:8px; margin-top:10px">
+            <input id="contactSearch" placeholder="搜索联系人（Demo）" style="flex:1; border:none; outline:none; font-weight:900; font-size:13px; background:transparent" />
+            <button class="linkbtn" id="createContactBtn">新建</button>
+          </div>
+          ${cur ? `<div class="sourceSub" style="margin-top:8px">当前：<b>${esc(cur)}</b></div>` : ``}
+          <div id="contactList" class="list" style="margin-top:10px">${renderContactRows(CONTACTS)}</div>
+          <div class="row" style="justify-content:flex-end">
+            <button class="linkbtn" id="clearAliasBtn" style="border-color: rgba(220,38,38,.20); color:#dc2626;">清除替换</button>
+          </div>
+        `;
+        openDrawer("选择联系人（" + key + "）", box);
+        box.querySelector("#contactSearch")?.addEventListener("input", rebuildList);
+        box.querySelector("#createContactBtn")?.addEventListener("click", () => toast("Demo：新建联系人（未实现）"));
+        box.addEventListener("click", (e) => {
+          const row = e.target.closest("[data-contact-id]");
+          if (!row) return;
+          const id = row.getAttribute("data-contact-id");
+          const c = CONTACTS.find(x => x.id === id);
+          if (!c) return;
+          state.speakerAliases = state.speakerAliases || {};
+          state.speakerAliases[key] = c.name;
+          closeDrawer();
+          render();
+          toast("已替换：" + key + " → " + c.name);
+        });
+        box.querySelector("#clearAliasBtn")?.addEventListener("click", () => {
+          state.speakerAliases = state.speakerAliases || {};
+          delete state.speakerAliases[key];
+          closeDrawer();
+          render();
+          toast("已清除替换：" + key);
+        });
+      }
+
+      function renderSource(){
+        if (state.sourceMode === "manual"){
+          elSourceCard.innerHTML = `
+            <div class="sourceRow">
+              <div class="sourceLeft">
+                <p class="sourceTitle">手动创建</p>
+                <p class="sourceSub">无会议来源，不展示转写引用</p>
+              </div>
+              <span class="sourceHint">不可回跳</span>
+            </div>
+          `;
+          return;
+        }
+        if (state.sourceMode === "ask_agent"){
+          const trHtml = state.transcriptRef && state.transcriptRef.text
+            ? renderTranscriptInSource()
+            : "";
+          elSourceCard.innerHTML = `
+            <div class="sourceRow">
+              <div class="sourceLeft">
+                <p class="sourceTitle">来自 Ask Agent</p>
+                <p class="sourceSub">Session: session_8af31c</p>
+              </div>
+              <button class="linkbtn" type="button" id="btnOpenSession">查看会话</button>
+            </div>
+            ${trHtml}
+          `;
+          document.getElementById("btnOpenSession")?.addEventListener("click", () => toast("Demo：打开会话"));
+          return;
+        }
+
+        // ai_meeting
+        const trHtml = state.transcriptRef && state.transcriptRef.text
+          ? renderTranscriptInSource()
+          : "";
+        const speakerKey = String(state.transcriptRef?.speaker || "").trim();
+        elSourceCard.innerHTML = `
+          <div class="sourceRow">
+            <div class="sourceLeft">
+              <p class="sourceTitle">来源会议</p>
+              <p class="sourceSub">Customer Review Meeting · 2026-04-09 09:18</p>
+            </div>
+            <button class="linkbtn" type="button" id="btnOpenMeeting">回到会议</button>
+          </div>
+          ${trHtml}
+        `;
+        document.getElementById("btnOpenMeeting")?.addEventListener("click", () => toast("Demo：回到会议详情"));
+      }
+
+      function openDrawer(title, node){
+        document.getElementById("drawerTitle").textContent = title;
+        drawerBody.innerHTML = "";
+        drawerBody.appendChild(node);
+        overlay.classList.add("show");
+        overlay.setAttribute("aria-hidden","false");
+      }
+      function closeDrawer(){
+        overlay.classList.remove("show");
+        overlay.setAttribute("aria-hidden","true");
+      }
+      document.getElementById("closeDrawer").onclick = closeDrawer;
+      overlay.addEventListener("click", (e)=>{ if (e.target === overlay) closeDrawer(); });
+
+      function openMenu(){
+        const box = document.createElement("div");
+        box.className = "menu";
+        box.innerHTML = `
+          <div class="menuItem" data-mode="manual">
+            <div class="l"><p class="t">切换来源：手动创建</p><p class="s">trigger=user_created</p></div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuItem" data-mode="ask_agent">
+            <div class="l"><p class="t">切换来源：Ask Agent</p><p class="s">trigger=ask_agent</p></div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuItem" data-mode="ai_meeting">
+            <div class="l"><p class="t">切换来源：会议解析</p><p class="s">trigger=ai_generated（from meeting/file）</p></div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuSep"></div>
+          <div class="menuItem" data-act="alias_speaker1">
+            <div class="l"><p class="t">Transcript：将 Speaker1 标记为「小王」</p><p class="s">联动更新标题与引用</p></div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuItem" data-act="clear_speaker1">
+            <div class="l"><p class="t">Transcript：清除 Speaker1 标记</p><p class="s">回到占位符，展示快速替换入口</p></div>
+            <div class="r">›</div>
+          </div>
+        `;
+        box.addEventListener("click", (e)=>{
+          const item = e.target.closest(".menuItem");
+          if (!item) return;
+          const mode = item.getAttribute("data-mode");
+          const act = item.getAttribute("data-act");
+          if (mode){
+            state.sourceMode = mode;
+            if (mode === "manual"){
+              state.reminder = {
+                title: "交作业",
+                desc: "手动创建的个人待办；无转写原文引用。",
+              };
+              state.transcriptRef = null;
+            } else if (mode === "ask_agent"){
+              state.reminder = {
+                title: "明晚6点与冯总吃饭",
+                desc: "由 Ask Agent 创建；人名/上下文写在说明里。",
+              };
+              state.transcriptRef = null;
+            } else {
+              state.reminder = {
+                title: "冯总让Speaker1明天一起吃饭",
+                desc: "从会议总结提取：Speaker1 未命名时可快速替换；在 transcript 中命名后需联动更新。",
+              };
+              state.transcriptRef = {
+                speaker: "Speaker1",
+                tcode: "00:12",
+                text: "冯总组织明天6点吃饭。",
+              };
+            }
+            closeDrawer();
+            render();
+            toast("已切换来源：" + mode);
+            return;
+          }
+          if (act === "alias_speaker1"){
+            state.speakerAliases = state.speakerAliases || {};
+            state.speakerAliases["Speaker1"] = "小王";
+            closeDrawer();
+            render();
+            toast("已标记 Speaker1 → 小王（Demo）");
+            return;
+          }
+          if (act === "clear_speaker1"){
+            state.speakerAliases = state.speakerAliases || {};
+            delete state.speakerAliases["Speaker1"];
+            closeDrawer();
+            render();
+            toast("已清除 Speaker1 标记（Demo）");
+            return;
+          }
+        });
+        openDrawer("菜单", box);
+      }
+
+      document.getElementById("menuBtn").onclick = openMenu;
+      document.getElementById("backBtn").onclick = () => toast("Demo：返回（未实现）");
+      elToggleDoneBtn.onclick = () => { state.done = !state.done; renderStatus(); };
+
+      function openPlusMenu(){
+        const box = document.createElement("div");
+        box.className = "menu";
+        box.innerHTML = `
+          <div class="menuItem" data-act="upload_file">
+            <div class="l"><p class="t">Upload 关联文件</p></div>
+            <div class="r">›</div>
+          </div>
+        `;
+        box.addEventListener("click", (e) => {
+          const item = e.target.closest(".menuItem");
+          if (!item) return;
+          const act = item.getAttribute("data-act");
+          closeDrawer();
+          if (act === "upload_file") {
+            const n = (state.attachments?.length || 0) + 1;
+            state.attachments = state.attachments || [];
+            const kind = state.attachmentType || "img";
+            const name = kind === "md" ? ("upload_" + n + ".md") : ("upload_" + n + ".jpg");
+            state.attachments.unshift({ id: "a_" + n, kind, name, meta: "Just now" });
+            state.activeTab = "attachment";
+            toast("已关联文件：" + name);
+            render();
+          }
+        });
+        openDrawer("+", box);
+      }
+
+      function ensureSession(){
+        if (state.session) return state.session;
+        state.session = {
+          id: "session_" + Math.random().toString(16).slice(2, 8),
+          messages: [
+            { role:"agent", text:"我已进入该 Reminder 上下文。你可以让我改写标题、时间、说明，或把联系人信息只写在文案中。" }
+          ]
+        };
+        return state.session;
+      }
+
+      function openAgentSession(){
+        const s = ensureSession();
+        const box = document.createElement("div");
+        box.className = "menu";
+        // reuse menu style as a simple chat mock
+        const msgs = s.messages.map(m => `
+          <div class="field" style="margin-bottom:10px; background:${m.role==="user" ? "#eff6ff" : "#f8fafc"}; border-color:${m.role==="user" ? "#dbeafe" : "var(--line)"}">
+            <div style="font-weight:1000; font-size:12px; color: var(--muted); margin-bottom:6px">${m.role==="user" ? "你" : "Agent"}</div>
+            <div style="font-weight:900; font-size:13px; line-height:1.45">${esc(m.text)}</div>
+          </div>
+        `).join("");
+        box.innerHTML = `
+          ${msgs}
+          <div class="field row" style="gap:8px">
+            <input id="chatInput" placeholder="输入消息（Demo）" style="flex:1; border:none; outline:none; font-weight:900; font-size:13px" />
+            <button class="linkbtn" id="sendBtn">发送</button>
+          </div>
+        `;
+        openDrawer("Ask Agent", box);
+        box.querySelector("#sendBtn")?.addEventListener("click", () => {
+          const input = box.querySelector("#chatInput");
+          const txt = (input?.value || "").trim();
+          if (!txt) return;
+          s.messages.push({ role:"user", text: txt });
+          s.messages.push({ role:"agent", text: "（Demo）收到。我会在该 Reminder 的上下文中给出修改建议；关联文件请用 +。" });
+          openAgentSession();
+        });
+      }
+
+      document.getElementById("btnPlus").onclick = openPlusMenu;
+      document.getElementById("btnAgent").onclick = openAgentSession;
+      document.getElementById("btnRecord").onclick = () => toast("Demo：录音入口（未实现）");
+
+      function renderHeaderText(){
+        elReminderTitle.innerHTML = renderTextWithSpeakerTokens(state.reminder.title);
+        elReminderDesc.textContent = state.reminder.desc;
+        elDueText.textContent = state.dueText;
+
+        elReminderTitle.querySelectorAll("[data-speaker]")?.forEach((el) => {
+          const key = el.getAttribute("data-speaker");
+          const onOpen = () => openSpeakerAliasEditor(key);
+          el.addEventListener("click", onOpen);
+          el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onOpen();
+            }
+          });
+        });
+      }
+
+      function render(){
+        renderStatus();
+        renderHeaderText();
+        renderSource();
+        renderTabs();
+        renderPanels();
+      }
+
+      render();
+    </script>
+  </body>
+</html>
+

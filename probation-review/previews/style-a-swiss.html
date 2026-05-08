@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Style A · Swiss Modern</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Nunito:wght@300;400;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* === VIEWPORT BASE === */
+html, body { height: 100%; margin: 0; overflow: hidden; }
+:root {
+    --bg: #f4f1ec;
+    --ink: #111;
+    --red: #e63312;
+    --grid: rgba(0,0,0,.07);
+}
+body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    height: 100vh;
+    position: relative;
+}
+
+/* === GRID OVERLAY === */
+.grid-lines {
+    position: absolute; inset: 0;
+    background-image:
+        linear-gradient(to right, var(--grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+    background-size: 8.33vw 8.33vh;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* === LAYOUT === */
+.slide {
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr auto;
+    padding: clamp(2rem, 5vh, 4rem) clamp(2.5rem, 6vw, 5rem);
+    position: relative;
+    z-index: 1;
+}
+
+/* === HEADER === */
+.head-l {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.7rem, 1vw, 0.85rem);
+    letter-spacing: 0.15em;
+    color: #666;
+    grid-column: 1 / 2;
+    display: flex; align-items: center; gap: 0.8em;
+}
+.head-l::before {
+    content: '';
+    display: inline-block;
+    width: clamp(1.5rem, 3vw, 2.5rem);
+    height: 2px;
+    background: var(--red);
+}
+.head-r {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.7rem, 1vw, 0.85rem);
+    letter-spacing: 0.15em;
+    color: #666;
+    grid-column: 2 / 3;
+    text-align: right;
+}
+
+/* === MAIN === */
+.main {
+    grid-column: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+}
+.number {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: clamp(5rem, 14vw, 12rem);
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    margin: 0;
+    opacity: 0;
+    animation: slide-up 0.8s cubic-bezier(.2,.8,.2,1) 0.1s forwards;
+}
+.number .dot {
+    color: var(--red);
+    display: inline-block;
+    transform: translateY(-0.05em);
+}
+.title {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: clamp(1.8rem, 4.2vw, 3.4rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: clamp(0.5rem, 1.5vh, 1rem) 0 0;
+    max-width: 70%;
+    opacity: 0;
+    animation: slide-up 0.8s cubic-bezier(.2,.8,.2,1) 0.35s forwards;
+}
+.subtitle {
+    font-weight: 300;
+    font-size: clamp(0.95rem, 1.4vw, 1.2rem);
+    line-height: 1.5;
+    color: #444;
+    max-width: 45ch;
+    margin-top: clamp(1rem, 2.5vh, 1.8rem);
+    opacity: 0;
+    animation: fade-in 0.8s ease 0.6s forwards;
+}
+
+/* === GEOMETRY ACCENT === */
+.accent-square {
+    position: absolute;
+    right: 0;
+    top: 5%;
+    width: clamp(6rem, 12vw, 10rem);
+    height: clamp(6rem, 12vw, 10rem);
+    background: var(--red);
+    opacity: 0;
+    animation: zoom-in 0.9s cubic-bezier(.2,.8,.2,1) 0.4s forwards;
+}
+.accent-circle {
+    position: absolute;
+    right: clamp(3rem, 7vw, 6rem);
+    bottom: 0;
+    width: clamp(4rem, 8vw, 7rem);
+    height: clamp(4rem, 8vw, 7rem);
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    opacity: 0;
+    animation: zoom-in 0.9s cubic-bezier(.2,.8,.2,1) 0.55s forwards;
+}
+
+/* === FOOTER === */
+.foot {
+    grid-column: 1 / 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.65rem, 0.95vw, 0.8rem);
+    letter-spacing: 0.15em;
+    color: #777;
+    text-transform: uppercase;
+}
+.foot-r { color: var(--ink); font-weight: 600; }
+
+/* === ANIMATIONS === */
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(1.5rem); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+    from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes zoom-in {
+    from { opacity: 0; transform: scale(0.7); }
+    to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="grid-lines"></div>
+<section class="slide">
+    <div class="head-l">FY26 · PROBATION REVIEW</div>
+    <div class="head-r">STYLE A / SWISS MODERN</div>
+
+    <div class="main">
+        <div class="accent-square"></div>
+        <div class="accent-circle"></div>
+        <div class="number">01<span class="dot">.</span></div>
+        <h1 class="title">转正答辩<br>Eureka · 0→1 复盘</h1>
+        <p class="subtitle">从 BizCard 到 EurekaMind — 用 AI×硬件，把出海产品从 Product Hunt 推到 Kickstarter。</p>
+    </div>
+
+    <div class="foot">
+        <span>Du Yichuang · Product</span>
+        <span class="foot-r">Apr 2026</span>
+    </div>
+</section>
+</body>
+</html>

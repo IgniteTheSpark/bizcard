@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>试用期转正答辩</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   VIEWPORT BASE (mandatory — full file from skill)
+   =========================================== */
+html, body {
+    height: 100%;
+    overflow-x: hidden;
+}
+html {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+}
+.slide {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.slide-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-height: 100%;
+    overflow: hidden;
+    padding: var(--slide-padding);
+}
+:root {
+    --title-size: clamp(1.5rem, 5vw, 4rem);
+    --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
+    --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+    --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
+    --small-size: clamp(0.65rem, 1vw, 0.875rem);
+    --slide-padding: clamp(1rem, 4vw, 4rem);
+    --content-gap: clamp(0.5rem, 2vw, 2rem);
+    --element-gap: clamp(0.25rem, 1vw, 1rem);
+}
+.card, .container, .content-box {
+    max-width: min(90vw, 1000px);
+    max-height: min(80vh, 700px);
+}
+.feature-list, .bullet-list {
+    gap: clamp(0.4rem, 1vh, 1rem);
+}
+.feature-list li, .bullet-list li {
+    font-size: var(--body-size);
+    line-height: 1.4;
+}
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+    gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+img, .image-container {
+    max-width: 100%;
+    max-height: min(50vh, 400px);
+    object-fit: contain;
+}
+@media (max-height: 700px) {
+    :root {
+        --slide-padding: clamp(0.75rem, 3vw, 2rem);
+        --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+        --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+        --h2-size: clamp(1rem, 3vw, 1.75rem);
+    }
+}
+@media (max-height: 600px) {
+    :root {
+        --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+        --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+        --title-size: clamp(1.1rem, 4vw, 2rem);
+        --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+    }
+    .nav-dots, .keyboard-hint, .deck-bar {
+        display: none;
+    }
+}
+@media (max-height: 500px) {
+    :root {
+        --slide-padding: clamp(0.4rem, 2vw, 1rem);
+        --title-size: clamp(1rem, 3.5vw, 1.5rem);
+        --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
+        --body-size: clamp(0.65rem, 1vw, 0.85rem);
+    }
+}
+@media (max-width: 600px) {
+    :root { --title-size: clamp(1.25rem, 7vw, 2.5rem); }
+    .grid { grid-template-columns: 1fr; }
+    .case-split { grid-template-columns: 1fr !important; }
+    .slide-intro .bullet-list,
+    .slide-values .bullet-list,
+    .slide-goals .bullet-list,
+    .detail-grid.cols-2,
+    .detail-grid.cols-3 { grid-template-columns: 1fr !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+    html { scroll-behavior: auto; }
+}
+
+/* ===========================================
+   THEME — 让内容有排版，而不是纯文字罗列
+   参考：Notebook Tabs + Paper & Ink
+   =========================================== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+    --bg: #272421;
+    --bg-soft: #332f2b;
+    --card: #f7f3eb;
+    --card-2: #fcfaf6;
+    --ink: #1b1815;
+    --muted: #60574f;
+    --line: #d7cfc2;
+    --accent: #725d49;
+    --accent-2: #b88c61;
+    --sage: #9ab59f;
+    --lavender: #b9aed8;
+    --rose: #d8b5be;
+    --sky: #a8cad6;
+    --gold: #dbc57e;
+    --font-sans: 'Noto Sans SC', sans-serif;
+    --font-serif: 'Noto Serif SC', 'Noto Sans SC', serif;
+}
+body {
+    font-family: var(--font-sans);
+    background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.05), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(255,255,255,0.04), transparent 26%),
+        linear-gradient(160deg, #2d2926 0%, var(--bg) 45%, #201d1a 100%);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+}
+
+.slide::before {
+    content: attr(data-mark);
+    position: absolute;
+    right: clamp(1.4rem, 4vw, 3.5rem);
+    top: clamp(1rem, 3vh, 2rem);
+    font-family: var(--font-serif);
+    font-size: clamp(3rem, 12vw, 9rem);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: rgba(255,255,255,0.04);
+    pointer-events: none;
+    z-index: 0;
+}
+.slide:not([data-mark])::before {
+    content: '';
+}
+
+/* 版心：更像被装订过的纸张 */
+.slide-inner {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: min(94vw, 1120px);
+    margin: 0 auto;
+    padding: clamp(0.55rem, 1.6vh, 1rem) clamp(0.8rem, 2vw, 1.3rem)
+        calc(clamp(2.75rem, 7vh, 3.5rem) + env(safe-area-inset-bottom, 0));
+    position: relative;
+    z-index: 1;
+}
+.slide-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.1)),
+        var(--card);
+    border: 1px solid rgba(215,207,194,0.92);
+    border-radius: clamp(4px, 0.4vw, 10px);
+    box-shadow:
+        0 1px 0 rgba(255,255,255,.8) inset,
+        0 24px 50px rgba(0,0,0,.16);
+    overflow: hidden;
+    position: relative;
+}
+.slide-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: clamp(1.1rem, 2.3vw, 1.8rem);
+    background:
+        radial-gradient(circle, rgba(39,36,33,.28) 0 32%, transparent 35%) center clamp(1rem, 2.8vh, 1.6rem) / 100% clamp(1.6rem, 4vh, 2.2rem) repeat-y,
+        linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,.15));
+    border-right: 1px solid rgba(215,207,194,.95);
+}
+.slide::after {
+    content: attr(data-tab);
+    position: absolute;
+    right: clamp(1rem, 2vw, 1.4rem);
+    top: clamp(3.4rem, 8vh, 5rem);
+    width: clamp(3.4rem, 7vw, 4.6rem);
+    padding: clamp(0.45rem, 1vh, 0.7rem) 0;
+    font-size: clamp(0.52rem, 0.75vw, 0.7rem);
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    text-align: center;
+    color: rgba(27,24,21,.76);
+    background: var(--sky);
+    border: 1px solid rgba(27,24,21,.12);
+    border-left: none;
+    border-radius: 0 clamp(7px, 1vw, 10px) clamp(7px, 1vw, 10px) 0;
+    transform: rotate(90deg);
+    transform-origin: center;
+    box-shadow: 0 6px 16px rgba(0,0,0,.08);
+    z-index: 3;
+}
+.slide-content {
+    justify-content: flex-start;
+    padding: clamp(1rem, 2.9vh, 1.85rem) clamp(1.2rem, 3.2vw, 2.45rem) clamp(1rem, 2.5vh, 1.6rem) clamp(2.2rem, 4.8vw, 3.3rem);
+    gap: clamp(0.35rem, 1vh, 0.65rem);
+    position: relative;
+    z-index: 1;
+}
+
+.slide-kicker {
+    align-self: flex-start;
+    font-size: var(--small-size);
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: rgba(114,93,73,0.08);
+    border: 1px solid rgba(114,93,73,0.12);
+    border-radius: 999px;
+    padding: 0.4em 0.9em;
+    margin-bottom: clamp(0.2rem, 0.5vh, 0.35rem);
+}
+.slide-title {
+    font-family: var(--font-serif);
+    font-size: var(--h2-size);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.015em;
+    max-width: min(100%, 18ch);
+    min-height: clamp(3.8rem, 10vh, 5.25rem);
+    display: flex;
+    align-items: flex-end;
+    margin-bottom: clamp(0.25rem, 0.7vh, 0.45rem);
+}
+.slide-title.display {
+    font-size: clamp(2rem, 5.2vw, 4.25rem);
+    line-height: 1.1;
+    max-width: min(100%, 9ch);
+    position: relative;
+    padding-bottom: clamp(0.45rem, 1.2vh, 0.7rem);
+    min-height: auto;
+    display: block;
+    margin-bottom: 0;
+}
+.slide-title.display::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: clamp(3rem, 8vw, 6rem);
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+}
+.h3 {
+    font-size: clamp(0.88rem, 1.4vw, 1.08rem);
+    font-weight: 600;
+    margin-top: clamp(0.45rem, 1.1vh, 0.7rem);
+    margin-bottom: clamp(0.15rem, 0.45vh, 0.3rem);
+    color: var(--accent);
+    letter-spacing: 0.04em;
+}
+.p, .bullet-list li {
+    font-size: var(--body-size);
+    line-height: 1.55;
+    color: var(--ink);
+}
+.p.muted, .muted { color: var(--muted); }
+.bullet-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.32rem, 0.8vh, 0.5rem);
+}
+.bullet-list li {
+    padding: clamp(0.42rem, 1vh, 0.7rem) clamp(0.55rem, 1.3vw, 0.85rem) clamp(0.42rem, 1vh, 0.7rem) clamp(1.45rem, 2.4vw, 1.8rem);
+    position: relative;
+    background: linear-gradient(180deg, rgba(255,255,255,0.65), rgba(255,255,255,0.18));
+    border: 1px solid rgba(215,207,194,0.82);
+    border-radius: clamp(4px, 0.35vw, 8px);
+}
+.bullet-list li::before {
+    content: '';
+    position: absolute;
+    left: clamp(0.58rem, 1.2vw, 0.78rem);
+    top: calc(50% - 0.12em);
+    width: 0.28em;
+    height: 0.28em;
+    background: var(--accent);
+    border-radius: 50%;
+    opacity: 0.88;
+}
+
+/* 封面 */
+.slide-hero .slide-card {
+    background:
+        radial-gradient(circle at 80% 20%, rgba(185,174,216,0.35), transparent 26%),
+        radial-gradient(circle at 78% 72%, rgba(154,181,159,0.3), transparent 24%),
+        linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.08)),
+        var(--card);
+}
+.slide-hero .slide-content {
+    padding-top: clamp(1.2rem, 4vh, 2.4rem);
+    padding-bottom: clamp(1.2rem, 4vh, 2.4rem);
+}
+.slide-hero .slide-kicker {
+    background: rgba(114,93,73,0.12);
+}
+
+/* 自我介绍：第一页三列卡片 */
+.slide-intro .bullet-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(0.55rem, 1.5vw, 0.95rem);
+}
+.slide-intro .detail-grid,
+.slide-work .detail-grid {
+    flex: 1;
+    align-content: stretch;
+}
+.slide-intro .detail-card,
+.slide-work .detail-card {
+    min-height: clamp(11rem, 23vh, 13.5rem);
+}
+.slide-intro .bullet-list li {
+    min-height: 100%;
+    padding: clamp(0.7rem, 1.5vh, 0.95rem);
+}
+.slide-intro .bullet-list li::before {
+    top: auto;
+    left: clamp(0.7rem, 1.2vw, 0.85rem);
+    bottom: clamp(0.65rem, 1.3vh, 0.9rem);
+}
+
+/* 核心优势 / 反思：分段块 */
+.slide-self .h3 {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 0.25em 0.65em;
+    background: rgba(114,93,73,0.08);
+    border-radius: 999px;
+}
+
+/* 工作回顾：更强结构和序号水印 */
+.slide-work .slide-card {
+    background:
+        linear-gradient(90deg, rgba(114,93,73,0.06) 0, rgba(114,93,73,0.06) clamp(2.1rem, 4.5vw, 3rem), transparent clamp(2.1rem, 4.5vw, 3rem), transparent 100%),
+        linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.08)),
+        var(--card);
+}
+.slide-work::before {
+    color: rgba(255,255,255,0.06);
+}
+.slide-work .bullet-list li strong {
+    color: var(--accent);
+}
+
+/* 案例页 */
+.slide-cases .case-split {
+    margin-top: clamp(0.4rem, 1vh, 0.7rem);
+    align-items: stretch;
+}
+.slide-cases .case-box {
+    border: 1px solid rgba(215,207,194,0.88);
+    border-radius: clamp(6px, 0.45vw, 10px);
+    padding: clamp(0.75rem, 1.7vh, 1rem) clamp(0.7rem, 1.5vw, 1rem);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.24)),
+        var(--card-2);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.4rem, 0.9vh, 0.6rem);
+}
+.slide-cases .case-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: clamp(0.3rem, 0.7vh, 0.45rem);
+    border-bottom: 1px solid rgba(215,207,194,0.8);
+}
+.slide-cases .case-tag {
+    font-size: clamp(0.6rem, 0.8vw, 0.7rem);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.slide-cases .case-box h3 {
+    font-size: clamp(0.92rem, 1.3vw, 1.1rem);
+    font-family: var(--font-serif);
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    margin: 0;
+}
+.slide-cases .case-box:first-child {
+    border-top: 4px solid var(--sage);
+}
+.slide-cases .case-box:last-child {
+    border-top: 4px solid var(--rose);
+}
+.slide-cases .case-subtitle {
+    font-size: clamp(0.78rem, 1.02vw, 0.88rem);
+    color: var(--accent);
+    font-weight: 600;
+}
+.slide-cases .case-points {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.28rem, 0.7vh, 0.42rem);
+}
+.slide-cases .case-points li {
+    font-size: clamp(0.72rem, 0.98vw, 0.86rem);
+    line-height: 1.5;
+    color: var(--ink);
+    padding-left: 1.05rem;
+    position: relative;
+}
+.slide-cases .case-points li::before {
+    content: '';
+    position: absolute;
+    left: 0.2rem;
+    top: 0.62em;
+    width: 0.22rem;
+    height: 0.22rem;
+    border-radius: 50%;
+    background: var(--accent);
+}
+.slide-cases .case-summary {
+    margin-top: auto;
+    padding-top: clamp(0.35rem, 0.8vh, 0.5rem);
+    border-top: 1px dashed rgba(114,93,73,0.22);
+    font-size: clamp(0.72rem, 0.98vw, 0.84rem);
+    line-height: 1.48;
+    color: var(--muted);
+}
+.slide-cases .case-summary strong {
+    color: var(--ink);
+}
+
+/* 通用卡片组件：把 PART 3 的卡片逻辑复用到其他页面 */
+.section-block {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.35rem, 0.9vh, 0.55rem);
+}
+.section-pill {
+    align-self: flex-start;
+    font-size: clamp(0.6rem, 0.82vw, 0.72rem);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.35em 0.75em;
+    border-radius: 999px;
+    background: rgba(114,93,73,0.08);
+}
+.detail-grid {
+    display: grid;
+    gap: clamp(0.55rem, 1.4vw, 0.9rem);
+    min-height: 0;
+}
+.detail-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.detail-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.detail-card {
+    border: 1px solid rgba(215,207,194,0.88);
+    border-radius: clamp(6px, 0.45vw, 10px);
+    padding: clamp(0.7rem, 1.6vh, 1rem) clamp(0.65rem, 1.4vw, 1rem);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.22)),
+        var(--card-2);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.35rem, 0.85vh, 0.55rem);
+    min-height: 0;
+}
+.detail-card.wide { grid-column: 1 / -1; }
+.detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    padding-bottom: clamp(0.28rem, 0.65vh, 0.42rem);
+    border-bottom: 1px solid rgba(215,207,194,0.8);
+}
+.detail-tag {
+    font-size: clamp(0.58rem, 0.76vw, 0.68rem);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+}
+.detail-title {
+    font-size: clamp(0.9rem, 1.22vw, 1.05rem);
+    font-family: var(--font-serif);
+    line-height: 1.28;
+    color: var(--ink);
+    margin: 0;
+}
+.detail-body {
+    font-size: clamp(0.72rem, 0.98vw, 0.86rem);
+    line-height: 1.52;
+    color: var(--ink);
+}
+.detail-points {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.24rem, 0.65vh, 0.38rem);
+}
+.detail-points li {
+    font-size: clamp(0.7rem, 0.94vw, 0.84rem);
+    line-height: 1.48;
+    color: var(--ink);
+    padding-left: 1rem;
+    position: relative;
+}
+.detail-points li::before {
+    content: '';
+    position: absolute;
+    left: 0.18rem;
+    top: 0.62em;
+    width: 0.22rem;
+    height: 0.22rem;
+    border-radius: 50%;
+    background: var(--accent);
+}
+.detail-summary {
+    margin-top: auto;
+    padding-top: clamp(0.3rem, 0.7vh, 0.45rem);
+    border-top: 1px dashed rgba(114,93,73,0.22);
+    font-size: clamp(0.7rem, 0.94vw, 0.82rem);
+    line-height: 1.48;
+    color: var(--muted);
+}
+.detail-summary strong { color: var(--ink); }
+
+/* 价值观 / 目标：改成信息卡网格 */
+.slide-values .bullet-list,
+.slide-goals .bullet-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(0.55rem, 1.4vw, 0.9rem);
+}
+.slide-values .bullet-list li,
+.slide-goals .bullet-list li {
+    min-height: 100%;
+}
+.slide-values .bullet-list li strong,
+.slide-goals .bullet-list li strong {
+    color: var(--accent);
+}
+.slide-goals .bullet-list li:last-child {
+    grid-column: 1 / -1;
+}
+.slide-goals .slide-content {
+    justify-content: flex-start;
+}
+.slide-goals .section-block {
+    flex: 1;
+}
+.slide-goals .detail-card {
+    min-height: clamp(8.2rem, 15vh, 9.8rem);
+}
+
+/* 公司反馈 / peers：引用感更强 */
+.slide-feedback .bullet-list li,
+.slide-peers .bullet-list li {
+    border-left: 4px solid var(--accent-2);
+    padding-left: clamp(1.1rem, 2vw, 1.45rem);
+}
+.slide-feedback .bullet-list li::before,
+.slide-peers .bullet-list li::before {
+    display: none;
+}
+
+/* 结束页 */
+.slide-end .slide-card {
+    background:
+        radial-gradient(circle at 78% 22%, rgba(168,202,214,0.28), transparent 24%),
+        linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.1)),
+        var(--card);
+}
+.slide-hero::after,
+.slide-end::after { background: var(--gold); }
+.slide-intro::after,
+.slide-self::after { background: var(--sage); }
+.slide-work::after { background: var(--lavender); }
+.slide-cases::after { background: var(--rose); }
+.slide-values::after { background: var(--sky); }
+.slide-goals::after { background: var(--gold); }
+.slide-feedback::after,
+.slide-peers::after { background: #d7c3a6; }
+
+/* Reveal */
+.reveal {
+    opacity: 0;
+    transform: translateY(clamp(6px, 0.8vh, 12px));
+    transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.slide.visible .reveal {
+    opacity: 1;
+    transform: translateY(0);
+}
+.slide.visible .reveal:nth-child(1) { transition-delay: 0.04s; }
+.slide.visible .reveal:nth-child(2) { transition-delay: 0.1s; }
+.slide.visible .reveal:nth-child(3) { transition-delay: 0.16s; }
+.slide.visible .reveal:nth-child(4) { transition-delay: 0.22s; }
+.slide.visible .reveal:nth-child(5) { transition-delay: 0.28s; }
+
+/* ===========================================
+   分页 UI — 单一逻辑：全局进度 + 章节名 + 当前/总数
+   =========================================== */
+.progress-track {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: clamp(2px, 0.35vh, 4px);
+    background: rgba(255,255,255,.08);
+    z-index: 9000;
+}
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), #8a7a66);
+    transition: width 0.2s ease;
+}
+
+.deck-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    background: rgba(247,243,235,.94);
+    border-top: 1px solid rgba(215,207,194,0.82);
+    backdrop-filter: blur(8px);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    min-height: clamp(2.6rem, 6.5vh, 3.4rem);
+}
+.deck-bar button {
+    font-family: var(--font-sans);
+    width: clamp(2.5rem, 7vw, 3.5rem);
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.deck-bar button:hover { color: var(--ink); background: rgba(107,91,74,.08); }
+.deck-bar button:disabled { opacity: 0.35; cursor: default; }
+.deck-bar-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(0.05rem, 0.25vh, 0.15rem);
+    min-width: 0;
+    padding: 0 clamp(0.35rem, 1.5vw, 0.75rem);
+}
+.deck-chapter {
+    font-size: clamp(0.62rem, 0.92vw, 0.78rem);
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.deck-chapter strong { color: var(--ink); font-weight: 600; }
+.deck-page {
+    font-size: clamp(0.68rem, 1vw, 0.82rem);
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+}
+
+.nav-dots {
+    position: fixed;
+    right: clamp(0.35rem, 1.2vw, 0.75rem);
+    top: 50%;
+    transform: translateY(calc(-1 * clamp(1.25rem, 3vh, 2rem)));
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.22rem, 0.55vh, 0.38rem);
+    z-index: 8900;
+}
+.nav-dots button {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    border: 1px solid rgba(92,88,84,.4);
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+}
+.nav-dots button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.keyboard-hint {
+    position: fixed;
+    bottom: calc(clamp(2.6rem, 6.5vh, 3.4rem) + env(safe-area-inset-bottom, 0) + 0.45rem);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: var(--small-size);
+    color: var(--muted);
+    z-index: 8800;
+    text-align: center;
+    max-width: 92vw;
+    pointer-events: none;
+    opacity: 0.88;
+}
+.keyboard-hint kbd {
+    font-family: var(--font-sans);
+    font-size: 0.88em;
+    padding: 0.1em 0.35em;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--card);
+}
+
+/* Inline edit */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 56px; height: 56px; z-index: 10000; cursor: pointer; }
+.edit-toggle {
+    position: fixed;
+    top: clamp(0.4rem, 1.2vh, 0.65rem);
+    left: clamp(0.4rem, 1.2vw, 0.65rem);
+    width: 1.85rem;
+    height: 1.85rem;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--muted);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { color: var(--ink); border-color: var(--accent); }
+body.edit-mode [contenteditable="true"] {
+    outline: 1px dashed rgba(107,91,74,.45);
+    outline-offset: 2px;
+}
+.edit-toast {
+    position: fixed;
+    bottom: calc(clamp(2.6rem, 6.5vh, 3.4rem) + 2.25rem);
+    right: clamp(0.5rem, 1.5vw, 1rem);
+    background: var(--ink);
+    color: var(--card);
+    padding: 0.4em 0.65em;
+    font-size: var(--small-size);
+    border-radius: 3px;
+    z-index: 10002;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+}
+.edit-toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+
+<nav class="nav-dots" id="navDots" aria-label="幻灯片页码"></nav>
+
+<div class="keyboard-hint" id="keyboardHint">
+    <kbd>↑</kbd><kbd>↓</kbd> 翻页 · <kbd>Home</kbd> / <kbd>End</kbd> 首尾 · <kbd>E</kbd> 编辑 · <kbd>Ctrl+S</kbd> 导出
+</div>
+
+<div class="edit-hotzone" aria-hidden="true"></div>
+<button type="button" class="edit-toggle" id="editToggle" title="编辑 (E)" aria-label="切换编辑">✎</button>
+<div class="edit-toast" id="editToast"></div>
+
+<!-- === SLIDE 01 · 封面 === -->
+<section class="slide slide-hero" data-chapter="开场" data-slide-label="封面" data-tab="Review" data-mark="00">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content" style="justify-content: space-between;">
+                <p class="slide-kicker reveal" contenteditable="true">Probation Review</p>
+                <h1 class="slide-title display reveal">试用期转正答辩</h1>
+                <div class="muted reveal" style="font-size: var(--small-size); display:flex; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; border-top:1px solid var(--line); padding-top:clamp(0.45rem,1vh,0.65rem);">
+                    <span contenteditable="true">Du Yichuang · 产品经理</span>
+                    <span class="deck-page-inline"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 02 · 个人背景 === -->
+<section class="slide slide-intro" data-chapter="PART 1 · 自我介绍" data-slide-label="个人背景" data-tab="Part 1" data-mark="01">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 1</p>
+                <h2 class="slide-title reveal">个人背景</h2>
+                <div class="detail-grid cols-3 reveal">
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">01</span>
+                            <h3 class="detail-title">技术底色</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">滑铁卢 CS；早期有海外开发经历，因此更容易与研发共情，也更理解技术边界与落地空间。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">02</span>
+                            <h3 class="detail-title">0→1 经验</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">长期深耕 Web3，主导链上协议与业务模块从 0 到 1 建设，熟悉复杂系统设计与敏捷迭代。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">03</span>
+                            <h3 class="detail-title">当前聚焦</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">在公司全面拥抱 AI to C，负责 Eureka（原 BizCard）软件迭代，以及下一代硬件形态探索。</p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 03 · 核心优势 + 不足 === -->
+<section class="slide slide-self" data-chapter="PART 1 · 自我介绍" data-slide-label="核心优势与反思" data-tab="Part 1" data-mark="01">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 1</p>
+                <h2 class="slide-title reveal">核心优势与不足反思</h2>
+                <div class="section-block reveal">
+                    <span class="section-pill">优势</span>
+                    <div class="detail-grid cols-3">
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">A1</span>
+                                <h3 class="detail-title">学习与技术适应</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">CS 背景使我切入 AI 赛道时，能较快理解大模型边界与系统架构，并转成业务逻辑。</p>
+                        </article>
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">A2</span>
+                                <h3 class="detail-title">叙事与形态创新</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">推动 Eureka 从「名片+录音卡」升级为「个人 AI 效率工具」；同时探索 Data-to-Earn 与 3.0/4.0 硬件形态。</p>
+                        </article>
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">A3</span>
+                                <h3 class="detail-title">跨端协同推进</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">在软硬结合、跨部门与对外协同中，能拉齐认知、梳理主线，把控多线并行节奏。</p>
+                        </article>
+                    </div>
+                </div>
+                <div class="section-block reveal">
+                    <span class="section-pill">反思</span>
+                    <div class="detail-grid cols-3">
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">B1</span>
+                                <h3 class="detail-title">需求评估</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">面对大愿景时，对工作量与 ROI 的前置评估不够细，曾带来一定资源浪费。</p>
+                        </article>
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">B2</span>
+                                <h3 class="detail-title">沟通方式</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">对外推进时偶有态度偏硬或需求颗粒度不足，造成执行偏差与延期。</p>
+                        </article>
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">B3</span>
+                                <h3 class="detail-title">敏捷决策</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">复杂取舍时偶有过度权衡，小步试错仍需更果断。</p>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 04 · 贡献一 === -->
+<section class="slide slide-work" data-chapter="PART 2 · 工作回顾" data-slide-label="BizCard → EurekaMind" data-tab="Work" data-mark="02">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 2 · 贡献一</p>
+                <h2 class="slide-title reveal">BizCard → EurekaMind</h2>
+                <div class="detail-grid cols-3 reveal">
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">01</span>
+                            <h3 class="detail-title">PH 登榜</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">早期挖掘场景，叙事聚焦「名片+录音卡」，推动 Product Hunt 日榜第一、周榜第二。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">02</span>
+                            <h3 class="detail-title">品牌重塑</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">为出海与长期规划，从名片工具升级为「个人商务效率工具」，并完成 EurekaMind 更名。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">03</span>
+                            <h3 class="detail-title">软件护城河</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">围绕新定位补强日历/待办/日程，优化转录与总结，并迭代 AskAgent 支撑硬件售卖。</p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 05 · 贡献二 硬件 === -->
+<section class="slide slide-work" data-chapter="PART 2 · 工作回顾" data-slide-label="智能硬件 1.0–3.0" data-tab="Work" data-mark="02">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 2 · 贡献二</p>
+                <h2 class="slide-title reveal">智能硬件 1.0 → 3.0</h2>
+                <div class="detail-grid cols-3 reveal">
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">1.0</span>
+                            <h3 class="detail-title">品牌化与降本</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">在公版基础上完成 EurekaMind 包装与配套，并对接方案商/厂商，储备备选与降本路径。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">2.0</span>
+                            <h3 class="detail-title">全流程主导</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">主导闪念、蓝牙耳机直连、软硬交互与全新 ID，推动关键量产节点落地。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">3.0</span>
+                            <h3 class="detail-title">形态探索</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">为海外众筹协同设计师与打样工厂，推进结构验证，并从 0 定义 E-ink 产品逻辑与交互。</p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 06 · 贡献三 保险 === -->
+<section class="slide slide-work" data-chapter="PART 2 · 工作回顾" data-slide-label="保险与 Web3" data-tab="Work" data-mark="02">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 2 · 贡献三</p>
+                <h2 class="slide-title reveal">保险与 Web3 方案</h2>
+                <div class="detail-grid cols-3 reveal">
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">01</span>
+                            <h3 class="detail-title">机制设计</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">面向 B 端语料需求设计 Data-to-Earn 闭环，用「App 轻提示 + H5」控风险、低改动落地。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">02</span>
+                            <h3 class="detail-title">软硬联动</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">基于客户对“保险专属 AI Agent”的期待，补齐 3.0 硬件适配与 Ask-Agent 行业能力。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">03</span>
+                            <h3 class="detail-title">商业结果</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">软硬闭环成功打动客户，拿到首阶段约 1 万美金订单，并锁定后续千台级采购预期。</p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 07 · 两个案例（合并） === -->
+<section class="slide slide-cases" data-chapter="PART 3 · 案例与心得" data-slide-label="两个案例与心得" data-tab="Cases" data-mark="03">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 3</p>
+                <h2 class="slide-title reveal">两个真实案例与心得</h2>
+                <div class="case-split reveal">
+                    <div class="case-box">
+                        <div class="case-head">
+                            <span class="case-tag">CASE A</span>
+                            <h3>成就感</h3>
+                        </div>
+                        <p class="case-subtitle" contenteditable="true">商业闭环破局与硬件匠心落地的双重突破</p>
+                        <ul class="case-points">
+                            <li contenteditable="true"><strong>商业破局：</strong>入职首月将 Web3 经验与保险痛点结合，设计 Data-to-Earn 闭环；Demo 阶段即拿到 10,000 美金测试预算，并转化为硬件销售实单。</li>
+                            <li contenteditable="true"><strong>产品打磨：</strong>深度主导硬件 2.0，从功能构思、ID 外观到打样落地；新外观得到团队内外一致认可，也显著抬高上市预期。</li>
+                        </ul>
+                        <p class="case-summary" contenteditable="true"><strong>体会：</strong>PM 的价值在于跑通商业闭环、拿到客户预算；而硬件“造物”的过程，也会带来很强的成就感。</p>
+                    </div>
+                    <div class="case-box">
+                        <div class="case-head">
+                            <span class="case-tag">CASE B</span>
+                            <h3>挫折感</h3>
+                        </div>
+                        <p class="case-subtitle" contenteditable="true">早期定位摇摆带来的增长瓶颈与资源内耗</p>
+                        <ul class="case-points">
+                            <li contenteditable="true"><strong>问题：</strong>BizCard 早期在「名片」与「效率工具」叙事间多次切换，导致用户认知断层，留存与增长承压。</li>
+                            <li contenteditable="true"><strong>结果：</strong>功能规划反复、前置验证不足，客观上带来了资源浪费与团队消耗。</li>
+                        </ul>
+                        <p class="case-summary" contenteditable="true"><strong>体会：</strong>PM 要做方向压舱石；很多时候问题不在于缺少数据，而在于对内容和方向没有足够果断，同时也要在试错与资源消耗之间保持平衡。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 08 · 价值观（合并） === -->
+<section class="slide slide-values" data-chapter="PART 4 · 文化价值观" data-slide-label="创新与协作" data-tab="Values" data-mark="04">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 4</p>
+                <h2 class="slide-title reveal">文化价值观：创新 · 协作</h2>
+                <div class="detail-grid cols-2 reveal">
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">01</span>
+                            <h3 class="detail-title">创新 · 理解</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">创新不止是技术突破，更是商业模式与产品体验的重构，是为真实痛点找到更优解。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">02</span>
+                            <h3 class="detail-title">创新 · 践行</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">保险侧以 Data-to-Earn 跳出积分路径；硬件侧主导 3.0/4.0 形态，推进闪念、蓝牙协同与 E-ink 新交互。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">03</span>
+                            <h3 class="detail-title">协作 · 理解</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">协作是打破组织边界，作为枢纽拉齐多方认知，把目标拆成可以执行的节点。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">04</span>
+                            <h3 class="detail-title">协作 · 践行</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">Eureka 软硬项目中，对内串联法务/财务/研发/产品/测试，对外对接设计师、方案商、供应链与工厂。</p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 09 · 工作目标（合并一页） === -->
+<section class="slide slide-goals" data-chapter="PART 5 · 目标与规划" data-slide-label="转正后目标与规划" data-tab="Goals" data-mark="05">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 5</p>
+                <h2 class="slide-title reveal">转正后的工作目标与规划</h2>
+                <div class="section-block reveal">
+                    <span class="section-pill">工作计划</span>
+                    <div class="detail-grid cols-3">
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">G1</span>
+                                <h3 class="detail-title">营收与发售</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">守住 2.0 量产与现货；交付 3.0 Demo，配合 Kickstarter 冲刺阶段性收入目标。</p>
+                        </article>
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">G2</span>
+                                <h3 class="detail-title">产品闭环</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">Q2 推 E-ink 软硬与资产模型；Q3 做 Unified Calendar 与生态接入；Q4 跑通语音到墨水屏反显链路。</p>
+                        </article>
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">G3</span>
+                                <h3 class="detail-title">产品健康度</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">以体验和留存为主线，提升协同功能渗透与 E-ink 活跃，严控开箱与退货体验。</p>
+                        </article>
+                    </div>
+                </div>
+                <div class="section-block reveal">
+                    <span class="section-pill">职业规划</span>
+                    <div class="detail-grid cols-2">
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">1Y</span>
+                                <h3 class="detail-title">短期一年</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">把 2.0/3.0 推向全球市场，兑现 KPI，强化 0→1 架构设计与商业化落地能力。</p>
+                        </article>
+                        <article class="detail-card">
+                            <div class="detail-head">
+                                <span class="detail-tag">2-3Y</span>
+                                <h3 class="detail-title">中长期规划</h3>
+                            </div>
+                            <p class="detail-body" contenteditable="true">沉淀 AI 硬件从研发到出海变现的方法论，赋能更多产品线与团队，实现规模化复制。</p>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 10 · 对公司建议 === -->
+<section class="slide slide-feedback" data-chapter="PART 6 · 公司反馈" data-slide-label="对公司的反馈" data-tab="Feedback" data-mark="06">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 6</p>
+                <h2 class="slide-title reveal">对公司文化与管理方面的反馈</h2>
+                <div class="detail-grid cols-2 reveal">
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">F1</span>
+                            <h3 class="detail-title">赋能与信任</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">创新探索上给予较高自由度与信任，鼓励发挥个人专长，也提供充分试错空间。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">F2</span>
+                            <h3 class="detail-title">业务导向</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">流程不为设卡而设卡，资源与部门配合围绕业务灵活调整，共同为商业结果负责。</p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 11 · Peers 反馈 === -->
+<section class="slide slide-peers" data-chapter="PART 7 · Peers" data-slide-label="同事反馈与建议" data-tab="Peers" data-mark="07">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content">
+                <p class="slide-kicker reveal">PART 7</p>
+                <h2 class="slide-title reveal">Peers 反馈与建议</h2>
+                <div class="detail-grid cols-2 reveal">
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">P1</span>
+                            <h3 class="detail-title">同事反馈</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">多线并行时带宽与适应力强，能在法务、商标、结构/ID、软件与底层 AI 之间快速切换并推进复杂事项。</p>
+                    </article>
+                    <article class="detail-card">
+                        <div class="detail-head">
+                            <span class="detail-tag">P2</span>
+                            <h3 class="detail-title">同事建议</h3>
+                        </div>
+                        <p class="detail-body" contenteditable="true">在核心硬件节点平稳落地后，适当放慢节奏，输出更体系化、长线的产品迭代规划，带领团队更从容演进。</p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- === SLIDE 12 · 结束 === -->
+<section class="slide slide-end" data-chapter="结束" data-slide-label="致谢" data-tab="End" data-mark="08">
+    <div class="slide-inner">
+        <div class="slide-card">
+            <div class="slide-content" style="justify-content:center; text-align:center;">
+                <h2 class="slide-title display reveal" contenteditable="true">谢谢。</h2>
+                <p class="muted reveal" style="margin-top:clamp(0.5rem,1.2vh,0.85rem); font-size:var(--body-size);" contenteditable="true">欢迎提问与交流。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer class="deck-bar" id="deckBar" aria-label="翻页">
+    <button type="button" id="btnPrev" aria-label="上一页">←</button>
+    <div class="deck-bar-center">
+        <div class="deck-chapter" id="deckChapter"></div>
+        <div class="deck-page" id="deckPage"></div>
+    </div>
+    <button type="button" id="btnNext" aria-label="下一页">→</button>
+</footer>
+
+<script>
+/* ===========================================
+   分页逻辑（单一来源）
+   - 当前页索引：IntersectionObserver 与「最近一次进入视口过半的 .slide」同步
+   - 进度条： (index + 1) / total × 100%
+   - 底栏：data-chapter + 「当前页 / 总页数」；可选 data-slide-label 写入副行（与章节合并为一行展示）
+   =========================================== */
+(function () {
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const total = slides.length;
+    const progressFill = document.getElementById('progressFill');
+    const deckChapter = document.getElementById('deckChapter');
+    const deckPage = document.getElementById('deckPage');
+    const btnPrev = document.getElementById('btnPrev');
+    const btnNext = document.getElementById('btnNext');
+    const navDots = document.getElementById('navDots');
+
+    let current = 0;
+    let wheelLock = false;
+
+    function updatePageDisplays() {
+        slides.forEach(function (slide, i) {
+            slide.querySelectorAll('.deck-page-inline').forEach(function (el) {
+                el.textContent = (i + 1) + ' / ' + total;
+            });
+        });
+    }
+
+    function refreshUI() {
+        progressFill.style.width = ((current + 1) / total * 100) + '%';
+        const s = slides[current];
+        const ch = s.getAttribute('data-chapter') || '';
+        const lab = s.getAttribute('data-slide-label') || '';
+        deckChapter.innerHTML = lab
+            ? '当前：<strong>' + ch + '</strong> · ' + lab
+            : '当前：<strong>' + ch + '</strong>';
+        deckPage.textContent = '第 ' + (current + 1) + ' 页 / 共 ' + total + ' 页';
+        btnPrev.disabled = current === 0;
+        btnNext.disabled = current === total - 1;
+        Array.from(navDots.children).forEach(function (b, i) {
+            b.classList.toggle('active', i === current);
+        });
+    }
+
+    function go(index) {
+        index = Math.max(0, Math.min(total - 1, index));
+        current = index;
+        slides.forEach(function (s) { s.classList.remove('visible'); });
+        slides[index].classList.add('visible');
+        slides[index].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        refreshUI();
+    }
+
+    const io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.45) {
+                const idx = slides.indexOf(entry.target);
+                if (idx >= 0) {
+                    slides.forEach(function (s) { s.classList.remove('visible'); });
+                    entry.target.classList.add('visible');
+                    current = idx;
+                    refreshUI();
+                }
+            }
+        });
+    }, { threshold: [0.45, 0.55] });
+    slides.forEach(function (s) { io.observe(s); });
+    slides[0].classList.add('visible');
+
+    slides.forEach(function (_, i) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('aria-label', '第 ' + (i + 1) + ' 页');
+        b.addEventListener('click', function () { go(i); });
+        navDots.appendChild(b);
+    });
+
+    btnPrev.addEventListener('click', function () { go(current - 1); });
+    btnNext.addEventListener('click', function () { go(current + 1); });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.target && e.target.getAttribute('contenteditable') === 'true') {
+            if (e.key === 'Escape') e.target.blur();
+            return;
+        }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) {
+            e.preventDefault();
+            go(current + 1);
+        } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') {
+            e.preventDefault();
+            go(current - 1);
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            go(0);
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            go(total - 1);
+        }
+    });
+
+    document.addEventListener('wheel', function (e) {
+        if (wheelLock) return;
+        if (Math.abs(e.deltaY) < 18) return;
+        wheelLock = true;
+        setTimeout(function () { wheelLock = false; }, 520);
+        if (e.deltaY > 0) go(current + 1);
+        else go(current - 1);
+    }, { passive: true });
+
+    var ty = 0;
+    document.addEventListener('touchstart', function (e) { ty = e.touches[0].clientY; }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+        var dy = ty - e.changedTouches[0].clientY;
+        if (Math.abs(dy) < 32) return;
+        if (dy > 0) go(current + 1);
+        else go(current - 1);
+    }, { passive: true });
+
+    updatePageDisplays();
+    refreshUI();
+
+    setTimeout(function () {
+        var h = document.getElementById('keyboardHint');
+        if (h) h.style.opacity = '0';
+    }, 6000);
+})();
+
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.STORAGE_KEY = 'probation-review-edits-v6-outline12';
+        this.editables = Array.from(document.querySelectorAll('[contenteditable="true"]'));
+        this.toggleBtn = document.getElementById('editToggle');
+        this.hotzone = document.querySelector('.edit-hotzone');
+        this.toast = document.getElementById('editToast');
+        this.toastTimeout = null;
+        try {
+            var raw = localStorage.getItem(this.STORAGE_KEY);
+            if (raw) {
+                var saved = JSON.parse(raw);
+                this.editables.forEach(function (el, i) {
+                    if (saved[i] !== undefined) el.innerHTML = saved[i];
+                });
+            }
+        } catch (e) {}
+        var t = null;
+        var self = this;
+        this.editables.forEach(function (el) {
+            el.addEventListener('input', function () {
+                clearTimeout(t);
+                t = setTimeout(function () { self.persist(); }, 350);
+            });
+        });
+        this.toggleBtn.addEventListener('click', function () { self.toggle(); });
+        this.hotzone.addEventListener('click', function () { self.toggle(); });
+        var hideTimeout = null;
+        this.hotzone.addEventListener('mouseenter', function () {
+            clearTimeout(hideTimeout);
+            self.toggleBtn.classList.add('show');
+        });
+        this.hotzone.addEventListener('mouseleave', function () {
+            hideTimeout = setTimeout(function () {
+                if (!self.isActive) self.toggleBtn.classList.remove('show');
+            }, 400);
+        });
+        this.toggleBtn.addEventListener('mouseenter', function () { clearTimeout(hideTimeout); });
+        this.toggleBtn.addEventListener('mouseleave', function () {
+            hideTimeout = setTimeout(function () {
+                if (!self.isActive) self.toggleBtn.classList.remove('show');
+            }, 400);
+        });
+        document.addEventListener('keydown', function (e) {
+            var inE = e.target && e.target.getAttribute('contenteditable') === 'true';
+            if ((e.key === 'e' || e.key === 'E') && !inE) {
+                e.preventDefault();
+                self.toggle();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                self.exportHTML();
+            }
+        });
+    }
+    persist() {
+        try {
+            var data = this.editables.map(function (el) { return el.innerHTML; });
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+            this.showToast('已保存');
+        } catch (e) {}
+    }
+    toggle() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('edit-mode', this.isActive);
+        this.toggleBtn.classList.toggle('active', this.isActive);
+        if (this.isActive) this.toggleBtn.classList.add('show');
+        this.showToast(this.isActive ? '编辑模式' : '已关闭');
+    }
+    showToast(msg) {
+        this.toast.textContent = msg;
+        this.toast.classList.add('show');
+        clearTimeout(this.toastTimeout);
+        var self = this;
+        this.toastTimeout = setTimeout(function () { self.toast.classList.remove('show'); }, 1400);
+    }
+    exportHTML() {
+        var clone = document.documentElement.cloneNode(true);
+        clone.querySelector('body').classList.remove('edit-mode');
+        ['.edit-hotzone', '.edit-toggle', '.edit-toast', '.keyboard-hint', '.deck-bar', '.progress-track', '.nav-dots'].forEach(function (sel) {
+            clone.querySelectorAll(sel).forEach(function (el) { el.remove(); });
+        });
+        var html = '<!DOCTYPE html>\n' + clone.outerHTML;
+        var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'probation-review-export.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        this.showToast('已导出');
+    }
+}
+document.addEventListener('DOMContentLoaded', function () { new InlineEditor(); });
+</script>
+</body>
+</html>

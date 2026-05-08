@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Eureka 3.0 Agentic Flow Demo</title>
+  <style>
+    :root {
+      --bg: #eef5f8;
+      --panel: rgba(255,255,255,.78);
+      --panel-strong: #fff;
+      --ink: #18202a;
+      --muted: #7b8794;
+      --line: rgba(27, 35, 48, .1);
+      --blue: #2477ff;
+      --cyan: #1bbbd3;
+      --green: #39b980;
+      --amber: #f4a62a;
+      --red: #e95b68;
+      --purple: #8b6df6;
+      --shadow: 0 22px 70px rgba(33, 63, 90, .18);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 16% 0%, #c7ebff 0, transparent 32%),
+        radial-gradient(circle at 88% 12%, #f3e5ff 0, transparent 28%),
+        linear-gradient(180deg, #eef8ff 0%, #f5f6f7 48%, #edf1f4 100%);
+      overflow: hidden;
+    }
+
+    button { font: inherit; color: inherit; }
+    .shell {
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      height: 100vh;
+      padding: clamp(12px, 1.6vw, 22px);
+    }
+
+    .phone,
+    .workspace {
+      min-height: 0;
+      border: 1px solid rgba(255,255,255,.75);
+      background: var(--panel);
+      backdrop-filter: blur(22px);
+      box-shadow: var(--shadow);
+    }
+
+    .phone {
+      border-radius: 42px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      width: min(430px, 100%);
+      max-width: 430px;
+      position: relative;
+    }
+    #homeView,
+    #workspaceView {
+      min-height: 0;
+      flex: 1;
+      flex-direction: column;
+    }
+    #homeView { display:flex; }
+    #workspaceView { display:flex; }
+
+    .workspace { overflow: hidden; display: flex; flex-direction: column; min-height:0; flex:1; }
+    .statusbar,
+    .phone-head,
+    .workspace-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .statusbar { font-size: 13px; font-weight: 700; margin: 0 6px 16px; }
+    .phone-head { margin-bottom: 16px; }
+
+    .avatar, .circle-btn, .spark {
+      width: 42px; height: 42px; border-radius: 50%;
+      display: grid; place-items: center;
+      border: 1px solid rgba(255,255,255,.8);
+      background: rgba(255,255,255,.85);
+      box-shadow: 0 8px 22px rgba(50,70,90,.12);
+      flex: none;
+    }
+    .avatar { color: #c7ced8; font-size: 24px; }
+    .circle-btn { cursor: pointer; font-weight: 800; }
+    .spark {
+      background: radial-gradient(circle at 35% 25%, #fff 0 8%, #9de9ff 15%, #357cff 55%, #8457ff 100%);
+      color: #fff;
+      font-size: 22px;
+      box-shadow: 0 8px 24px rgba(35,105,255,.35);
+    }
+
+    .section-title { display:flex; align-items:end; justify-content:space-between; margin: 6px 0 10px; }
+    .section-title h2 { margin:0; font-size: 28px; line-height: 1; letter-spacing: -.04em; }
+    .small-link { color: var(--blue); font-size: 13px; font-weight: 700; cursor: pointer; }
+
+    .phone-scroll { overflow:auto; padding: 0 2px 120px; scrollbar-width: none; flex:1; min-height:0; }
+    .phone-scroll::-webkit-scrollbar { display:none; }
+
+    .console-card,
+    .file-card,
+    .digest-card {
+      background: rgba(255,255,255,.86);
+      border: 1px solid rgba(255,255,255,.8);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    .console-card:hover,
+    .file-card:hover,
+    .digest-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(47,70,100,.12); }
+    .console-card.active,
+    .file-card.active { border-color: rgba(36,119,255,.55); box-shadow: 0 12px 30px rgba(36,119,255,.14); }
+
+    .card-kicker { display:flex; align-items:center; justify-content:space-between; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .card-title { font-weight: 800; margin: 7px 0 4px; line-height: 1.25; }
+    .card-sub { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .chips { display:flex; flex-wrap:wrap; gap: 6px; margin-top: 10px; }
+    .chip { font-size: 11px; font-weight: 800; padding: 5px 8px; border-radius: 999px; background: #eef4ff; color: #316fc7; }
+    .chip.green { background:#e9f8f0; color:#21875c; }
+    .chip.amber { background:#fff5df; color:#a76c10; }
+    .chip.purple { background:#f0edff; color:#604bd6; }
+    .chip.dark { background:#1d222b; color:#fff; }
+    .badge-dot { min-width: 22px; height:22px; border-radius:999px; background:var(--red); color:#fff; display:inline-grid; place-items:center; font-size: 12px; font-weight:900; padding:0 7px; }
+
+    .tabs { display:flex; gap:8px; margin: 8px 0 12px; }
+    .tab { border:0; padding:8px 13px; border-radius:999px; background:rgba(255,255,255,.72); color:#8a94a2; cursor:pointer; font-weight:800; }
+    .tab.active { background:#1e222a; color:#fff; }
+
+    .console-terminal {
+      border-radius: 22px;
+      padding: 12px;
+      margin-bottom: 18px;
+      background:
+        linear-gradient(180deg, rgba(22, 30, 38, .96), rgba(10, 15, 22, .96)),
+        radial-gradient(circle at 10% 0%, rgba(27,187,211,.18), transparent 36%);
+      color: #d8f7e8;
+      box-shadow: 0 18px 36px rgba(6, 12, 20, .28);
+      border: 1px solid rgba(137, 255, 211, .16);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .terminal-toolbar {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding-bottom:10px;
+      border-bottom:1px solid rgba(216,247,232,.12);
+      margin-bottom:8px;
+      color:#8ff5cf;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    .terminal-chat {
+      border:1px solid rgba(143,245,207,.24);
+      background:rgba(143,245,207,.08);
+      color:#d8f7e8;
+      border-radius:999px;
+      padding:7px 10px;
+      cursor:pointer;
+      font-size:11px;
+      font-weight:900;
+    }
+    .terminal-line {
+      display:grid;
+      grid-template-columns: 62px 1fr auto;
+      gap:8px;
+      align-items:start;
+      padding:8px 0;
+      border-bottom:1px dashed rgba(216,247,232,.1);
+      cursor:pointer;
+    }
+    .terminal-line:last-child { border-bottom:0; }
+    .terminal-time { color:#5bd8b4; font-size:11px; opacity:.95; }
+    .terminal-title { font-size:12px; font-weight:900; color:#f2fff9; margin-bottom:3px; }
+    .terminal-desc { font-size:11px; color:rgba(216,247,232,.72); line-height:1.35; }
+    .terminal-status { font-size:10px; border-radius:999px; padding:3px 6px; color:#091015; background:#8ff5cf; font-weight:900; }
+    .terminal-status.pending { background:#ffd166; }
+    .terminal-status.info { background:#9dc2ff; }
+
+    .files-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin: 2px 0 12px;
+    }
+    .files-view-btn {
+      border:0;
+      background:transparent;
+      padding:8px 4px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      cursor:pointer;
+      min-width:0;
+    }
+    .files-view-label {
+      font-size:28px;
+      font-weight:900;
+      letter-spacing:-.05em;
+      line-height:1;
+    }
+    .files-chevron { color:var(--muted); font-weight:900; }
+    .filter-btn {
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.86);
+      border-radius:999px;
+      padding:10px 13px;
+      font-size:12px;
+      font-weight:900;
+      cursor:pointer;
+    }
+
+    .view-sheet-mask {
+      position:absolute;
+      inset:0;
+      z-index:50;
+      display:none;
+      align-items:flex-end;
+      background:rgba(0,0,0,.42);
+    }
+    .view-sheet-mask.show { display:flex; }
+    .view-sheet {
+      width:100%;
+      height: calc(100% - 52px);
+      border-radius:22px 22px 0 0;
+      background:#fff;
+      box-shadow:0 -18px 46px rgba(15,23,42,.18);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      animation: sheetIn .24s ease-out;
+    }
+    @keyframes sheetIn { from { transform:translateY(100%); } to { transform:translateY(0); } }
+    .sheet-handle { height:24px; display:grid; place-items:center; }
+    .sheet-handle::after { content:""; width:38px; height:4px; border-radius:99px; background:rgba(0,0,0,.16); }
+    .sheet-header { display:flex; align-items:center; justify-content:space-between; padding:6px 16px 14px; border-bottom:1px solid var(--line); }
+    .sheet-header b { font-size:18px; }
+    .sheet-close { width:42px; height:42px; border:0; border-radius:50%; background:#f4f6f8; cursor:pointer; font-size:18px; }
+    .sheet-body { overflow:auto; padding:10px 0 28px; }
+    .sheet-label { padding:10px 16px 6px; color:var(--muted); font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; }
+    .sheet-option, .sheet-folder-row {
+      min-height:48px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:0 16px;
+      cursor:pointer;
+      border:0;
+      width:100%;
+      background:transparent;
+      text-align:left;
+      font-weight:800;
+    }
+    .sheet-option:hover, .sheet-folder-row:hover { background:rgba(36,119,255,.06); }
+    .sheet-option.selected, .sheet-folder-row.selected { background:rgba(36,119,255,.1); color:var(--blue); }
+    .folder-icon {
+      width:32px;
+      height:32px;
+      border-radius:10px;
+      display:grid;
+      place-items:center;
+      background:#eef4ff;
+      color:#316fc7;
+      flex:none;
+    }
+    .folder-count { margin-left:auto; color:var(--muted); font-size:13px; }
+    .folder-more { width:36px; height:36px; border:0; border-radius:50%; background:transparent; color:var(--muted); cursor:pointer; }
+
+    .bottom-action {
+      position: absolute;
+      left: 50%; bottom: 22px;
+      transform: translateX(-50%);
+      display:flex; align-items:center; gap:10px;
+      padding:7px;
+      border-radius:999px;
+      background:rgba(8, 13, 18, .92);
+      border:1px solid rgba(143,245,207,.26);
+      box-shadow: 0 18px 42px rgba(5,10,16,.34);
+      backdrop-filter: blur(14px);
+      font-family:"SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .add-note {
+      border:0; border-radius:999px; padding:12px 18px;
+      color:#d8f7e8; font-weight:900; cursor:pointer;
+      background:rgba(143,245,207,.1);
+      letter-spacing:-.02em;
+    }
+    .plus {
+      min-width:44px; height:40px; border:0; border-radius:999px;
+      background:#8ff5cf; color:#091015; font-size:13px; font-weight:1000;
+      cursor:pointer; padding:0 14px;
+      font-family:inherit;
+    }
+
+    .workspace-head { padding: 18px 20px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.45); }
+    .workspace-head h1 { margin:0; font-size: clamp(19px, 2vw, 28px); letter-spacing: -.04em; }
+    .meta { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .pill-btn { border:0; border-radius:999px; padding:9px 12px; background:#fff; font-weight:800; cursor:pointer; box-shadow: 0 6px 18px rgba(30,50,80,.08); }
+    .pill-btn.primary { background:#1f2530; color:#fff; }
+    .pill-btn.blue { background:var(--blue); color:#fff; }
+
+    .workspace-body { padding: 0 0 88px; overflow:auto; flex:1; display:grid; grid-template-rows: auto auto 1fr auto; gap:14px; scrollbar-width:none; }
+    .workspace-body::-webkit-scrollbar { display:none; }
+    .generated-row { display:flex; gap:10px; overflow:auto; padding-bottom: 3px; scrollbar-width:none; }
+    .generated-row::-webkit-scrollbar { display:none; }
+    .generated-panel {
+      display:none;
+      border:1px solid rgba(143,245,207,.16);
+      background: rgba(10,16,22,.72);
+      border-radius: 18px;
+      padding: 10px;
+      max-height: 188px;
+      overflow:auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .generated-panel.show { display:block; }
+    .generated-panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#8ff5cf; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+    .result-block {
+      min-width: 116px;
+      border:0;
+      border-radius: 18px;
+      padding: 12px;
+      background:#fff;
+      box-shadow: 0 10px 24px rgba(34,56,80,.1);
+      cursor:pointer;
+      text-align:left;
+    }
+    .result-block b { display:block; font-size: 22px; margin-bottom:2px; }
+    .result-block span { font-size: 12px; color:var(--muted); font-weight:800; }
+    .result-block.active { border-color: rgba(143,245,207,.5); color:#8ff5cf; }
+
+    .turn-stage {
+      min-height: 0;
+      display:grid;
+      grid-template-columns: 48px 1fr;
+      gap:14px;
+      align-items:stretch;
+    }
+    .turn-stage.no-nav { grid-template-columns: 1fr; }
+    .turn-nav { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+    .nav-btn { width:38px; height:38px; border:0; border-radius:50%; background:#fff; cursor:pointer; font-weight:900; box-shadow:0 8px 20px rgba(30,50,80,.1); }
+    .turn-count { writing-mode: vertical-rl; color:var(--muted); font-size:12px; font-weight:800; }
+
+    .turn-card { min-height:0; border-radius:24px; background:rgba(255,255,255,.74); border:1px solid rgba(255,255,255,.85); padding:16px; display:grid; grid-template-rows:auto 1fr; gap:12px; overflow:hidden; }
+    .input-strip { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .input-type { border-radius:999px; padding:7px 10px; font-size:12px; font-weight:900; background:#eef4ff; color:#2b67bd; }
+    .input-text { color:#384252; font-weight:700; }
+    .conversation { min-height:0; overflow:auto; padding-right:4px; }
+    .turn-card > .conversation:only-child { grid-row: 1 / -1; }
+    .bubble { max-width: 88%; padding:14px 16px; border-radius:20px; margin: 0 0 12px; line-height:1.55; box-shadow:0 10px 22px rgba(35,55,80,.08); }
+    .turn-card > .conversation:only-child .bubble { max-width:100%; }
+    .bubble.user { background:#eaf2ff; margin-left:auto; border-bottom-right-radius:6px; }
+    .bubble.agent { background:#fff; border-bottom-left-radius:6px; }
+    .bubble h3 { margin:0 0 8px; font-size:15px; }
+    .bubble p { margin: 0 0 8px; }
+    .audio-card {
+      border:1px solid rgba(143,245,207,.16);
+      background:rgba(143,245,207,.08);
+      border-radius:18px;
+      padding:12px;
+      margin-bottom:12px;
+    }
+    .audio-row { display:flex; align-items:center; gap:10px; font-weight:900; }
+    .play-dot {
+      width:34px;
+      height:34px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background:#8ff5cf;
+      color:#071015;
+      flex:none;
+    }
+    .wave {
+      height:18px;
+      flex:1;
+      border-radius:999px;
+      background:repeating-linear-gradient(90deg, rgba(143,245,207,.25) 0 4px, transparent 4px 8px);
+    }
+    .audio-meta { margin-top:8px; color:rgba(216,247,232,.62); font-size:12px; }
+    .transcript-card {
+      border:1px dashed rgba(143,245,207,.22);
+      border-radius:16px;
+      padding:12px;
+      margin-bottom:12px;
+      background:rgba(5,8,12,.35);
+    }
+
+    .source-row { display:flex; align-items:center; gap:10px; overflow:auto; scrollbar-width:none; }
+    .source-row::-webkit-scrollbar { display:none; }
+    .source-card { flex: none; border:0; border-radius:16px; padding:10px 12px; background:rgba(255,255,255,.85); cursor:pointer; font-weight:800; color:#3b4655; }
+    .source-card.empty { color:#9aa2ad; cursor:default; }
+    .continue-row { display:flex; gap:10px; align-items:center; }
+    .continue-row input { flex:1; border:1px solid var(--line); border-radius:999px; padding:13px 16px; outline:none; background:#fff; font-weight:700; }
+
+    .drawer-card { background:#111821; color:#dbeafe; border-radius:18px; padding:14px; overflow:auto; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+    pre { margin:0; font-size:12px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+    .drawer-card { background:#fff; color:var(--ink); }
+    .drawer-title { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:10px; }
+    .drawer-title b { font-size:15px; }
+    .item-row { border-top:1px solid var(--line); padding:10px 0; cursor:pointer; }
+    .item-row:first-of-type { border-top:0; }
+    .item-row b { display:block; margin-bottom:3px; }
+    .item-row span { color:var(--muted); font-size:12px; }
+    .candidate { display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid var(--line); padding:10px 0; }
+
+    .hidden { display:none !important; }
+
+    /* === Old-school terminal theme override === */
+    body {
+      color: #d8f7e8;
+      background:
+        radial-gradient(circle at 12% 10%, rgba(143,245,207,.12), transparent 28%),
+        radial-gradient(circle at 86% 0%, rgba(255,209,102,.1), transparent 25%),
+        linear-gradient(180deg, #070b0f 0%, #0b1017 52%, #05070a 100%);
+    }
+    .phone,
+    .workspace {
+      border-color: rgba(143,245,207,.18);
+      background: rgba(8, 13, 18, .92);
+      box-shadow: 0 24px 80px rgba(0,0,0,.42);
+    }
+    .phone {
+      background:
+        linear-gradient(180deg, rgba(12,18,24,.96), rgba(4,8,12,.96)),
+        repeating-linear-gradient(0deg, transparent 0, transparent 13px, rgba(143,245,207,.025) 14px);
+    }
+    .statusbar,
+    .meta,
+    .card-sub,
+    .folder-count,
+    .files-chevron {
+      color: rgba(216,247,232,.62);
+    }
+    .avatar,
+    .circle-btn,
+    .pill-btn,
+    .filter-btn,
+    .source-card,
+    .nav-btn {
+      border-color: rgba(143,245,207,.2);
+      background: rgba(143,245,207,.08);
+      color: #d8f7e8;
+      box-shadow: none;
+    }
+    .pill-btn.primary,
+    .pill-btn.blue {
+      background: #8ff5cf;
+      color: #071015;
+    }
+    .workspace-head {
+      background: rgba(143,245,207,.06);
+      border-bottom-color: rgba(143,245,207,.14);
+    }
+    .files-view-label,
+    .workspace-head h1 {
+      color: #f2fff9;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      letter-spacing: -.06em;
+    }
+    .file-card,
+    .digest-card,
+    .turn-card,
+    .drawer-card {
+      background: rgba(10, 16, 22, .88);
+      border-color: rgba(143,245,207,.16);
+      color: #d8f7e8;
+      box-shadow: inset 0 0 0 1px rgba(143,245,207,.05);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .file-card:hover,
+    .digest-card:hover {
+      border-color: rgba(143,245,207,.44);
+      box-shadow: 0 14px 34px rgba(0,0,0,.2);
+    }
+    .card-kicker {
+      color: #8ff5cf;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .chip {
+      background: rgba(143,245,207,.1);
+      color: #8ff5cf;
+    }
+    .chip.green,
+    .chip.amber,
+    .chip.purple {
+      background: rgba(255,209,102,.1);
+      color: #ffd166;
+    }
+    .badge-dot {
+      background: #ffd166;
+      color: #071015;
+    }
+    .result-block {
+      background: rgba(10,16,22,.92);
+      border: 1px solid rgba(143,245,207,.16);
+      color: #d8f7e8;
+      box-shadow: none;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .result-block span {
+      color: rgba(216,247,232,.65);
+    }
+    .input-type {
+      background: rgba(143,245,207,.12);
+      color: #8ff5cf;
+    }
+    .input-text {
+      color: rgba(216,247,232,.82);
+    }
+    .bubble.agent {
+      background: rgba(143,245,207,.08);
+      color: #d8f7e8;
+      box-shadow: none;
+    }
+    .markdown-doc {
+      white-space: pre-wrap;
+      line-height: 1.58;
+      max-height: 460px;
+      overflow:auto;
+    }
+    .prompt-grid { display:grid; gap:10px; margin-top:14px; }
+    .prompt-card {
+      border:1px solid rgba(143,245,207,.16);
+      background: rgba(216,247,232,.06);
+      border-radius: 16px;
+      padding: 12px;
+      color:#d8f7e8;
+      cursor:pointer;
+      text-align:left;
+      font-weight:800;
+      line-height:1.35;
+    }
+    .prompt-card:hover { border-color: rgba(143,245,207,.42); color:#8ff5cf; }
+    .bubble.user {
+      background: rgba(255,209,102,.1);
+      color: #fff2c6;
+      box-shadow: none;
+    }
+    .continue-row input {
+      background: rgba(5,8,12,.92);
+      border-color: rgba(143,245,207,.18);
+      color: #d8f7e8;
+    }
+    .view-sheet {
+      background: #090e14;
+      color: #d8f7e8;
+      border: 1px solid rgba(143,245,207,.16);
+    }
+    .sheet-header {
+      border-bottom-color: rgba(143,245,207,.14);
+    }
+    .sheet-close,
+    .sheet-option,
+    .sheet-folder-row {
+      color: #d8f7e8;
+    }
+    .sheet-close,
+    .folder-icon {
+      background: rgba(143,245,207,.1);
+    }
+    .sheet-option.selected,
+    .sheet-folder-row.selected,
+    .sheet-option:hover,
+    .sheet-folder-row:hover {
+      background: rgba(143,245,207,.1);
+      color: #8ff5cf;
+    }
+
+    @media (max-width: 1100px) {
+      body { overflow:auto; }
+      .shell { height:auto; min-height:100vh; }
+      .phone { min-height: 720px; position:relative; }
+      .workspace { min-height: 640px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="phone" aria-label="Eureka App">
+      <div class="statusbar"><span>9:41</span><span>●●●  Wi‑Fi  ▰</span></div>
+
+      <div id="homeView">
+        <div class="phone-head">
+          <div class="avatar">◕</div>
+          <button class="pill-btn" onclick="showHome()">Eureka Agent</button>
+          <button class="circle-btn" onclick="showHome()">⌘</button>
+        </div>
+
+        <div class="phone-scroll">
+          <div class="console-terminal">
+            <div class="terminal-toolbar">
+              <span>agent console</span>
+              <div style="display:flex;gap:6px">
+                <button class="terminal-chat" onclick="openFlash()">open flash</button>
+                <button class="terminal-chat" onclick="openConversation()">new chat</button>
+              </div>
+            </div>
+            <div id="consoleList"></div>
+          </div>
+
+          <div class="files-head">
+            <button class="files-view-btn" onclick="toggleFolderSheet()" aria-label="筛选和排序">
+              <span class="files-view-label" id="filesViewLabel">全部文件 (3)</span>
+              <span class="files-chevron">⌄</span>
+            </button>
+            <button class="filter-btn" id="typeFilterLabel" onclick="cycleTypeFilter()">全部</button>
+          </div>
+          <div id="filesList"></div>
+        </div>
+        <div class="bottom-action"><button class="add-note" onclick="openFlash()">capture</button><button class="plus" onclick="showHome()">+</button></div>
+      </div>
+
+      <section class="workspace hidden" id="workspaceView" aria-label="Session Workspace">
+        <div class="workspace-head">
+          <button class="circle-btn" onclick="showHome()">‹</button>
+          <div style="min-width:0;flex:1"><h1 id="workspaceTitle">Agent Console</h1><div class="meta" id="workspaceMeta">选择左侧事件或文件开始演示</div></div>
+        </div>
+        <div class="workspace-body">
+          <div class="generated-row" id="generatedRow"></div>
+          <div class="generated-panel" id="generatedPanel"></div>
+          <div class="turn-stage" id="turnStage">
+            <div class="turn-nav" id="turnNav"><button class="nav-btn" onclick="prevTurn()">↑</button><div class="turn-count" id="turnCount">Turn -</div><button class="nav-btn" onclick="nextTurn()">↓</button></div>
+            <div class="turn-card" id="turnCard"></div>
+          </div>
+          <div>
+            <div class="source-row" id="sourceRow"></div>
+            <div class="continue-row" id="continueRow" style="margin-top:10px"><input id="continueInput" placeholder="Ask about this session..." /><button class="pill-btn blue" onclick="submitFollowup()">Send</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="view-sheet-mask" id="folderSheetMask" onclick="closeFolderSheet()">
+        <div class="view-sheet" onclick="event.stopPropagation()">
+          <div class="sheet-handle"></div>
+          <div class="sheet-header"><b>筛选和排序</b><button class="sheet-close" onclick="closeFolderSheet()">×</button></div>
+          <div class="sheet-body">
+            <div class="sheet-label">排序</div>
+            <button class="sheet-option"><span class="folder-icon">v</span><span>修改时间</span><span class="folder-count">降序</span></button>
+            <div class="sheet-label">视图</div>
+            <button class="sheet-option selected" onclick="setFolderView('all','全部文件 (3)')"><span class="folder-icon">☷</span><span>全部文件</span><span class="folder-count">3</span></button>
+            <div class="sheet-label">系统文件夹</div>
+            <div class="sheet-folder-row" onclick="setFolderView('notes','Generated Notes')"><span class="folder-icon">N</span><span>Generated Notes</span><span class="folder-count">1</span><button class="folder-more">⋯</button></div>
+            <div class="sheet-folder-row" onclick="setFolderView('ideas','Ideas')"><span class="folder-icon">I</span><span>Ideas</span><span class="folder-count">2</span><button class="folder-more">⋯</button></div>
+            <div class="sheet-folder-row" onclick="setFolderView('expenses','Expenses')"><span class="folder-icon">¥</span><span>Expenses</span><span class="folder-count">0</span><button class="folder-more">⋯</button></div>
+            <div class="sheet-label">用户文件夹</div>
+            <div class="sheet-folder-row"><span class="folder-icon">□</span><span>My Notes</span><span class="folder-count">0</span><button class="folder-more">⋯</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      activeSessionId: null,
+      activeTurnIndex: 0,
+      drawer: null,
+      currentFolderView: 'all',
+      typeFilter: '全部',
+      typeFilters: ['全部','Meeting','Memo','Ideas'],
+      events: [
+        { id:'evt_flash_done', type:'done', title:'闪念已处理', desc:'创建 1 条 Todo，发现 1 个 Contact 待确认', target:'flash', chips:['Todo 1','Contact pending'] },
+        { id:'evt_meeting_wait', type:'pending', title:'新会议 2026-05-06 14:25', desc:'会议录音已上传，点击开始转写并解析', target:'meeting', chips:['待解析'] },
+        { id:'evt_idea_digest', type:'info', title:'idea.MD 已更新', desc:'新增 2 条 idea 记录，可跳回来源 Session', target:'ideas', chips:['Ideas 2'] }
+      ],
+      sessions: {
+        flash: {
+          id:'session_flash', session_type:'flash_note', status:'done', title:'Flash Note', subtitle:'3 new · 1 pending', unread:3,
+          sources: [],
+          turns: [
+            { id:'turn_001', input:{ role:'turn_input', type:'audio', label:'硬件短录音', file_id:'file_flash_audio_001', duration:'00:18', recorded_at:'09:41', transcript:'今晚 5 点开会，另外 Kevin 喜欢喝拿铁。' }, output:{ text:'我提取到了一个待认领 Todo，并发现一条可能属于 Kevin 的联系人信息。', items:[{type:'asset_created', asset_id:'todo_flash_001'}, {type:'contact_update_pending', id:'contact_pending_001'}] } },
+            { id:'turn_002', input:{ role:'turn_input', type:'text', text:'我刚才记录了 Kevin 什么？' }, output:{ text:'你记录了 Kevin 喜欢喝拿铁。该信息还在等待你选择具体的 Kevin 后写入联系人。', items:[] } }
+          ]
+        },
+        meeting: {
+          id:'session_meeting_001', session_type:'meeting', status:'waiting_for_analysis', title:'新会议 2026-05-06 14:25', ai_title:null, subtitle:'23:14 · 待解析',
+          sources: [], turns: []
+        },
+        conversation: {
+          id:'session_conv_001', session_type:'conversation', status:'done', title:'New chat', subtitle:'Global Ask Agent', sources:[],
+          turns:[{ id:'turn_001', input:{role:'turn_input', type:'text', text:'我今天有哪些需要跟进？'}, output:{text:'你今天有 2 个待认领 Todo，其中一个来自闪念，一个来自会议解析。', items:[{type:'assistant_message', id:'msg_conv_001'}]} }]
+        }
+      },
+      assets: {
+        todo_flash_001:{ id:'todo_flash_001', asset_type:'todo', title:'今晚 5 点开会', status:'pending_confirmation', due_at:'2026-05-07T17:00:00+08:00', source_session_id:'session_flash', source_turn_id:'turn_001' },
+        note_meeting_001:{ id:'note_meeting_001', asset_type:'note', title:'产品设计同步会摘要', content_md:`# 产品设计同步会摘要
+
+## 会议背景
+
+本次同步会围绕 BizCard Eureka 3.0 的 Agentic Flow 展开，重点讨论硬件录音、文件、Session、Turn、Asset 与 Ask Agent 之间的关系。团队希望通过一套统一模型，让技术同事能清楚理解数据如何流转，也让管理层能快速看到产品体验上的一致性。
+
+## 关键结论
+
+1. App 首页不再只是 Session List，而是由 Agent Console 与 Files 两个区域组成。
+2. Agent Console 用于承接动态通知、长任务完成、待确认操作和 start new chat。
+3. Files 展示可浏览的内容入口，包括 meeting audio、系统生成 Markdown、用户文件和系统文件夹。
+4. Meeting audio 进入后先形成待解析 Session，用户进入详情后再触发 ASR 与 AI 解析。
+5. Generated Results 属于 Session 级累计结果，切换 turn 时不消失。
+
+## Session Workspace 规则
+
+Session Workspace 是 Ask Agent 的统一交互形态。无论入口来自 meeting、flash note、普通 conversation，还是从某个对象详情页发起 Ask，最终都应该进入同一套工作台语义：
+
+- Session Sources 展示 anchor_input。
+- Current Turn 展示本轮 turn_input 与 Agent output。
+- Generated Results 展示当前 Session 累计生成或更新的结构化结果。
+- Continue Input 只追加新的 turn_input，不重新定义 anchor。
+
+## 后续动作
+
+- 继续完善 demo 中 Generated Results 的一屏展开方式。
+- 确认 note.md 与 idea.MD 的不同展示逻辑。
+- 将 Object Detail Ask 统一为“以当前对象作为 anchor_input 创建 conversation session”。
+- 对 Contact pending、Todo claim、manual asset ask 做进一步演示补充。`, source_session_id:'session_meeting_001', source_turn_id:'turn_001' },
+        todo_meeting_001:{ id:'todo_meeting_001', asset_type:'todo', title:'整理 demo spec', status:'pending_confirmation', source_session_id:'session_meeting_001', source_turn_id:'turn_001' },
+        todo_meeting_002:{ id:'todo_meeting_002', asset_type:'todo', title:'确认 Kevin 的跟进事项', status:'pending_confirmation', source_session_id:'session_meeting_001', source_turn_id:'turn_001' },
+        idea_001:{ id:'idea_001', asset_type:'idea', title:'B2B 市场扩展想法', content_md:'可以考虑从企业销售团队切入，先做客户偏好标签系统。', source_session_id:'session_flash', source_turn_id:'turn_001' },
+        idea_002:{ id:'idea_002', asset_type:'idea', title:'销售周报自动化', content_md:'每周自动总结客户跟进情况，生成销售行动建议。', source_session_id:'session_meeting_001', source_turn_id:'turn_001' }
+      },
+      contacts: {
+        contact_kevin_001:{ id:'contact_kevin_001', name:'Kevin Chen', company:'Acme Corp', title:'Product Lead', notes:['喜欢喝拿铁'] },
+        contact_kevin_002:{ id:'contact_kevin_002', name:'Kevin Wang', company:'Beta Inc', title:'Sales Director', notes:[] }
+      },
+      folders: {
+        ideas:{ title:'idea.MD', type:'digest', asset_type:'idea' },
+        notes:{ title:'Generated Notes', type:'folder', asset_type:'note' },
+        expenses:{ title:'expense.md', type:'digest', asset_type:'expense' }
+      },
+      objectPrompts: {
+        asset: ['Summarize this note into 3 key points.', 'Extract action items from this note.', 'Help me draft a follow-up based on this note.'],
+        contact: ['Summarize what I know about this contact.', 'What should I follow up with this person?', 'Find related notes and sessions for this contact.'],
+        virtual_markdown: ['Group these ideas by direction.', 'Which idea should I prioritize first?', 'Turn these ideas into next-step experiments.']
+      }
+    };
+
+    function renderHome(){
+      const consoleList = document.getElementById('consoleList');
+      consoleList.innerHTML = state.events.map(evt => `
+        <div class="terminal-line" onclick="handleEvent('${evt.id}')">
+          <div class="terminal-time">${evt.type === 'pending' ? 'now' : '09:41'}</div>
+          <div>
+            <div class="terminal-title">> ${evt.title}</div>
+            <div class="terminal-desc">${evt.desc}</div>
+          </div>
+          <div class="terminal-status ${evt.type}">${evt.type}</div>
+        </div>`).join('');
+      const filesList = document.getElementById('filesList');
+      const meeting = state.sessions.meeting;
+      document.getElementById('filesViewLabel').textContent = folderLabel();
+      document.getElementById('typeFilterLabel').textContent = state.typeFilter;
+      const view = state.currentFolderView;
+      const cards = {
+        meeting: meetingCard(meeting),
+        ideas: digestCard('ideas', 'idea.MD', 'idea.MD', '2 条 idea 记录 · 可跳回来源 Session / Turn', 'Ideas', 'purple'),
+        notes: noteFileCard('note_meeting_001'),
+        expenses: digestCard('expenses', 'Expenses', 'expense.md', '暂无记账内容，未来 expense-skill 自动写入', '0', 'amber')
+      };
+      filesList.innerHTML = view === 'ideas' ? cards.ideas
+        : view === 'notes' ? cards.notes
+        : view === 'expenses' ? cards.expenses
+        : cards.meeting + cards.ideas + cards.notes;
+    }
+
+    function meetingCard(meeting){
+      return `<div class="file-card ${state.activeSessionId==='meeting'?'active':''}" onclick="openMeeting()">
+        <div class="card-kicker"><span>Meeting audio</span><span>${meeting.status}</span></div>
+        <div class="card-title">${meeting.ai_title || meeting.title}</div><div class="card-sub">${meeting.subtitle}</div>
+        <div class="chips"><span class="chip green">Meeting</span><span class="chip ${meeting.status==='waiting_for_analysis'?'amber':'green'}">${meeting.status==='waiting_for_analysis'?'待解析':'已解析'}</span></div>
+      </div>`;
+    }
+
+    function digestCard(folder, title, doc, desc, count, color){
+      return `<div class="digest-card" onclick="openDigest('${folder}')">
+        <div class="card-kicker"><span>Markdown file</span></div>
+        <div class="card-title">${title}</div>
+        <div class="card-sub">打开 ${doc} · ${desc}</div>
+        <div class="chips"><span class="chip ${color}">Digest</span><span class="chip">${count}</span></div>
+      </div>`;
+    }
+
+    function noteFileCard(assetId){
+      const a = state.assets[assetId];
+      return `<div class="digest-card" onclick="openNoteFile('${assetId}')">
+        <div class="card-kicker"><span>Markdown file</span></div>
+        <div class="card-title">${a.title}.md</div>
+        <div class="card-sub">Generated Note · 来源 ${a.source_session_id} / ${a.source_turn_id}</div>
+        <div class="chips"><span class="chip green">Note</span><span class="chip">MD</span></div>
+      </div>`;
+    }
+
+    function folderLabel(){
+      return ({all:'全部文件 (3)', notes:'Generated Notes', ideas:'Ideas', expenses:'Expenses'})[state.currentFolderView] || '全部文件';
+    }
+    function toggleFolderSheet(){ document.getElementById('folderSheetMask').classList.add('show'); }
+    function closeFolderSheet(){ document.getElementById('folderSheetMask').classList.remove('show'); }
+    function setFolderView(view){ state.currentFolderView = view; closeFolderSheet(); renderHome(); showInspector('folders'); }
+    function cycleTypeFilter(){
+      const i = state.typeFilters.indexOf(state.typeFilter);
+      state.typeFilter = state.typeFilters[(i + 1) % state.typeFilters.length];
+      renderHome();
+    }
+
+    function handleEvent(id){
+      const evt = state.events.find(e=>e.id===id);
+      if(!evt) return;
+      if(evt.target==='flash') openFlash();
+      if(evt.target==='meeting') openMeeting();
+      if(evt.target==='ideas') openDigest('ideas');
+    }
+
+    function openFlash(){ openSession('flash'); }
+    function openConversation(){ openSession('conversation'); }
+    function openMeeting(){ openSession('meeting'); }
+
+    function showHome(){
+      state.activeSessionId = null;
+      document.getElementById('homeView').classList.remove('hidden');
+      document.getElementById('workspaceView').classList.add('hidden');
+      hideGeneratedPanel();
+      renderHome();
+    }
+
+    function showWorkspace(){
+      document.getElementById('homeView').classList.add('hidden');
+      document.getElementById('workspaceView').classList.remove('hidden');
+    }
+
+    function openSession(id){
+      state.activeSessionId = id; state.activeTurnIndex = 0; state.drawer = null;
+      renderHome(); renderWorkspace(); showInspector('current');
+    }
+
+    function analyzeMeeting(){
+      const s = state.sessions.meeting;
+      s.status = 'done'; s.ai_title = 'Product Design Sync'; s.subtitle = '23:14 · 已解析';
+      s.sources = [
+        { type:'audio', label:'Meeting audio · 23:14', file_id:'file_meeting_001' },
+        { type:'transcript', label:'Transcript · 2,804 words' },
+        { type:'speakers', label:'Speakers · 2' },
+        { type:'attachments', label:'Attachments · 0' }
+      ];
+      s.turns = [
+        { id:'turn_001', input:{ role:'anchor_input', type:'file', label:'会议录音 · Product Design Sync' }, output:{ text:'我已完成会议转写和初步解析，生成了 1 条 Summary Note 和 2 条待认领 Todo。', items:[{type:'asset_created', asset_id:'note_meeting_001'}, {type:'asset_created', asset_id:'todo_meeting_001'}, {type:'asset_created', asset_id:'todo_meeting_002'}] } },
+        { id:'turn_002', input:{ role:'turn_input', type:'text', text:'这场会有哪些 action items？' }, output:{ text:'这场会有两个 action items：整理 demo spec；确认 Kevin 的跟进事项。', items:[{type:'assistant_message', id:'msg_meeting_002'}] } }
+      ];
+      state.events = state.events.map(e => e.id==='evt_meeting_wait' ? { ...e, type:'done', title:'Product Design Sync 已完成解析', desc:'生成 1 条 Summary Note 和 2 条 Todo', chips:['Note 1','Todo 2'] } : e);
+      openSession('meeting');
+    }
+
+    function renderWorkspace(){
+      showWorkspace();
+      const s = state.sessions[state.activeSessionId];
+      const title = document.getElementById('workspaceTitle');
+      const meta = document.getElementById('workspaceMeta');
+      const generated = document.getElementById('generatedRow');
+      const generatedPanel = document.getElementById('generatedPanel');
+      const turnCard = document.getElementById('turnCard');
+      const sourceRow = document.getElementById('sourceRow');
+      setContinueVisible(true);
+      setTurnNavVisible(true);
+      if(!s){
+        setContinueVisible(false);
+        setTurnNavVisible(false);
+        title.textContent = 'Agent Console'; meta.textContent = '选择左侧事件或文件开始演示'; generated.innerHTML=''; generatedPanel.className='generated-panel'; generatedPanel.innerHTML=''; sourceRow.innerHTML='';
+        turnCard.innerHTML = '<div class="bubble agent"><h3>欢迎</h3><p>从左侧 Agent Console 或 Files 选择一个入口。Demo 将在同一个手机窗口中展示 Session、Turn、Generated Results、详情页与 Ask Agent 的关系。</p></div>';
+        document.getElementById('turnCount').textContent = 'Turn -'; return;
+      }
+      title.textContent = s.ai_title || s.title; meta.textContent = `${s.session_type} · ${s.status} · ${s.subtitle || ''}`;
+      if(s.id==='session_meeting_001' && s.status==='waiting_for_analysis'){
+        generated.innerHTML = '<button class="result-block" onclick="analyzeMeeting()"><b>▶</b><span>开始转写并解析</span></button>';
+        generatedPanel.className='generated-panel'; generatedPanel.innerHTML='';
+        sourceRow.innerHTML = '<button class="source-card" onclick="showAnchorInput(\'file\',\'file_meeting_001\')">Meeting audio · 23:14</button>';
+        turnCard.innerHTML = '<div class="input-strip"><span class="input-type">anchor_input · file</span><span class="input-text">会议音频已上传，但尚未解析</span></div><div class="conversation"><div class="bubble agent"><h3>待解析</h3><p>点击上方“开始转写并解析”后，系统会触发 ASR、speaker 识别、summary note 和 todo 提取。</p></div></div>';
+        document.getElementById('turnCount').textContent = 'Waiting'; return;
+      }
+      const counts = aggregateResults(s);
+      generated.innerHTML = Object.keys(counts).length ? Object.entries(counts).map(([k,v]) => `<button class="result-block ${state.drawer===k?'active':''}" onclick="openDrawer('${k}')"><b>${v.length}</b><span>${labelFor(k)}</span></button>`).join('') : '';
+      generatedPanel.className = state.drawer ? 'generated-panel show' : 'generated-panel';
+      generatedPanel.innerHTML = state.drawer ? renderGeneratedPanel(state.drawer, counts[state.drawer] || []) : '';
+      if(s.objectAsk && !s.turns.length){
+        setTurnNavVisible(false);
+        generated.innerHTML = '';
+        generatedPanel.className = 'generated-panel';
+        generatedPanel.innerHTML = '';
+        document.getElementById('turnCount').textContent = 'Ready';
+        turnCard.innerHTML = renderObjectAskLanding(s);
+        sourceRow.innerHTML = renderSourceRow(s);
+        document.getElementById('continueInput').placeholder = `Ask about ${s.anchor_title}...`;
+        return;
+      }
+      const turn = s.turns[state.activeTurnIndex] || s.turns[0];
+      document.getElementById('turnCount').textContent = s.turns.length ? `Turn ${state.activeTurnIndex+1}/${s.turns.length}` : 'Turn -';
+      turnCard.innerHTML = renderTurn(turn);
+      sourceRow.innerHTML = renderSourceRow(s);
+      document.getElementById('continueInput').placeholder = s.objectAsk ? `Ask about ${s.anchor_title}...` : 'Ask about this session...';
+    }
+
+    function renderTurn(turn){
+      if(!turn) return '<div class="bubble agent">No turn yet.</div>';
+      const inputLabel = turn.input.type === 'audio' || turn.input.type === 'file' ? (turn.input.label || 'Audio input') : turn.input.text;
+      const inputBlock = turn.input.type === 'audio' ? renderAudioTurnInput(turn.input)
+        : turn.input.transcript ? `<div class="bubble user"><h3>Transcript</h3><p>${turn.input.transcript}</p></div>` : '';
+      return `<div class="input-strip"><span class="input-type">${turn.input.role} · ${turn.input.type}</span><span class="input-text">${inputLabel}</span></div><div class="conversation">${inputBlock}<div class="bubble agent"><h3>Agent reply</h3><p>${turn.output.text}</p></div></div>`;
+    }
+
+    function renderAudioTurnInput(input){
+      return `<div class="audio-card">
+        <div class="audio-row"><span class="play-dot">▶</span><span>${input.label || 'Audio input'}</span><span class="wave"></span></div>
+        <div class="audio-meta">${input.duration || '--:--'} · ${input.recorded_at || 'recorded'} · ${input.file_id || 'audio file'} · turn_input</div>
+      </div>
+      <div class="transcript-card"><b>ASR Transcript</b><p>${input.transcript || 'No transcript yet.'}</p></div>`;
+    }
+
+    function renderObjectAskLanding(s){
+      const prompts = state.objectPrompts[s.anchor_type] || state.objectPrompts.asset;
+      return `<div class="input-strip"><span class="input-type">anchor_input · ${s.anchor_type}</span><span class="input-text">${s.anchor_title}</span></div><div class="conversation"><div class="bubble agent"><h3>You can ask me about this content like this</h3><p class="card-sub">${anchorDescription(s)} Generated Assets 先为空，只有产生新结构化结果后才会出现。</p><div class="prompt-grid">${prompts.map(p => `<button class="prompt-card" onclick="usePrompt('${escapeAttr(p)}')">${p}</button>`).join('')}</div></div></div>`;
+    }
+
+    function renderSourceRow(s){
+      if(!s.sources || !s.sources.length) {
+        const label = s.session_type === 'flash_note' ? 'No Session Sources · audio stays in each Turn' : 'No Session Sources';
+        return `<button class="source-card empty">${label}</button>`;
+      }
+      return s.sources.map(renderSourceCard).join('');
+    }
+
+    function renderSourceCard(src){
+      if(src.type === 'virtual_markdown'){
+        const count = (src.asset_ids || []).length;
+        return `<button class="source-card" onclick="showAnchorInput('${src.type}','${src.object_id}')">${src.label} · ${count} idea assets</button>`;
+      }
+      if(src.type === 'asset'){
+        return `<button class="source-card" onclick="showAnchorInput('${src.type}','${src.object_id}')">${src.label} · 1 note asset</button>`;
+      }
+      return `<button class="source-card" onclick="showAnchorInput('${src.type}','${src.object_id || src.file_id || ''}')">${src.label}</button>`;
+    }
+
+    function anchorDescription(s){
+      if(s.anchor_type === 'virtual_markdown'){
+        const source = s.sources[0] || {};
+        return `当前 conversation 已把 ${s.anchor_title} 中的 ${(source.asset_ids || []).length} 个 idea assets 作为组合 anchor_input。`;
+      }
+      return `当前 conversation 已把 ${s.anchor_title} 作为 anchor_input。`;
+    }
+
+    function aggregateResults(s){
+      const buckets = {};
+      (s.turns || []).forEach(t => (t.output.items || []).forEach(item => {
+        if(item.type === 'assistant_message') return;
+        let key = 'messages';
+        if(item.asset_id){ const a = state.assets[item.asset_id]; key = a ? a.asset_type : 'assets'; }
+        if(item.type && item.type.startsWith('contact')) key = 'contacts';
+        if(!buckets[key]) buckets[key] = [];
+        buckets[key].push({...item, source_turn_id:t.id});
+      }));
+      return buckets;
+    }
+    function labelFor(k){ return ({todo:'Todos', note:'Notes', idea:'Ideas', contacts:'Contacts', messages:'Messages', assets:'Assets'})[k] || k; }
+
+    function openDrawer(kind){ state.drawer = state.drawer === kind ? null : kind; renderWorkspace(); showInspector('current'); }
+    function renderGeneratedPanel(kind, items){
+      return `<div class="generated-panel-head"><b>${labelFor(kind)} · ${items.length}</b><button class="terminal-chat" onclick="openDrawer('${kind}')">close</button></div>${items.map(renderItemRow).join('')}`;
+    }
+    function renderItemRow(item){
+      const a = item.asset_id ? state.assets[item.asset_id] : null;
+      if(item.type==='contact_update_pending') return `<div class="item-row" onclick="showContactPending()"><b>Kevin 信息待确认</b><span>来自 ${item.source_turn_id} · 2 candidates</span></div>`;
+      if(a) return `<div class="item-row" onclick="openAssetFromList('${a.id}')"><b>${a.title}</b><span>${a.asset_type} · ${a.status || 'created'} · 来自 ${item.source_turn_id}</span></div>`;
+      return `<div class="item-row"><b>${item.type}</b><span>来自 ${item.source_turn_id}</span></div>`;
+    }
+
+    function openAssetFromList(assetId){
+      const a = state.assets[assetId];
+      if(a && a.asset_type === 'note') openNoteFile(assetId);
+      else showInspector('asset:'+assetId);
+    }
+
+    function showAnchorInput(type, id){
+      if(type === 'virtual_markdown'){
+        const folder = state.folders[id];
+        const assets = Object.values(state.assets).filter(a => a.asset_type === folder.asset_type);
+        const panel = document.getElementById('generatedPanel');
+        panel.className = 'generated-panel show';
+        panel.innerHTML = `<div class="generated-panel-head"><b>Anchor Input · ${folder.title}</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div>${assets.map(a => `<div class="item-row" onclick="showInspector('asset:${a.id}')"><b>${a.title}</b><span>${a.asset_type} asset · source ${a.source_session_id || 'manual'} / ${a.source_turn_id || '-'}</span></div>`).join('')}`;
+        showInspector('folder:'+id);
+        return;
+      }
+      if(type === 'asset'){
+        const a = state.assets[id];
+        const panel = document.getElementById('generatedPanel');
+        panel.className = 'generated-panel show';
+        panel.innerHTML = `<div class="generated-panel-head"><b>Anchor Input · ${a.title}.md</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div><div class="item-row" onclick="openNoteFile('${a.id}')"><b>${a.title}.md</b><span>${a.asset_type} asset · source ${a.source_session_id || 'manual'} / ${a.source_turn_id || '-'}</span></div>`;
+        showInspector('asset:'+id);
+      }
+      else if(type === 'contact'){
+        const c = state.contacts[id];
+        const panel = document.getElementById('generatedPanel');
+        panel.className = 'generated-panel show';
+        panel.innerHTML = `<div class="generated-panel-head"><b>Anchor Input · ${c.name}</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div><div class="item-row" onclick="openContactDetail('${c.id}')"><b>${c.name}</b><span>${c.company} · ${c.title}</span></div>`;
+        showInspector('contact:'+id);
+      }
+      else if(type === 'file' || type === 'audio'){
+        const panel = document.getElementById('generatedPanel');
+        panel.className = 'generated-panel show';
+        panel.innerHTML = `<div class="generated-panel-head"><b>Anchor Input · Meeting audio</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div><div class="item-row"><b>Meeting audio · 23:14</b><span>file_meeting_001 · audio source</span></div>`;
+        showInspector('meetingFile');
+      }
+      else showInspector('source:'+type);
+    }
+
+    function hideGeneratedPanel(){
+      const panel = document.getElementById('generatedPanel');
+      panel.className = 'generated-panel';
+      panel.innerHTML = '';
+    }
+
+    function showContactPending(){
+      const panel = document.getElementById('generatedPanel');
+      panel.className = 'generated-panel show';
+      panel.innerHTML = `<div class="generated-panel-head"><b>Contact confirmation</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div>${Object.values(state.contacts).map(c => `<div class="candidate"><div><b>${c.name}</b><div class="card-sub">${c.company} · ${c.title}</div></div><div style="display:flex;gap:6px"><button class="pill-btn" onclick="openContactDetail('${c.id}')">详情</button><button class="pill-btn blue" onclick="confirmContact('${c.id}')">选择</button></div></div>`).join('')}`;
+    }
+    function confirmContact(id){
+      const s = state.sessions.flash; const c = state.contacts[id];
+      s.turns[0].output.items = s.turns[0].output.items.filter(i => i.type !== 'contact_update_pending');
+      s.turns[0].output.items.push({ type:'contact_updated', contact_id:id });
+      state.events = state.events.map(e => e.id==='evt_flash_done' ? {...e, title:'闪念已处理完成', desc:`已更新 ${c.name}，并创建 1 条 Todo`, chips:['Todo 1','Contact updated']} : e);
+      renderHome(); renderWorkspace(); showInspector(`contact:${id}`);
+    }
+
+    function openContactDetail(id){
+      const c = state.contacts[id];
+      state.activeSessionId = null; state.drawer = null; renderHome();
+      showWorkspace();
+      document.getElementById('workspaceTitle').textContent = c.name;
+      document.getElementById('workspaceMeta').textContent = `Contact detail · ${c.company} · ${c.title}`;
+      document.getElementById('generatedRow').innerHTML = '';
+      document.getElementById('generatedPanel').className = 'generated-panel';
+      document.getElementById('generatedPanel').innerHTML = '';
+      document.getElementById('sourceRow').innerHTML = `<button class="source-card" onclick="askAboutObject('contact','${id}')">Ask Agent</button>`;
+      document.getElementById('turnCount').textContent = 'Contact Detail';
+      document.getElementById('turnCard').innerHTML = `<div class="conversation"><div class="bubble agent"><h3>${c.name}</h3><p><b>Company</b><br>${c.company}</p><p><b>Title</b><br>${c.title}</p><p><b>Notes</b><br>${c.notes.length ? c.notes.join('<br>') : 'No notes yet.'}</p></div></div>`;
+      setContinueVisible(false);
+      setTurnNavVisible(false);
+      showInspector('contact:'+id);
+    }
+
+    function openDigest(folder){
+      const f = state.folders[folder];
+      const assets = Object.values(state.assets).filter(a => a.asset_type === f.asset_type);
+      state.activeSessionId = null; state.drawer = null; renderHome();
+      showWorkspace();
+      document.getElementById('workspaceTitle').textContent = f.title;
+      document.getElementById('workspaceMeta').textContent = `Detail page · system-generated markdown · ${assets.length} items`;
+      document.getElementById('generatedRow').innerHTML = '';
+      document.getElementById('generatedPanel').className = 'generated-panel';
+      document.getElementById('generatedPanel').innerHTML = '';
+      document.getElementById('sourceRow').innerHTML = `<button class="source-card" onclick="askAboutObject('virtual_markdown','${folder}')">Ask Agent</button>`;
+      document.getElementById('turnCount').textContent = 'MD Detail';
+      document.getElementById('turnCard').innerHTML = `<div class="conversation"><div class="bubble agent"><h3>${f.title}</h3>${assets.map(a => `<p><b>${a.title}</b><br>${a.content_md || a.due_at || ''}<br><button class="terminal-chat" onclick="${a.source_session_id === 'session_flash' ? 'openFlash()' : 'openMeeting()'}">source ${a.source_session_id} · ${a.source_turn_id}</button></p>`).join('<hr>')}</div></div>`;
+      setContinueVisible(false);
+      setTurnNavVisible(false);
+      showInspector('folder:'+folder);
+    }
+
+    function openNoteFile(assetId){
+      const a = state.assets[assetId];
+      state.activeSessionId = null; state.drawer = null; renderHome();
+      showWorkspace();
+      document.getElementById('workspaceTitle').textContent = `${a.title}.md`;
+      document.getElementById('workspaceMeta').textContent = `Detail page · generated note · source ${a.source_session_id} / ${a.source_turn_id}`;
+      document.getElementById('generatedRow').innerHTML = '';
+      document.getElementById('generatedPanel').className = 'generated-panel';
+      document.getElementById('generatedPanel').innerHTML = '';
+      document.getElementById('sourceRow').innerHTML = `<button class="source-card" onclick="askAboutObject('asset','${assetId}')">Ask Agent</button>`;
+      document.getElementById('turnCount').textContent = 'MD Detail';
+      document.getElementById('turnCard').innerHTML = `<div class="conversation"><div class="bubble agent"><div class="markdown-doc">${formatMarkdown(a.content_md)}</div></div></div>`;
+      setContinueVisible(false);
+      setTurnNavVisible(false);
+      showInspector('asset:'+assetId);
+    }
+
+    function askAboutObject(kind, id){
+      const isAsset = kind === 'asset';
+      const isContact = kind === 'contact';
+      const obj = isAsset ? state.assets[id] : isContact ? state.contacts[id] : state.folders[id];
+      const title = isAsset ? `${obj.title}.md` : isContact ? obj.name : obj.title;
+      const anchorType = isAsset ? 'asset' : isContact ? 'contact' : 'virtual_markdown';
+      const anchorSource = { type:anchorType, label:title, object_id:id };
+      if(anchorType === 'virtual_markdown'){
+        anchorSource.asset_ids = Object.values(state.assets).filter(a => a.asset_type === obj.asset_type).map(a => a.id);
+      }
+      state.sessions.objectAsk = {
+        id:`session_object_ask_${id}`,
+        session_type:'conversation',
+        status:'ready',
+        title:`Ask: ${title}`,
+        subtitle:`anchored by ${anchorType}`,
+        objectAsk:true,
+        anchor_type:anchorType,
+        anchor_title:title,
+        sources:[anchorSource],
+        inputs:[{ input_id:'input_anchor_001', input_role:'anchor_input', input_type:anchorType, object_id:id, asset_ids:anchorSource.asset_ids || undefined }],
+        turns:[]
+      };
+      openSession('objectAsk');
+    }
+
+    function formatMarkdown(md){
+      return escapeHtml(md).replace(/^# (.*)$/gm, '<h3>$1</h3>').replace(/^## (.*)$/gm, '<b>$1</b>').replace(/\n/g, '<br>');
+    }
+
+    function setContinueVisible(visible){
+      document.getElementById('continueRow').classList.toggle('hidden', !visible);
+    }
+    function setTurnNavVisible(visible){
+      document.getElementById('turnNav').classList.toggle('hidden', !visible);
+      document.getElementById('turnStage').classList.toggle('no-nav', !visible);
+    }
+    function usePrompt(text){
+      const input = document.getElementById('continueInput');
+      input.value = text;
+      input.focus();
+    }
+    function prevTurn(){ const s=state.sessions[state.activeSessionId]; if(!s||!s.turns.length) return; state.activeTurnIndex=Math.max(0,state.activeTurnIndex-1); renderWorkspace(); showInspector('current'); }
+    function nextTurn(){ const s=state.sessions[state.activeSessionId]; if(!s||!s.turns.length) return; state.activeTurnIndex=Math.min(s.turns.length-1,state.activeTurnIndex+1); renderWorkspace(); showInspector('current'); }
+    function submitFollowup(){
+      const s=state.sessions[state.activeSessionId]; if(!s) return; const input=document.getElementById('continueInput'); const text=input.value.trim() || (s.objectAsk ? `Summarize ${s.anchor_title}` : s.session_type==='meeting'?'这场会有哪些 action items？':'我刚才记录了 Kevin 什么？');
+      const id=`turn_${String(s.turns.length+1).padStart(3,'0')}`;
+      if(s.objectAsk) s.inputs.push({ input_id:`input_${id}`, input_role:'turn_input', input_type:'text', text });
+      s.turns.push({ id, input:{role:'turn_input', type:'text', text}, output:{text: s.objectAsk ? `我会基于 anchor_input「${s.anchor_title}」回答这个问题。当前还没有生成新的结构化 Asset，所以 Generated Assets 仍为空。` : text.includes('action') ? '这场会有两个 action items：整理 demo spec；确认 Kevin 的跟进事项。' : '我根据当前 Session 上下文整理了你的追问结果。', items:[{type:'assistant_message', id:`msg_${id}`}] }});
+      state.activeTurnIndex=s.turns.length-1; input.value=''; renderWorkspace(); showInspector('current');
+    }
+
+    function showInspector(key){
+      let data = {};
+      if(key==='current'){ const s=state.sessions[state.activeSessionId]; data=s ? { session:s, current_turn:s.turns[state.activeTurnIndex] || null } : { home:'Agent Console + Files' }; }
+      else if(key==='home') data={ page:'Home', sections:['Agent Console','Files'], rule:'Flash Note lives in Agent Console; conversation sessions do not enter Files' };
+      else if(key==='events') data=state.events;
+      else if(key==='folders') data=state.folders;
+      else if(key==='meetingFile') data={ file_id:'file_meeting_001', file_type:'audio', duration:'23:14', status:'uploaded_not_analyzed' };
+      else if(key && key.startsWith('asset:')) data=state.assets[key.split(':')[1]];
+      else if(key && key.startsWith('contact:')) data=state.contacts[key.split(':')[1]];
+      else if(key && key.startsWith('folder:')) { const folder=key.split(':')[1]; data={ folder:state.folders[folder], generated_from:Object.values(state.assets).filter(a=>a.asset_type===state.folders[folder].asset_type) }; }
+      else if(key && key.startsWith('source:')) data={ source_type:key.split(':')[1], rule:'Session Sources only come from anchor_input' };
+      else data={ key };
+      state.lastInspected = data;
+    }
+    function escapeHtml(str){ return str.replace(/[&<>]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[s])); }
+    function escapeAttr(str){ return escapeHtml(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+
+    renderHome(); showHome(); showInspector('home');
+  </script>
+</body>
+</html>

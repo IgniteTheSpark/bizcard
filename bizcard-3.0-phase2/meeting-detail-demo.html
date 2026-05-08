@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meeting Detail Demo (Audio-first)</title>
+    <style>
+      :root{
+        --bg:#f5f6f8;
+        --card:#ffffff;
+        --text:#101828;
+        --muted:#667085;
+        --line:#eaecf0;
+        --primary:#2563eb;
+        --danger:#dc2626;
+        --shadow: 0 8px 28px rgba(16,24,40,.10);
+        --radius: 14px;
+        --pill: 999px;
+      }
+      *{box-sizing:border-box}
+      body{
+        margin:0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans", sans-serif;
+        background:var(--bg);
+        color:var(--text);
+      }
+      .wrap{
+        max-width: 520px;
+        margin: 20px auto;
+        padding: 0 14px 120px;
+      }
+      .topbar{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        margin-bottom: 10px;
+      }
+      .iconbtn{
+        border:none;
+        background:transparent;
+        color:var(--muted);
+        padding:10px;
+        border-radius:10px;
+        cursor:pointer;
+      }
+      .iconbtn:hover{ background: rgba(102,112,133,.08); }
+      .titlebar{
+        font-weight:700;
+        letter-spacing:.2px;
+      }
+
+      .card{
+        background:var(--card);
+        border:1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 10px rgba(16,24,40,.04);
+      }
+      .headerCard{
+        padding: 14px 14px 12px;
+      }
+      .hTitle{
+        font-size: 18px;
+        font-weight: 800;
+        margin: 2px 0 6px;
+      }
+      .hMeta{
+        display:flex;
+        gap:10px;
+        color:var(--muted);
+        font-size: 12px;
+        align-items:center;
+      }
+      .dot{width:4px;height:4px;background:var(--muted);border-radius:50%;}
+      .player{
+        margin-top: 12px;
+        background: #f1f5ff;
+        border: 1px solid #dbe7ff;
+        border-radius: 12px;
+        padding: 10px;
+        display:flex;
+        gap:10px;
+        align-items:center;
+      }
+      .play{
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border:none;
+        background: var(--primary);
+        color: white;
+        cursor:pointer;
+        display:grid;
+        place-items:center;
+        font-weight:800;
+      }
+      .seek{
+        flex:1;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        color:var(--muted);
+        font-size: 12px;
+      }
+      input[type="range"]{ width: 100%; }
+      .sourceRow{
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+        display:flex;
+        flex-direction:column;
+        gap:6px;
+      }
+      .label{
+        font-size: 12px;
+        color:var(--muted);
+      }
+      .tag{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #fafafa;
+        font-size: 13px;
+        color:#344054;
+      }
+      .tagcode{
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        color:#111827;
+      }
+
+      .tabs{
+        margin-top: 12px;
+        display:flex;
+        gap: 16px;
+        padding: 0 4px;
+        overflow:auto;
+        scrollbar-width: none;
+      }
+      .tabs::-webkit-scrollbar{display:none}
+      .tab{
+        white-space:nowrap;
+        padding: 10px 2px 12px;
+        border:none;
+        background:transparent;
+        cursor:pointer;
+        color:var(--muted);
+        font-weight: 700;
+        border-bottom: 2px solid transparent;
+      }
+      .tab.active{
+        color: var(--text);
+        border-bottom-color: var(--text);
+      }
+
+      .panel{
+        margin-top: 10px;
+        padding: 14px;
+      }
+      .panelTitle{
+        font-weight: 800;
+        margin: 0 0 12px;
+        font-size: 14px;
+      }
+      .list{
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      }
+      .rowCard{
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        display:flex;
+        justify-content:space-between;
+        gap: 10px;
+        background: #fff;
+      }
+      .rowMain{min-width:0;}
+      .rowMain .t{
+        font-weight: 750;
+        font-size: 13px;
+        margin:0 0 4px;
+      }
+      .rowMain .s{
+        font-size: 12px;
+        color: var(--muted);
+        margin:0;
+        line-height: 1.35;
+      }
+      .pill{
+        border: 1px solid var(--line);
+        border-radius: var(--pill);
+        padding: 6px 10px;
+        font-size: 12px;
+        color:#344054;
+        background:#fafafa;
+        align-self:flex-start;
+        white-space:nowrap;
+      }
+      .muted{ color: var(--muted); }
+
+      /* Note sub-tabs */
+      .subtabs{
+        display:flex;
+        gap: 10px;
+        overflow:auto;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+        scrollbar-width: none;
+      }
+      .subtabs::-webkit-scrollbar{display:none}
+      .subtab{
+        border: 1px solid var(--line);
+        background:#fff;
+        border-radius: 10px;
+        padding: 8px 10px;
+        cursor:pointer;
+        color:#344054;
+        font-weight: 700;
+        font-size: 12px;
+        white-space:nowrap;
+      }
+      .subtab.active{
+        border-color: #c7d2fe;
+        background:#eef2ff;
+        color:#1e3a8a;
+      }
+      .noteBody{
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background:#fff;
+      }
+      .noteTools{
+        display:flex;
+        gap: 8px;
+        align-items:center;
+        margin-bottom: 10px;
+        justify-content: flex-end;
+      }
+      .toolbtn{
+        border:1px solid var(--line);
+        background:#fff;
+        color:#344054;
+        padding: 8px 10px;
+        border-radius: 10px;
+        cursor:pointer;
+        font-weight: 700;
+        font-size: 12px;
+      }
+      .toolbtn:hover{ background:#f8fafc; }
+      .noteText{
+        margin:0;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+      }
+
+      /* File sub-tabs */
+      .grid{
+        display:grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .thumb{
+        border:1px solid var(--line);
+        border-radius: 10px;
+        background: linear-gradient(180deg, #f8fafc, #fff);
+        padding: 10px;
+        min-height: 66px;
+        display:flex;
+        flex-direction:column;
+        gap:6px;
+        justify-content:center;
+      }
+      .thumb .k{ font-weight:800; font-size: 12px; }
+      .thumb .v{ font-size: 11px; color: var(--muted); }
+
+      /* Floating bar */
+      .fab{
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 18px;
+        width: min(520px, calc(100% - 28px));
+        display:flex;
+        justify-content:center;
+        pointer-events:none;
+      }
+      .fabInner{
+        pointer-events:auto;
+        background:#0b1220;
+        color:#fff;
+        padding: 10px;
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        display:flex;
+        gap: 10px;
+        align-items:center;
+      }
+      .fabBtn{
+        width: 46px;
+        height: 40px;
+        border-radius: 14px;
+        border: none;
+        cursor:pointer;
+        background: rgba(255,255,255,.10);
+        color:#fff;
+        font-weight: 900;
+      }
+      .fabBtn:hover{ background: rgba(255,255,255,.16); }
+      .fabBtn.primary{
+        background: radial-gradient(80% 90% at 30% 20%, #9ae6ff 0%, #4f46e5 52%, #111827 100%);
+      }
+      .fabBtn:disabled{
+        opacity: .45;
+        cursor:not-allowed;
+      }
+
+      /* Drawer */
+      .overlay{
+        position: fixed;
+        inset:0;
+        background: rgba(16,24,40,.45);
+        display:none;
+        align-items:flex-end;
+        justify-content:center;
+        padding: 0 14px 14px;
+      }
+      .overlay.show{ display:flex; }
+      .drawer{
+        width: min(520px, 100%);
+        background:#fff;
+        border-radius: 16px;
+        border:1px solid var(--line);
+        box-shadow: var(--shadow);
+        overflow:hidden;
+      }
+      .drawerHead{
+        padding: 12px 14px;
+        border-bottom:1px solid var(--line);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 10px;
+      }
+      .drawerTitle{
+        font-weight: 900;
+      }
+      .drawerBody{
+        padding: 12px 14px 14px;
+      }
+      .menu{
+        display:flex;
+        flex-direction:column;
+        gap: 10px;
+      }
+      .menuItem{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap: 10px;
+        border:1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background:#fff;
+        cursor:pointer;
+      }
+      .menuItem:hover{ background:#f8fafc; }
+      .menuItem .l .t{ margin:0; font-weight: 900; font-size: 13px; }
+      .menuItem .l .s{ margin:4px 0 0; font-size: 12px; color: var(--muted); }
+      .menuItem .r{ color: var(--muted); font-weight: 900; }
+      .danger{ border-color: #fecaca; background: #fff7f7; }
+      .danger:hover{ background: #fff1f2; }
+      .danger .r{ color: var(--danger); }
+
+      /* Session view */
+      .session{
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      }
+      .chat{
+        border:1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        max-height: 52vh;
+        overflow:auto;
+        background:#fff;
+      }
+      .msg{
+        display:flex;
+        gap:8px;
+        margin-bottom: 10px;
+      }
+      .bubble{
+        border:1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        font-size: 13px;
+        line-height:1.45;
+        max-width: 86%;
+        background:#fff;
+      }
+      .msg.user{ justify-content:flex-end; }
+      .msg.user .bubble{ background:#eff6ff; border-color:#dbeafe; }
+      .msg.agent .bubble{ background:#f8fafc; }
+      .chatMeta{
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0 0 8px;
+      }
+      .composer{
+        display:flex;
+        gap: 8px;
+        align-items:center;
+      }
+      .composer input{
+        flex:1;
+        border:1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 13px;
+      }
+      .send{
+        border:none;
+        background: var(--primary);
+        color:#fff;
+        padding: 12px 14px;
+        border-radius: 12px;
+        font-weight: 900;
+        cursor:pointer;
+      }
+      .send:disabled{ opacity:.5; cursor:not-allowed; }
+
+      .banner{
+        margin-top: 12px;
+        border: 1px dashed #cbd5e1;
+        background:#f8fafc;
+        color:#334155;
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <button class="iconbtn" id="btnBack" aria-label="back">‹</button>
+        <div class="titlebar">Details</div>
+        <button class="iconbtn" id="btnShare" aria-label="share">↗</button>
+      </div>
+
+      <div class="card headerCard" id="headerCard">
+        <div class="hTitle" id="meetingTitle">Customer Review Meeting</div>
+        <div class="hMeta">
+          <span id="meetingDuration">34s</span><span class="dot"></span>
+          <span id="meetingTime">2026-04-09 09:18</span>
+        </div>
+
+        <div class="player">
+          <button class="play" id="btnPlay" title="play/pause">▶</button>
+          <div class="seek">
+            <span id="curTime">00:00</span>
+            <input type="range" min="0" max="34" value="0" id="rangeSeek" />
+            <span id="totalTime">00:34</span>
+          </div>
+        </div>
+
+        <div class="sourceRow">
+          <div class="label">Source</div>
+          <div class="tag">
+            <span class="tagcode" id="sourceCode">meeting_recorded</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs"></div>
+
+      <div class="card panel" id="panel"></div>
+
+      <div class="banner" id="deletedBanner" style="display:none"></div>
+    </div>
+
+    <!-- Floating bar -->
+    <div class="fab">
+      <div class="fabInner" role="toolbar" aria-label="meeting actions">
+        <button class="fabBtn" id="btnRecord" title="录音">🎙</button>
+        <button class="fabBtn primary" id="btnAgent" title="Ask Agent">✦</button>
+        <button class="fabBtn" id="btnPlus" title="更多">＋</button>
+      </div>
+    </div>
+
+    <!-- Drawer overlay -->
+    <div class="overlay" id="overlay" aria-hidden="true">
+      <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+        <div class="drawerHead">
+          <div class="drawerTitle" id="drawerTitle">Menu</div>
+          <button class="iconbtn" id="btnCloseDrawer" aria-label="close">✕</button>
+        </div>
+        <div class="drawerBody" id="drawerBody"></div>
+      </div>
+    </div>
+
+    <script>
+      // ---- Mock state (per file/meeting) ----
+      const state = {
+        fileId: "file_meeting_001",
+        deleted: false,
+        playing: false,
+        seconds: 0,
+        durationSeconds: 34,
+        activeTab: "transcription",
+        noteActiveId: "note_1",
+        fileActiveType: "image",
+        sessionByFile: new Map(), // fileId -> session object (single session per file)
+        contacts: [
+          { id: "c1", name: "Kevin", title: "PM", company: "ACME" },
+          { id: "c2", name: "Feng", title: "VP", company: "Example Co.", pending: true },
+          { id: "c3", name: "Yuki", title: "Sales", company: "ACME" },
+        ],
+        reminders: [
+          { id: "r1", title: "Prepare technical spec document", due: "2026-04-10 18:00", done: false },
+          { id: "r2", title: "Send follow-up email to customer", due: "2026-04-10 12:00", done: true },
+        ],
+        notes: [
+          {
+            id: "note_1",
+            title: "Meeting Minutes",
+            body:
+              "1. Key Points\n" +
+              "- Q4 revenue exceeded projections by 15%\n" +
+              "- Customer satisfaction score improved to 4.7/5.0\n" +
+              "- Prepare technical specification document for mobile app\n\n" +
+              "2. Action Items\n" +
+              "- Draft spec by tomorrow 18:00\n" +
+              "- Share minutes with stakeholders\n",
+          },
+          {
+            id: "note_2",
+            title: "Key Decisions",
+            body:
+              "- Move forward with Phase 2 rollout next sprint\n" +
+              "- Prioritize audio-first meeting detail iteration\n" +
+              "- Defer full Event integration\n",
+          },
+          {
+            id: "note_3",
+            title: "Open Questions",
+            body:
+              "- How to handle contact matching confidence + audit?\n" +
+              "- What is minimal viable File tab upload backend contract?\n",
+          },
+        ],
+        transcript: [
+          { spk: "Speaker A", at: "00:30", text: "Good morning everyone. Let's start with our Q4 business review..." },
+          { spk: "Speaker B", at: "00:30", text: "I'm pleased to share that our revenue exceeded projections..." },
+          { spk: "Speaker C", at: "00:30", text: "Customer satisfaction score improved to 4.7 out of 5..." },
+          { spk: "Speaker D", at: "00:30", text: "Next, let's discuss the mobile app technical specification..." },
+        ],
+        files: {
+          image: [
+            { id: "img1", name: "whiteboard_1.jpg", meta: "Uploaded 2026-04-09" },
+            { id: "img2", name: "meeting_photo.jpg", meta: "Uploaded 2026-04-09" },
+            { id: "img3", name: "slides_snap.png", meta: "Uploaded 2026-04-09" },
+            { id: "img4", name: "room.jpg", meta: "Uploaded 2026-04-09" },
+            { id: "img5", name: "agenda.png", meta: "Uploaded 2026-04-09" },
+            { id: "img6", name: "diagram.png", meta: "Uploaded 2026-04-09" },
+          ],
+          md: [
+            { id: "md1", name: "meeting_notes.md", meta: "Uploaded 2026-04-09" },
+          ],
+          other: [],
+        },
+      };
+
+      function pad2(n){ return String(n).padStart(2, "0"); }
+      function formatMMSS(s){
+        const m = Math.floor(s / 60);
+        const ss = s % 60;
+        return `${pad2(m)}:${pad2(ss)}`;
+      }
+
+      const elTabs = document.getElementById("tabs");
+      const elPanel = document.getElementById("panel");
+      const elOverlay = document.getElementById("overlay");
+      const elDrawerBody = document.getElementById("drawerBody");
+      const elDrawerTitle = document.getElementById("drawerTitle");
+      const elDeletedBanner = document.getElementById("deletedBanner");
+      const elHeaderCard = document.getElementById("headerCard");
+      const elBtnAgent = document.getElementById("btnAgent");
+      const elBtnPlus = document.getElementById("btnPlus");
+
+      const elCurTime = document.getElementById("curTime");
+      const elTotalTime = document.getElementById("totalTime");
+      const elRange = document.getElementById("rangeSeek");
+      const elBtnPlay = document.getElementById("btnPlay");
+
+      elTotalTime.textContent = formatMMSS(state.durationSeconds);
+      elRange.max = String(state.durationSeconds);
+
+      // ---- Rendering ----
+      const TABS = [
+        { id: "transcription", label: "Transcription" },
+        { id: "note", label: "Note" },
+        { id: "reminder", label: "Reminder" },
+        { id: "contacts", label: "Contacts" },
+        { id: "attachment", label: "Attachment" },
+      ];
+
+      function renderTabs(){
+        elTabs.innerHTML = "";
+        for (const t of TABS){
+          const b = document.createElement("button");
+          b.className = "tab" + (state.activeTab === t.id ? " active" : "");
+          b.textContent = t.label;
+          b.onclick = () => {
+            if (state.deleted) return;
+            state.activeTab = t.id;
+            render();
+          };
+          elTabs.appendChild(b);
+        }
+      }
+
+      function renderTranscription(){
+        const html = `
+          <div class="panelTitle">Transcript</div>
+          <div class="list">
+            ${state.transcript.map(x => `
+              <div class="rowCard">
+                <div class="rowMain">
+                  <p class="t">${escapeHtml(x.spk)} <span class="muted" style="font-weight:700">▼</span> <span class="muted" style="font-weight:700">·</span> <span class="muted">${escapeHtml(x.at)}</span></p>
+                  <p class="s">${escapeHtml(x.text)}</p>
+                </div>
+                <div class="pill">${escapeHtml(x.at)}</div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+        elPanel.innerHTML = html;
+      }
+
+      function renderNote(){
+        const subtabs = state.notes.map(n => `
+          <button class="subtab ${state.noteActiveId === n.id ? "active" : ""}" data-note="${n.id}">
+            ${escapeHtml(n.title)}
+          </button>
+        `).join("");
+        const cur = state.notes.find(n => n.id === state.noteActiveId) || state.notes[0];
+        const html = `
+          <div class="subtabs" id="noteSubtabs">${subtabs}</div>
+          <div class="noteBody">
+            <div class="noteTools">
+              <button class="toolbtn" id="btnTemplate">Template</button>
+              <button class="toolbtn" id="btnCopy">Copy</button>
+              <button class="toolbtn" id="btnEdit">Edit</button>
+            </div>
+            <pre class="noteText">${escapeHtml(cur.body)}</pre>
+          </div>
+        `;
+        elPanel.innerHTML = html;
+        const el = document.getElementById("noteSubtabs");
+        el?.addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-note]");
+          if (!btn) return;
+          state.noteActiveId = btn.getAttribute("data-note");
+          render();
+        });
+        document.getElementById("btnCopy")?.addEventListener("click", async () => {
+          try{
+            await navigator.clipboard.writeText(cur.body);
+            toast("已复制 Note 内容");
+          }catch{
+            toast("复制失败（浏览器权限）");
+          }
+        });
+        document.getElementById("btnEdit")?.addEventListener("click", () => {
+          toast("Demo：编辑入口（未实现）");
+        });
+        document.getElementById("btnTemplate")?.addEventListener("click", () => {
+          toast("Demo：模板入口（未实现）");
+        });
+      }
+
+      function renderReminder(){
+        const html = `
+          <div class="panelTitle">Reminder</div>
+          <div class="list">
+            ${state.reminders.map(r => `
+              <div class="rowCard">
+                <div class="rowMain">
+                  <p class="t">${escapeHtml(r.title)}</p>
+                  <p class="s">DDL: ${escapeHtml(r.due)} · ${r.done ? "已完成" : "未完成"}</p>
+                </div>
+                <div class="pill">${r.done ? "✓" : "□"}</div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+        elPanel.innerHTML = html;
+      }
+
+      function renderContacts(){
+        const html = `
+          <div class="panelTitle">Contacts</div>
+          <div class="list">
+            ${state.contacts.map(c => `
+              <div class="rowCard">
+                <div class="rowMain">
+                  <p class="t">${escapeHtml(c.name)} ${c.pending ? `<span class="pill" title="待确认">?</span>` : ""}</p>
+                  <p class="s">${escapeHtml(c.title)} · ${escapeHtml(c.company)}</p>
+                </div>
+                <div class="pill">${c.pending ? "待确认" : "已关联"}</div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+        elPanel.innerHTML = html;
+      }
+
+      function renderAttachment(){
+        const typesAll = [
+          { id:"image", label:"Image" },
+          { id:"md", label:"MD文档" },
+          { id:"other", label:"Other" },
+        ];
+        const types = typesAll.filter(t => (state.files[t.id] || []).length > 0);
+        const active = types.some(t => t.id === state.fileActiveType) ? state.fileActiveType : (types[0]?.id || "image");
+        state.fileActiveType = active;
+        const subtabs = types.map(t => `
+          <button class="subtab ${state.fileActiveType === t.id ? "active" : ""}" data-ft="${t.id}">
+            ${escapeHtml(t.label)}
+          </button>
+        `).join("");
+        const list = state.files[state.fileActiveType] || [];
+        const grid = state.fileActiveType === "image"
+          ? `<div class="grid">
+              ${list.map(x => `
+                <div class="thumb" title="${escapeHtml(x.name)}">
+                  <div class="k">IMG</div>
+                  <div class="v">${escapeHtml(x.name)}</div>
+                </div>
+              `).join("")}
+            </div>`
+          : `<div class="list">
+              ${list.map(x => `
+                <div class="rowCard">
+                  <div class="rowMain">
+                    <p class="t">${escapeHtml(x.name)}</p>
+                    <p class="s">${escapeHtml(x.meta)}</p>
+                  </div>
+                  <div class="pill">${state.fileActiveType.toUpperCase()}</div>
+                </div>
+              `).join("")}
+              ${list.length === 0 ? `<div class="banner">暂无文件。可通过底部 “+” → Upload 关联文件 添加。</div>` : ""}
+            </div>`;
+        const html = `
+          <div class="panelTitle">Attachment</div>
+          ${types.length > 0 ? `<div class="subtabs" id="fileSubtabs">${subtabs}</div>` : ""}
+          ${types.length > 0 ? grid : `<div class="banner">暂无附件。可通过底部 “+” → Upload 关联文件 添加。</div>`}
+        `;
+        elPanel.innerHTML = html;
+        const el = document.getElementById("fileSubtabs");
+        el?.addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-ft]");
+          if (!btn) return;
+          state.fileActiveType = btn.getAttribute("data-ft");
+          render();
+        });
+      }
+
+      function renderDeleted(){
+        elHeaderCard.style.display = "none";
+        elTabs.style.display = "none";
+        elPanel.style.display = "none";
+        elDeletedBanner.style.display = "block";
+        elDeletedBanner.innerHTML =
+          `<b>该会议已删除</b><br/>` +
+          `当前逻辑：删除 file 后，Note / Transcription / 图片等与其断开关联且无独立入口进入（伪删除表现）。` +
+          `<br/><br/>` +
+          `Ask Agent 会话将被冻结为只读（可查看历史记录，不可继续聊天）。`;
+        // Disable buttons that require active context
+        elBtnAgent.disabled = false; // still can open session (read-only)
+        elBtnPlus.disabled = true;
+      }
+
+      function renderActive(){
+        elHeaderCard.style.display = "block";
+        elTabs.style.display = "flex";
+        elPanel.style.display = "block";
+        elDeletedBanner.style.display = "none";
+        elBtnPlus.disabled = false;
+        elBtnAgent.disabled = false;
+
+        switch(state.activeTab){
+          case "transcription": return renderTranscription();
+          case "note": return renderNote();
+          case "reminder": return renderReminder();
+          case "contacts": return renderContacts();
+          case "attachment": return renderAttachment();
+          default: return renderTranscription();
+        }
+      }
+
+      function render(){
+        renderTabs();
+        if (state.deleted) renderDeleted();
+        else renderActive();
+        syncPlayerUI();
+      }
+
+      // ---- Drawer / menus ----
+      function openDrawer(title, bodyNode){
+        elDrawerTitle.textContent = title;
+        elDrawerBody.innerHTML = "";
+        elDrawerBody.appendChild(bodyNode);
+        elOverlay.classList.add("show");
+        elOverlay.setAttribute("aria-hidden", "false");
+      }
+      function closeDrawer(){
+        elOverlay.classList.remove("show");
+        elOverlay.setAttribute("aria-hidden", "true");
+      }
+      document.getElementById("btnCloseDrawer").onclick = closeDrawer;
+      elOverlay.addEventListener("click", (e) => {
+        if (e.target === elOverlay) closeDrawer();
+      });
+
+      // “+” menu in meeting context
+      function openPlusMenu(){
+        const box = document.createElement("div");
+        box.className = "menu";
+        box.innerHTML = `
+          <div class="menuItem" data-act="add_contact">
+            <div class="l">
+              <p class="t">添加关联 Contact</p>
+              <p class="s">在当前会议下关联联系人</p>
+            </div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuItem" data-act="upload_file">
+            <div class="l">
+              <p class="t">Upload 关联文件</p>
+              <p class="s">上传图片/MD 等作为会议 Attachment</p>
+            </div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuItem" data-act="add_reminder">
+            <div class="l">
+              <p class="t">添加 Reminder</p>
+              <p class="s">基于当前会议创建提醒</p>
+            </div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuItem danger" data-act="delete_file">
+            <div class="l">
+              <p class="t">删除会议（File）</p>
+              <p class="s">断开关联并冻结会话（Demo）</p>
+            </div>
+            <div class="r">删除</div>
+          </div>
+        `;
+        box.addEventListener("click", (e) => {
+          const item = e.target.closest(".menuItem");
+          if (!item) return;
+          const act = item.getAttribute("data-act");
+          closeDrawer();
+          if (act === "add_contact") {
+            toast("Demo：打开联系人选择器（未实现）");
+            state.activeTab = "contacts";
+            render();
+          } else if (act === "upload_file") {
+            // Simulate upload: add one image
+            const n = state.files.image.length + 1;
+            state.files.image.unshift({ id:`img_new_${n}`, name:`upload_${n}.jpg`, meta:"Just now" });
+            toast("已模拟上传：upload_" + n + ".jpg");
+            state.activeTab = "attachment";
+            state.fileActiveType = "image";
+            render();
+          } else if (act === "add_reminder") {
+            state.reminders.unshift({ id: "r_new", title:"New reminder (Demo)", due:"Tomorrow 18:00", done:false });
+            toast("已模拟添加 Reminder");
+            state.activeTab = "reminder";
+            render();
+          } else if (act === "delete_file") {
+            deleteFile();
+          }
+        });
+        openDrawer("+", box);
+      }
+
+      // Ask Agent: single session per file; when file deleted -> session frozen (read-only)
+      function openAgentSession(){
+        const session = getOrCreateSession(state.fileId);
+        const box = document.createElement("div");
+        box.className = "session";
+
+        const frozen = session.frozen;
+        box.innerHTML = `
+          <div class="chatMeta">
+            Session: <b>${escapeHtml(session.id)}</b> · Context: <span class="tagcode">${escapeHtml(session.contextFileId)}</span>
+            ${frozen ? ` · <span style="color: var(--danger); font-weight: 900">已冻结（只读）</span>` : ""}
+          </div>
+          <div class="chat" id="chat"></div>
+          <div class="composer">
+            <input id="chatInput" placeholder="${frozen ? "会话已冻结，仅可查看历史记录" : "输入消息（Demo）"}" ${frozen ? "disabled" : ""} />
+            <button class="send" id="btnSend" ${frozen ? "disabled" : ""}>发送</button>
+          </div>
+          <div class="banner">
+            规则演示：每个 meeting/file 仅一个 session。删除会议后，session 冻结：可查看历史，不可继续聊天。
+          </div>
+        `;
+
+        openDrawer("Ask Agent", box);
+
+        const elChat = box.querySelector("#chat");
+        renderChat(elChat, session);
+
+        const input = box.querySelector("#chatInput");
+        const send = box.querySelector("#btnSend");
+        const sendMsg = () => {
+          const txt = (input.value || "").trim();
+          if (!txt) return;
+          session.messages.push({ role:"user", text: txt });
+          session.messages.push({ role:"agent", text: mockAgentReply(txt) });
+          input.value = "";
+          renderChat(elChat, session);
+        };
+        send?.addEventListener("click", sendMsg);
+        input?.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") sendMsg();
+        });
+      }
+
+      function getOrCreateSession(fileId){
+        if (state.sessionByFile.has(fileId)) return state.sessionByFile.get(fileId);
+        const s = {
+          id: "session_" + Math.random().toString(16).slice(2, 8),
+          contextFileId: fileId,
+          frozen: false,
+          messages: [
+            { role:"agent", text: "我已进入本次会议上下文（Demo）。你可以问我总结、待办或联系人相关问题。" },
+          ],
+        };
+        state.sessionByFile.set(fileId, s);
+        return s;
+      }
+
+      function renderChat(container, session){
+        container.innerHTML = session.messages.map(m => `
+          <div class="msg ${m.role}">
+            <div class="bubble">${escapeHtml(m.text)}</div>
+          </div>
+        `).join("");
+        container.scrollTop = container.scrollHeight;
+      }
+
+      function mockAgentReply(userText){
+        if (/总结|纪要|minutes|summary/i.test(userText)) return "（Demo）我可以基于转写生成会议纪要，并同步到 Note 子 Tab。";
+        if (/提醒|ddl|todo/i.test(userText)) return "（Demo）我可以把行动项转成 Reminder：例如「明晚 18:00 完成技术规格文档」。";
+        if (/联系人|contact/i.test(userText)) return "（Demo）我可以从对话中抽取参与人并建议关联 Contacts。";
+        return "（Demo）收到。我会在该会议上下文内持续对话（单会议单 session）。";
+      }
+
+      function deleteFile(){
+        state.deleted = true;
+        // Freeze session if exists (read-only, still viewable)
+        const s = state.sessionByFile.get(state.fileId);
+        if (s) s.frozen = true;
+        closeDrawer();
+        render();
+        toast("已删除会议（Demo）：会话已冻结");
+      }
+
+      // ---- Player (fake) ----
+      let timer = null;
+      function syncPlayerUI(){
+        elCurTime.textContent = formatMMSS(state.seconds);
+        elRange.value = String(state.seconds);
+        elBtnPlay.textContent = state.playing ? "❚❚" : "▶";
+        elBtnPlay.disabled = state.deleted;
+        elRange.disabled = state.deleted;
+      }
+      function setPlaying(next){
+        if (state.deleted) return;
+        state.playing = next;
+        if (timer) { clearInterval(timer); timer = null; }
+        if (state.playing){
+          timer = setInterval(() => {
+            state.seconds += 1;
+            if (state.seconds >= state.durationSeconds){
+              state.seconds = state.durationSeconds;
+              state.playing = false;
+              clearInterval(timer); timer = null;
+            }
+            syncPlayerUI();
+          }, 1000);
+        }
+        syncPlayerUI();
+      }
+      elBtnPlay.addEventListener("click", () => setPlaying(!state.playing));
+      elRange.addEventListener("input", () => {
+        state.seconds = Number(elRange.value || 0);
+        syncPlayerUI();
+      });
+
+      // ---- Buttons ----
+      document.getElementById("btnBack").onclick = () => toast("Demo：返回（未实现）");
+      document.getElementById("btnShare").onclick = () => toast("Demo：分享（未实现）");
+      document.getElementById("btnRecord").onclick = () => toast("Demo：录音入口（未实现）");
+      document.getElementById("btnPlus").onclick = () => {
+        if (state.deleted) return;
+        openPlusMenu();
+      };
+      document.getElementById("btnAgent").onclick = () => openAgentSession();
+
+      // ---- Toast ----
+      let toastTimer = null;
+      function toast(msg){
+        let el = document.getElementById("toast");
+        if (!el){
+          el = document.createElement("div");
+          el.id = "toast";
+          el.style.position = "fixed";
+          el.style.left = "50%";
+          el.style.transform = "translateX(-50%)";
+          el.style.bottom = "92px";
+          el.style.background = "rgba(16,24,40,.92)";
+          el.style.color = "#fff";
+          el.style.padding = "10px 12px";
+          el.style.borderRadius = "12px";
+          el.style.boxShadow = "0 10px 24px rgba(0,0,0,.18)";
+          el.style.fontWeight = "800";
+          el.style.fontSize = "12px";
+          el.style.maxWidth = "min(520px, calc(100% - 28px))";
+          el.style.width = "fit-content";
+          el.style.textAlign = "center";
+          el.style.zIndex = "50";
+          document.body.appendChild(el);
+        }
+        el.textContent = msg;
+        el.style.display = "block";
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { el.style.display = "none"; }, 1700);
+      }
+
+      function escapeHtml(str){
+        return String(str)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      // initial
+      render();
+    </script>
+  </body>
+</html>
+

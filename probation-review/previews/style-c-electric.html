@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Style C · Electric Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* === BASE === */
+html, body { height: 100%; margin: 0; overflow: hidden; }
+:root {
+    --ink: #0b0c0f;
+    --paper: #f6f5f2;
+    --accent: #1b3cff;      /* Deep electric blue, restrained */
+    --accent-soft: #e6e8ff;
+    --grey-line: rgba(11,12,15,.08);
+}
+body {
+    font-family: 'Manrope', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    height: 100vh;
+    position: relative;
+}
+
+/* === SLIDE: split panel — paper top (3/5), dark bottom (2/5) === */
+.slide {
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 3fr 2fr;
+    position: relative;
+}
+
+/* Upper panel */
+.panel-top {
+    background: var(--paper);
+    padding: clamp(1.8rem, 4.5vh, 3.2rem) clamp(2rem, 6vw, 5rem);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Lower panel */
+.panel-bot {
+    background: var(--ink);
+    color: var(--paper);
+    padding: clamp(1.4rem, 3.5vh, 2.4rem) clamp(2rem, 6vw, 5rem);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Accent vertical bar at panel boundary */
+.accent-bar {
+    position: absolute;
+    left: clamp(2rem, 6vw, 5rem);
+    top: 60%;
+    transform: translateY(-50%);
+    width: clamp(3rem, 6vw, 5rem);
+    height: 4px;
+    background: var(--accent);
+    z-index: 5;
+    opacity: 0;
+    animation: expand 0.8s cubic-bezier(.2,.8,.2,1) 0.5s forwards;
+    transform-origin: left center;
+}
+
+/* === TOP CONTENT === */
+.top-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.7rem, 0.95vw, 0.85rem);
+    color: #555;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+.top-head .brand {
+    display: flex; align-items: center; gap: 0.6em;
+    color: var(--ink); font-weight: 500;
+}
+.top-head .brand::before {
+    content: '';
+    width: clamp(0.5rem, 0.9vw, 0.7rem);
+    height: clamp(0.5rem, 0.9vw, 0.7rem);
+    background: var(--accent);
+    display: inline-block;
+}
+
+.top-main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    padding: clamp(0.8rem, 2vh, 1.4rem) 0;
+}
+.kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.75rem, 1vw, 0.95rem);
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin: 0 0 clamp(0.8rem, 2vh, 1.2rem);
+    opacity: 0;
+    animation: rise 0.7s cubic-bezier(.2,.8,.2,1) 0.15s forwards;
+}
+.title {
+    font-weight: 800;
+    font-size: clamp(2.2rem, 6.5vw, 5.5rem);
+    line-height: 0.98;
+    letter-spacing: -0.025em;
+    margin: 0;
+    color: var(--ink);
+    opacity: 0;
+    animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.3s forwards;
+}
+.title .highlight {
+    position: relative;
+    display: inline-block;
+    color: var(--accent);
+}
+.title .highlight::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 0.08em;
+    height: 3px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: expand 0.7s cubic-bezier(.2,.8,.2,1) 1s forwards;
+}
+
+/* === BOTTOM CONTENT === */
+.byline {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.2rem, 0.6vh, 0.5rem);
+    opacity: 0;
+    animation: rise 0.8s cubic-bezier(.2,.8,.2,1) 0.6s forwards;
+}
+.byline .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.65rem, 0.85vw, 0.78rem);
+    letter-spacing: 0.22em;
+    color: rgba(246,245,242,.5);
+    text-transform: uppercase;
+}
+.byline .name {
+    font-weight: 700;
+    font-size: clamp(1.1rem, 2vw, 1.6rem);
+    letter-spacing: -0.01em;
+}
+.byline .role {
+    font-weight: 300;
+    font-size: clamp(0.85rem, 1.2vw, 1.05rem);
+    color: rgba(246,245,242,.7);
+    max-width: 50ch;
+}
+
+.index {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.85rem, 1.1vw, 1rem);
+    color: rgba(246,245,242,.45);
+    letter-spacing: 0.15em;
+    text-align: right;
+    opacity: 0;
+    animation: rise 0.8s cubic-bezier(.2,.8,.2,1) 0.75s forwards;
+}
+.index strong {
+    display: block;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    color: var(--paper);
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-top: clamp(0.2rem, 0.5vh, 0.4rem);
+}
+
+/* Floating circle accent in lower right of top panel */
+.orbit {
+    position: absolute;
+    right: clamp(-2rem, -3vw, -3rem);
+    top: clamp(-3rem, -6vh, -5rem);
+    width: clamp(10rem, 22vw, 18rem);
+    height: clamp(10rem, 22vw, 18rem);
+    border: 1.5px solid var(--grey-line);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    animation: fade-in 1s ease 0.8s forwards;
+}
+.orbit::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: -6px;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    transform: translateY(-50%);
+}
+
+/* === ANIMATIONS === */
+@keyframes rise {
+    from { opacity: 0; transform: translateY(1.2rem); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes expand {
+    from { opacity: 0; transform: scaleX(0); }
+    to { opacity: 1; transform: scaleX(1); }
+}
+@keyframes fade-in {
+    from { opacity: 0; } to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+<section class="slide">
+    <div class="panel-top">
+        <div class="orbit"></div>
+        <div class="top-head">
+            <div class="brand">Eureka / EurekaMind</div>
+            <div>Style C · Electric Studio</div>
+        </div>
+        <div class="top-main">
+            <p class="kicker">2026 · Probation Review</p>
+            <h1 class="title">把 <span class="highlight">0→1</span><br>兑现成答卷。</h1>
+        </div>
+    </div>
+
+    <div class="accent-bar"></div>
+
+    <div class="panel-bot">
+        <div class="byline">
+            <span class="label">— Presenter</span>
+            <span class="name">Du Yichuang</span>
+            <span class="role">Product Manager · AI 硬件出海 · 负责 Eureka 软件端与 1.0–3.0 硬件迭代</span>
+        </div>
+        <div class="index">
+            CHAPTER
+            <strong>07</strong>
+        </div>
+    </div>
+</section>
+</body>
+</html>

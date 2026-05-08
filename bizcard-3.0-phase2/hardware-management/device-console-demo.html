@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>设备控制台 Demo — 硬件 2.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f5f5f7;
+            --card: #ffffff;
+            --t1: #1d1d1f;
+            --t2: #6e6e73;
+            --t3: #aeaeb2;
+            --blue: #007aff;
+            --green: #34c759;
+            --orange: #ff9500;
+            --red: #ff3b30;
+            --border: rgba(0,0,0,0.06);
+            --shadow: 0 2px 16px rgba(0,0,0,0.06);
+        }
+        *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        body{font-family:'DM Sans',-apple-system,'PingFang SC',sans-serif;background:#1a1a2e;display:flex;align-items:flex-start;justify-content:center;min-height:100vh;padding:24px;gap:32px}
+
+        .phone{width:393px;min-width:393px;height:852px;background:#000;border-radius:55px;padding:12px;box-shadow:0 50px 100px rgba(0,0,0,.5);position:relative;flex-shrink:0}
+        .screen{width:100%;height:100%;background:var(--bg);border-radius:44px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+        .sbar{height:54px;padding:14px 28px 0;display:flex;justify-content:space-between;font-size:14px;font-weight:600;color:var(--t1);flex-shrink:0}
+        .notch{width:126px;height:34px;background:#000;border-radius:20px;position:absolute;top:12px;left:50%;transform:translateX(-50%)}
+        .nav{padding:0 20px 12px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);flex-shrink:0}
+        .nav-l{font-size:15px;color:var(--blue);cursor:pointer;font-weight:500;width:60px}
+        .nav-t{font-size:17px;font-weight:600;color:var(--t1)}
+        .nav-r{font-size:15px;color:var(--blue);cursor:pointer;font-weight:500;width:60px;text-align:right}
+        .scroll{flex:1;overflow-y:auto;padding:16px 16px 32px;-webkit-overflow-scrolling:touch}
+
+        .cd{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;padding:12px 28px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;width:100%}
+        .btn:active{transform:scale(.97)}
+        .btn-p{background:var(--blue);color:#fff}
+        .btn-p:hover{filter:brightness(1.08)}
+        .btn-s{background:#f2f2f7;color:var(--blue);padding:10px 20px;border-radius:10px;font-size:14px;font-weight:500}
+        .btn-s:hover{background:#e8e8ed}
+        .btn-sm{padding:6px 14px;font-size:13px;border-radius:8px;width:auto}
+        .btn-outline{background:transparent;border:1.5px solid var(--blue);color:var(--blue);padding:10px 20px;border-radius:10px;font-size:14px;font-weight:500}
+        .btn-disabled{background:#e5e5ea!important;color:#aeaeb2!important;pointer-events:none;border:none!important}
+
+        .tgl-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+        .tgl-info{display:flex;align-items:center;gap:8px}
+        .tgl-info .tt{font-size:15px;font-weight:600;color:var(--t1)}
+        .tgl-info .st{font-size:12px;color:var(--t3)}
+        .mdot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+        .mdot-g{background:var(--green);box-shadow:0 0 6px rgba(52,199,89,.4)}
+        .mdot-x{background:#c7c7cc}
+        .sw{width:51px;height:31px;background:#e9e9eb;border-radius:16px;position:relative;cursor:pointer;transition:background .3s;flex-shrink:0}
+        .sw.on{background:var(--green)}
+        .sw.dis{opacity:.4;pointer-events:none}
+        .sw .knob{width:27px;height:27px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;box-shadow:0 2px 4px rgba(0,0,0,.15);transition:transform .3s}
+        .sw.on .knob{transform:translateX(20px)}
+
+        .si{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-top:1px solid var(--border)}
+        .si-i{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px}
+        .si-ok{background:var(--green);color:#fff}
+        .si-wait{background:#e5e5ea;color:#aeaeb2}
+        .si-go{background:var(--blue);color:#fff;animation:pulse 1.5s infinite}
+        .si-err{background:var(--red);color:#fff}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,122,255,.3)}50%{box-shadow:0 0 0 6px rgba(0,122,255,0)}}
+        .si-b{flex:1}
+        .si-t{font-size:14px;font-weight:500;color:var(--t1)}
+        .si-t.dim{color:var(--t3)}
+        .si-d{font-size:12px;color:var(--t3);margin-top:2px}
+        .si-a{margin-top:6px}
+
+        .dev-item{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:14px;margin-bottom:8px;cursor:pointer;transition:all .2s}
+        .dev-item:hover{border-color:var(--blue);background:#f8f9ff}
+        .dev-item:active{transform:scale(.98)}
+        .dev-item.disabled{opacity:.5;pointer-events:none;border-color:var(--border);background:var(--card)}
+        .dev-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+        .dev-ico-bound{background:linear-gradient(135deg,#d4f5dc,#b0e8c0)}
+        .dev-ico-avail{background:linear-gradient(135deg,#e8e8ed,#d1d1d6)}
+        .dev-ico-warn{background:linear-gradient(135deg,#fff4e0,#ffe0b2)}
+        .dev-det{flex:1}
+        .dev-nm{font-size:14px;font-weight:600;color:var(--t1)}
+        .dev-sn{font-size:11px;color:var(--t3);margin-top:1px}
+        .dev-st{display:flex;align-items:center;gap:4px;margin-top:3px;font-size:12px}
+        .sdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+        .dev-act{flex-shrink:0}
+        .conn-btn{padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s}
+        .conn-btn-p{background:var(--blue);color:#fff}
+        .conn-btn-s{background:#f2f2f7;color:var(--blue)}
+        .conn-btn-warn{background:var(--orange);color:#fff}
+        .conn-btn:active{transform:scale(.95)}
+        .conn-btn.btn-disabled{pointer-events:none}
+
+        .sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px}
+        .sec-h .label{font-size:13px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
+        .sec-h .count{font-size:12px;color:var(--t3)}
+
+        .scan-hero{text-align:center;padding:20px 0 8px}
+        .scan-anim{width:80px;height:80px;margin:0 auto 12px;position:relative}
+        .scan-anim .ring{position:absolute;inset:0;border:2px solid rgba(0,122,255,.15);border-radius:50%;animation:ring-pulse 2s ease-out infinite}
+        .scan-anim .ring:nth-child(2){animation-delay:.5s}
+        .scan-anim .ring:nth-child(3){animation-delay:1s}
+        .scan-anim .core{position:absolute;inset:20px;background:linear-gradient(135deg,#e8f0fe,#d4e4ff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px}
+        @keyframes ring-pulse{0%{transform:scale(.6);opacity:1}100%{transform:scale(1.3);opacity:0}}
+        .scan-text{font-size:15px;font-weight:600;color:var(--t1)}
+        .scan-sub{font-size:12px;color:var(--t3);margin-top:2px}
+
+        .tips{padding:8px 0}
+        .tip-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0}
+        .tip-num{width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+        .tip-t{font-size:13px;font-weight:600;color:var(--t1)}
+        .tip-d{font-size:12px;color:var(--t3);margin-top:1px}
+
+        .hp-box{display:flex;align-items:center;gap:10px;background:#f0faf2;border:1px solid #d4f5dc;border-radius:12px;padding:12px;margin-top:12px}
+
+        .ov{position:absolute;inset:0;border-radius:44px;z-index:200;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s;background:rgba(0,0,0,.4)}
+        .ov.vis{opacity:1;pointer-events:all}
+        .ov-c{background:#fff;border-radius:20px 20px 44px 44px;padding:24px 20px 40px;width:100%;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1)}
+        .ov.vis .ov-c{transform:translateY(0)}
+        .ov-handle{width:36px;height:5px;background:#e0e0e0;border-radius:3px;margin:0 auto 16px}
+        .ov-t{font-size:18px;font-weight:700;color:var(--t1);text-align:center}
+        .ov-d{font-size:14px;color:var(--t2);text-align:center;margin:8px 0 20px;line-height:1.5}
+        .ov-ill{width:100%;height:100px;background:linear-gradient(135deg,#e8f0fe,#d4e4ff);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:20px}
+        .ov-acts{display:flex;flex-direction:column;gap:10px}
+
+        .dlg{position:absolute;inset:0;border-radius:44px;z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;background:rgba(0,0,0,.4);padding:40px}
+        .dlg.vis{opacity:1;pointer-events:all}
+        .dlg-b{background:#fff;border-radius:14px;padding:20px;width:100%;text-align:center;transform:scale(.9);transition:transform .25s}
+        .dlg.vis .dlg-b{transform:scale(1)}
+        .dlg-t{font-size:16px;font-weight:600;margin-bottom:6px}
+        .dlg-d{font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5}
+        .dlg-acts{display:flex;gap:10px}
+        .dlg-acts button{flex:1;padding:10px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer}
+        .dlg-cancel{background:#f2f2f7;color:var(--t1)}
+        .dlg-ok{background:var(--blue);color:#fff}
+        .dlg-danger{background:var(--red);color:#fff}
+
+        .bind-success{text-align:center;padding:16px 0}
+        .bind-check{width:60px;height:60px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;color:#fff;animation:pop .4s}
+        @keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+
+        .hs-item{display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all .2s}
+        .hs-item:hover{background:#f8f8fa;border-color:var(--blue)}
+        .radar{width:40px;height:40px;border:3px solid #e8f0fe;border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 8px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        .add-bar{display:flex;align-items:center;gap:10px;padding:14px;border:2px dashed #d1d1d6;border-radius:14px;cursor:pointer;transition:all .2s;margin-bottom:8px}
+        .add-bar:hover{border-color:var(--blue);background:#f8f9ff}
+        .add-bar.disabled{opacity:.4;pointer-events:none;border-color:#e5e5ea}
+        .add-ico{width:36px;height:36px;border-radius:10px;background:#f2f2f7;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--blue)}
+        .add-txt{font-size:14px;font-weight:500;color:var(--blue)}
+
+        .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;margin-left:6px}
+        .badge-g{background:#e8f9ed;color:var(--green)}
+        .badge-y{background:#fff4e0;color:var(--orange)}
+        .badge-r{background:#ffe5e3;color:var(--red)}
+
+        .sup-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer}
+        .sup-item:last-child{border-bottom:none}
+
+        /* Banner */
+        .banner{background:linear-gradient(135deg,#fff4e0,#ffe8cc);border:1.5px solid var(--orange);border-radius:14px;padding:16px;margin-bottom:12px}
+        .banner-ico{font-size:20px;margin-bottom:6px}
+        .banner-t{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px}
+        .banner-d{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px}
+        .banner-btn{display:inline-flex;align-items:center;gap:6px;background:var(--orange);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;width:100%;justify-content:center;transition:all .2s}
+        .banner-btn:active{transform:scale(.97)}
+        .banner-btn:hover{filter:brightness(1.08)}
+        .banner-note{font-size:11px;color:var(--t3);margin-top:8px;text-align:center}
+
+        .side{width:340px;background:rgba(255,255,255,.05);border-radius:20px;padding:24px;color:#e0e0e0;position:sticky;top:24px;max-height:calc(100vh - 48px);overflow-y:auto}
+        .side h2{font-size:18px;font-weight:700;margin-bottom:4px;color:#fff}
+        .side .sub{font-size:12px;color:#6e6e8e;margin-bottom:16px}
+        .side h3{font-size:12px;font-weight:600;color:#8b8b9e;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+        .sbtn{display:block;width:100%;padding:9px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px;color:#ccc;font-size:13px;font-weight:500;text-align:left;cursor:pointer;transition:all .15s;margin-bottom:5px}
+        .sbtn:hover{background:rgba(255,255,255,.12);color:#fff}
+        .sbtn.act{background:rgba(0,122,255,.2);border-color:var(--blue);color:var(--blue)}
+        .stag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;vertical-align:middle}
+        .stag-g{background:rgba(52,199,89,.15);color:var(--green)}
+        .stag-r{background:rgba(255,59,48,.15);color:var(--red)}
+        .stag-o{background:rgba(255,149,0,.15);color:var(--orange)}
+        .side .note{font-size:12px;color:#6e6e8e;margin-top:14px;line-height:1.6;padding:12px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.05)}
+
+        @media(max-width:800px){body{flex-direction:column;align-items:center}.side{width:393px;position:static}}
+    </style>
+</head>
+<body>
+
+<div class="side">
+    <h2>设备控制台 Demo</h2>
+    <p class="sub">硬件 2.0 · 方案 B · 交互原型</p>
+
+    <h3>扫描页（Search Devices）</h3>
+    <button class="sbtn act" onclick="go('list-empty')">空态 · 无绑定卡片</button>
+    <button class="sbtn" onclick="go('list-has')">已绑定 + 可用设备</button>
+    <button class="sbtn" onclick="go('list-scanning')">全局扫描中</button>
+    <button class="sbtn" onclick="go('list-banner')">第三态 · 经典BT横幅 <span class="stag stag-o">硬阻断</span></button>
+    <button class="sbtn" onclick="go('bind-success')">绑定成功 <span class="stag stag-g">New</span></button>
+
+    <h3>设备控制台 · 正常</h3>
+    <button class="sbtn" onclick="go('w1')">W1 · BLE 未连接</button>
+    <button class="sbtn" onclick="go('w2')">W2 · BLE 已连，Toggle OFF</button>
+    <button class="sbtn" onclick="go('w3')">W3 · Toggle ON，引导 Eureka</button>
+    <button class="sbtn" onclick="go('w4')">W4 · 自动回连耳机中</button>
+    <button class="sbtn" onclick="go('w5')">W5 · 手动扫描耳机</button>
+    <button class="sbtn" onclick="go('w6')">W6 · 全链路就绪 <span class="stag stag-g">Ready</span></button>
+
+    <h3>异常 / 断连</h3>
+    <button class="sbtn" onclick="go('w7')">W7 · BLE 断开</button>
+    <button class="sbtn" onclick="go('e1')">E1 · Eureka 断开 <span class="stag stag-r">停录</span></button>
+    <button class="sbtn" onclick="go('e2')">E2 · 耳机断开 <span class="stag stag-r">停录</span></button>
+    <button class="sbtn" onclick="go('rec')">录音中访问 <span class="stag stag-o">防误操作</span></button>
+
+    <div class="note">
+        <strong>交互说明</strong><br>
+        · 左侧按钮快速跳转任意状态<br>
+        · 手机界面内可直接操作<br>
+        · 设备列表页点击已绑定卡片 → 进入控制台<br>
+        · 控制台「‹ 设备」→ 回到设备列表<br>
+        · 第三态横幅：仅允许重连活跃卡片<br>
+        · 其他卡片的连接/绑定按钮被禁用
+    </div>
+</div>
+
+<div class="phone">
+    <div class="screen" id="screen">
+        <div class="sbar"><span>9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+        <div class="nav" id="navBar">
+            <span class="nav-l" id="navL">‹ 返回</span>
+            <span class="nav-t" id="navT">Search Devices</span>
+            <span class="nav-r" id="navR">🔄</span>
+        </div>
+        <div class="scroll" id="content"></div>
+
+        <div class="ov" id="sheetEureka">
+            <div class="ov-c">
+                <div class="ov-handle"></div>
+                <div class="ov-ill">📱 ↔ 🎴</div>
+                <div class="ov-t">连接 Eureka 音频设备</div>
+                <div class="ov-d">请前往系统蓝牙设置，找到并连接<br>名为 <strong>Eureka-Audio</strong> 的设备</div>
+                <div class="ov-acts">
+                    <button class="btn btn-p" onclick="go('w4')">前往系统蓝牙设置</button>
+                    <button class="btn btn-s" onclick="closeOv('sheetEureka');go('w4')">我已连接，返回检测</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="dlg" id="dlgConfirm">
+            <div class="dlg-b">
+                <div class="dlg-t">将停止当前录音</div>
+                <div class="dlg-d">关闭耳机模式或更换耳机会中断当前录音链路，录音将被终止。</div>
+                <div class="dlg-acts">
+                    <button class="dlg-cancel" onclick="closeDlg()">取消</button>
+                    <button class="dlg-danger" onclick="closeDlg();go('w6')">确认停止</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="dlg" id="dlgBind">
+            <div class="dlg-b">
+                <div style="font-size:40px;margin-bottom:12px">✅</div>
+                <div class="dlg-t">Device Successfully Bound</div>
+                <div class="dlg-d">SN: 3524012411009<br><br>This device is linked only to your account for privacy and data protection.</div>
+                <div class="dlg-acts">
+                    <button class="dlg-ok" onclick="closeDlg();go('w1')">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let S='list-empty';
+const ALL_STATES=['list-empty','list-has','list-scanning','list-banner','bind-success','w1','w2','w3','w4','w5','w6','w7','e1','e2','rec'];
+const boundCards=[
+    {name:'BizCard Recording Card',sn:'SN:352401241100999',ble:true,battery:85,headphone:true},
+    {name:'BizCard Recording Card',sn:'SN:352401241100888',ble:false,battery:null,headphone:false}
+];
+const availCards=[
+    {name:'BizCard Recording Card',sn:'SN:352401241100777'},
+    {name:'BizCard Recording Card',sn:'SN:352401241100666'}
+];
+
+function go(s){S=s;closeOv('sheetEureka');closeDlg();render();updSide()}
+function updSide(){
+    document.querySelectorAll('.sbtn').forEach((b,i)=>{b.classList.toggle('act',ALL_STATES[i]===S)});
+}
+function openOv(id){document.getElementById(id).classList.add('vis')}
+function closeOv(id){document.getElementById(id).classList.remove('vis')}
+function openDlg(id){document.getElementById(id).classList.add('vis')}
+function closeDlg(){document.querySelectorAll('.dlg').forEach(d=>d.classList.remove('vis'))}
+
+function isListPage(){return S.startsWith('list')||S==='bind-success'}
+const isBanner=()=>S==='list-banner';
+
+function render(){
+    const el=document.getElementById('content');
+    const navL=document.getElementById('navL');
+    const navT=document.getElementById('navT');
+    const navR=document.getElementById('navR');
+
+    if(isListPage()){
+        navL.textContent='‹ 返回';navL.onclick=()=>{};
+        navT.textContent='Search Devices';
+        navR.innerHTML='<span style="cursor:pointer" onclick="go(\'list-scanning\')">🔄</span>';
+        renderList(el);
+    } else {
+        navL.textContent='‹ 设备';navL.onclick=()=>go(isBanner()?'list-banner':'list-has');
+        navT.textContent='设备控制台';
+        navR.textContent='帮助';
+        renderConsole(el);
+    }
+}
+
+function renderList(el){
+    let h='';
+    const isEmpty=S==='list-empty';
+    const isScanning=S==='list-scanning';
+    const isBind=S==='bind-success';
+    const hasBanner=isBanner();
+
+    if(hasBanner){
+        h+=`<div class="banner">
+            <div class="banner-ico">⚠️</div>
+            <div class="banner-t">SN:352401241100999 的耳机模式仍在运行</div>
+            <div class="banner-d">音频链路活跃中，请先恢复连接或等待链路自行断开。<br>App 已失去与该卡片的控制连接。</div>
+            <button class="banner-btn" onclick="go('w2')">📡 重新连接 BLE</button>
+            <div class="banner-note">其他设备暂不可操作，需先处理当前设备连接</div>
+        </div>`;
+    }
+
+    h+=`<div class="scan-hero">
+        <div class="scan-anim"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core">📡</div></div>
+        <div class="scan-text">Scanning Nearby Devices</div>
+        <div class="scan-sub">Automatically searching...</div>
+    </div>`;
+
+    if(!isEmpty){
+        h+=`<div style="margin-top:16px">
+            <div class="sec-h"><span class="label">My Devices</span><span class="count">${boundCards.length} 张已绑定</span></div>`;
+
+        boundCards.forEach((c,i)=>{
+            const isActiveCard=i===0;
+            const bleOn=c.ble&&!hasBanner;
+            const hpReady=c.headphone;
+
+            if(hasBanner&&isActiveCard){
+                h+=`<div class="dev-item" style="border-color:var(--orange);background:#fffbf5" onclick="go('w2')">
+                    <div class="dev-ico dev-ico-warn">🎴</div>
+                    <div class="dev-det">
+                        <div class="dev-nm">${c.name}<span class="badge badge-y">⚠️ 耳机模式运行中</span></div>
+                        <div class="dev-sn">${c.sn}</div>
+                        <div class="dev-st">
+                            <span class="sdot" style="background:var(--orange)"></span>
+                            <span style="color:var(--orange)">BLE 未连接 · 经典蓝牙活跃</span>
+                        </div>
+                    </div>
+                    <div class="dev-act">
+                        <button class="conn-btn conn-btn-warn" onclick="event.stopPropagation();go('w2')">重新连接</button>
+                    </div>
+                </div>`;
+            } else if(hasBanner&&!isActiveCard){
+                h+=`<div class="dev-item disabled">
+                    <div class="dev-ico dev-ico-avail">🎴</div>
+                    <div class="dev-det">
+                        <div class="dev-nm">${c.name}</div>
+                        <div class="dev-sn">${c.sn}</div>
+                        <div class="dev-st">
+                            <span class="sdot" style="background:#c7c7cc"></span>
+                            <span style="color:var(--t3)">未连接</span>
+                        </div>
+                    </div>
+                    <div class="dev-act">
+                        <button class="conn-btn btn-disabled">连接</button>
+                    </div>
+                </div>`;
+            } else {
+                h+=`<div class="dev-item" onclick="go('${bleOn?'w2':'w1'}')">
+                    <div class="dev-ico ${bleOn?'dev-ico-bound':'dev-ico-avail'}">🎴</div>
+                    <div class="dev-det">
+                        <div class="dev-nm">${c.name}${hpReady&&bleOn?'<span class="badge badge-g">🎧 Ready</span>':''}</div>
+                        <div class="dev-sn">${c.sn}</div>
+                        <div class="dev-st">
+                            <span class="sdot" style="background:${bleOn?'var(--green)':'#c7c7cc'}"></span>
+                            <span style="color:${bleOn?'var(--green)':'var(--t3)'}">
+                                ${bleOn?'已连接 · 电量 '+c.battery+'%':'未连接'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="dev-act">
+                        <button class="conn-btn ${bleOn?'conn-btn-s':'conn-btn-p'}" onclick="event.stopPropagation();go('${bleOn?'w2':'w1'}')">
+                            ${bleOn?'管理':'连接'}
+                        </button>
+                    </div>
+                </div>`;
+            }
+        });
+        h+=`</div>`;
+    }
+
+    h+=`<div style="margin-top:${isEmpty?16:12}px">
+        <div class="add-bar ${hasBanner?'disabled':''}" onclick="${hasBanner?'':'go(\'list-scanning\')'}">
+            <div class="add-ico">+</div>
+            <div class="add-txt">添加新的 BizCard</div>
+        </div>
+    </div>`;
+
+    if(isScanning||isBind){
+        h+=`<div style="margin-top:12px">
+            <div class="sec-h"><span class="label">Available Devices</span></div>`;
+        availCards.forEach(c=>{
+            h+=`<div class="dev-item" onclick="go('bind-success');setTimeout(()=>openDlg('dlgBind'),300)">
+                <div class="dev-ico dev-ico-avail">🎴</div>
+                <div class="dev-det">
+                    <div class="dev-nm">${c.name}</div>
+                    <div class="dev-sn">${c.sn}</div>
+                    <div class="dev-st"><span class="sdot" style="background:var(--blue)"></span><span style="color:var(--blue)">可用</span></div>
+                </div>
+                <div class="dev-act">
+                    <button class="conn-btn conn-btn-p" onclick="event.stopPropagation();go('bind-success');setTimeout(()=>openDlg('dlgBind'),300)">Bind</button>
+                </div>
+            </div>`;
+        });
+        h+=`</div>`;
+    } else if(hasBanner){
+        h+=`<div style="margin-top:12px">
+            <div class="sec-h"><span class="label">Available Devices</span></div>`;
+        availCards.forEach(c=>{
+            h+=`<div class="dev-item disabled">
+                <div class="dev-ico dev-ico-avail">🎴</div>
+                <div class="dev-det">
+                    <div class="dev-nm">${c.name}</div>
+                    <div class="dev-sn">${c.sn}</div>
+                    <div class="dev-st"><span class="sdot" style="background:#c7c7cc"></span><span style="color:var(--t3)">可用</span></div>
+                </div>
+                <div class="dev-act">
+                    <button class="conn-btn btn-disabled">Bind</button>
+                </div>
+            </div>`;
+        });
+        h+=`</div>`;
+    } else if(isEmpty) {
+        h+=`<div style="text-align:center;padding:20px 0;color:var(--t3);font-size:13px">
+            <div style="font-size:36px;margin-bottom:8px;opacity:.5">📡</div>
+            No devices available<br>
+            <span style="font-size:12px">请确保卡片已开机并靠近手机</span>
+        </div>`;
+    }
+
+    h+=`<div class="cd" style="margin-top:16px">
+        <div style="font-size:13px;font-weight:600;color:var(--t2);margin-bottom:8px">Before you start</div>
+        <div class="tips">
+            <div class="tip-item"><div class="tip-num">1</div><div><div class="tip-t">Power on the device</div><div class="tip-d">Press and hold the power/record button to turn on the device</div></div></div>
+            <div class="tip-item"><div class="tip-num">2</div><div><div class="tip-t">Turn on Bluetooth</div><div class="tip-d">Ensure Bluetooth is turned on on your phone</div></div></div>
+        </div>
+    </div>`;
+
+    el.innerHTML=h;
+    if(isBind) setTimeout(()=>openDlg('dlgBind'),400);
+}
+
+function renderConsole(el){
+    let h='';
+    const ble=!['w1','w7'].includes(S);
+    const tOn=!['w1','w2','w7'].includes(S);
+    const ready=['w6','rec'].includes(S);
+    const eurOk=S!=='w3'&&tOn;
+    const isRec=S==='rec';
+
+    h+=`<div class="cd">
+        <div style="display:flex;align-items:center;gap:12px">
+            <div class="dev-ico ${ble?'dev-ico-bound':'dev-ico-avail'}">🎴</div>
+            <div style="flex:1">
+                <div class="dev-nm">BizCard Recording Card</div>
+                <div class="dev-sn">SN:352401241100999</div>
+                <div class="dev-st">
+                    <span class="sdot" style="background:${ble?'var(--green)':'#c7c7cc'}"></span>
+                    <span style="color:${ble?'var(--green)':'var(--t3)'}; font-size:13px">${ble?'已连接':'未连接'}</span>
+                    ${ble?'<span class="badge badge-g" style="margin-left:6px">🔋 85%</span>':'<span class="badge" style="background:#f2f2f7;color:var(--t3);margin-left:6px">🔋 --%</span>'}
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    if(!ble){
+        h+=`<div class="cd" style="text-align:center;padding:20px 16px">
+            <button class="btn btn-p" onclick="go('w2')">
+                <span>📡</span> ${S==='w7'?'重新连接卡片':'连接卡片'}
+            </button>
+            <div style="font-size:13px;color:var(--t3);margin-top:8px">${S==='w7'?'请重新连接卡片后继续管理硬件':'请点亮卡片并靠近手机'}</div>
+            ${S==='w7'?'<div style="font-size:12px;color:var(--t3);margin-top:4px;font-style:italic">耳机模式链路可能仍在运行，但当前无法通过 App 控制</div>':''}
+        </div>`;
+    } else {
+        h+=`<div class="cd" style="padding:12px 16px">
+            <div style="display:flex;align-items:center;gap:8px">
+                <span class="sdot" style="width:8px;height:8px;background:var(--green)"></span>
+                <span style="font-size:14px;color:var(--green);font-weight:500">BLE 控制链路已连接</span>
+            </div>
+        </div>`;
+    }
+
+    const recBadge=isRec?'<span class="badge badge-r" style="margin-left:6px;animation:pulse 1.5s infinite">录音中</span>':'';
+    h+=`<div class="cd">
+        <div class="tgl-row">
+            <div class="tgl-info">
+                <span class="mdot ${ready?'mdot-g':'mdot-x'}"></span>
+                <div><span class="tt">耳机模式</span>${recBadge}<div class="st">经典蓝牙</div></div>
+            </div>
+            <div class="sw ${tOn?'on':''} ${!ble?'dis':''}" onclick="${!ble?'':(tOn?(isRec?'openDlg(\"dlgConfirm\")':'go(\"w2\")'):'go(\"w3\")')}">
+                <div class="knob"></div>
+            </div>
+        </div>
+        ${!ble?'<div style="font-size:12px;color:var(--t3);margin-top:8px">请先连接卡片后再开启</div>':''}
+        ${ble&&!tOn?'<div style="font-size:12px;color:var(--t3);margin-top:8px">开启后将连接 Eureka 音频设备并配置耳机</div>':''}`;
+
+    if(tOn){
+        h+=`<div style="margin-top:16px">
+            <div style="font-size:13px;font-weight:600;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">耳机连接</div>`;
+
+        h+=step(1,'手机系统蓝牙','ready','已开启');
+        h+=step(2,'App ↔ 卡片 BLE','ready','控制链路已连接');
+
+        if(S==='w3') h+=step(3,'连接 Eureka 音频设备','active','系统蓝牙','<button class="btn btn-s btn-sm" style="width:auto" onclick="openOv(\'sheetEureka\')">去连接</button>');
+        else if(S==='e1') h+=step(3,'Eureka-Audio','error','连接已断开 · 录音已停止','<button class="btn btn-s btn-sm" style="width:auto" onclick="openOv(\'sheetEureka\')">去重新连接</button>');
+        else h+=step(3,'Eureka-Audio','ready','手机音频已路由');
+
+        if(S==='w3') h+=step(4,'蓝牙耳机桥接','pending','等待 Eureka 连接完成');
+        else if(S==='w4') h+=step(4,'蓝牙耳机桥接','active','正在回连 AirPods Pro…','<button class="btn btn-s btn-sm" style="width:auto;margin-right:6px" onclick="go(\'w5\')">取消</button><button class="btn btn-s btn-sm" style="width:auto" onclick="go(\'w5\')">扫描其他</button>');
+        else if(S==='w5') h+=step(4,'蓝牙耳机桥接','active','请选择要连接的耳机','<button class="btn btn-s btn-sm" style="width:auto" onclick="doScan()">开始扫描</button>');
+        else if(S==='e2') h+=step(4,'蓝牙耳机桥接','error','耳机已断开 · 录音已停止','<button class="btn btn-s btn-sm" style="width:auto;margin-right:6px" onclick="go(\'w4\')">重新连接</button><button class="btn btn-s btn-sm" style="width:auto" onclick="go(\'w5\')">扫描其他</button>');
+        else if(ready) h+=step(4,'蓝牙耳机桥接','ready','已连接');
+        else h+=step(4,'蓝牙耳机桥接','pending','');
+
+        if(ready){
+            h+=`<div class="hp-box">
+                <span style="font-size:24px">🎧</span>
+                <div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--t1)">AirPods Pro</div><div style="font-size:12px;color:var(--green)">已连接 · 耳机模式就绪</div></div>
+            </div>
+            <div style="margin-top:10px;text-align:center">
+                <button class="btn btn-s btn-sm ${isRec?'btn-disabled':''}" onclick="${isRec?'openDlg(\"dlgConfirm\")':'go(\"w5\")'}" style="width:auto">
+                    更换耳机${isRec?' (录音中不可用)':''}
+                </button>
+            </div>`;
+        }
+
+        if(S==='w5'){
+            h+=`<div id="scanArea" style="margin-top:12px">
+                <div id="scanLoad" style="text-align:center;padding:20px 0;font-size:13px;color:var(--blue);display:none"><div class="radar"></div>扫描附近蓝牙设备…</div>
+                <div id="scanRes" style="display:none">
+                    <div class="hs-item" onclick="go('w6')"><div><div style="font-size:14px;font-weight:500">🎧 AirPods Pro</div><div style="font-size:12px;color:var(--t3)">信号：优</div></div><span style="color:var(--blue);font-size:13px">连接</span></div>
+                    <div class="hs-item" onclick="go('w6')"><div><div style="font-size:14px;font-weight:500">🎧 Galaxy Buds2 Pro</div><div style="font-size:12px;color:var(--t3)">信号：良</div></div><span style="color:var(--blue);font-size:13px">连接</span></div>
+                    <div class="hs-item" onclick="go('w6')"><div><div style="font-size:14px;font-weight:500">🎧 FreeBuds Pro 3</div><div style="font-size:12px;color:var(--t3)">信号：中</div></div><span style="color:var(--blue);font-size:13px">连接</span></div>
+                </div>
+            </div>`;
+        }
+
+        h+=`</div>`;
+    }
+    h+=`</div>`;
+
+    h+=`<div class="cd"><div>
+        <div class="sup-item"><span style="font-size:14px;color:var(--t1)">帮助与常见问题</span><span style="color:var(--t3)">›</span></div>
+        <div class="sup-item"><span style="font-size:14px;color:var(--t1)">固件版本 v2.1.0</span><span style="color:var(--t3)">›</span></div>
+        <div class="sup-item"><span style="font-size:14px;color:var(--red)">解绑设备</span><span style="color:var(--t3)">›</span></div>
+    </div></div>`;
+
+    el.innerHTML=h;
+    if(S==='w3') setTimeout(()=>openOv('sheetEureka'),400);
+}
+
+function step(n,title,st,desc,act){
+    const cls={ready:'si-ok',pending:'si-wait',active:'si-go',error:'si-err'}[st];
+    const ico={ready:'✓',pending:n,active:n,error:'!'}[st];
+    const dim=st==='pending'?' dim':'';
+    return `<div class="si"><div class="si-i ${cls}">${ico}</div><div class="si-b"><div class="si-t${dim}">${title}</div>${desc?`<div class="si-d">${desc}</div>`:''}${act?`<div class="si-a">${act}</div>`:''}</div></div>`;
+}
+
+function doScan(){
+    const l=document.getElementById('scanLoad'),r=document.getElementById('scanRes');
+    if(l)l.style.display='block';if(r)r.style.display='none';
+    setTimeout(()=>{if(l)l.style.display='none';if(r)r.style.display='block'},1500);
+}
+
+render();
+</script>
+</body>
+</html>

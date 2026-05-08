@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PM Workflow · 双 Agent 对抗 + Orchestrator</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222d;
+      --border: #2a3544;
+      --text: #e6edf3;
+      --muted: #8b9ab0;
+      --accent: #58a6ff;
+      --ok: #3fb950;
+      --warn: #d29922;
+      --bad: #f85149;
+      --chip: #21262d;
+      font-synthesis: weight;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(1200px 600px at 20% 0%, #1b2838 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 20, 25, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 1rem 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    h1 { font-size: 1.15rem; font-weight: 600; margin: 0; letter-spacing: 0.02em; }
+    .sub { color: var(--muted); font-size: 0.8rem; margin-top: 0.35rem; }
+    .wrap { max-width: 1024px; margin: 0 auto; padding: 1rem 1.25rem 2.5rem; }
+    .phase-tabs {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0 1.25rem;
+    }
+    .phase-tabs button {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .phase-tabs button[aria-selected="true"] {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .section {
+      display: none;
+      animation: in 0.2s ease;
+    }
+    .section.active { display: block; }
+    @keyframes in { from { opacity: 0; } to { opacity: 1; } }
+    h2 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 0.5rem; color: var(--text); }
+    h3 { font-size: 0.88rem; font-weight: 600; margin: 1rem 0 0.4rem; color: #c9d1d9; }
+    p.hint { color: var(--muted); font-size: 0.85rem; margin: 0.25rem 0 0.6rem; }
+    label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.25rem; }
+    input[type="text"], textarea, select {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 0.5rem 0.65rem;
+      font: inherit;
+      font-size: 0.9rem;
+    }
+    textarea { min-height: 100px; resize: vertical; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.82rem; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 700px) { .row2 { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      margin: 0.5rem 0 1rem;
+    }
+    .round-badge {
+      display: inline-block;
+      background: var(--chip);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+    .steps {
+      list-style: none; padding: 0; margin: 0.5rem 0 0;
+    }
+    .steps li {
+      display: flex; gap: 0.5rem; align-items: flex-start;
+      padding: 0.35rem 0;
+      font-size: 0.86rem; color: var(--muted);
+    }
+    .steps .n {
+      width: 1.5rem; height: 1.5rem; border-radius: 6px;
+      background: var(--chip);
+      color: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; flex-shrink: 0; font-weight: 600;
+    }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0; }
+    button.ghost, button.primary {
+      background: #21262d; border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 0.4rem 0.75rem;
+      font-size: 0.85rem; cursor: pointer;
+    }
+    button.primary { background: #1f3a5f; border-color: #30363d; color: #c8e1ff; }
+    button.ghost:hover, button.primary:hover { border-color: var(--accent); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    pre.out {
+      background: #0d1117; border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.75rem; overflow: auto;
+      font-size: 0.78rem; line-height: 1.5; max-height: 360px; white-space: pre-wrap; word-break: break-word;
+    }
+    .tag { font-size: 0.7rem; padding: 0.1rem 0.35rem; border-radius: 4px; }
+    .tag-b { color: #ff7b72; }
+    .tag-m { color: #d29922; }
+    .tag-s { color: #8b9ab0; }
+    footer.meta {
+      margin-top: 1.5rem; font-size: 0.75rem; color: var(--muted);
+      border-top: 1px solid var(--border); padding-top: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PM Workflow 控制台</h1>
+    <div class="sub">串联 Orchestrator、Agent1（Proposal）、Agent2（Review）—— 对齐 <code>PRD_AUTHORING_SPEC.md</code>；本页在浏览器内本地保存进度。</div>
+  </header>
+  <div class="wrap">
+    <div class="row2" style="margin-top:0.5rem">
+      <div>
+        <label>主题/目录名（用于 <code>PRD_&lt;主题&gt;.md</code> 等命名）</label>
+        <input type="text" id="topic" placeholder="如：ReminderDetail" />
+      </div>
+      <div>
+        <label>当前状态</label>
+        <div class="card" style="margin:0;padding:0.45rem 0.65rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+          <span class="round-badge" id="roundDisplay">第 1 轮 debate</span>
+          <span class="round-badge" id="prdState">PRD：未锁定</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-tabs" role="tablist" aria-label="工作流阶段">
+      <button type="button" id="tab-prd" role="tab" aria-selected="true">① PRD：Idea → Proposal/Review 循环</button>
+      <button type="button" id="tab-demo" role="tab" aria-selected="false">② Demo 与 UI Review</button>
+    </div>
+
+    <!-- PRD 阶段 -->
+    <section class="section active" id="sec-prd" role="tabpanel">
+      <h2>基础 Idea</h2>
+      <p class="hint">将背景、问题、用户、成功标准等以要点列出；Orchestrator 会把它带在各轮提示中。</p>
+      <label for="idea">Idea 草稿</label>
+      <textarea id="idea" rows="5" placeholder="- 要解决的问题：&#10;- 非目标或边界："></textarea>
+
+      <h2>Orchestrator 提示（串流程 + 回合后总结与决策点）</h2>
+      <p class="hint">在 Cursor 中新建对话作为「总控」：开跑、每轮结束后贴总结模板；由你决定是否再辩一轮、何时定稿。</p>
+      <div class="toolbar">
+        <button type="button" class="primary" id="buildOrchestrator">生成 Orchestrator 开跑说明</button>
+        <button type="button" class="ghost" id="buildRoundEnd">生成本轮结束：总结 + 三选一</button>
+      </div>
+      <pre class="out" id="orchestratorOut" contenteditable="true" spellcheck="false" aria-live="polite">点击上方按钮生成可复制文本。</pre>
+
+      <h2>Agent1：本回合 Proposal</h2>
+      <p class="hint">在专用对话或同一会话中扮演建设方，按 Spec 5.1 与第 6 节输出草案。</p>
+      <div class="toolbar">
+        <button type="button" class="primary" id="buildA1">生成 Agent1 提示</button>
+        <button type="button" class="ghost" id="copyA1" disabled>复制</button>
+      </div>
+      <pre class="out" id="a1out" contenteditable="true" spellcheck="false"></pre>
+
+      <h2>Agent2：对 Proposal 的 Review</h2>
+      <p class="hint">按 Spec 第 7 节：Blocker / Major / Minor；可另开对话做「挑刺」方。</p>
+      <div class="toolbar">
+        <button type="button" class="primary" id="buildA2">生成 Agent2 提示</button>
+        <button type="button" class="ghost" id="copyA2" disabled>复制</button>
+      </div>
+      <pre class="out" id="a2out" contenteditable="true" spellcheck="false"></pre>
+
+      <h3>可选：粘贴本轮产出（随页面保存）</h3>
+      <div class="row2">
+        <div>
+          <label>本轮 Proposal 摘要或路径</label>
+          <textarea id="pasteProp" rows="3"></textarea>
+        </div>
+        <div>
+          <label>本轮 Review 摘要</label>
+          <textarea id="pasteRev" rows="3"></textarea>
+        </div>
+      </div>
+
+      <h2>轮次与定稿</h2>
+      <p class="hint">多轮建议见 Spec 2.4 表格；定稿条件见 2.3 与 5.2。定稿后产物命名：<code>PRD_&lt;主题&gt;.md</code> + 归档 <code>reviews/</code>。</p>
+      <div class="toolbar">
+        <button type="button" class="primary" id="bumpRound" data-round="1">本回合已结束，进入下一轮 debate</button>
+        <button type="button" class="ghost" id="lockPrd">宣布 PRD 已定稿</button>
+        <button type="button" class="ghost" id="resetRound">将轮次重置为 1</button>
+      </div>
+      <ul class="steps">
+        <li><span class="n">✓</span> 有 Blocker 时本轮不算收敛；Agent1 下轮必须关 Blocker</li>
+        <li><span class="n">R</span> 连续两轮无新 Major 且无 Blocker → 通常可定稿（以你裁决为准）</li>
+      </ul>
+    </section>
+
+    <!-- Demo 阶段 -->
+    <section class="section" id="sec-demo" role="tabpanel" hidden>
+      <h2>定稿后：Agent1 输出 Demo</h2>
+      <p class="hint">依据 Spec 第 9 节：单文件 HTML、状态可点、iPhone 框、异常态；命名为 <code>&lt;主题&gt;-demo.html</code>。Demo 不替代 PRD。</p>
+      <div class="toolbar">
+        <button type="button" class="primary" id="buildDemoA1" disabled>生成「Demo 任务」提示（需先定稿 PRD）</button>
+        <button type="button" class="ghost" id="copyDemoA1" disabled>复制</button>
+      </div>
+      <pre class="out" id="demoA1out" contenteditable="true" spellcheck="false"></pre>
+
+      <h2>Demo 完成后：Agent2 UI Review</h2>
+      <p class="hint">在文档维度之外，对交互与信息架构做补充审查；与 PRD 冲突时以 PRD 为准。</p>
+      <div class="toolbar">
+        <button type="button" class="primary" id="buildDemoA2" disabled>生成「UI Review」提示</button>
+        <button type="button" class="ghost" id="copyDemoA2" disabled>复制</button>
+      </div>
+      <pre class="out" id="demoA2out" contenteditable="true" spellcheck="false"></pre>
+    </section>
+
+    <footer class="meta">
+      <div class="toolbar" style="margin:0 0 0.5rem">
+        <button type="button" class="ghost" id="exportState">导出 JSON 快照</button>
+        <button type="button" class="ghost" id="importState">从 JSON 导入</button>
+        <button type="button" class="ghost" id="clearStorage">清除本机保存</button>
+      </div>
+      数据仅存于本浏览器 <code>localStorage</code>。参考规格：<code>bizcard/PRD_AUTHORING_SPEC.md</code>
+    </footer>
+  </div>
+  <input type="file" id="importFile" accept="application/json" hidden />
+
+  <script>
+(function () {
+  var NS = "bizcard-pm-workflow-v1";
+  var $ = function (id) { return document.getElementById(id); };
+
+  function getState() {
+    return {
+      topic: $("topic").value || "",
+      idea: $("idea").value || "",
+      round: parseInt($("bumpRound").getAttribute("data-round") || "1", 10) || 1,
+      prdLocked: $("lockPrd").getAttribute("data-locked") === "1",
+      pasteProp: $("pasteProp").value || "",
+      pasteRev: $("pasteRev").value || "",
+      orchestratorOut: $("orchestratorOut").textContent || "",
+      a1out: $("a1out").textContent || "",
+      a2out: $("a2out").textContent || "",
+      demoA1out: $("demoA1out").textContent || "",
+      demoA2out: $("demoA2out").textContent || ""
+    };
+  }
+  function setState(s) {
+    if (s.topic != null) $("topic").value = s.topic;
+    if (s.idea != null) $("idea").value = s.idea;
+    if (s.pasteProp != null) $("pasteProp").value = s.pasteProp;
+    if (s.pasteRev != null) $("pasteRev").value = s.pasteRev;
+    var r = s.round;
+    if (r != null && r >= 1) $("bumpRound").setAttribute("data-round", String(r));
+    if (s.prdLocked) $("lockPrd").setAttribute("data-locked", "1");
+    else $("lockPrd").removeAttribute("data-locked");
+    if (s.orchestratorOut != null) $("orchestratorOut").textContent = s.orchestratorOut;
+    if (s.a1out != null) $("a1out").textContent = s.a1out;
+    if (s.a2out != null) $("a2out").textContent = s.a2out;
+    if (s.demoA1out != null) $("demoA1out").textContent = s.demoA1out;
+    if (s.demoA2out != null) $("demoA2out").textContent = s.demoA2out;
+    refresh();
+  }
+  function save() {
+    try { localStorage.setItem(NS, JSON.stringify(getState())); } catch (e) {}
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem(NS);
+      if (raw) setState(JSON.parse(raw));
+    } catch (e) {}
+  }
+  function topicLine() {
+    var t = ($("topic").value || "（请填写主题）").trim();
+    return t;
+  }
+  function commonSpecRef() {
+    return "工作方式须遵守 BizCard 仓库内《PRD 编写规格》（PRD_AUTHORING_SPEC.md）：双 Agent 对抗、表格与 Mermaid、可测性、术语一致。";
+  }
+  function buildOrchestratorStart() {
+    return [
+      "【角色】你是本需求的 Orchestrator，不负责亲自写长文 PRD，而负责：",
+      "1）在每一轮中引导 PM 与 Agent1（Proposal）、Agent2（Review）完成「Proposal → Review」闭环；",
+      "2）在每轮结束后，用简短结构化总结反馈给 PM，并**暂停**，等待 PM 在「再辩一轮 / 定稿 / 暂停」中三选一；",
+      "3）当 PM 选定稿时，明确宣告：本需求的最终可执行规格 = 经最后一轮共同认可的 Proposal 正文，对应文件应整理为 `PRD_" + topicLine() + ".md`，Review 可归档在 `reviews/` 或 `<主题>_review.md` 中。",
+      "",
+      "【当前基础 Idea（由 PM 提供）】",
+      $("idea").value.trim() || "（Idea 尚空，请 PM 先填写上方 Idea）",
+      "",
+      "【你本轮开始时要做的事】",
+      "• 用 3～5 行复述 Idea，确认与 PM 理解一致。",
+      "• 让 PM 在 Cursor 中打开/使用「Agent1 提示」生成本回合 Proposal。",
+      "• Proposal 到达后，再驱动「Agent2 提示」产出 Review。",
+      "• 当 Proposal 与 Review 都到齐后，进入「本回合结束」动作（见下一条消息模板或 PM 在控制台点「生成本轮结束」）。",
+      commonSpecRef()
+    ].join("\n");
+  }
+  function buildRoundEnd() {
+    var n = getState().round;
+    return [
+      "【第 " + n + " 轮已结束：请为 PM 输出】",
+      "",
+      "### 本轮总结（简短）",
+      "- Proposal 要点：…",
+      "- Review 要点（含 Blocker/Major/Minor 数量或列表）：…",
+      "- 与《PRD_AUTHORING_SPEC》门禁 5.1/5.2 的差距（若有）：…",
+      "",
+      "### 请 PM 三选一",
+      "1) **再辩一轮**：明确下一轮 Agent1 要优先响应哪些 Review 点；将轮次视为第 " + (n + 1) + " 轮。",
+      "2) **定稿 PRD**：确认当前 Proposal（含约定修改）为最终 `PRD_" + topicLine() + ".md` 内容来源；无 Blocker，Major 已处理或已裁决。",
+      "3) **暂停**：仅记录状态，不推进轮次。",
+      "",
+      "【附：本轮 PM 可选粘贴】",
+      "Proposal 记录：" + ($("pasteProp").value.trim() || "（无）"),
+      "Review 记录：" + ($("pasteRev").value.trim() || "（无）")
+    ].join("\n");
+  }
+  function buildAgent1() {
+    var n = getState().round;
+    return [
+      "【角色】你是 Agent1（Proposal）。立场：与 PM 对齐后，输出结构化、可定稿的 Proposal/PRD 草案。",
+      "【主题】`" + topicLine() + "`（第 " + n + " 轮）",
+      "",
+      "【PM 提供的 Idea】",
+      $("idea").value.trim() || "（先请 PM 补充 Idea）",
+      "",
+      "【本回合要求】",
+      "• 按 PRD_AUTHORING_SPEC 第 4 节结构输出（含目标/非目标、信息架构、流程 Mermaid、状态与规则、异常、验收等）。",
+      "• 遵守第 5.1 行 Proposal 后质量门禁。",
+      "• 若为上轮有 Review 后的修订轮：逐条处理 Blocker；Major 须修改或写明不修改理由与 PM 裁决。",
+      "【上下文】上轮回合摘要（如 PM 已提供）：" + ( $("pasteRev").value.trim() ? "见 PM 贴入的 Review" : "（本回合为首轮或尚未粘贴 Review）"),
+      commonSpecRef()
+    ].join("\n");
+  }
+  function buildAgent2() {
+    var n = getState().round;
+    return [
+      "【角色】你是 Agent2（Review）。立场：对 Agent1 的 Proposal 做批判性审查。",
+      "【审查对象】`" + topicLine() + "` 第 " + n + " 轮 Proposal 全文。",
+      "",
+      "【输出格式】",
+      "按 Spec 7.2：",
+      "## 第 " + n + " 轮 Review",
+      "",
+      "### Blocker（阻塞）",
+      "- [ ] …",
+      "### Major（重要）",
+      "- [ ] …",
+      "### Minor（建议）",
+      "- [ ] …",
+      "",
+      "【检查维度】完备性、一致性、可测性、边界、术语、语气（见 Spec 7.1 表格）。",
+      "【重要】逐章检查；每条 Finding 要有具体改法。",
+      commonSpecRef()
+    ].join("\n");
+  }
+  function buildDemoAgent1() {
+    return [
+      "【任务】`" + topicLine() + "` 的 PRD 已锁定。请按 PRD 编写规格 第 9 节，产出**单文件**交互 Demo：`<主题>-demo.html`（无业务后端依赖即可）。",
+      "【必须】iPhone 尺寸外框、核心主路径可点通、用侧栏或方式列出**全部状态/异常态**便于跳转。",
+      "【注意】Demo 是 PRD 的可视化补充；若与 PRD 有冲突，以 `PRD_" + topicLine() + ".md` 为准。",
+      commonSpecRef()
+    ].join("\n");
+  }
+  function buildDemoAgent2() {
+    return [
+      "【任务】对 `" + topicLine() + "-demo.html` 做 **UI/交互** Review。",
+      "【范围】",
+      "• 信息是否完整反映 PRD 关键状态与文案；",
+      "• 交互顺序是否符合主路径；",
+      "• 异常态与空态是否可见；",
+      "• 明显违背可用性或「看不出来」的交互缺失。",
+      "【不要】在 Review 中偷偷改 PRD 产品规则；问题应标注为「Demo 未体现 PRD 第 x 节」或「建议 PRD/实现澄清」。",
+      "【输出】用 Blocker/Major/Minor 分级的 Finding 列表 + 可操作的修改建议。",
+      commonSpecRef()
+    ].join("\n");
+  }
+  function copyToClipboard(text, btn) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        if (btn) { var o = btn.textContent; btn.textContent = "已复制"; setTimeout(function () { btn.textContent = o; }, 1500); }
+      });
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function refresh() {
+    var r = parseInt($("bumpRound").getAttribute("data-round") || "1", 10) || 1;
+    $("roundDisplay").textContent = "第 " + r + " 轮 debate";
+    var locked = $("lockPrd").getAttribute("data-locked") === "1";
+    $("prdState").textContent = locked ? "PRD：已定稿" : "PRD：未锁定";
+    $("buildDemoA1").disabled = !locked;
+    $("buildDemoA2").disabled = !locked;
+    $("copyDemoA1").disabled = !locked;
+    $("copyDemoA2").disabled = !locked;
+  }
+  function wireCopy(elId, textFn, btn) {
+    var el = $(elId);
+    if (!el) return;
+    el.textContent = textFn();
+    if (btn) { btn.disabled = !el.textContent; }
+  }
+
+  $("buildOrchestrator").addEventListener("click", function () { $("orchestratorOut").textContent = buildOrchestratorStart(); save(); });
+  $("buildRoundEnd").addEventListener("click", function () { $("orchestratorOut").textContent = buildRoundEnd(); save(); });
+  $("buildA1").addEventListener("click", function () {
+    wireCopy("a1out", buildAgent1, $("copyA1"));
+    $("copyA1").disabled = false; save();
+  });
+  $("copyA1").addEventListener("click", function () { copyToClipboard($("a1out").textContent, this); });
+  $("buildA2").addEventListener("click", function () {
+    wireCopy("a2out", buildAgent2, $("copyA2"));
+    $("copyA2").disabled = false; save();
+  });
+  $("copyA2").addEventListener("click", function () { copyToClipboard($("a2out").textContent, this); });
+  $("buildDemoA1").addEventListener("click", function () { wireCopy("demoA1out", buildDemoAgent1, $("copyDemoA1")); save(); });
+  $("copyDemoA1").addEventListener("click", function () { copyToClipboard($("demoA1out").textContent, this); });
+  $("buildDemoA2").addEventListener("click", function () { wireCopy("demoA2out", buildDemoAgent2, $("copyDemoA2")); save(); });
+  $("copyDemoA2").addEventListener("click", function () { copyToClipboard($("demoA2out").textContent, this); });
+  $("bumpRound").addEventListener("click", function () {
+    var n = parseInt($("bumpRound").getAttribute("data-round") || "1", 10) + 1;
+    $("bumpRound").setAttribute("data-round", String(n));
+    $("pasteProp").value = "";
+    $("pasteRev").value = "";
+    save();
+    refresh();
+  });
+  $("lockPrd").addEventListener("click", function () { $("lockPrd").setAttribute("data-locked", "1"); save(); refresh(); });
+  $("resetRound").addEventListener("click", function () { $("bumpRound").setAttribute("data-round", "1"); save(); refresh(); });
+  ["topic", "idea", "pasteProp", "pasteRev"].forEach(function (id) { $(id).addEventListener("input", save); });
+  ["orchestratorOut", "a1out", "a2out", "demoA1out", "demoA2out"].forEach(function (id) { $(id).addEventListener("input", save); });
+  $("tab-prd").addEventListener("click", function () {
+    $("sec-prd").classList.add("active"); $("sec-prd").hidden = false;
+    $("sec-demo").classList.remove("active"); $("sec-demo").hidden = true;
+    $("tab-prd").setAttribute("aria-selected", "true");
+    $("tab-demo").setAttribute("aria-selected", "false");
+  });
+  $("tab-demo").addEventListener("click", function () {
+    $("sec-demo").classList.add("active"); $("sec-demo").hidden = false;
+    $("sec-prd").classList.remove("active"); $("sec-prd").hidden = true;
+    $("tab-demo").setAttribute("aria-selected", "true");
+    $("tab-prd").setAttribute("aria-selected", "false");
+  });
+  $("exportState").addEventListener("click", function () {
+    var a = document.createElement("a");
+    a.href = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(getState(), null, 2));
+    a.download = "pm-workflow-" + (topicLine().replace(/[^\w\u4e00-\u9fa5-]+/g, "-") || "export") + ".json";
+    a.click();
+  });
+  $("importState").addEventListener("click", function () { $("importFile").click(); });
+  $("importFile").addEventListener("change", function (e) {
+    var f = e.target.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { try { setState(JSON.parse(r.result)); save(); } catch (err) { alert("无法解析 JSON"); } };
+    r.readAsText(f);
+    e.target.value = "";
+  });
+  $("clearStorage").addEventListener("click", function () {
+    if (confirm("将清除本页保存的 Idea/轮次等，确定？")) { localStorage.removeItem(NS); location.reload(); }
+  });
+  load();
+  refresh();
+  window.addEventListener("beforeunload", save);
+})();
+  </script>
+</body>
+</html>
