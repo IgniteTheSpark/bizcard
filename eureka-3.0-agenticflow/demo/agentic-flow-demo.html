@@ -484,7 +484,10 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
           <button class="ftab" onclick="switchMediaTab('img','relfiles',this)">关联文件</button>
         </div>
         <div class="ftab-content">
-          <div class="ftp" id="img-tab-notes"><div id="img-ai-result-block"></div><div id="img-notes-list"></div></div>
+          <div class="ftp" id="img-tab-notes">
+            <div class="note-subtabs" id="img-note-subtabs"></div>
+            <div id="img-note-display"></div>
+          </div>
           <div class="hidden ftp" id="img-tab-relfiles"><div id="img-relfiles-list"></div></div>
         </div>
       </div>
@@ -521,7 +524,10 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
           <button class="ftab" onclick="switchMediaTab('md','relfiles',this)">关联文件</button>
         </div>
         <div class="ftab-content">
-          <div class="ftp" id="md-tab-notes"><div id="md-ai-result-block"></div><div id="md-notes-list"></div></div>
+          <div class="ftp" id="md-tab-notes">
+            <div class="note-subtabs" id="md-note-subtabs"></div>
+            <div id="md-note-display"></div>
+          </div>
           <div class="hidden ftp" id="md-tab-reminders"><div id="md-reminders-list"></div></div>
           <div class="hidden ftp" id="md-tab-relfiles"><div id="md-relfiles-list"></div></div>
         </div>
@@ -692,6 +698,27 @@ function nav(id){
 function goBack(){
   if(stack.length<=1) return;
   const leave=stack.pop();
+  // If leaving session page, prune empty live sessions & finalize
+  if(leave==='p-session'){
+    const idx=SESSION_HISTORY.findIndex(s=>s.id===currentSessionId&&s._live);
+    if(idx!==-1){
+      const s=SESSION_HISTORY[idx];
+      const realTurns=sessionTurns.filter(t=>!(t.role==='agent'&&t.text&&(t.text.includes('作为背景')||t.text.includes('有什么我可以帮你的'))));
+      if(realTurns.length===0){
+        SESSION_HISTORY.splice(idx,1); // nothing was said, drop it
+      } else {
+        s.turns=[...sessionTurns];
+        s._live=false;
+        // generate a sub-line from first user turn
+        const firstUser=sessionTurns.find(t=>t.role==='user-text'||t.role==='user-voice');
+        if(firstUser){
+          const preview=(firstUser.text||firstUser.transcript||'').slice(0,20);
+          s.sub=preview+(preview.length>=20?'…':'');
+        }
+      }
+    }
+    currentSessionId=null;
+  }
   document.getElementById(leave).classList.add('off');
   document.getElementById(leave).classList.remove('behind');
   const ret=stack[stack.length-1];
@@ -1117,32 +1144,75 @@ function renderRelFilesList(listEl, fileId){
 }
 
 function renderImgTabs(fileId){
-  document.getElementById('img-ai-result-block').innerHTML=`
-    <div class="ai-result-lbl">OCR 文字</div>
-    <div class="ai-result-val">「API 设计原则 · 单一职责 · 接口版本化 · 向下兼容」</div>
-    <div class="ai-result-lbl">图像描述</div>
-    <div class="ai-result-val">白板上记录的 API 设计关键原则，红色框标记重点，包含三条核心条目。</div>`;
-  document.getElementById('img-notes-list').innerHTML=`
-    <div class="note-card">
-      <div class="note-card-hdr"><div class="note-card-title">白板内容 OCR 笔记</div></div>
-      <div class="note-body"><p>OCR 识别到三条核心 API 设计原则：单一职责、接口版本化、向下兼容。</p></div>
-    </div>`;
+  // Ensure assets exist for this image file
+  if(!D.mediaNotes) D.mediaNotes={};
+  if(!D.mediaNotes[fileId]){
+    const nid='n_img_'+fileId;
+    if(!D.assets[nid]){
+      D.assets[nid]={id:nid,type:'note',icon:'📝',title:'白板内容 OCR 笔记',noteType:'file_analysis',
+        src:'file_analysis',srcLabel:D.files[fileId]?.name||'图片',
+        content:`# 白板内容 OCR 笔记\n\n## OCR 识别文字\n\n「API 设计原则 · 单一职责 · 接口版本化 · 向下兼容」\n\n## 图像描述\n\n白板上记录的 API 设计关键原则，红色框标记重点，包含三条核心条目。`};
+    }
+    D.mediaNotes[fileId]=[nid];
+  }
+  renderMediaNoteSubtabs('img', fileId);
   renderRelFilesList(document.getElementById('img-relfiles-list'), fileId);
 }
 
 function renderMdTabs(fileId){
-  document.getElementById('md-ai-result-block').innerHTML=`
-    <div class="ai-result-lbl">文档摘要</div>
-    <div class="ai-result-val">本文档定义 V2.0 API 接口规范，包含认证方式（JWT + OAuth2）、分页标准（cursor-based）和错误码体系，共 3 大模块 18 个接口。</div>`;
-  document.getElementById('md-notes-list').innerHTML=`
-    <div class="note-card">
-      <div class="note-card-hdr"><div class="note-card-title">API V2.0 文档摘要</div></div>
-      <div class="note-body"><p>定义 V2.0 API 接口规范，含认证、分页、错误码三大模块，共 18 个接口。</p></div>
-    </div>`;
+  if(!D.mediaNotes) D.mediaNotes={};
+  if(!D.mediaNotes[fileId]){
+    const nid1='n_md_sum_'+fileId;
+    const nid2='n_md_act_'+fileId;
+    if(!D.assets[nid1]){
+      D.assets[nid1]={id:nid1,type:'note',icon:'📝',title:'API V2.0 文档摘要',noteType:'file_analysis',
+        src:'file_analysis',srcLabel:D.files[fileId]?.name||'文档',
+        content:`# API V2.0 文档摘要\n\n本文档定义 V2.0 API 接口规范，包含认证方式（JWT + OAuth2）、分页标准（cursor-based）和错误码体系，共 3 大模块 18 个接口。\n\n## 认证方式\n\nJWT + OAuth2 双模认证，Token 有效期 7 天，支持 Refresh Token 自动续签。\n\n## 分页标准\n\n统一采用 cursor-based 分页，避免 offset 性能问题。`};
+    }
+    if(!D.assets[nid2]){
+      D.assets[nid2]={id:nid2,type:'note',icon:'📝',title:'接口规范关键点',noteType:'file_analysis',
+        src:'file_analysis',srcLabel:D.files[fileId]?.name||'文档',
+        content:`# 接口规范关键点\n\n- 认证：JWT + OAuth2\n- 分页：cursor-based\n- 错误码：4xx 客户端错误，5xx 服务端错误\n- 共 3 大模块，18 个接口`};
+    }
+    D.mediaNotes[fileId]=[nid1,nid2];
+  }
+  renderMediaNoteSubtabs('md', fileId);
+  // Reminders (static todos for demo)
   document.getElementById('md-reminders-list').innerHTML=`
-    <div class="todo-item"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">Review 认证模块接口规范</div><div class="todo-meta">截止日期待定</div></div></div>
-    <div class="todo-item"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">确认错误码体系与前端对齐</div><div class="todo-meta">截止日期待定</div></div></div>`;
+    <div class="todo-item" style="cursor:default"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">Review 认证模块接口规范</div><div class="todo-meta">截止日期待定</div></div></div>
+    <div class="todo-item" style="cursor:default"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">确认错误码体系与前端对齐</div><div class="todo-meta">截止日期待定</div></div></div>`;
   renderRelFilesList(document.getElementById('md-relfiles-list'), fileId);
+}
+
+function renderMediaNoteSubtabs(prefix, fileId){
+  const ids=(D.mediaNotes||{})[fileId]||[];
+  const subtabsEl=document.getElementById(prefix+'-note-subtabs');
+  const displayEl=document.getElementById(prefix+'-note-display');
+  if(!subtabsEl||!displayEl) return;
+  const idx=D.mediaNoteIdx?.[fileId]||0;
+  subtabsEl.innerHTML=ids.map((id,i)=>{
+    const a=D.assets[id]; if(!a) return '';
+    const s=a.title.length>14?a.title.slice(0,14)+'…':a.title;
+    return `<button class="nstab ${i===idx?'on':''}" onclick="selectMediaNote('${prefix}','${fileId}',${i})">${s}</button>`;
+  }).join('');
+  if(ids.length){
+    const a=D.assets[ids[idx]]; if(!a) return;
+    displayEl.innerHTML=`
+      <div class="note-card">
+        <div class="note-card-hdr">
+          <div class="note-card-title">${a.title}</div>
+          <div class="note-card-acts"><button class="nca" onclick="openAsset('${a.id}')">查看</button></div>
+        </div>
+        <div class="note-body">${markdownToHtml(a.content||'')}</div>
+        <div class="note-source"><span class="note-source-lbl">来源</span><span class="note-source-link">${a.srcLabel||''}</span></div>
+      </div>`;
+  }
+}
+
+function selectMediaNote(prefix, fileId, idx){
+  if(!D.mediaNoteIdx) D.mediaNoteIdx={};
+  D.mediaNoteIdx[fileId]=idx;
+  renderMediaNoteSubtabs(prefix, fileId);
 }
 
 function switchMediaTab(prefix,tab,el){
@@ -1203,7 +1273,7 @@ function openContact(id){
 }
 
 /* ── SESSION ── */
-let sessionTurns=[]; let turnIdx=0;
+let sessionTurns=[]; let turnIdx=0; let currentSessionId=null;
 
 function openFlash(){
   D.sessionTag='flash';
@@ -1213,15 +1283,24 @@ function openFlash(){
   sessionTurns=D.flashTurns;
   const ci=document.getElementById('ss-chat'); ci.innerHTML='';
   if(!sessionTurns.length){
-    appendVoiceBubble('ss-chat','00:18','今晚 5 点开会，另外 Kevin 喜欢喝拿铁。',null,true);
-    const r=getReply('今晚5点开会 kevin喜欢喝拿铁',null,'flash');
-    appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false);
+    // Turn 1: todo
+    appendVoiceBubble('ss-chat','00:08','今晚 5 点开会，提醒我。',null,true);
+    const r1=getReply('flash_meeting',null,'flash');
+    appendAgentBubble('ss-chat',r1.text,r1.cards,[],true,false,false);
+    // Turn 2: contact preference
+    appendVoiceBubble('ss-chat','00:11','Kevin 喜欢喝拿铁，帮我记一下。',null,true);
+    const r2=getReply('flash_kevin',null,'flash');
+    appendAgentBubble('ss-chat',r2.text,r2.cards,[],true,false,false);
+    // Turn 3: idea
+    appendVoiceBubble('ss-chat','00:14','B2B 客户打标签这个功能值得做，记个 Idea。',null,true);
+    const r3=getReply('flash_idea',null,'flash');
+    appendAgentBubble('ss-chat',r3.text,r3.cards,[],true,false,false);
     D.flashTurns=[...sessionTurns];
   } else {
     sessionTurns.forEach(t=>{
       if(t.role==='user-voice') appendVoiceBubble('ss-chat',t.dur,t.transcript,null,false);
       else if(t.role==='user-text') appendTextBubble('ss-chat',t.text,false);
-      else appendAgentBubble('ss-chat',t.text,t.cards,t.prompts,false,false);
+      else appendAgentBubble('ss-chat',t.text,t.cards,t.prompts,false,false,t.saveable);
     });
   }
   nav('p-session'); scrollChat();
@@ -1239,9 +1318,22 @@ function openAsk(ctx){
     document.getElementById('ss-ctx-sub').textContent=ctx.sub||ctx.type;
   } else { banner.classList.add('hidden'); }
   sessionTurns=[]; document.getElementById('ss-chat').innerHTML='';
+  // Create a live history entry
+  currentSessionId='live_'+Date.now();
+  const now=new Date(); const timeStr=`今天 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  SESSION_HISTORY.unshift({
+    id:currentSessionId,
+    tag:ctx?'ask':'ask',
+    title:ctx?ctx.label:'Ask Agent',
+    sub:ctx?`基于 ${ctx.type} 的对话`:'通用对话',
+    time:timeStr,
+    ctx:ctx||null,
+    turns:[],
+    _live:true
+  });
   const intro=ctx?`我已加载 <strong>${ctx.label}</strong> 作为背景。可以基于它问我任何问题。`:'你好，有什么我可以帮你的？';
   const prompts=ctx?getCtxPrompts(ctx):['我今天有哪些待处理事项？','查询 Kevin 的联系方式','帮我记录一个 Idea'];
-  appendAgentBubble('ss-chat',intro,[],prompts,true,true);
+  appendAgentBubble('ss-chat',intro,[],prompts,true,true,false);
   nav('p-session'); scrollChat();
 }
 
@@ -1264,23 +1356,34 @@ function sendMsg(){
   const inp=document.getElementById('ss-input'); const text=inp.value.trim(); if(!text) return; inp.value='';
   appendTextBubble('ss-chat',text,true);
   const r=getReply(text,D.sessionCtx,D.sessionTag);
-  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false);
+  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false,r._save===true);
   if(D.sessionTag==='flash') D.flashTurns=[...sessionTurns];
+  syncLiveSession();
   scrollChat();
 }
 
 function sendVoiceMsg(){
   const samples=[
-    {dur:'00:12',t:'在星巴克花了 38 块，两杯拿铁。'},
-    {dur:'00:08',t:'帮我记一下，B2B 偏好标签这个想法很值得做。'},
-    {dur:'00:15',t:'提醒我下午三点和 Sarah 对设计稿。'},
+    {dur:'00:09',t:'下周一之前把 demo spec 整理出来。'},
+    {dur:'00:11',t:'刚和 Sarah 确认了，设计稿下周三交付。'},
+    {dur:'00:13',t:'在想一个新功能，名片识别之后自动生成联系人摘要，节省手动录入时间。'},
+    {dur:'00:07',t:'今晚在星巴克见 Kevin，提醒我 19:00。'},
+    {dur:'00:10',t:'把「接口版本向下兼容」这条原则记下来，很重要。'},
+    {dur:'00:12',t:'有个产品方向：硬件端做离线录音，联网后再 ASR，体验应该更好。'},
   ];
   const s=samples[Math.floor(Math.random()*samples.length)];
   appendVoiceBubble('ss-chat',s.dur,s.t,null,true);
   const r=getReply(s.t,D.sessionCtx,D.sessionTag);
-  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false);
+  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false,r._save===true);
   if(D.sessionTag==='flash') D.flashTurns=[...sessionTurns];
+  syncLiveSession();
   scrollChat();
+}
+
+function syncLiveSession(){
+  if(!currentSessionId) return;
+  const s=SESSION_HISTORY.find(x=>x.id===currentSessionId);
+  if(s){ s.turns=[...sessionTurns]; s._live=true; }
 }
 
 function fillAndSend(txt){ document.getElementById('ss-input').value=txt; sendMsg(); }
@@ -1310,13 +1413,12 @@ function expandTran(elId,btn){
   btn.textContent=btn.textContent==='展开全文'?'收起':'展开全文';
 }
 
-function appendAgentBubble(ciId,text,cards,prompts,record,isIntro){
+function appendAgentBubble(ciId,text,cards,prompts,record,isIntro,saveable){
   turnIdx++;
   const id='turn_'+turnIdx;
   const cardsHtml=(cards||[]).map(c=>renderRcard(c)).join('');
   const promptsHtml=(prompts||[]).length?`<div class="pcards">${(prompts||[]).map(p=>`<button class="pcard-btn" onclick="fillAndSend('${esc(p)}')">${esc(p)}</button>`).join('')}</div>`:'';
-  const stripped=text.replace(/<[^>]+>/g,'').trim();
-  const showSave=!isIntro&&stripped.length>60;
+  const showSave=!isIntro&&saveable===true;
   const saveHtml=showSave?`<button class="save-note-btn" id="snb-${id}" onclick="saveAsNote('${id}','${esc(text)}')">＋ 保存为 Note</button>`:'';
   document.getElementById(ciId).innerHTML+=`
     <div class="brow-a" id="${id}"><div class="ba">
@@ -1325,7 +1427,7 @@ function appendAgentBubble(ciId,text,cards,prompts,record,isIntro){
       ${cardsHtml?`<div class="rcards">${cardsHtml}</div>`:''}
       ${promptsHtml}${saveHtml}
     </div></div>`;
-  if(record) sessionTurns.push({role:'agent',text,cards,prompts,id});
+  if(record) sessionTurns.push({role:'agent',text,cards,prompts,id,saveable});
 }
 
 function saveAsNote(turnId,text){
@@ -1355,51 +1457,144 @@ function claimCard(id,btn){ D.assets[id].status='in_progress'; btn.textContent='
 
 function getReply(text,ctx,tag){
   const t=text.toLowerCase();
+
+  /* ── File-context replies ── */
   if(ctx&&ctx.type==='file'){
-    if(t.includes('结论')||t.includes('核心')) return {text:'这场会有 4 个核心结论：',cards:[
-      {type:'note',title:'两条管线分离',meta:'文件解析无 Session，对话有 Session'},
-      {type:'note',title:'File 是主体',meta:'解析产物归属 File，追问是可选附属'},
-      {type:'note',title:'context 是背景不是输入',meta:'Agent 自动获取，用户无感知'},
-      {type:'note',title:'首页 Workspace 分类管理',meta:'Files 与 Workspace 分离展示'},
-    ],prompts:[]};
-    if(t.includes('action')||t.includes('todo')||t.includes('reminder')) return {text:'找到 2 个 action items：',cards:[
+    if(t.includes('结论')||t.includes('核心')) return {_save:true,text:'这场会的 4 个核心结论：<br><br>1. 文件解析与对话是两条独立管线，解析不产生 Session；<br>2. File 是主体，所有解析产物归属 File；<br>3. <code>context</code> 是背景信息，Agent 自动加载，用户无感知；<br>4. 首页 Workspace 以资产类型分类管理，与 Files 分离展示。',cards:[],prompts:[]};
+    if(t.includes('action')||t.includes('todo')||t.includes('遗漏')) return {_save:false,text:'找到 2 个 action items：',cards:[
       {type:'todo',title:'整理 demo spec',meta:D.assets.t001.dueAt,claimId:'t001'},
       {type:'todo',title:'确认 Kevin 跟进',meta:D.assets.t002.dueAt,claimId:'t002'},
     ],prompts:[]};
-    if(t.includes('摘要')||t.includes('summary')){
+    if(t.includes('邮件')||t.includes('跟进')){
+      return {_save:true,text:'起草跟进邮件草稿如下：<br><br>Hi Kevin，<br>感谢今天的会议。以下是我们达成的几点共识：文件解析无 Session、context 仅作背景、Workspace 分类展示。请确认无误后回复，我会同步更新 spec。<br><br>Best,',cards:[],prompts:[]};
+    }
+    if(t.includes('摘要')||t.includes('summary')||t.includes('新版')){
       const nid='n_conv_'+Date.now();
       D.assets[nid]={id:nid,type:'note',icon:'📝',title:'精简版决策摘要',noteType:'conversation_note',
-        src:'session',srcLabel:'Product Design Sync · 追问',content:'两条管线独立，File 是主体，Session 只服务对话，context 是背景不是输入。'};
+        src:'session',srcLabel:'Product Design Sync · 追问',
+        content:'两条管线独立，File 是主体，Session 只服务对话，context 是背景不是输入。'};
       if(!D.fileNotes.includes(nid)) D.fileNotes.push(nid);
-      return {text:'已为您生成精简版摘要，并挂载到该文件的 Notes Tab 下：',cards:[{type:'note',title:'精简版决策摘要',meta:'对话生成',assetId:nid}],prompts:[]};
+      return {_save:false,text:'已生成精简版摘要，挂载到该文件的 Notes Tab：',cards:[{type:'note',title:'精简版决策摘要',meta:'对话生成',assetId:nid}],prompts:[]};
     }
+    if(t.includes('参会人')||t.includes('speaker')||t.includes('联系人')){
+      return {_save:false,text:'该会议 transcript 中识别出 3 位 speaker，可在文件详情 Transcript Tab 中配对联系人：',cards:[
+        {type:'contact',title:'Kevin Chen',meta:'Speaker 2 · 已匹配',contactId:'kevin'},
+      ],prompts:[]};
+    }
+    return {_save:false,text:'好的，正在基于这份文件分析你的问题，请稍候。',cards:[],prompts:[]};
   }
-  if(tag==='flash'||!ctx){
-    if(t.includes('开会')||t.includes('会议')) return {text:'已为您创建会议提醒：',cards:[{type:'todo',title:'今晚 5 点团队会议',meta:'今天 17:00',claimId:'t001'}],prompts:['还需要设置其他提醒吗？','帮我生成会议议程']};
-    if(t.includes('kevin')||t.includes('拿铁')) return {text:'已记录联系人偏好：',cards:[{type:'contact',title:'Kevin Chen',meta:'偏好：拿铁咖啡',contactId:'kevin'}],prompts:['查看 Kevin 的完整信息']};
-    if(t.includes('idea')||t.includes('想法')||t.includes('b2b')) return {text:'已记录您的想法：',cards:[{type:'idea',title:'B2B 偏好标签系统',meta:'Flash 闪念 · 刚刚',assetId:'i001'}],prompts:['展开这个想法','关联到某个项目']};
-    if(t.includes('提醒')||t.includes('三点')||t.includes('sarah')) return {text:'已创建提醒：',cards:[{type:'todo',title:'下午三点和 Sarah 对设计稿',meta:'今天 15:00'}],prompts:['修改时间','添加备注']};
-    if(t.includes('星巴克')||t.includes('38')||t.includes('记账')) return {text:'已记录消费：',cards:[{type:'note',title:'星巴克消费记录',meta:'¥38 · 两杯拿铁'}],prompts:[]};
-  }
-  return {text:`明白了，我来帮您处理这个请求。根据您的输入，我正在分析相关内容并准备给出建议。`,cards:[],prompts:['继续','换个方式表达']};
+
+  /* ── Flash / general replies ── */
+  // Pre-keyed replies for the pre-loaded flash turns
+  if(text==='flash_meeting') return {_save:false,text:'已创建提醒：',cards:[{type:'todo',title:'今晚 5 点团队会议',meta:'今天 17:00',claimId:'t001'}],prompts:[]};
+  if(text==='flash_kevin')  return {_save:false,text:'已记录偏好：',cards:[{type:'contact',title:'Kevin Chen',meta:'偏好：拿铁咖啡',contactId:'kevin'}],prompts:[]};
+  if(text==='flash_idea')   return {_save:false,text:'已记录：',cards:[{type:'idea',title:'B2B 客户打标签',meta:'Flash 闪念',assetId:'i001'}],prompts:[]};
+
+  if(t.includes('spec')||t.includes('整理')||t.includes('demo')) return {_save:false,text:'已创建待办：',cards:[{type:'todo',title:'整理 demo spec',meta:'下周一',claimId:'t001'}],prompts:[]};
+  if(t.includes('sarah')&&(t.includes('设计')||t.includes('交付'))) return {_save:false,text:'已记录约定：',cards:[{type:'todo',title:'设计稿交付 · Sarah',meta:'下周三'}],prompts:[]};
+  if(t.includes('名片')||t.includes('自动生成联系人')||t.includes('识别')) return {_save:true,text:'这是个有意思的方向。名片识别 → 自动生成联系人摘要，可以节省手动录入；结合现有 OCR 能力，技术上可行；可以作为 BizCard 的核心差异点，优先级应该比较高。',cards:[],prompts:[]};
+  if(t.includes('19:00')||t.includes('kevin')&&t.includes('提醒')) return {_save:false,text:'已创建提醒：',cards:[{type:'todo',title:'星巴克见 Kevin',meta:'今晚 19:00'}],prompts:[]};
+  if(t.includes('接口')||t.includes('向下兼容')||t.includes('原则')) return {_save:false,text:'已记录要点：',cards:[{type:'note',title:'接口版本向下兼容原则',meta:'技术备忘'}],prompts:[]};
+  if(t.includes('离线')||t.includes('硬件')&&t.includes('asr')) return {_save:true,text:'这个方向值得深入。离线录音 + 联网后 ASR 的方案，核心优势是：1. 弱网/无网环境也能录音；2. 后端异步处理，体验更稳定；3. 与硬件形态结合自然。可以作为 Eureka 硬件差异化卖点。',cards:[],prompts:[]};
+  if(t.includes('kevin')&&(t.includes('拿铁')||t.includes('偏好'))) return {_save:false,text:'已记录联系人偏好：',cards:[{type:'contact',title:'Kevin Chen',meta:'偏好：拿铁咖啡',contactId:'kevin'}],prompts:[]};
+  if(t.includes('idea')||t.includes('想法')) return {_save:false,text:'已记录：',cards:[{type:'idea',title:'产品想法',meta:'Flash 闪念',assetId:'i001'}],prompts:[]};
+  if(t.includes('开会')||t.includes('会议')||t.includes('提醒')) return {_save:false,text:'已创建提醒：',cards:[{type:'todo',title:'会议提醒',meta:'时间已记录',claimId:'t001'}],prompts:[]};
+
+  return {_save:false,text:'收到，已记录。',cards:[],prompts:[]};
 }
 
 /* ── SESSION HISTORY ── */
 const SESSION_HISTORY=[
-  {id:'sh1',tag:'flash',title:'Flash 闪念',sub:'今晚5点开会 · Kevin 喜欢拿铁',time:'今天 09:21',turns:3},
-  {id:'sh2',tag:'ask',title:'Product Design Sync',sub:'会议分析 · 4个核心结论',time:'昨天 18:44',turns:5},
-  {id:'sh3',tag:'ask',title:'Ask Agent',sub:'查询本周待处理事项',time:'昨天 14:30',turns:2},
-  {id:'sh4',tag:'ask',title:'Q1 Roadmap Review',sub:'文档解析 · 生成摘要和 Todos',time:'5月5日',turns:4},
+  {
+    id:'sh1',tag:'flash',title:'Flash 闪念',sub:'今晚5点开会 · Kevin 喜欢拿铁',time:'今天 09:21',
+    ctx:null,
+    turns:[
+      {role:'user-voice',dur:'00:08',transcript:'今晚 5 点开会，提醒我。'},
+      {role:'agent',text:'已创建提醒：',cards:[{type:'todo',title:'今晚 5 点团队会议',meta:'今天 17:00',claimId:'t001'}],prompts:[],saveable:false},
+      {role:'user-voice',dur:'00:11',transcript:'Kevin 喜欢喝拿铁，帮我记一下。'},
+      {role:'agent',text:'已记录偏好：',cards:[{type:'contact',title:'Kevin Chen',meta:'偏好：拿铁咖啡',contactId:'kevin'}],prompts:[],saveable:false},
+      {role:'user-voice',dur:'00:14',transcript:'B2B 客户打标签这个功能值得做，记个 Idea。'},
+      {role:'agent',text:'已记录：',cards:[{type:'idea',title:'B2B 客户打标签',meta:'Flash 闪念',assetId:'i001'}],prompts:[],saveable:false},
+    ]
+  },
+  {
+    id:'sh2',tag:'ask',title:'Product Design Sync',sub:'会议分析 · 4个核心结论',time:'昨天 18:44',
+    ctx:{type:'file',label:'Product Design Sync',ico:'🎙',sub:'audio'},
+    turns:[
+      {role:'agent',text:'我已加载 <strong>Product Design Sync</strong> 作为背景。可以基于它问我任何问题。',cards:[],prompts:[],saveable:false},
+      {role:'user-text',text:'这场会有哪些核心结论？'},
+      {role:'agent',text:'这场会的 4 个核心结论：<br><br>1. 文件解析与对话是两条独立管线，解析不产生 Session；<br>2. File 是主体，所有解析产物归属 File；<br>3. <code>context</code> 是背景信息，Agent 自动加载，用户无感知；<br>4. 首页 Workspace 以资产类型分类管理，与 Files 分离展示。',cards:[],prompts:[],saveable:true},
+      {role:'user-text',text:'有遗漏的 action items 吗？'},
+      {role:'agent',text:'找到 2 个 action items：',cards:[{type:'todo',title:'整理 demo spec',meta:'下周一',claimId:'t001'},{type:'todo',title:'确认 Kevin 跟进',meta:'本周五',claimId:'t002'}],prompts:[],saveable:false},
+      {role:'user-text',text:'帮我生成一个新版摘要'},
+      {role:'agent',text:'已生成精简版摘要，挂载到该文件的 Notes Tab：',cards:[{type:'note',title:'精简版决策摘要',meta:'对话生成'}],prompts:[],saveable:false},
+    ]
+  },
+  {
+    id:'sh3',tag:'ask',title:'Ask Agent',sub:'查询本周待处理事项',time:'昨天 14:30',
+    ctx:null,
+    turns:[
+      {role:'agent',text:'你好，有什么我可以帮你的？',cards:[],prompts:[],saveable:false},
+      {role:'user-text',text:'我今天有哪些待处理事项？'},
+      {role:'agent',text:'以下是今日待处理事项：',cards:[
+        {type:'todo',title:'整理 demo spec',meta:'今天截止',claimId:'t001'},
+        {type:'todo',title:'设计稿交付 · Sarah',meta:'今天 18:00'},
+      ],prompts:[],saveable:false},
+      {role:'user-text',text:'下周一之前把 demo spec 整理出来'},
+      {role:'agent',text:'已更新截止日期：',cards:[{type:'todo',title:'整理 demo spec',meta:'下周一',claimId:'t001'}],prompts:[],saveable:false},
+    ]
+  },
+  {
+    id:'sh4',tag:'ask',title:'Q1 Roadmap Review',sub:'文档解析 · 生成摘要和 Todos',time:'5月5日',
+    ctx:{type:'file',label:'Q1 Roadmap Review.md',ico:'📝',sub:'markdown'},
+    turns:[
+      {role:'agent',text:'我已加载 <strong>Q1 Roadmap Review.md</strong> 作为背景。可以基于它问我任何问题。',cards:[],prompts:[],saveable:false},
+      {role:'user-text',text:'帮我生成一个新版摘要'},
+      {role:'agent',text:'Q1 Roadmap 核心方向：BizCard Eureka 3.0 硬件 + Agentic 双引擎并行；重点模块为 Flash、Ask Agent、File Analysis Pipeline；Q2 目标是完成闭环 demo 并启动用户验证。',cards:[],prompts:[],saveable:true},
+      {role:'user-text',text:'有哪些 action items？'},
+      {role:'agent',text:'提取到 3 个 action items：',cards:[
+        {type:'todo',title:'完成 Agentic Flow Demo',meta:'Q1 末'},
+        {type:'todo',title:'硬件样机第一版验收',meta:'5月底'},
+        {type:'todo',title:'用户访谈 · 5 人',meta:'6月初'},
+      ],prompts:[],saveable:false},
+      {role:'user-text',text:'离线录音 + 联网后 ASR 这个方向怎么看？'},
+      {role:'agent',text:'这个方向值得深入。离线录音 + 联网后 ASR 的方案，核心优势是：1. 弱网/无网环境也能录音；2. 后端异步处理，体验更稳定；3. 与硬件形态结合自然。可以作为 Eureka 硬件差异化卖点。',cards:[],prompts:[],saveable:true},
+    ]
+  },
 ];
+
 function openSessionHistory(){
   document.getElementById('sh-history-body').innerHTML='<div class="hist-list">'+SESSION_HISTORY.map(s=>`
-    <div class="hist-item" onclick="closeSheet('sh-history')">
+    <div class="hist-item" onclick="loadHistorySession('${s.id}')">
       <span class="hist-item-badge ${s.tag==='flash'?'hb-flash':'hb-ask'}">${s.tag==='flash'?'Flash':'Ask'}</span>
       <div class="hist-item-title">${s.title}</div>
       <div class="hist-item-meta">${s.sub}</div>
-      <div class="hist-item-meta">${s.time} · ${s.turns} 条对话</div>
+      <div class="hist-item-meta">${s.time} · ${s.turns.filter(t=>t.role!=='agent'||!t.text.includes('作为背景')).length} 条对话</div>
     </div>`).join('')+'</div>';
   openSheet('sh-history');
+}
+
+function loadHistorySession(id){
+  const s=SESSION_HISTORY.find(x=>x.id===id); if(!s) return;
+  closeSheet('sh-history');
+  D.sessionTag=s.tag==='flash'?'flash':(s.ctx?'anchored':'general');
+  D.sessionCtx=s.ctx||null;
+  document.getElementById('ss-title').textContent=s.title;
+  document.getElementById('ss-sub').textContent=s.ctx?`上下文：${s.ctx.type}`:(s.tag==='flash'?'全局闪念对话':'通用对话');
+  const banner=document.getElementById('ss-ctx-banner');
+  if(s.ctx){
+    banner.classList.remove('hidden');
+    document.getElementById('ss-ctx-ico').textContent=s.ctx.ico||'📄';
+    document.getElementById('ss-ctx-val').textContent=s.ctx.label;
+    document.getElementById('ss-ctx-sub').textContent=s.ctx.sub||s.ctx.type;
+  } else { banner.classList.add('hidden'); }
+  sessionTurns=[]; const ci=document.getElementById('ss-chat'); ci.innerHTML='';
+  s.turns.forEach(t=>{
+    if(t.role==='user-voice') appendVoiceBubble('ss-chat',t.dur,t.transcript,null,false);
+    else if(t.role==='user-text') appendTextBubble('ss-chat',t.text,false);
+    else appendAgentBubble('ss-chat',t.text,t.cards,t.prompts,false,false,t.saveable);
+  });
+  nav('p-session'); scrollChat(); updateCapsule('p-session');
 }
 
 /* ── UTILS ── */
