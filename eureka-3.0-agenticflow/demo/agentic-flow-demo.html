@@ -1,1173 +1,1424 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Eureka 3.0 Agentic Flow Demo</title>
-  <style>
-    :root {
-      --bg: #eef5f8;
-      --panel: rgba(255,255,255,.78);
-      --panel-strong: #fff;
-      --ink: #18202a;
-      --muted: #7b8794;
-      --line: rgba(27, 35, 48, .1);
-      --blue: #2477ff;
-      --cyan: #1bbbd3;
-      --green: #39b980;
-      --amber: #f4a62a;
-      --red: #e95b68;
-      --purple: #8b6df6;
-      --shadow: 0 22px 70px rgba(33, 63, 90, .18);
-      --radius-xl: 28px;
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Eureka 3.0 · Agentic Flow Demo</title>
+<style>
+:root{
+  --bg:#07090e;--card:#0d1118;--border:rgba(130,220,180,.13);--bhi:rgba(130,220,180,.3);
+  --ink:#daf5ea;--ink2:#8fb8a8;--ink3:rgba(218,245,234,.35);
+  --green:#7ee8b8;--gdim:rgba(126,232,184,.07);
+  --amber:#ffc96a;--adim:rgba(255,201,106,.09);
+  --blue:#6ab4ff;--bdim:rgba(106,180,255,.09);
+  --purple:#b89bff;--pdim:rgba(184,155,255,.09);
+  --r:14px;--rs:9px;
+  --mono:"SFMono-Regular",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;color:inherit}
+body{font-family:var(--sans);background:#040608;color:#daf5ea;display:flex;justify-content:center;
+  align-items:center;min-height:100vh;padding:20px;
+  background-image:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(126,232,184,.06) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 90%,rgba(106,180,255,.04) 0%,transparent 60%)}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+input,textarea{font:inherit;color:inherit;outline:none;border:none;background:none}
 
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      color: var(--ink);
-      background:
-        radial-gradient(circle at 16% 0%, #c7ebff 0, transparent 32%),
-        radial-gradient(circle at 88% 12%, #f3e5ff 0, transparent 28%),
-        linear-gradient(180deg, #eef8ff 0%, #f5f6f7 48%, #edf1f4 100%);
-      overflow: hidden;
-    }
+/* SHELL */
+.shell{width:393px;height:852px;background:#07090e;color:#daf5ea;border-radius:50px;
+  border:1px solid rgba(130,220,180,.12);position:relative;display:flex;flex-direction:column;
+  overflow:hidden;box-shadow:0 0 0 9px rgba(10,14,20,.9),0 0 0 10px rgba(130,220,180,.06),
+  0 50px 140px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.06)}
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:14px 30px 0;
+  font-size:11px;font-weight:700;color:var(--ink3);font-family:var(--mono);flex-shrink:0;letter-spacing:.02em}
 
-    button { font: inherit; color: inherit; }
-    .shell {
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
-      height: 100vh;
-      padding: clamp(12px, 1.6vw, 22px);
-    }
+/* PAGES */
+.pages{position:relative;flex:1;min-height:0;overflow:hidden}
+.page{position:absolute;inset:0;display:flex;flex-direction:column;background:#07090e;color:#daf5ea;
+  transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .28s ease;will-change:transform}
+.page.off{transform:translateX(100%);pointer-events:none;opacity:0}
+.page.behind{transform:translateX(-28px);opacity:.55;pointer-events:none}
 
-    .phone,
-    .workspace {
-      min-height: 0;
-      border: 1px solid rgba(255,255,255,.75);
-      background: var(--panel);
-      backdrop-filter: blur(22px);
-      box-shadow: var(--shadow);
-    }
+/* NAV */
+.nav{display:flex;align-items:center;gap:10px;padding:12px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.back{width:30px;height:30px;border-radius:50%;background:var(--gdim);border:1px solid var(--border);
+  display:grid;place-items:center;font-size:17px;color:var(--green);flex-shrink:0}
+.ntitle{flex:1;min-width:0}
+.ntitle h2{font-size:15px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
+.ntitle .nsub{font-size:10px;color:var(--ink3);font-family:var(--mono);margin-top:1px}
+.nact{width:30px;height:30px;border-radius:50%;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;color:var(--ink2);flex-shrink:0}
+.nbadge{font-size:9px;font-weight:900;font-family:var(--mono);padding:3px 8px;border-radius:999px;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0;border:1px solid}
+.nb-flash{background:var(--adim);color:var(--amber);border-color:rgba(255,201,106,.25)}
+.nb-ask{background:var(--gdim);color:var(--green);border-color:var(--border)}
+.nb-file{background:var(--bdim);color:var(--blue);border-color:rgba(106,180,255,.22)}
+.nb-ws{background:var(--pdim);color:var(--purple);border-color:rgba(184,155,255,.22)}
+.nav-hist-btn{background:none;border:none;color:#8fb8a8;font-size:17px;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0}
+.nav-hist-btn:hover{color:#daf5ea}
 
-    .phone {
-      border-radius: 42px;
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      width: min(430px, 100%);
-      max-width: 430px;
-      position: relative;
-    }
-    #homeView,
-    #workspaceView {
-      min-height: 0;
-      flex: 1;
-      flex-direction: column;
-    }
-    #homeView { display:flex; }
-    #workspaceView { display:flex; }
+/* SCROLL */
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{display:none}
 
-    .workspace { overflow: hidden; display: flex; flex-direction: column; min-height:0; flex:1; }
-    .statusbar,
-    .phone-head,
-    .workspace-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .statusbar { font-size: 13px; font-weight: 700; margin: 0 6px 16px; }
-    .phone-head { margin-bottom: 16px; }
+/* HOME */
+.home-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;flex-shrink:0}
+.logo{width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 5%,#aef 12%,#46f 50%,#a5f 100%);display:grid;place-items:center;font-size:15px;box-shadow:0 6px 18px rgba(80,120,255,.4)}
+.wordmark{font-family:var(--mono);font-size:14px;font-weight:900;letter-spacing:-.04em;color:var(--green)}
+.avatar{width:30px;height:30px;border-radius:50%;background:rgba(126,232,184,.12);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;color:var(--ink3)}
+.console{border:1px solid var(--border);border-radius:var(--r);background:var(--card);overflow:hidden;margin-bottom:14px}
+.con-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;font-weight:900;color:var(--green);letter-spacing:.08em;text-transform:uppercase}
+.con-btns{display:flex;gap:5px}
+.con-btn{border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:9px;font-weight:800;font-family:var(--mono);color:var(--green);background:var(--gdim);transition:all .15s}
+.con-btn:hover{border-color:var(--bhi)}
+.ev-row{display:grid;grid-template-columns:36px 1fr auto;gap:6px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.ev-row:last-child{border-bottom:none}
+.ev-row:hover{background:var(--gdim)}
+.ev-time{font-family:var(--mono);font-size:9px;color:var(--green);font-weight:700;line-height:1.3;text-align:center}
+.ev-body .ev-title{font-size:11px;font-weight:700;font-family:var(--mono)}
+.ev-body .ev-desc{font-size:10px;color:var(--ink2);margin-top:1px;line-height:1.35}
+.ev-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-green{background:var(--green)}.dot-amber{background:var(--amber)}.dot-blue{background:var(--blue)}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.sec-title{font-size:18px;font-weight:900;letter-spacing:-.04em;font-family:var(--mono)}
+.sec-more{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink3);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
+.fcard{border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:7px;cursor:pointer;transition:all .15s;background:var(--card)}
+.fcard:hover{border-color:var(--bhi)}
+.fcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.fcard-ico{width:34px;height:34px;border-radius:9px;background:var(--bdim);border:1px solid rgba(106,180,255,.18);display:grid;place-items:center;font-size:16px;flex-shrink:0}
+.fcard-meta{font-size:9px;font-family:var(--mono);color:var(--ink3);text-align:right;line-height:1.5}
+.fcard-title{font-size:12px;font-weight:800;margin-bottom:3px}
+.fcard-sub{font-size:10px;color:var(--ink2);line-height:1.4}
+.chips{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.chip{font-size:9px;font-weight:800;padding:2px 7px;border-radius:999px;font-family:var(--mono);border:1px solid}
+.cg{background:var(--gdim);color:var(--green);border-color:rgba(126,232,184,.2)}
+.ca{background:var(--adim);color:var(--amber);border-color:rgba(255,201,106,.2)}
+.cb{background:var(--bdim);color:var(--blue);border-color:rgba(106,180,255,.2)}
+.cp{background:var(--pdim);color:var(--purple);border-color:rgba(184,155,255,.2)}
+.cm{background:rgba(218,245,234,.04);color:var(--ink3);border-color:var(--border)}
+.ws-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.ws-cell{border:1px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:all .15s;background:var(--card)}
+.ws-cell:hover{border-color:var(--bhi)}
+.ws-cell-ico{font-size:22px;margin-bottom:6px}
+.ws-cell-name{font-size:12px;font-weight:800;font-family:var(--mono);margin-bottom:2px}
+.ws-cell-cnt{font-size:10px;color:var(--ink3);font-family:var(--mono)}
 
-    .avatar, .circle-btn, .spark {
-      width: 42px; height: 42px; border-radius: 50%;
-      display: grid; place-items: center;
-      border: 1px solid rgba(255,255,255,.8);
-      background: rgba(255,255,255,.85);
-      box-shadow: 0 8px 22px rgba(50,70,90,.12);
-      flex: none;
-    }
-    .avatar { color: #c7ced8; font-size: 24px; }
-    .circle-btn { cursor: pointer; font-weight: 800; }
-    .spark {
-      background: radial-gradient(circle at 35% 25%, #fff 0 8%, #9de9ff 15%, #357cff 55%, #8457ff 100%);
-      color: #fff;
-      font-size: 22px;
-      box-shadow: 0 8px 24px rgba(35,105,255,.35);
-    }
+/* FLOAT CAPSULE */
+.float-cap{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;
+  background:rgba(15,20,30,.96);border:1px solid rgba(130,220,180,.18);border-radius:999px;padding:6px 8px;
+  box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 0 1px rgba(130,220,180,.05);z-index:10;backdrop-filter:blur(16px)}
+.cap-ico{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:17px;transition:all .18s;cursor:pointer;flex-shrink:0;border:1px solid transparent}
+.cap-mic{background:rgba(126,232,184,.08);border-color:rgba(126,232,184,.18);color:#daf5ea}
+.cap-mic:hover{background:rgba(126,232,184,.18)}
+.cap-ask{width:44px;height:44px;background:radial-gradient(circle at 38% 35%,#fff 0 5%,#b8e8ff 14%,#4499ff 48%,#9966ff 100%);box-shadow:0 4px 18px rgba(80,140,255,.45);border-color:transparent}
+.cap-ask:hover{transform:scale(1.06);box-shadow:0 6px 22px rgba(80,140,255,.55)}
+.cap-ask-ico{font-size:19px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+.cap-plus{background:rgba(218,245,234,.08);border-color:rgba(218,245,234,.15);color:#daf5ea}
+.cap-plus:hover{background:rgba(218,245,234,.16)}
+.cap-plus.hidden-btn{opacity:0;pointer-events:none}
 
-    .section-title { display:flex; align-items:end; justify-content:space-between; margin: 6px 0 10px; }
-    .section-title h2 { margin:0; font-size: 28px; line-height: 1; letter-spacing: -.04em; }
-    .small-link { color: var(--blue); font-size: 13px; font-weight: 700; cursor: pointer; }
+/* UNIFIED FILE DETAIL */
+.file-hero{margin:11px 14px 0;background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;flex-shrink:0}
+.fh-info{padding:12px 13px 10px}
+.fh-title{font-size:15px;font-weight:900;letter-spacing:-.02em;margin-bottom:4px}
+.fh-meta{display:flex;align-items:center;gap:7px;font-size:10px;font-family:var(--mono);color:var(--ink2);flex-wrap:wrap}
+.fh-sep{width:3px;height:3px;border-radius:50%;background:var(--ink3);flex-shrink:0}
+.fh-status{padding:2px 7px;border-radius:999px;font-size:9px;font-weight:900;font-family:var(--mono)}
+.fhs-done{background:rgba(126,232,184,.12);color:var(--green)}
+.fhs-pending{background:var(--adim);color:var(--amber)}
+.audio-player{padding:9px 13px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.ap-btn{width:26px;height:26px;border-radius:50%;background:var(--green);color:#061510;display:grid;place-items:center;font-size:9px;flex-shrink:0}
+.ap-wave{flex:1;height:13px;border-radius:999px;background:repeating-linear-gradient(90deg,rgba(126,232,184,.2) 0 2px,transparent 2px 6px)}
+.ap-dur{font-size:10px;font-weight:700;font-family:var(--mono);color:var(--ink2)}
+.img-preview-hero{overflow:hidden;border-top:1px solid var(--border)}
+.img-placeholder-hero{background:rgba(14,18,28,.9);height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8fb8a8;gap:6px}
+.md-preview-hero{padding:12px 13px;border-top:1px solid var(--border);max-height:140px;overflow:hidden;position:relative}
+.md-preview-hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,#0d1118)}
+.md-preview-text{font-size:10px;line-height:1.7;color:#6a9880;font-family:var(--mono)}
 
-    .phone-scroll { overflow:auto; padding: 0 2px 120px; scrollbar-width: none; flex:1; min-height:0; }
-    .phone-scroll::-webkit-scrollbar { display:none; }
+/* AI CTA in hero */
+.ai-cta-row{display:flex;align-items:center;gap:10px;padding:10px 13px;border-top:1px solid var(--border);background:rgba(126,232,184,.03)}
+.ai-cta-row-ico{font-size:14px;color:var(--green);flex-shrink:0}
+.ai-cta-row-body{flex:1;min-width:0}
+.ai-cta-row-title{font-size:11px;font-weight:700;color:#daf5ea}
+.ai-cta-row-sub{font-size:10px;color:#8fb8a8;margin-top:1px}
+.ai-cta-row-btn{background:var(--green);color:#07090e;font-size:11px;font-weight:800;font-family:var(--mono);border:none;padding:6px 14px;border-radius:999px;cursor:pointer;flex-shrink:0}
+.ai-cta-row-btn:hover{opacity:.9}
+.ai-cta-row-btn.loading{background:var(--gdim);color:var(--green);cursor:not-allowed}
 
-    .console-card,
-    .file-card,
-    .digest-card {
-      background: rgba(255,255,255,.86);
-      border: 1px solid rgba(255,255,255,.8);
-      border-radius: var(--radius-lg);
-      padding: 14px;
-      margin-bottom: 10px;
-      cursor: pointer;
-      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-    }
-    .console-card:hover,
-    .file-card:hover,
-    .digest-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(47,70,100,.12); }
-    .console-card.active,
-    .file-card.active { border-color: rgba(36,119,255,.55); box-shadow: 0 12px 30px rgba(36,119,255,.14); }
+/* File Tabs */
+.file-tabs{display:flex;padding:0 14px;margin-top:10px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;scrollbar-width:none;gap:0}
+.file-tabs::-webkit-scrollbar{display:none}
+.ftab{padding:9px 12px;font-size:10px;font-weight:800;font-family:var(--mono);color:var(--ink3);border-bottom:2px solid transparent;transition:all .15s;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.ftab.on{color:var(--green);border-bottom-color:var(--green)}
+.ftab-content{flex:1;overflow-y:auto;scrollbar-width:none}
+.ftab-content::-webkit-scrollbar{display:none}
+.ftp{padding:12px 14px 90px}
+.note-subtabs{display:flex;gap:5px;margin-bottom:11px;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+.note-subtabs::-webkit-scrollbar{display:none}
+.nstab{border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink3);white-space:nowrap;flex-shrink:0;transition:all .15s;cursor:pointer}
+.nstab.on{background:var(--gdim);color:var(--green);border-color:rgba(126,232,184,.3)}
 
-    .card-kicker { display:flex; align-items:center; justify-content:space-between; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-    .card-title { font-weight: 800; margin: 7px 0 4px; line-height: 1.25; }
-    .card-sub { color: var(--muted); font-size: 13px; line-height: 1.45; }
-    .chips { display:flex; flex-wrap:wrap; gap: 6px; margin-top: 10px; }
-    .chip { font-size: 11px; font-weight: 800; padding: 5px 8px; border-radius: 999px; background: #eef4ff; color: #316fc7; }
-    .chip.green { background:#e9f8f0; color:#21875c; }
-    .chip.amber { background:#fff5df; color:#a76c10; }
-    .chip.purple { background:#f0edff; color:#604bd6; }
-    .chip.dark { background:#1d222b; color:#fff; }
-    .badge-dot { min-width: 22px; height:22px; border-radius:999px; background:var(--red); color:#fff; display:inline-grid; place-items:center; font-size: 12px; font-weight:900; padding:0 7px; }
+/* Notes & content */
+.note-card{background:#0d1118;border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;margin-bottom:10px}
+.note-card-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px}
+.note-card-title{font-size:13px;font-weight:800;line-height:1.3;flex:1;min-width:0}
+.note-card-acts{display:flex;gap:5px;flex-shrink:0}
+.nca{font-size:9px;font-weight:800;font-family:var(--mono);border:1px solid var(--border);border-radius:999px;padding:3px 7px;color:var(--ink2);transition:all .15s;cursor:pointer}
+.nca:hover{border-color:var(--bhi);color:var(--green)}
+.note-body{font-size:11px;line-height:1.7;color:#a8d4bc}
+.note-body h3{font-size:12px;font-weight:800;color:var(--ink);margin:10px 0 4px}
+.note-body h4{font-size:11px;font-weight:800;color:var(--ink);margin:8px 0 3px}
+.note-body ul{padding-left:14px;margin-bottom:5px}
+.note-body li{margin-bottom:2px}
+.note-body p{margin-bottom:5px}
+.note-body strong{color:var(--ink)}
+.note-source{display:flex;align-items:center;gap:5px;margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
+.note-source-lbl{font-size:9px;font-family:var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;font-weight:800}
+.note-source-link{font-size:9px;font-family:var(--mono);color:var(--blue);font-weight:700;cursor:pointer}
+.note-source-link:hover{text-decoration:underline}
+.ai-result-lbl{display:block;font-size:10px;font-weight:700;color:#8fb8a8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.ai-result-val{font-size:12px;color:#a8d4bc;line-height:1.6;background:#0a0e14;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+.todo-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:5px;cursor:pointer;transition:all .15s}
+.todo-item:hover{border-color:var(--bhi)}
+.todo-chk{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(126,232,184,.4);display:grid;place-items:center;flex-shrink:0;font-size:8px;color:var(--green)}
+.todo-chk.done{background:var(--green);color:#061510;border-color:var(--green)}
+.todo-body{flex:1;min-width:0}
+.todo-title{font-size:11px;font-weight:700;line-height:1.3}
+.todo-title.done{text-decoration:line-through;color:var(--ink3)}
+.todo-meta{font-size:9px;font-family:var(--mono);color:var(--ink3);margin-top:1px}
+.claim-btn{font-size:9px;font-weight:900;font-family:var(--mono);color:var(--green);border:1px solid rgba(126,232,184,.25);border-radius:999px;padding:3px 8px;background:var(--gdim);white-space:nowrap;transition:all .15s}
+.claim-btn:hover{background:rgba(126,232,184,.14)}
+.claimed-badge{font-size:9px;font-family:var(--mono);color:var(--ink3)}
 
-    .tabs { display:flex; gap:8px; margin: 8px 0 12px; }
-    .tab { border:0; padding:8px 13px; border-radius:999px; background:rgba(255,255,255,.72); color:#8a94a2; cursor:pointer; font-weight:800; }
-    .tab.active { background:#1e222a; color:#fff; }
+/* Speaker transcript */
+.spk-block{border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden}
+.spk-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:rgba(14,18,28,.7);cursor:pointer}
+.spk-name{font-size:11px;font-weight:800;font-family:var(--mono);display:flex;align-items:center;gap:6px}
+.spk-pct{font-size:9px;color:var(--ink3)}
+.spk-link{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--green);border:1px solid var(--border);border-radius:999px;padding:2px 8px;background:var(--gdim)}
+.spk-body{padding:9px 12px;display:flex;flex-direction:column;gap:6px}
+.spk-seg{font-size:11px;line-height:1.6;color:#a8d4bc}
+.spk-seg-t{font-size:9px;font-family:var(--mono);color:var(--ink3);margin-bottom:2px}
+.pcard{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;cursor:pointer;transition:all .15s}
+.pcard:hover{border-color:var(--bhi)}
+.pav{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#357cff,#7ee8b8);display:grid;place-items:center;font-size:13px;font-weight:800;flex-shrink:0;color:#061510}
+.pav.unknown{background:rgba(255,201,106,.15);color:var(--amber)}
+.pname{font-size:12px;font-weight:800}
+.psub{font-size:10px;color:var(--ink2);font-family:var(--mono);margin-top:1px}
+.unlinked{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--amber);background:var(--adim);border:1px solid rgba(255,201,106,.2);border-radius:999px;padding:1px 6px}
+.rel-file-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.rel-file-row:last-child{border-bottom:none}
+.rel-file-row:hover{background:var(--gdim)}
+.rel-file-ico{font-size:22px;flex-shrink:0}
+.rel-file-info{flex:1;min-width:0}
+.rel-file-name{font-size:13px;font-weight:600;color:#daf5ea;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rel-file-meta{font-size:11px;color:#8fb8a8;margin-top:2px}
+.rel-file-unlink{font-size:13px;color:var(--ink3);padding:4px;flex-shrink:0;cursor:pointer;border-radius:50%;transition:all .15s}
+.rel-file-unlink:hover{color:#daf5ea;background:rgba(255,100,100,.15)}
 
-    .console-terminal {
-      border-radius: 22px;
-      padding: 12px;
-      margin-bottom: 18px;
-      background:
-        linear-gradient(180deg, rgba(22, 30, 38, .96), rgba(10, 15, 22, .96)),
-        radial-gradient(circle at 10% 0%, rgba(27,187,211,.18), transparent 36%);
-      color: #d8f7e8;
-      box-shadow: 0 18px 36px rgba(6, 12, 20, .28);
-      border: 1px solid rgba(137, 255, 211, .16);
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
-    .terminal-toolbar {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      padding-bottom:10px;
-      border-bottom:1px solid rgba(216,247,232,.12);
-      margin-bottom:8px;
-      color:#8ff5cf;
-      font-size:12px;
-      font-weight:800;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-    }
-    .terminal-chat {
-      border:1px solid rgba(143,245,207,.24);
-      background:rgba(143,245,207,.08);
-      color:#d8f7e8;
-      border-radius:999px;
-      padding:7px 10px;
-      cursor:pointer;
-      font-size:11px;
-      font-weight:900;
-    }
-    .terminal-line {
-      display:grid;
-      grid-template-columns: 62px 1fr auto;
-      gap:8px;
-      align-items:start;
-      padding:8px 0;
-      border-bottom:1px dashed rgba(216,247,232,.1);
-      cursor:pointer;
-    }
-    .terminal-line:last-child { border-bottom:0; }
-    .terminal-time { color:#5bd8b4; font-size:11px; opacity:.95; }
-    .terminal-title { font-size:12px; font-weight:900; color:#f2fff9; margin-bottom:3px; }
-    .terminal-desc { font-size:11px; color:rgba(216,247,232,.72); line-height:1.35; }
-    .terminal-status { font-size:10px; border-radius:999px; padding:3px 6px; color:#091015; background:#8ff5cf; font-weight:900; }
-    .terminal-status.pending { background:#ffd166; }
-    .terminal-status.info { background:#9dc2ff; }
+/* Workspace list */
+.ws-list-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.ws-list-item:last-child{border-bottom:none}
+.ws-list-item:hover{background:var(--gdim)}
+.wli-ico{width:30px;height:30px;border-radius:8px;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;flex-shrink:0;margin-top:1px}
+.wli-body{flex:1;min-width:0}
+.wli-title{font-size:12px;font-weight:700;line-height:1.35;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wli-meta{font-size:10px;color:var(--ink3);font-family:var(--mono);display:flex;align-items:center;gap:5px}
+.wli-src{font-size:9px;color:var(--blue);font-family:var(--mono);border:1px solid rgba(106,180,255,.18);border-radius:999px;padding:1px 6px}
+.wli-right{flex-shrink:0;margin-left:6px;align-self:center}
 
-    .files-head {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin: 2px 0 12px;
-    }
-    .files-view-btn {
-      border:0;
-      background:transparent;
-      padding:8px 4px;
-      display:flex;
-      align-items:center;
-      gap:6px;
-      cursor:pointer;
-      min-width:0;
-    }
-    .files-view-label {
-      font-size:28px;
-      font-weight:900;
-      letter-spacing:-.05em;
-      line-height:1;
-    }
-    .files-chevron { color:var(--muted); font-weight:900; }
-    .filter-btn {
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.86);
-      border-radius:999px;
-      padding:10px 13px;
-      font-size:12px;
-      font-weight:900;
-      cursor:pointer;
-    }
+/* Asset detail */
+.asset-hero{padding:14px 17px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.asset-type-row{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.asset-type-ico{width:28px;height:28px;border-radius:8px;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;flex-shrink:0}
+.asset-type-lbl{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.07em}
+.asset-title{font-size:17px;font-weight:900;letter-spacing:-.03em;line-height:1.3;margin-bottom:8px}
+.asset-source{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid rgba(106,180,255,.2);border-radius:999px;background:var(--bdim);cursor:pointer;transition:all .15s}
+.asset-source:hover{border-color:rgba(106,180,255,.4)}
+.asset-source-lbl{font-size:9px;font-family:var(--mono);color:var(--ink3);font-weight:700}
+.asset-source-val{font-size:9px;font-family:var(--mono);color:var(--blue);font-weight:800}
+.asset-body{padding:14px 17px}
+.asset-content{font-size:12px;line-height:1.75;color:#a8d4bc;margin-bottom:14px}
+.asset-content h3{font-size:13px;font-weight:800;color:var(--ink);margin:12px 0 5px}
+.asset-content ul{padding-left:14px;margin-bottom:6px}
+.asset-content li{margin-bottom:3px}
+.asset-content p{margin-bottom:6px}
+.asset-content strong{color:var(--ink)}
+.todo-fields{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.todo-field{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;border:1px solid var(--border);border-radius:var(--rs);background:var(--card)}
+.tf-lbl{font-size:10px;font-weight:700;font-family:var(--mono);color:var(--ink3)}
+.tf-val{font-size:11px;font-weight:700;font-family:var(--mono)}
+.tf-btn{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--green);border:1px solid rgba(126,232,184,.25);border-radius:999px;padding:3px 8px;background:var(--gdim)}
 
-    .view-sheet-mask {
-      position:absolute;
-      inset:0;
-      z-index:50;
-      display:none;
-      align-items:flex-end;
-      background:rgba(0,0,0,.42);
-    }
-    .view-sheet-mask.show { display:flex; }
-    .view-sheet {
-      width:100%;
-      height: calc(100% - 52px);
-      border-radius:22px 22px 0 0;
-      background:#fff;
-      box-shadow:0 -18px 46px rgba(15,23,42,.18);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      animation: sheetIn .24s ease-out;
-    }
-    @keyframes sheetIn { from { transform:translateY(100%); } to { transform:translateY(0); } }
-    .sheet-handle { height:24px; display:grid; place-items:center; }
-    .sheet-handle::after { content:""; width:38px; height:4px; border-radius:99px; background:rgba(0,0,0,.16); }
-    .sheet-header { display:flex; align-items:center; justify-content:space-between; padding:6px 16px 14px; border-bottom:1px solid var(--line); }
-    .sheet-header b { font-size:18px; }
-    .sheet-close { width:42px; height:42px; border:0; border-radius:50%; background:#f4f6f8; cursor:pointer; font-size:18px; }
-    .sheet-body { overflow:auto; padding:10px 0 28px; }
-    .sheet-label { padding:10px 16px 6px; color:var(--muted); font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; }
-    .sheet-option, .sheet-folder-row {
-      min-height:48px;
-      display:flex;
-      align-items:center;
-      gap:12px;
-      padding:0 16px;
-      cursor:pointer;
-      border:0;
-      width:100%;
-      background:transparent;
-      text-align:left;
-      font-weight:800;
-    }
-    .sheet-option:hover, .sheet-folder-row:hover { background:rgba(36,119,255,.06); }
-    .sheet-option.selected, .sheet-folder-row.selected { background:rgba(36,119,255,.1); color:var(--blue); }
-    .folder-icon {
-      width:32px;
-      height:32px;
-      border-radius:10px;
-      display:grid;
-      place-items:center;
-      background:#eef4ff;
-      color:#316fc7;
-      flex:none;
-    }
-    .folder-count { margin-left:auto; color:var(--muted); font-size:13px; }
-    .folder-more { width:36px; height:36px; border:0; border-radius:50%; background:transparent; color:var(--muted); cursor:pointer; }
+/* Contact detail */
+.contact-hero{padding:16px 17px 13px;border-bottom:1px solid var(--border);flex-shrink:0}
+.contact-av{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#357cff,#7ee8b8);display:grid;place-items:center;font-size:20px;font-weight:800;color:#061510;margin-bottom:10px}
+.contact-name{font-size:18px;font-weight:900;letter-spacing:-.03em;margin-bottom:3px}
+.contact-sub{font-size:12px;color:var(--ink2);font-family:var(--mono)}
+.contact-body{padding:12px 17px}
+.cf-row{margin-bottom:10px}
+.cf-lbl{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+.cf-val{font-size:12px;font-weight:700}
+.related-note{font-size:11px;padding:7px 9px;border-radius:var(--rs);background:var(--card);border:1px solid var(--border);color:var(--ink2);line-height:1.45;margin-bottom:4px}
 
-    .bottom-action {
-      position: absolute;
-      left: 50%; bottom: 22px;
-      transform: translateX(-50%);
-      display:flex; align-items:center; gap:10px;
-      padding:7px;
-      border-radius:999px;
-      background:rgba(8, 13, 18, .92);
-      border:1px solid rgba(143,245,207,.26);
-      box-shadow: 0 18px 42px rgba(5,10,16,.34);
-      backdrop-filter: blur(14px);
-      font-family:"SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
-    .add-note {
-      border:0; border-radius:999px; padding:12px 18px;
-      color:#d8f7e8; font-weight:900; cursor:pointer;
-      background:rgba(143,245,207,.1);
-      letter-spacing:-.02em;
-    }
-    .plus {
-      min-width:44px; height:40px; border:0; border-radius:999px;
-      background:#8ff5cf; color:#091015; font-size:13px; font-weight:1000;
-      cursor:pointer; padding:0 14px;
-      font-family:inherit;
-    }
+/* Chat */
+.ctx-banner{padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(106,180,255,.04);display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .15s}
+.ctx-banner:hover{background:rgba(106,180,255,.08)}
+.ctx-banner-ico{font-size:14px;flex-shrink:0}
+.ctx-banner-body{flex:1;min-width:0}
+.ctx-banner-lbl{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--blue);text-transform:uppercase;letter-spacing:.07em;margin-bottom:1px}
+.ctx-banner-val{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctx-banner-sub{font-size:10px;color:var(--ink2);font-family:var(--mono)}
+.ctx-banner-arr{font-size:12px;color:var(--ink3);flex-shrink:0}
+.chat-area{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chat-area::-webkit-scrollbar{display:none}
+.chat-inner{padding:12px 13px 16px;display:flex;flex-direction:column;gap:10px}
+.brow-u{display:flex;justify-content:flex-end}
+.bu-text{max-width:75%;background:rgba(126,232,184,.1);border:1px solid rgba(126,232,184,.22);border-radius:16px 16px 4px 16px;padding:9px 12px;font-size:12px;line-height:1.6}
+.bu-voice{max-width:82%;background:rgba(14,18,28,.9);border:1px solid rgba(126,232,184,.18);border-radius:16px 16px 4px 16px;padding:10px 12px;width:100%}
+.bv-player{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.bv-btn{width:24px;height:24px;border-radius:50%;background:var(--green);color:#061510;display:grid;place-items:center;font-size:8px;flex-shrink:0}
+.bv-wave{flex:1;height:11px;border-radius:999px;background:repeating-linear-gradient(90deg,rgba(126,232,184,.22) 0 2px,transparent 2px 5px)}
+.bv-dur{font-size:10px;font-weight:700;font-family:var(--mono);color:var(--ink2)}
+.bv-transcript{font-size:11px;line-height:1.6;color:#a8d4bc;padding-top:7px;border-top:1px solid var(--border)}
+.bv-tran-lbl{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--green);margin-bottom:3px}
+.bv-tran-text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.bv-tran-text.expanded{display:block}
+.bv-expand{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--green);margin-top:4px;cursor:pointer}
+.brow-a{display:flex;justify-content:flex-start}
+.ba{max-width:90%;background:#0d1118;border:1px solid var(--border);border-radius:4px 16px 16px 16px;padding:10px 12px;font-size:12px;line-height:1.65;width:100%}
+.ba-lbl{font-size:9px;font-weight:900;font-family:var(--mono);color:var(--green);letter-spacing:.08em;display:block;margin-bottom:5px}
+.ba-text p{margin-bottom:4px}.ba-text p:last-child{margin-bottom:0}
+.ba-text strong{color:var(--ink)}
+.ba-text ul{padding-left:13px;margin:4px 0}
+.rcards{margin-top:9px;display:flex;flex-direction:column;gap:6px}
+.rcard{border:1px solid var(--border);border-radius:var(--rs);padding:9px 11px;cursor:pointer;transition:all .15s;background:#0a0e14}
+.rcard:hover{border-color:var(--bhi);background:var(--gdim)}
+.rcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:7px;margin-bottom:3px}
+.rcard-left{flex:1;min-width:0}
+.rcard-title{font-size:12px;font-weight:700;line-height:1.35;margin-bottom:2px}
+.rcard-meta{font-size:10px;color:var(--ink3);font-family:var(--mono)}
+.rcard-type{font-size:9px;font-weight:900;font-family:var(--mono);padding:2px 7px;border-radius:999px;flex-shrink:0;border:1px solid}
+.rt-todo{background:var(--adim);color:var(--amber);border-color:rgba(255,201,106,.2)}
+.rt-note{background:var(--gdim);color:var(--green);border-color:rgba(126,232,184,.2)}
+.rt-idea{background:var(--bdim);color:var(--blue);border-color:rgba(106,180,255,.2)}
+.rt-contact{background:var(--pdim);color:var(--purple);border-color:rgba(184,155,255,.2)}
+.rcard-body{font-size:11px;color:#a8d4bc;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
+.rcard-acts{margin-top:7px;display:flex;justify-content:flex-end;gap:5px}
+.rca-claim{font-size:9px;font-weight:900;font-family:var(--mono);color:var(--green);border:1px solid rgba(126,232,184,.25);border-radius:999px;padding:3px 9px;background:var(--gdim)}
+.rca-view{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--blue);border:1px solid rgba(106,180,255,.2);border-radius:999px;padding:3px 9px;background:var(--bdim)}
+.rca-claimed{font-size:9px;font-family:var(--mono);color:var(--ink3)}
+.save-note-btn{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink3);border:1px solid var(--border);border-radius:999px;padding:3px 9px;background:transparent;transition:all .15s;cursor:pointer}
+.save-note-btn:hover{border-color:var(--bhi);color:var(--green)}
+.save-note-btn.saved{color:var(--green);border-color:rgba(126,232,184,.2);background:var(--gdim)}
+.pcards{margin-top:9px;display:flex;flex-direction:column;gap:4px}
+.pcard-btn{border:1px solid var(--border);border-radius:var(--rs);padding:7px 10px;font-size:11px;font-weight:700;text-align:left;color:var(--ink2);transition:all .15s;background:rgba(10,14,20,.4)}
+.pcard-btn:hover{border-color:var(--bhi);color:var(--green);background:var(--gdim)}
+.chat-bar{padding:7px 12px 18px;border-top:1px solid var(--border);display:flex;gap:6px;align-items:center;flex-shrink:0;background:rgba(7,9,14,.95)}
+.chat-input{flex:1;background:rgba(14,18,28,.9);border:1px solid var(--border);border-radius:999px;padding:8px 13px;font-size:11px;font-family:var(--mono);transition:border .15s}
+.chat-input:focus{border-color:rgba(126,232,184,.3)}
+.chat-input::placeholder{color:var(--ink3)}
+.chat-send{width:32px;height:32px;border-radius:50%;background:var(--green);color:#061510;display:grid;place-items:center;font-size:13px;font-weight:900;flex-shrink:0}
+.chat-mic{width:32px;height:32px;border-radius:50%;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;color:var(--ink2);flex-shrink:0;transition:all .15s}
+.chat-mic:hover{border-color:var(--bhi)}
 
-    .workspace-head { padding: 18px 20px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.45); }
-    .workspace-head h1 { margin:0; font-size: clamp(19px, 2vw, 28px); letter-spacing: -.04em; }
-    .meta { color: var(--muted); font-size: 13px; margin-top: 3px; }
-    .pill-btn { border:0; border-radius:999px; padding:9px 12px; background:#fff; font-weight:800; cursor:pointer; box-shadow: 0 6px 18px rgba(30,50,80,.08); }
-    .pill-btn.primary { background:#1f2530; color:#fff; }
-    .pill-btn.blue { background:var(--blue); color:#fff; }
-
-    .workspace-body { padding: 0 0 88px; overflow:auto; flex:1; display:grid; grid-template-rows: auto auto 1fr auto; gap:14px; scrollbar-width:none; }
-    .workspace-body::-webkit-scrollbar { display:none; }
-    .generated-row { display:flex; gap:10px; overflow:auto; padding-bottom: 3px; scrollbar-width:none; }
-    .generated-row::-webkit-scrollbar { display:none; }
-    .generated-panel {
-      display:none;
-      border:1px solid rgba(143,245,207,.16);
-      background: rgba(10,16,22,.72);
-      border-radius: 18px;
-      padding: 10px;
-      max-height: 188px;
-      overflow:auto;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
-    .generated-panel.show { display:block; }
-    .generated-panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#8ff5cf; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
-    .result-block {
-      min-width: 116px;
-      border:0;
-      border-radius: 18px;
-      padding: 12px;
-      background:#fff;
-      box-shadow: 0 10px 24px rgba(34,56,80,.1);
-      cursor:pointer;
-      text-align:left;
-    }
-    .result-block b { display:block; font-size: 22px; margin-bottom:2px; }
-    .result-block span { font-size: 12px; color:var(--muted); font-weight:800; }
-    .result-block.active { border-color: rgba(143,245,207,.5); color:#8ff5cf; }
-
-    .turn-stage {
-      min-height: 0;
-      display:grid;
-      grid-template-columns: 48px 1fr;
-      gap:14px;
-      align-items:stretch;
-    }
-    .turn-stage.no-nav { grid-template-columns: 1fr; }
-    .turn-nav { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
-    .nav-btn { width:38px; height:38px; border:0; border-radius:50%; background:#fff; cursor:pointer; font-weight:900; box-shadow:0 8px 20px rgba(30,50,80,.1); }
-    .turn-count { writing-mode: vertical-rl; color:var(--muted); font-size:12px; font-weight:800; }
-
-    .turn-card { min-height:0; border-radius:24px; background:rgba(255,255,255,.74); border:1px solid rgba(255,255,255,.85); padding:16px; display:grid; grid-template-rows:auto 1fr; gap:12px; overflow:hidden; }
-    .input-strip { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .input-type { border-radius:999px; padding:7px 10px; font-size:12px; font-weight:900; background:#eef4ff; color:#2b67bd; }
-    .input-text { color:#384252; font-weight:700; }
-    .conversation { min-height:0; overflow:auto; padding-right:4px; }
-    .turn-card > .conversation:only-child { grid-row: 1 / -1; }
-    .bubble { max-width: 88%; padding:14px 16px; border-radius:20px; margin: 0 0 12px; line-height:1.55; box-shadow:0 10px 22px rgba(35,55,80,.08); }
-    .turn-card > .conversation:only-child .bubble { max-width:100%; }
-    .bubble.user { background:#eaf2ff; margin-left:auto; border-bottom-right-radius:6px; }
-    .bubble.agent { background:#fff; border-bottom-left-radius:6px; }
-    .bubble h3 { margin:0 0 8px; font-size:15px; }
-    .bubble p { margin: 0 0 8px; }
-    .audio-card {
-      border:1px solid rgba(143,245,207,.16);
-      background:rgba(143,245,207,.08);
-      border-radius:18px;
-      padding:12px;
-      margin-bottom:12px;
-    }
-    .audio-row { display:flex; align-items:center; gap:10px; font-weight:900; }
-    .play-dot {
-      width:34px;
-      height:34px;
-      border-radius:50%;
-      display:grid;
-      place-items:center;
-      background:#8ff5cf;
-      color:#071015;
-      flex:none;
-    }
-    .wave {
-      height:18px;
-      flex:1;
-      border-radius:999px;
-      background:repeating-linear-gradient(90deg, rgba(143,245,207,.25) 0 4px, transparent 4px 8px);
-    }
-    .audio-meta { margin-top:8px; color:rgba(216,247,232,.62); font-size:12px; }
-    .transcript-card {
-      border:1px dashed rgba(143,245,207,.22);
-      border-radius:16px;
-      padding:12px;
-      margin-bottom:12px;
-      background:rgba(5,8,12,.35);
-    }
-
-    .source-row { display:flex; align-items:center; gap:10px; overflow:auto; scrollbar-width:none; }
-    .source-row::-webkit-scrollbar { display:none; }
-    .source-card { flex: none; border:0; border-radius:16px; padding:10px 12px; background:rgba(255,255,255,.85); cursor:pointer; font-weight:800; color:#3b4655; }
-    .source-card.empty { color:#9aa2ad; cursor:default; }
-    .continue-row { display:flex; gap:10px; align-items:center; }
-    .continue-row input { flex:1; border:1px solid var(--line); border-radius:999px; padding:13px 16px; outline:none; background:#fff; font-weight:700; }
-
-    .drawer-card { background:#111821; color:#dbeafe; border-radius:18px; padding:14px; overflow:auto; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
-    pre { margin:0; font-size:12px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
-    .drawer-card { background:#fff; color:var(--ink); }
-    .drawer-title { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:10px; }
-    .drawer-title b { font-size:15px; }
-    .item-row { border-top:1px solid var(--line); padding:10px 0; cursor:pointer; }
-    .item-row:first-of-type { border-top:0; }
-    .item-row b { display:block; margin-bottom:3px; }
-    .item-row span { color:var(--muted); font-size:12px; }
-    .candidate { display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid var(--line); padding:10px 0; }
-
-    .hidden { display:none !important; }
-
-    /* === Old-school terminal theme override === */
-    body {
-      color: #d8f7e8;
-      background:
-        radial-gradient(circle at 12% 10%, rgba(143,245,207,.12), transparent 28%),
-        radial-gradient(circle at 86% 0%, rgba(255,209,102,.1), transparent 25%),
-        linear-gradient(180deg, #070b0f 0%, #0b1017 52%, #05070a 100%);
-    }
-    .phone,
-    .workspace {
-      border-color: rgba(143,245,207,.18);
-      background: rgba(8, 13, 18, .92);
-      box-shadow: 0 24px 80px rgba(0,0,0,.42);
-    }
-    .phone {
-      background:
-        linear-gradient(180deg, rgba(12,18,24,.96), rgba(4,8,12,.96)),
-        repeating-linear-gradient(0deg, transparent 0, transparent 13px, rgba(143,245,207,.025) 14px);
-    }
-    .statusbar,
-    .meta,
-    .card-sub,
-    .folder-count,
-    .files-chevron {
-      color: rgba(216,247,232,.62);
-    }
-    .avatar,
-    .circle-btn,
-    .pill-btn,
-    .filter-btn,
-    .source-card,
-    .nav-btn {
-      border-color: rgba(143,245,207,.2);
-      background: rgba(143,245,207,.08);
-      color: #d8f7e8;
-      box-shadow: none;
-    }
-    .pill-btn.primary,
-    .pill-btn.blue {
-      background: #8ff5cf;
-      color: #071015;
-    }
-    .workspace-head {
-      background: rgba(143,245,207,.06);
-      border-bottom-color: rgba(143,245,207,.14);
-    }
-    .files-view-label,
-    .workspace-head h1 {
-      color: #f2fff9;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      letter-spacing: -.06em;
-    }
-    .file-card,
-    .digest-card,
-    .turn-card,
-    .drawer-card {
-      background: rgba(10, 16, 22, .88);
-      border-color: rgba(143,245,207,.16);
-      color: #d8f7e8;
-      box-shadow: inset 0 0 0 1px rgba(143,245,207,.05);
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
-    .file-card:hover,
-    .digest-card:hover {
-      border-color: rgba(143,245,207,.44);
-      box-shadow: 0 14px 34px rgba(0,0,0,.2);
-    }
-    .card-kicker {
-      color: #8ff5cf;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
-    .chip {
-      background: rgba(143,245,207,.1);
-      color: #8ff5cf;
-    }
-    .chip.green,
-    .chip.amber,
-    .chip.purple {
-      background: rgba(255,209,102,.1);
-      color: #ffd166;
-    }
-    .badge-dot {
-      background: #ffd166;
-      color: #071015;
-    }
-    .result-block {
-      background: rgba(10,16,22,.92);
-      border: 1px solid rgba(143,245,207,.16);
-      color: #d8f7e8;
-      box-shadow: none;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
-    .result-block span {
-      color: rgba(216,247,232,.65);
-    }
-    .input-type {
-      background: rgba(143,245,207,.12);
-      color: #8ff5cf;
-    }
-    .input-text {
-      color: rgba(216,247,232,.82);
-    }
-    .bubble.agent {
-      background: rgba(143,245,207,.08);
-      color: #d8f7e8;
-      box-shadow: none;
-    }
-    .markdown-doc {
-      white-space: pre-wrap;
-      line-height: 1.58;
-      max-height: 460px;
-      overflow:auto;
-    }
-    .prompt-grid { display:grid; gap:10px; margin-top:14px; }
-    .prompt-card {
-      border:1px solid rgba(143,245,207,.16);
-      background: rgba(216,247,232,.06);
-      border-radius: 16px;
-      padding: 12px;
-      color:#d8f7e8;
-      cursor:pointer;
-      text-align:left;
-      font-weight:800;
-      line-height:1.35;
-    }
-    .prompt-card:hover { border-color: rgba(143,245,207,.42); color:#8ff5cf; }
-    .bubble.user {
-      background: rgba(255,209,102,.1);
-      color: #fff2c6;
-      box-shadow: none;
-    }
-    .continue-row input {
-      background: rgba(5,8,12,.92);
-      border-color: rgba(143,245,207,.18);
-      color: #d8f7e8;
-    }
-    .view-sheet {
-      background: #090e14;
-      color: #d8f7e8;
-      border: 1px solid rgba(143,245,207,.16);
-    }
-    .sheet-header {
-      border-bottom-color: rgba(143,245,207,.14);
-    }
-    .sheet-close,
-    .sheet-option,
-    .sheet-folder-row {
-      color: #d8f7e8;
-    }
-    .sheet-close,
-    .folder-icon {
-      background: rgba(143,245,207,.1);
-    }
-    .sheet-option.selected,
-    .sheet-folder-row.selected,
-    .sheet-option:hover,
-    .sheet-folder-row:hover {
-      background: rgba(143,245,207,.1);
-      color: #8ff5cf;
-    }
-
-    @media (max-width: 1100px) {
-      body { overflow:auto; }
-      .shell { height:auto; min-height:100vh; }
-      .phone { min-height: 720px; position:relative; }
-      .workspace { min-height: 640px; }
-    }
-  </style>
+/* Sheets */
+.sh-ov{position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:200;display:none;align-items:flex-end}
+.sh-ov.show{display:flex}
+.sh{width:100%;max-height:72%;border-radius:22px 22px 0 0;background:rgba(10,14,22,.98);border:1px solid var(--border);border-bottom:none;display:flex;flex-direction:column;overflow:hidden;animation:slideup .24s cubic-bezier(.4,0,.2,1)}
+@keyframes slideup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sh-handle{padding:9px;display:grid;place-items:center;flex-shrink:0;cursor:pointer}
+.sh-handle-bar{width:34px;height:4px;border-radius:999px;background:rgba(126,232,184,.18)}
+.sh-header{display:flex;align-items:center;justify-content:space-between;padding:0 15px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.sh-title{font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)}
+.sh-close{width:24px;height:24px;border-radius:50%;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;color:var(--ink2)}
+.sh-body{overflow-y:auto;scrollbar-width:none;flex:1;padding-bottom:10px}
+.sh-body::-webkit-scrollbar{display:none}
+.sh-hint{padding:9px 15px;font-size:10px;font-family:var(--mono);color:var(--ink3)}
+.sh-cand-row{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;border-bottom:1px solid var(--border)}
+.sh-cand-row:last-child{border-bottom:none}
+.sh-cand-name{font-size:12px;font-weight:800;margin-bottom:1px}
+.sh-cand-sub{font-size:10px;color:var(--ink2);font-family:var(--mono)}
+.sh-cand-acts{display:flex;gap:5px;flex-shrink:0;margin-left:10px}
+.sh-btn-sec{font-size:9px;font-weight:800;font-family:var(--mono);border:1px solid var(--border);border-radius:999px;padding:4px 9px;color:var(--ink2)}
+.sh-btn-pri{font-size:9px;font-weight:800;font-family:var(--mono);border:1px solid rgba(126,232,184,.3);border-radius:999px;padding:4px 9px;color:#061510;background:var(--green)}
+.empty-state{padding:32px 16px;text-align:center;color:#8fb8a8}
+.es-ico{font-size:32px;margin-bottom:8px}
+.es-txt{font-size:13px;font-weight:600;color:#daf5ea;margin-bottom:4px}
+.es-sub{font-size:11px;line-height:1.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:12px;height:12px;border:2px solid rgba(255,201,106,.25);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+.analyzing-row{display:flex;align-items:center;gap:7px;font-size:11px;font-family:var(--mono);color:var(--amber)}
+.hist-list{display:flex;flex-direction:column;gap:8px;padding:4px 0 8px}
+.hist-item{background:#0d1118;border:1px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;flex-direction:column;gap:3px;cursor:pointer;transition:border-color .15s}
+.hist-item:hover{border-color:rgba(126,232,184,.35)}
+.hist-item-title{font-size:13px;font-weight:600;color:#daf5ea}
+.hist-item-meta{font-size:11px;color:#8fb8a8}
+.hist-item-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:999px;border:1px solid;margin-bottom:2px}
+.hb-flash{background:var(--adim);color:var(--amber);border-color:rgba(255,201,106,.25)}
+.hb-ask{background:var(--gdim);color:var(--green);border-color:var(--border)}
+.hidden{display:none!important}
+</style>
 </head>
 <body>
-  <main class="shell">
-    <section class="phone" aria-label="Eureka App">
-      <div class="statusbar"><span>9:41</span><span>●●●  Wi‑Fi  ▰</span></div>
+<div class="shell">
+  <div class="sbar"><span>9:41</span><span>&#128310; WiFi</span></div>
+  <div class="pages" id="pages">
 
-      <div id="homeView">
-        <div class="phone-head">
-          <div class="avatar">◕</div>
-          <button class="pill-btn" onclick="showHome()">Eureka Agent</button>
-          <button class="circle-btn" onclick="showHome()">⌘</button>
-        </div>
-
-        <div class="phone-scroll">
-          <div class="console-terminal">
-            <div class="terminal-toolbar">
-              <span>agent console</span>
-              <div style="display:flex;gap:6px">
-                <button class="terminal-chat" onclick="openFlash()">open flash</button>
-                <button class="terminal-chat" onclick="openConversation()">new chat</button>
+    <!-- HOME PAGE -->
+    <div class="page" id="p-home">
+      <div class="home-hdr">
+        <div class="logo">&#10022;</div>
+        <span class="wordmark">Eureka 3.0</span>
+        <div class="avatar">&#9673;</div>
+      </div>
+      <div class="scroll">
+        <div style="padding:0 14px 100px">
+          <div class="console">
+            <div class="con-hdr">
+              <span>agent_console</span>
+              <div class="con-btns">
+                <button class="con-btn" onclick="openFlash()">&#127897; Flash</button>
+                <button class="con-btn" onclick="openAsk(null)">New Chat</button>
               </div>
             </div>
-            <div id="consoleList"></div>
+            <div id="con-list"></div>
           </div>
-
-          <div class="files-head">
-            <button class="files-view-btn" onclick="toggleFolderSheet()" aria-label="筛选和排序">
-              <span class="files-view-label" id="filesViewLabel">全部文件 (3)</span>
-              <span class="files-chevron">⌄</span>
+          <div class="sec-hdr">
+            <button style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:0" onclick="openFolderSheet()">
+              <span class="sec-title" id="files-folder-label">全部文件</span>
+              <span style="font-size:13px;color:#8fb8a8;margin-top:2px">&#8964;</span>
             </button>
-            <button class="filter-btn" id="typeFilterLabel" onclick="cycleTypeFilter()">全部</button>
+            <button class="sec-more" onclick="openFolderSheet()">切换</button>
           </div>
-          <div id="filesList"></div>
-        </div>
-        <div class="bottom-action"><button class="add-note" onclick="openFlash()">capture</button><button class="plus" onclick="showHome()">+</button></div>
-      </div>
-
-      <section class="workspace hidden" id="workspaceView" aria-label="Session Workspace">
-        <div class="workspace-head">
-          <button class="circle-btn" onclick="showHome()">‹</button>
-          <div style="min-width:0;flex:1"><h1 id="workspaceTitle">Agent Console</h1><div class="meta" id="workspaceMeta">选择左侧事件或文件开始演示</div></div>
-        </div>
-        <div class="workspace-body">
-          <div class="generated-row" id="generatedRow"></div>
-          <div class="generated-panel" id="generatedPanel"></div>
-          <div class="turn-stage" id="turnStage">
-            <div class="turn-nav" id="turnNav"><button class="nav-btn" onclick="prevTurn()">↑</button><div class="turn-count" id="turnCount">Turn -</div><button class="nav-btn" onclick="nextTurn()">↓</button></div>
-            <div class="turn-card" id="turnCard"></div>
+          <div id="home-files"></div>
+          <div class="sec-hdr" style="margin-top:16px">
+            <span class="sec-title">Workspace</span>
+            <button class="sec-more">管理</button>
           </div>
-          <div>
-            <div class="source-row" id="sourceRow"></div>
-            <div class="continue-row" id="continueRow" style="margin-top:10px"><input id="continueInput" placeholder="Ask about this session..." /><button class="pill-btn blue" onclick="submitFollowup()">Send</button></div>
-          </div>
-        </div>
-      </section>
-
-      <div class="view-sheet-mask" id="folderSheetMask" onclick="closeFolderSheet()">
-        <div class="view-sheet" onclick="event.stopPropagation()">
-          <div class="sheet-handle"></div>
-          <div class="sheet-header"><b>筛选和排序</b><button class="sheet-close" onclick="closeFolderSheet()">×</button></div>
-          <div class="sheet-body">
-            <div class="sheet-label">排序</div>
-            <button class="sheet-option"><span class="folder-icon">v</span><span>修改时间</span><span class="folder-count">降序</span></button>
-            <div class="sheet-label">视图</div>
-            <button class="sheet-option selected" onclick="setFolderView('all','全部文件 (3)')"><span class="folder-icon">☷</span><span>全部文件</span><span class="folder-count">3</span></button>
-            <div class="sheet-label">系统文件夹</div>
-            <div class="sheet-folder-row" onclick="setFolderView('notes','Generated Notes')"><span class="folder-icon">N</span><span>Generated Notes</span><span class="folder-count">1</span><button class="folder-more">⋯</button></div>
-            <div class="sheet-folder-row" onclick="setFolderView('ideas','Ideas')"><span class="folder-icon">I</span><span>Ideas</span><span class="folder-count">2</span><button class="folder-more">⋯</button></div>
-            <div class="sheet-folder-row" onclick="setFolderView('expenses','Expenses')"><span class="folder-icon">¥</span><span>Expenses</span><span class="folder-count">0</span><button class="folder-more">⋯</button></div>
-            <div class="sheet-label">用户文件夹</div>
-            <div class="sheet-folder-row"><span class="folder-icon">□</span><span>My Notes</span><span class="folder-count">0</span><button class="folder-more">⋯</button></div>
-          </div>
+          <div class="ws-grid" id="home-ws"></div>
         </div>
       </div>
-    </section>
-  </main>
+    </div>
 
-  <script>
-    const state = {
-      activeSessionId: null,
-      activeTurnIndex: 0,
-      drawer: null,
-      currentFolderView: 'all',
-      typeFilter: '全部',
-      typeFilters: ['全部','Meeting','Memo','Ideas'],
-      events: [
-        { id:'evt_flash_done', type:'done', title:'闪念已处理', desc:'创建 1 条 Todo，发现 1 个 Contact 待确认', target:'flash', chips:['Todo 1','Contact pending'] },
-        { id:'evt_meeting_wait', type:'pending', title:'新会议 2026-05-06 14:25', desc:'会议录音已上传，点击开始转写并解析', target:'meeting', chips:['待解析'] },
-        { id:'evt_idea_digest', type:'info', title:'idea.MD 已更新', desc:'新增 2 条 idea 记录，可跳回来源 Session', target:'ideas', chips:['Ideas 2'] }
-      ],
-      sessions: {
-        flash: {
-          id:'session_flash', session_type:'flash_note', status:'done', title:'Flash Note', subtitle:'3 new · 1 pending', unread:3,
-          sources: [],
-          turns: [
-            { id:'turn_001', input:{ role:'turn_input', type:'audio', label:'硬件短录音', file_id:'file_flash_audio_001', duration:'00:18', recorded_at:'09:41', transcript:'今晚 5 点开会，另外 Kevin 喜欢喝拿铁。' }, output:{ text:'我提取到了一个待认领 Todo，并发现一条可能属于 Kevin 的联系人信息。', items:[{type:'asset_created', asset_id:'todo_flash_001'}, {type:'contact_update_pending', id:'contact_pending_001'}] } },
-            { id:'turn_002', input:{ role:'turn_input', type:'text', text:'我刚才记录了 Kevin 什么？' }, output:{ text:'你记录了 Kevin 喜欢喝拿铁。该信息还在等待你选择具体的 Kevin 后写入联系人。', items:[] } }
-          ]
-        },
-        meeting: {
-          id:'session_meeting_001', session_type:'meeting', status:'waiting_for_analysis', title:'新会议 2026-05-06 14:25', ai_title:null, subtitle:'23:14 · 待解析',
-          sources: [], turns: []
-        },
-        conversation: {
-          id:'session_conv_001', session_type:'conversation', status:'done', title:'New chat', subtitle:'Global Ask Agent', sources:[],
-          turns:[{ id:'turn_001', input:{role:'turn_input', type:'text', text:'我今天有哪些需要跟进？'}, output:{text:'你今天有 2 个待认领 Todo，其中一个来自闪念，一个来自会议解析。', items:[{type:'assistant_message', id:'msg_conv_001'}]} }]
-        }
-      },
-      assets: {
-        todo_flash_001:{ id:'todo_flash_001', asset_type:'todo', title:'今晚 5 点开会', status:'pending_confirmation', due_at:'2026-05-07T17:00:00+08:00', source_session_id:'session_flash', source_turn_id:'turn_001' },
-        note_meeting_001:{ id:'note_meeting_001', asset_type:'note', title:'产品设计同步会摘要', content_md:`# 产品设计同步会摘要
-
-## 会议背景
-
-本次同步会围绕 BizCard Eureka 3.0 的 Agentic Flow 展开，重点讨论硬件录音、文件、Session、Turn、Asset 与 Ask Agent 之间的关系。团队希望通过一套统一模型，让技术同事能清楚理解数据如何流转，也让管理层能快速看到产品体验上的一致性。
-
-## 关键结论
-
-1. App 首页不再只是 Session List，而是由 Agent Console 与 Files 两个区域组成。
-2. Agent Console 用于承接动态通知、长任务完成、待确认操作和 start new chat。
-3. Files 展示可浏览的内容入口，包括 meeting audio、系统生成 Markdown、用户文件和系统文件夹。
-4. Meeting audio 进入后先形成待解析 Session，用户进入详情后再触发 ASR 与 AI 解析。
-5. Generated Results 属于 Session 级累计结果，切换 turn 时不消失。
-
-## Session Workspace 规则
-
-Session Workspace 是 Ask Agent 的统一交互形态。无论入口来自 meeting、flash note、普通 conversation，还是从某个对象详情页发起 Ask，最终都应该进入同一套工作台语义：
-
-- Session Sources 展示 anchor_input。
-- Current Turn 展示本轮 turn_input 与 Agent output。
-- Generated Results 展示当前 Session 累计生成或更新的结构化结果。
-- Continue Input 只追加新的 turn_input，不重新定义 anchor。
-
-## 后续动作
-
-- 继续完善 demo 中 Generated Results 的一屏展开方式。
-- 确认 note.md 与 idea.MD 的不同展示逻辑。
-- 将 Object Detail Ask 统一为“以当前对象作为 anchor_input 创建 conversation session”。
-- 对 Contact pending、Todo claim、manual asset ask 做进一步演示补充。`, source_session_id:'session_meeting_001', source_turn_id:'turn_001' },
-        todo_meeting_001:{ id:'todo_meeting_001', asset_type:'todo', title:'整理 demo spec', status:'pending_confirmation', source_session_id:'session_meeting_001', source_turn_id:'turn_001' },
-        todo_meeting_002:{ id:'todo_meeting_002', asset_type:'todo', title:'确认 Kevin 的跟进事项', status:'pending_confirmation', source_session_id:'session_meeting_001', source_turn_id:'turn_001' },
-        idea_001:{ id:'idea_001', asset_type:'idea', title:'B2B 市场扩展想法', content_md:'可以考虑从企业销售团队切入，先做客户偏好标签系统。', source_session_id:'session_flash', source_turn_id:'turn_001' },
-        idea_002:{ id:'idea_002', asset_type:'idea', title:'销售周报自动化', content_md:'每周自动总结客户跟进情况，生成销售行动建议。', source_session_id:'session_meeting_001', source_turn_id:'turn_001' }
-      },
-      contacts: {
-        contact_kevin_001:{ id:'contact_kevin_001', name:'Kevin Chen', company:'Acme Corp', title:'Product Lead', notes:['喜欢喝拿铁'] },
-        contact_kevin_002:{ id:'contact_kevin_002', name:'Kevin Wang', company:'Beta Inc', title:'Sales Director', notes:[] }
-      },
-      folders: {
-        ideas:{ title:'idea.MD', type:'digest', asset_type:'idea' },
-        notes:{ title:'Generated Notes', type:'folder', asset_type:'note' },
-        expenses:{ title:'expense.md', type:'digest', asset_type:'expense' }
-      },
-      objectPrompts: {
-        asset: ['Summarize this note into 3 key points.', 'Extract action items from this note.', 'Help me draft a follow-up based on this note.'],
-        contact: ['Summarize what I know about this contact.', 'What should I follow up with this person?', 'Find related notes and sessions for this contact.'],
-        virtual_markdown: ['Group these ideas by direction.', 'Which idea should I prioritize first?', 'Turn these ideas into next-step experiments.']
-      }
-    };
-
-    function renderHome(){
-      const consoleList = document.getElementById('consoleList');
-      consoleList.innerHTML = state.events.map(evt => `
-        <div class="terminal-line" onclick="handleEvent('${evt.id}')">
-          <div class="terminal-time">${evt.type === 'pending' ? 'now' : '09:41'}</div>
-          <div>
-            <div class="terminal-title">> ${evt.title}</div>
-            <div class="terminal-desc">${evt.desc}</div>
-          </div>
-          <div class="terminal-status ${evt.type}">${evt.type}</div>
-        </div>`).join('');
-      const filesList = document.getElementById('filesList');
-      const meeting = state.sessions.meeting;
-      document.getElementById('filesViewLabel').textContent = folderLabel();
-      document.getElementById('typeFilterLabel').textContent = state.typeFilter;
-      const view = state.currentFolderView;
-      const cards = {
-        meeting: meetingCard(meeting),
-        ideas: digestCard('ideas', 'idea.MD', 'idea.MD', '2 条 idea 记录 · 可跳回来源 Session / Turn', 'Ideas', 'purple'),
-        notes: noteFileCard('note_meeting_001'),
-        expenses: digestCard('expenses', 'Expenses', 'expense.md', '暂无记账内容，未来 expense-skill 自动写入', '0', 'amber')
-      };
-      filesList.innerHTML = view === 'ideas' ? cards.ideas
-        : view === 'notes' ? cards.notes
-        : view === 'expenses' ? cards.expenses
-        : cards.meeting + cards.ideas + cards.notes;
-    }
-
-    function meetingCard(meeting){
-      return `<div class="file-card ${state.activeSessionId==='meeting'?'active':''}" onclick="openMeeting()">
-        <div class="card-kicker"><span>Meeting audio</span><span>${meeting.status}</span></div>
-        <div class="card-title">${meeting.ai_title || meeting.title}</div><div class="card-sub">${meeting.subtitle}</div>
-        <div class="chips"><span class="chip green">Meeting</span><span class="chip ${meeting.status==='waiting_for_analysis'?'amber':'green'}">${meeting.status==='waiting_for_analysis'?'待解析':'已解析'}</span></div>
-      </div>`;
-    }
-
-    function digestCard(folder, title, doc, desc, count, color){
-      return `<div class="digest-card" onclick="openDigest('${folder}')">
-        <div class="card-kicker"><span>Markdown file</span></div>
-        <div class="card-title">${title}</div>
-        <div class="card-sub">打开 ${doc} · ${desc}</div>
-        <div class="chips"><span class="chip ${color}">Digest</span><span class="chip">${count}</span></div>
-      </div>`;
-    }
-
-    function noteFileCard(assetId){
-      const a = state.assets[assetId];
-      return `<div class="digest-card" onclick="openNoteFile('${assetId}')">
-        <div class="card-kicker"><span>Markdown file</span></div>
-        <div class="card-title">${a.title}.md</div>
-        <div class="card-sub">Generated Note · 来源 ${a.source_session_id} / ${a.source_turn_id}</div>
-        <div class="chips"><span class="chip green">Note</span><span class="chip">MD</span></div>
-      </div>`;
-    }
-
-    function folderLabel(){
-      return ({all:'全部文件 (3)', notes:'Generated Notes', ideas:'Ideas', expenses:'Expenses'})[state.currentFolderView] || '全部文件';
-    }
-    function toggleFolderSheet(){ document.getElementById('folderSheetMask').classList.add('show'); }
-    function closeFolderSheet(){ document.getElementById('folderSheetMask').classList.remove('show'); }
-    function setFolderView(view){ state.currentFolderView = view; closeFolderSheet(); renderHome(); showInspector('folders'); }
-    function cycleTypeFilter(){
-      const i = state.typeFilters.indexOf(state.typeFilter);
-      state.typeFilter = state.typeFilters[(i + 1) % state.typeFilters.length];
-      renderHome();
-    }
-
-    function handleEvent(id){
-      const evt = state.events.find(e=>e.id===id);
-      if(!evt) return;
-      if(evt.target==='flash') openFlash();
-      if(evt.target==='meeting') openMeeting();
-      if(evt.target==='ideas') openDigest('ideas');
-    }
-
-    function openFlash(){ openSession('flash'); }
-    function openConversation(){ openSession('conversation'); }
-    function openMeeting(){ openSession('meeting'); }
-
-    function showHome(){
-      state.activeSessionId = null;
-      document.getElementById('homeView').classList.remove('hidden');
-      document.getElementById('workspaceView').classList.add('hidden');
-      hideGeneratedPanel();
-      renderHome();
-    }
-
-    function showWorkspace(){
-      document.getElementById('homeView').classList.add('hidden');
-      document.getElementById('workspaceView').classList.remove('hidden');
-    }
-
-    function openSession(id){
-      state.activeSessionId = id; state.activeTurnIndex = 0; state.drawer = null;
-      renderHome(); renderWorkspace(); showInspector('current');
-    }
-
-    function analyzeMeeting(){
-      const s = state.sessions.meeting;
-      s.status = 'done'; s.ai_title = 'Product Design Sync'; s.subtitle = '23:14 · 已解析';
-      s.sources = [
-        { type:'audio', label:'Meeting audio · 23:14', file_id:'file_meeting_001' },
-        { type:'transcript', label:'Transcript · 2,804 words' },
-        { type:'speakers', label:'Speakers · 2' },
-        { type:'attachments', label:'Attachments · 0' }
-      ];
-      s.turns = [
-        { id:'turn_001', input:{ role:'anchor_input', type:'file', label:'会议录音 · Product Design Sync' }, output:{ text:'我已完成会议转写和初步解析，生成了 1 条 Summary Note 和 2 条待认领 Todo。', items:[{type:'asset_created', asset_id:'note_meeting_001'}, {type:'asset_created', asset_id:'todo_meeting_001'}, {type:'asset_created', asset_id:'todo_meeting_002'}] } },
-        { id:'turn_002', input:{ role:'turn_input', type:'text', text:'这场会有哪些 action items？' }, output:{ text:'这场会有两个 action items：整理 demo spec；确认 Kevin 的跟进事项。', items:[{type:'assistant_message', id:'msg_meeting_002'}] } }
-      ];
-      state.events = state.events.map(e => e.id==='evt_meeting_wait' ? { ...e, type:'done', title:'Product Design Sync 已完成解析', desc:'生成 1 条 Summary Note 和 2 条 Todo', chips:['Note 1','Todo 2'] } : e);
-      openSession('meeting');
-    }
-
-    function renderWorkspace(){
-      showWorkspace();
-      const s = state.sessions[state.activeSessionId];
-      const title = document.getElementById('workspaceTitle');
-      const meta = document.getElementById('workspaceMeta');
-      const generated = document.getElementById('generatedRow');
-      const generatedPanel = document.getElementById('generatedPanel');
-      const turnCard = document.getElementById('turnCard');
-      const sourceRow = document.getElementById('sourceRow');
-      setContinueVisible(true);
-      setTurnNavVisible(true);
-      if(!s){
-        setContinueVisible(false);
-        setTurnNavVisible(false);
-        title.textContent = 'Agent Console'; meta.textContent = '选择左侧事件或文件开始演示'; generated.innerHTML=''; generatedPanel.className='generated-panel'; generatedPanel.innerHTML=''; sourceRow.innerHTML='';
-        turnCard.innerHTML = '<div class="bubble agent"><h3>欢迎</h3><p>从左侧 Agent Console 或 Files 选择一个入口。Demo 将在同一个手机窗口中展示 Session、Turn、Generated Results、详情页与 Ask Agent 的关系。</p></div>';
-        document.getElementById('turnCount').textContent = 'Turn -'; return;
-      }
-      title.textContent = s.ai_title || s.title; meta.textContent = `${s.session_type} · ${s.status} · ${s.subtitle || ''}`;
-      if(s.id==='session_meeting_001' && s.status==='waiting_for_analysis'){
-        generated.innerHTML = '<button class="result-block" onclick="analyzeMeeting()"><b>▶</b><span>开始转写并解析</span></button>';
-        generatedPanel.className='generated-panel'; generatedPanel.innerHTML='';
-        sourceRow.innerHTML = '<button class="source-card" onclick="showAnchorInput(\'file\',\'file_meeting_001\')">Meeting audio · 23:14</button>';
-        turnCard.innerHTML = '<div class="input-strip"><span class="input-type">anchor_input · file</span><span class="input-text">会议音频已上传，但尚未解析</span></div><div class="conversation"><div class="bubble agent"><h3>待解析</h3><p>点击上方“开始转写并解析”后，系统会触发 ASR、speaker 识别、summary note 和 todo 提取。</p></div></div>';
-        document.getElementById('turnCount').textContent = 'Waiting'; return;
-      }
-      const counts = aggregateResults(s);
-      generated.innerHTML = Object.keys(counts).length ? Object.entries(counts).map(([k,v]) => `<button class="result-block ${state.drawer===k?'active':''}" onclick="openDrawer('${k}')"><b>${v.length}</b><span>${labelFor(k)}</span></button>`).join('') : '';
-      generatedPanel.className = state.drawer ? 'generated-panel show' : 'generated-panel';
-      generatedPanel.innerHTML = state.drawer ? renderGeneratedPanel(state.drawer, counts[state.drawer] || []) : '';
-      if(s.objectAsk && !s.turns.length){
-        setTurnNavVisible(false);
-        generated.innerHTML = '';
-        generatedPanel.className = 'generated-panel';
-        generatedPanel.innerHTML = '';
-        document.getElementById('turnCount').textContent = 'Ready';
-        turnCard.innerHTML = renderObjectAskLanding(s);
-        sourceRow.innerHTML = renderSourceRow(s);
-        document.getElementById('continueInput').placeholder = `Ask about ${s.anchor_title}...`;
-        return;
-      }
-      const turn = s.turns[state.activeTurnIndex] || s.turns[0];
-      document.getElementById('turnCount').textContent = s.turns.length ? `Turn ${state.activeTurnIndex+1}/${s.turns.length}` : 'Turn -';
-      turnCard.innerHTML = renderTurn(turn);
-      sourceRow.innerHTML = renderSourceRow(s);
-      document.getElementById('continueInput').placeholder = s.objectAsk ? `Ask about ${s.anchor_title}...` : 'Ask about this session...';
-    }
-
-    function renderTurn(turn){
-      if(!turn) return '<div class="bubble agent">No turn yet.</div>';
-      const inputLabel = turn.input.type === 'audio' || turn.input.type === 'file' ? (turn.input.label || 'Audio input') : turn.input.text;
-      const inputBlock = turn.input.type === 'audio' ? renderAudioTurnInput(turn.input)
-        : turn.input.transcript ? `<div class="bubble user"><h3>Transcript</h3><p>${turn.input.transcript}</p></div>` : '';
-      return `<div class="input-strip"><span class="input-type">${turn.input.role} · ${turn.input.type}</span><span class="input-text">${inputLabel}</span></div><div class="conversation">${inputBlock}<div class="bubble agent"><h3>Agent reply</h3><p>${turn.output.text}</p></div></div>`;
-    }
-
-    function renderAudioTurnInput(input){
-      return `<div class="audio-card">
-        <div class="audio-row"><span class="play-dot">▶</span><span>${input.label || 'Audio input'}</span><span class="wave"></span></div>
-        <div class="audio-meta">${input.duration || '--:--'} · ${input.recorded_at || 'recorded'} · ${input.file_id || 'audio file'} · turn_input</div>
+    <!-- AUDIO FILE DETAIL -->
+    <div class="page off" id="p-file">
+      <div class="nav">
+        <button class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2 id="fd-nav-title">录音文件</h2><div class="nsub" id="fd-nav-sub">audio</div></div>
+        <span class="nbadge nb-file">FILE</span>
       </div>
-      <div class="transcript-card"><b>ASR Transcript</b><p>${input.transcript || 'No transcript yet.'}</p></div>`;
-    }
+      <div class="file-hero">
+        <div class="fh-info">
+          <div class="fh-title" id="fd-title">新录音</div>
+          <div class="fh-meta">
+            <span id="fd-dur">23:14</span><div class="fh-sep"></div>
+            <span class="fh-status fhs-pending" id="fd-status-badge">待解析</span><div class="fh-sep"></div>
+            <span>AAC &middot; 128kbps</span>
+          </div>
+        </div>
+        <div class="audio-player">
+          <div class="ap-btn">&#9654;</div>
+          <div class="ap-wave"></div>
+          <span class="ap-dur" id="fd-player-dur">23:14</span>
+        </div>
+        <div id="fd-ai-cta" class="ai-cta-row">
+          <div class="ai-cta-row-ico">&#10022;</div>
+          <div class="ai-cta-row-body">
+            <div class="ai-cta-row-title">AI Analysis</div>
+            <div class="ai-cta-row-sub">ASR 转写 + 说话人识别 + 生成摘要</div>
+          </div>
+          <button class="ai-cta-row-btn" id="fd-analyze-btn" onclick="startAnalysis()">分析</button>
+        </div>
+      </div>
+      <div class="hidden" id="fd-tabs-wrap">
+        <div class="file-tabs" id="fd-tabs">
+          <button class="ftab on" onclick="switchFdTab('notes',this)">Notes</button>
+          <button class="ftab" onclick="switchFdTab('transcript',this)">Transcript</button>
+          <button class="ftab" onclick="switchFdTab('reminders',this)">Reminders</button>
+          <button class="ftab" onclick="switchFdTab('contacts',this)">Contacts</button>
+          <button class="ftab" onclick="switchFdTab('relfiles',this)">关联文件</button>
+        </div>
+        <div class="ftab-content">
+          <div class="hidden ftp" id="fd-tab-notes"><div class="note-subtabs" id="fd-note-subtabs"></div><div id="fd-note-display"></div></div>
+          <div class="hidden ftp" id="fd-tab-transcript"><div id="fd-transcript"></div></div>
+          <div class="hidden ftp" id="fd-tab-reminders"><div id="fd-reminders"></div></div>
+          <div class="hidden ftp" id="fd-tab-contacts"><div id="fd-contacts"></div></div>
+          <div class="hidden ftp" id="fd-tab-relfiles">
+            <div id="fd-relfiles-list"></div>
+            <div style="margin-top:4px;padding:8px 0;font-size:10px;color:#8fb8a8;font-family:var(--mono);line-height:1.5">叉号可取消关联；如需删除文件，请进入该文件详情页操作</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    function renderObjectAskLanding(s){
-      const prompts = state.objectPrompts[s.anchor_type] || state.objectPrompts.asset;
-      return `<div class="input-strip"><span class="input-type">anchor_input · ${s.anchor_type}</span><span class="input-text">${s.anchor_title}</span></div><div class="conversation"><div class="bubble agent"><h3>You can ask me about this content like this</h3><p class="card-sub">${anchorDescription(s)} Generated Assets 先为空，只有产生新结构化结果后才会出现。</p><div class="prompt-grid">${prompts.map(p => `<button class="prompt-card" onclick="usePrompt('${escapeAttr(p)}')">${p}</button>`).join('')}</div></div></div>`;
-    }
+    <!-- IMAGE FILE DETAIL -->
+    <div class="page off" id="p-img">
+      <div class="nav">
+        <button class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2 id="img-name">图片</h2><div class="nsub" id="img-sub">image</div></div>
+        <span class="nbadge nb-file">FILE</span>
+      </div>
+      <div class="file-hero">
+        <div class="fh-info">
+          <div class="fh-title" id="img-title">图片文件</div>
+          <div class="fh-meta"><span id="img-size">&#8211;</span><div class="fh-sep"></div><span class="fh-status fhs-pending" id="img-status">待解析</span></div>
+        </div>
+        <div class="img-preview-hero">
+          <div class="img-placeholder-hero">
+            <span style="font-size:48px">&#128444;</span>
+            <div style="font-size:12px" id="img-preview-label">图片预览</div>
+          </div>
+        </div>
+        <div id="img-ai-cta" class="ai-cta-row">
+          <div class="ai-cta-row-ico">&#10022;</div>
+          <div class="ai-cta-row-body">
+            <div class="ai-cta-row-title">AI Analysis</div>
+            <div class="ai-cta-row-sub">OCR 文字识别 + 图像内容理解</div>
+          </div>
+          <button class="ai-cta-row-btn" id="img-analyze-btn" onclick="startImgAnalysis()">分析</button>
+        </div>
+      </div>
+      <div class="hidden" id="img-tabs-wrap">
+        <div class="file-tabs">
+          <button class="ftab on" onclick="switchMediaTab('img','notes',this)">Notes</button>
+          <button class="ftab" onclick="switchMediaTab('img','relfiles',this)">关联文件</button>
+        </div>
+        <div class="ftab-content">
+          <div class="ftp" id="img-tab-notes"><div id="img-ai-result-block"></div><div id="img-notes-list"></div></div>
+          <div class="hidden ftp" id="img-tab-relfiles"><div id="img-relfiles-list"></div></div>
+        </div>
+      </div>
+    </div>
 
-    function renderSourceRow(s){
-      if(!s.sources || !s.sources.length) {
-        const label = s.session_type === 'flash_note' ? 'No Session Sources · audio stays in each Turn' : 'No Session Sources';
-        return `<button class="source-card empty">${label}</button>`;
-      }
-      return s.sources.map(renderSourceCard).join('');
-    }
+    <!-- MARKDOWN FILE DETAIL -->
+    <div class="page off" id="p-md">
+      <div class="nav">
+        <button class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2 id="md-name">文档</h2><div class="nsub" id="md-sub">markdown</div></div>
+        <span class="nbadge nb-file">FILE</span>
+      </div>
+      <div class="file-hero">
+        <div class="fh-info">
+          <div class="fh-title" id="md-title">文档文件</div>
+          <div class="fh-meta"><span id="md-size">&#8211;</span><div class="fh-sep"></div><span class="fh-status fhs-pending" id="md-status">待解析</span></div>
+        </div>
+        <div class="md-preview-hero">
+          <div class="md-preview-text" id="md-preview-text">加载中&hellip;</div>
+        </div>
+        <div id="md-ai-cta" class="ai-cta-row">
+          <div class="ai-cta-row-ico">&#10022;</div>
+          <div class="ai-cta-row-body">
+            <div class="ai-cta-row-title">AI Analysis</div>
+            <div class="ai-cta-row-sub">生成摘要 Note &middot; 提取 Action Items</div>
+          </div>
+          <button class="ai-cta-row-btn" id="md-analyze-btn" onclick="startMdAnalysis()">分析</button>
+        </div>
+      </div>
+      <div class="hidden" id="md-tabs-wrap">
+        <div class="file-tabs">
+          <button class="ftab on" onclick="switchMediaTab('md','notes',this)">Notes</button>
+          <button class="ftab" onclick="switchMediaTab('md','reminders',this)">Reminders</button>
+          <button class="ftab" onclick="switchMediaTab('md','relfiles',this)">关联文件</button>
+        </div>
+        <div class="ftab-content">
+          <div class="ftp" id="md-tab-notes"><div id="md-ai-result-block"></div><div id="md-notes-list"></div></div>
+          <div class="hidden ftp" id="md-tab-reminders"><div id="md-reminders-list"></div></div>
+          <div class="hidden ftp" id="md-tab-relfiles"><div id="md-relfiles-list"></div></div>
+        </div>
+      </div>
+    </div>
 
-    function renderSourceCard(src){
-      if(src.type === 'virtual_markdown'){
-        const count = (src.asset_ids || []).length;
-        return `<button class="source-card" onclick="showAnchorInput('${src.type}','${src.object_id}')">${src.label} · ${count} idea assets</button>`;
-      }
-      if(src.type === 'asset'){
-        return `<button class="source-card" onclick="showAnchorInput('${src.type}','${src.object_id}')">${src.label} · 1 note asset</button>`;
-      }
-      return `<button class="source-card" onclick="showAnchorInput('${src.type}','${src.object_id || src.file_id || ''}')">${src.label}</button>`;
-    }
+    <!-- WORKSPACE LIST -->
+    <div class="page off" id="p-ws-list">
+      <div class="nav">
+        <button class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2 id="wl-title">Notes</h2></div>
+        <span class="nbadge nb-ws" id="wl-badge">WS</span>
+      </div>
+      <div class="scroll"><div id="wl-list" style="padding-bottom:80px"></div></div>
+    </div>
 
-    function anchorDescription(s){
-      if(s.anchor_type === 'virtual_markdown'){
-        const source = s.sources[0] || {};
-        return `当前 conversation 已把 ${s.anchor_title} 中的 ${(source.asset_ids || []).length} 个 idea assets 作为组合 anchor_input。`;
-      }
-      return `当前 conversation 已把 ${s.anchor_title} 作为 anchor_input。`;
-    }
+    <!-- ASSET DETAIL -->
+    <div class="page off" id="p-asset">
+      <div class="nav">
+        <button class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2 id="ad-nav-title">详情</h2></div>
+        <div class="nact">&#8943;</div>
+      </div>
+      <div class="scroll">
+        <div class="asset-hero">
+          <div class="asset-type-row"><div class="asset-type-ico" id="ad-type-ico"></div><span class="asset-type-lbl" id="ad-type-lbl"></span></div>
+          <div class="asset-title" id="ad-title"></div>
+          <div id="ad-source-wrap"></div>
+        </div>
+        <div class="asset-body" id="ad-body"></div>
+      </div>
+    </div>
 
-    function aggregateResults(s){
-      const buckets = {};
-      (s.turns || []).forEach(t => (t.output.items || []).forEach(item => {
-        if(item.type === 'assistant_message') return;
-        let key = 'messages';
-        if(item.asset_id){ const a = state.assets[item.asset_id]; key = a ? a.asset_type : 'assets'; }
-        if(item.type && item.type.startsWith('contact')) key = 'contacts';
-        if(!buckets[key]) buckets[key] = [];
-        buckets[key].push({...item, source_turn_id:t.id});
-      }));
-      return buckets;
-    }
-    function labelFor(k){ return ({todo:'Todos', note:'Notes', idea:'Ideas', contacts:'Contacts', messages:'Messages', assets:'Assets'})[k] || k; }
+    <!-- CONTACT DETAIL -->
+    <div class="page off" id="p-contact">
+      <div class="nav">
+        <button class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2 id="cd-nav-name">联系人</h2></div>
+        <div class="nact">&#8943;</div>
+      </div>
+      <div class="scroll">
+        <div class="contact-hero">
+          <div class="contact-av" id="cd-av">K</div>
+          <div class="contact-name" id="cd-name"></div>
+          <div class="contact-sub" id="cd-sub"></div>
+        </div>
+        <div class="contact-body" id="cd-body"></div>
+      </div>
+    </div>
 
-    function openDrawer(kind){ state.drawer = state.drawer === kind ? null : kind; renderWorkspace(); showInspector('current'); }
-    function renderGeneratedPanel(kind, items){
-      return `<div class="generated-panel-head"><b>${labelFor(kind)} · ${items.length}</b><button class="terminal-chat" onclick="openDrawer('${kind}')">close</button></div>${items.map(renderItemRow).join('')}`;
-    }
-    function renderItemRow(item){
-      const a = item.asset_id ? state.assets[item.asset_id] : null;
-      if(item.type==='contact_update_pending') return `<div class="item-row" onclick="showContactPending()"><b>Kevin 信息待确认</b><span>来自 ${item.source_turn_id} · 2 candidates</span></div>`;
-      if(a) return `<div class="item-row" onclick="openAssetFromList('${a.id}')"><b>${a.title}</b><span>${a.asset_type} · ${a.status || 'created'} · 来自 ${item.source_turn_id}</span></div>`;
-      return `<div class="item-row"><b>${item.type}</b><span>来自 ${item.source_turn_id}</span></div>`;
-    }
+    <!-- SESSION (Ask Agent / Flash) -->
+    <div class="page off" id="p-session">
+      <div class="nav">
+        <button class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2 id="ss-title">Ask Agent</h2><div class="nsub" id="ss-sub">通用对话</div></div>
+        <button class="nav-hist-btn" onclick="openSessionHistory()" title="历史记录">&#9776;</button>
+      </div>
+      <div class="hidden ctx-banner" id="ss-ctx-banner" onclick="ctxBannerTap()">
+        <div class="ctx-banner-ico" id="ss-ctx-ico">&#128196;</div>
+        <div class="ctx-banner-body">
+          <div class="ctx-banner-lbl">Context</div>
+          <div class="ctx-banner-val" id="ss-ctx-val"></div>
+          <div class="ctx-banner-sub" id="ss-ctx-sub"></div>
+        </div>
+        <div class="ctx-banner-arr">&#8250;</div>
+      </div>
+      <div class="chat-area" id="ss-chat-area">
+        <div class="chat-inner" id="ss-chat"></div>
+      </div>
+      <div class="chat-bar">
+        <button class="chat-mic" onclick="sendVoiceMsg()">&#127897;</button>
+        <input class="chat-input" id="ss-input" placeholder="输入消息…" onkeydown="if(event.key==='Enter')sendMsg()"/>
+        <button class="chat-send" onclick="sendMsg()">&#8593;</button>
+      </div>
+    </div>
 
-    function openAssetFromList(assetId){
-      const a = state.assets[assetId];
-      if(a && a.asset_type === 'note') openNoteFile(assetId);
-      else showInspector('asset:'+assetId);
-    }
+    <!-- GLOBAL FLOATING CAPSULE -->
+    <div class="float-cap" id="global-cap">
+      <button class="cap-ico cap-mic" onclick="capCapture()" title="Capture">&#127897;</button>
+      <button class="cap-ico cap-ask" onclick="capAsk()" title="Ask Agent"><span class="cap-ask-ico">&#10022;</span></button>
+      <button class="cap-ico cap-plus hidden-btn" id="cap-plus-btn" onclick="capPlus()" title="添加">&#65291;</button>
+    </div>
 
-    function showAnchorInput(type, id){
-      if(type === 'virtual_markdown'){
-        const folder = state.folders[id];
-        const assets = Object.values(state.assets).filter(a => a.asset_type === folder.asset_type);
-        const panel = document.getElementById('generatedPanel');
-        panel.className = 'generated-panel show';
-        panel.innerHTML = `<div class="generated-panel-head"><b>Anchor Input · ${folder.title}</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div>${assets.map(a => `<div class="item-row" onclick="showInspector('asset:${a.id}')"><b>${a.title}</b><span>${a.asset_type} asset · source ${a.source_session_id || 'manual'} / ${a.source_turn_id || '-'}</span></div>`).join('')}`;
-        showInspector('folder:'+id);
-        return;
-      }
-      if(type === 'asset'){
-        const a = state.assets[id];
-        const panel = document.getElementById('generatedPanel');
-        panel.className = 'generated-panel show';
-        panel.innerHTML = `<div class="generated-panel-head"><b>Anchor Input · ${a.title}.md</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div><div class="item-row" onclick="openNoteFile('${a.id}')"><b>${a.title}.md</b><span>${a.asset_type} asset · source ${a.source_session_id || 'manual'} / ${a.source_turn_id || '-'}</span></div>`;
-        showInspector('asset:'+id);
-      }
-      else if(type === 'contact'){
-        const c = state.contacts[id];
-        const panel = document.getElementById('generatedPanel');
-        panel.className = 'generated-panel show';
-        panel.innerHTML = `<div class="generated-panel-head"><b>Anchor Input · ${c.name}</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div><div class="item-row" onclick="openContactDetail('${c.id}')"><b>${c.name}</b><span>${c.company} · ${c.title}</span></div>`;
-        showInspector('contact:'+id);
-      }
-      else if(type === 'file' || type === 'audio'){
-        const panel = document.getElementById('generatedPanel');
-        panel.className = 'generated-panel show';
-        panel.innerHTML = `<div class="generated-panel-head"><b>Anchor Input · Meeting audio</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div><div class="item-row"><b>Meeting audio · 23:14</b><span>file_meeting_001 · audio source</span></div>`;
-        showInspector('meetingFile');
-      }
-      else showInspector('source:'+type);
-    }
+    <!-- SHEETS -->
+    <div class="sh-ov" id="sh-plus" onclick="closeSheet('sh-plus')">
+      <div class="sh" onclick="event.stopPropagation()">
+        <div class="sh-handle" onclick="closeSheet('sh-plus')"><div class="sh-handle-bar"></div></div>
+        <div class="sh-header"><span class="sh-title" id="sh-plus-title">添加内容</span><button class="sh-close" onclick="closeSheet('sh-plus')">&#215;</button></div>
+        <div class="sh-body" id="sh-plus-body"></div>
+      </div>
+    </div>
+    <div class="sh-ov" id="sh-spk" onclick="closeSheet('sh-spk')">
+      <div class="sh" onclick="event.stopPropagation()">
+        <div class="sh-handle" onclick="closeSheet('sh-spk')"><div class="sh-handle-bar"></div></div>
+        <div class="sh-header"><span class="sh-title" id="sh-spk-title">关联说话人</span><button class="sh-close" onclick="closeSheet('sh-spk')">&#215;</button></div>
+        <div class="sh-body" id="sh-spk-body"></div>
+      </div>
+    </div>
+    <div class="sh-ov" id="sh-relfile" onclick="closeSheet('sh-relfile')">
+      <div class="sh" onclick="event.stopPropagation()">
+        <div class="sh-handle" onclick="closeSheet('sh-relfile')"><div class="sh-handle-bar"></div></div>
+        <div class="sh-header"><span class="sh-title">关联文件</span><button class="sh-close" onclick="closeSheet('sh-relfile')">&#215;</button></div>
+        <div class="sh-body" id="sh-relfile-body"></div>
+      </div>
+    </div>
+    <div class="sh-ov" id="sh-history" onclick="closeSheet('sh-history')">
+      <div class="sh" onclick="event.stopPropagation()">
+        <div class="sh-handle" onclick="closeSheet('sh-history')"><div class="sh-handle-bar"></div></div>
+        <div class="sh-header"><span class="sh-title">对话历史</span><button class="sh-close" onclick="closeSheet('sh-history')">&#215;</button></div>
+        <div class="sh-body" id="sh-history-body"></div>
+      </div>
+    </div>
 
-    function hideGeneratedPanel(){
-      const panel = document.getElementById('generatedPanel');
-      panel.className = 'generated-panel';
-      panel.innerHTML = '';
-    }
+  </div><!-- end pages -->
+</div><!-- end shell -->
 
-    function showContactPending(){
-      const panel = document.getElementById('generatedPanel');
-      panel.className = 'generated-panel show';
-      panel.innerHTML = `<div class="generated-panel-head"><b>Contact confirmation</b><button class="terminal-chat" onclick="hideGeneratedPanel()">close</button></div>${Object.values(state.contacts).map(c => `<div class="candidate"><div><b>${c.name}</b><div class="card-sub">${c.company} · ${c.title}</div></div><div style="display:flex;gap:6px"><button class="pill-btn" onclick="openContactDetail('${c.id}')">详情</button><button class="pill-btn blue" onclick="confirmContact('${c.id}')">选择</button></div></div>`).join('')}`;
-    }
-    function confirmContact(id){
-      const s = state.sessions.flash; const c = state.contacts[id];
-      s.turns[0].output.items = s.turns[0].output.items.filter(i => i.type !== 'contact_update_pending');
-      s.turns[0].output.items.push({ type:'contact_updated', contact_id:id });
-      state.events = state.events.map(e => e.id==='evt_flash_done' ? {...e, title:'闪念已处理完成', desc:`已更新 ${c.name}，并创建 1 条 Todo`, chips:['Todo 1','Contact updated']} : e);
-      renderHome(); renderWorkspace(); showInspector(`contact:${id}`);
-    }
+<script>
+/* ── STATE ── */
+const D = {
+  fileAnalyzed: false,
+  currentSpkId: null,
+  currentFdNoteIdx: 0,
+  sessionCtx: null,
+  sessionTag: 'general',
+  flashTurns: [],
+  contacts: {
+    kevin: { id:'kevin', name:'Kevin Chen', company:'Acme Corp', title:'Product Lead', phone:'138-0000-0001', notes:['喜欢喝拿铁咖啡'] },
+    sarah: { id:'sarah', name:'Sarah Liu',  company:'Eureka HQ',  title:'Design Lead',   phone:'138-0000-0002', notes:[] },
+  },
+  speakers: [
+    { id:'spk_a', label:'Speaker A', pct:'~62%', contactId:null },
+    { id:'spk_b', label:'Speaker B', pct:'~38%', contactId:null },
+  ],
+  assets: {
+    n001:{ id:'n001', type:'note', icon:'📝', title:'产品设计会议摘要', noteType:'meeting_summary',
+      src:'file_analysis', srcLabel:'Product Design Sync',
+      content:`# 产品设计会议摘要\n\n## 核心决策\n\n1. **两条管线分离** — 文件解析无独立 Session，对话才有 Session\n2. **File 是主体** — 解析产物归属 File，追问是可选附属\n3. **context 是背景** — Ask Agent 时 Agent 自动获取，用户无感知\n4. **首页分区** — Files 与 Workspace 分离展示\n\n## Action Items\n\n- 整理 demo spec 并发给技术团队\n- 确认 Kevin 跟进接口文档`},
+    n002:{ id:'n002', type:'note', icon:'📝', title:'架构精简摘要', noteType:'conversation_note',
+      src:'session', srcLabel:'Product Design Sync · 追问', srcInputAnchor:'turn_3',
+      content:`两条管线独立，File 是主体，Session 只服务对话，context 是背景不是输入。`},
+    t001:{ id:'t001', type:'todo', icon:'✅', title:'整理 demo spec 并发给技术团队', src:'file_analysis', srcLabel:'Product Design Sync', status:'pending_confirmation', dueAt:'今天 18:00' },
+    t002:{ id:'t002', type:'todo', icon:'✅', title:'确认 Kevin 跟进接口文档', src:'file_analysis', srcLabel:'Product Design Sync', status:'pending_confirmation', dueAt:'明天截止' },
+    i001:{ id:'i001', type:'idea', icon:'💡', title:'B2B 偏好标签系统', src:'session', srcLabel:'Flash 闪念', content:'为 B2B 用户建立偏好标签体系，用于个性化推荐和智能匹配。' },
+  },
+  fileNotes: ['n001','n002'],
+  files: {
+    audio_001:{ id:'audio_001', type:'audio', icon:'🎙', name:'Product Design Sync',      dur:'23:14', date:'2026-05-08', size:'18.2 MB', folder:null,   relatedFiles:['img_001','img_002','doc_001'] },
+    img_001:  { id:'img_001',   type:'image', icon:'🖼', name:'会议现场照片 1.jpg',        dur:null,    date:'2026-05-08', size:'3.1 MB',  folder:null,   relatedFiles:['audio_001'] },
+    img_002:  { id:'img_002',   type:'image', icon:'🖼', name:'白板拍照.jpg',              dur:null,    date:'2026-05-08', size:'2.4 MB',  folder:null,   relatedFiles:['audio_001'] },
+    doc_001:  { id:'doc_001',   type:'md',    icon:'📝', name:'V2.0 API 接口设计文档.md',  dur:null,    date:'2026-05-07', size:'64 KB',   folder:'work', relatedFiles:['audio_001'] },
+    img_003:  { id:'img_003',   type:'image', icon:'🖼', name:'产品截图.png',              dur:null,    date:'2026-05-06', size:'1.8 MB',  folder:null,   relatedFiles:[] },
+  },
+  folders:[
+    { id:'work',     name:'工作', icon:'💼' },
+    { id:'personal', name:'个人', icon:'🏠' },
+  ],
+  currentFolder: 'all',
+};
 
-    function openContactDetail(id){
-      const c = state.contacts[id];
-      state.activeSessionId = null; state.drawer = null; renderHome();
-      showWorkspace();
-      document.getElementById('workspaceTitle').textContent = c.name;
-      document.getElementById('workspaceMeta').textContent = `Contact detail · ${c.company} · ${c.title}`;
-      document.getElementById('generatedRow').innerHTML = '';
-      document.getElementById('generatedPanel').className = 'generated-panel';
-      document.getElementById('generatedPanel').innerHTML = '';
-      document.getElementById('sourceRow').innerHTML = `<button class="source-card" onclick="askAboutObject('contact','${id}')">Ask Agent</button>`;
-      document.getElementById('turnCount').textContent = 'Contact Detail';
-      document.getElementById('turnCard').innerHTML = `<div class="conversation"><div class="bubble agent"><h3>${c.name}</h3><p><b>Company</b><br>${c.company}</p><p><b>Title</b><br>${c.title}</p><p><b>Notes</b><br>${c.notes.length ? c.notes.join('<br>') : 'No notes yet.'}</p></div></div>`;
-      setContinueVisible(false);
-      setTurnNavVisible(false);
-      showInspector('contact:'+id);
-    }
+/* ── NAV ── */
+const stack = ['p-home'];
+function nav(id){
+  const cur=stack[stack.length-1]; if(cur===id) return;
+  document.getElementById(cur).classList.add('behind');
+  const el=document.getElementById(id); el.classList.remove('off','behind');
+  stack.push(id); updateCapsule(id);
+}
+function goBack(){
+  if(stack.length<=1) return;
+  const leave=stack.pop();
+  document.getElementById(leave).classList.add('off');
+  document.getElementById(leave).classList.remove('behind');
+  const ret=stack[stack.length-1];
+  document.getElementById(ret).classList.remove('behind');
+  if(ret==='p-home') renderHome();
+  updateCapsule(ret);
+}
 
-    function openDigest(folder){
-      const f = state.folders[folder];
-      const assets = Object.values(state.assets).filter(a => a.asset_type === f.asset_type);
-      state.activeSessionId = null; state.drawer = null; renderHome();
-      showWorkspace();
-      document.getElementById('workspaceTitle').textContent = f.title;
-      document.getElementById('workspaceMeta').textContent = `Detail page · system-generated markdown · ${assets.length} items`;
-      document.getElementById('generatedRow').innerHTML = '';
-      document.getElementById('generatedPanel').className = 'generated-panel';
-      document.getElementById('generatedPanel').innerHTML = '';
-      document.getElementById('sourceRow').innerHTML = `<button class="source-card" onclick="askAboutObject('virtual_markdown','${folder}')">Ask Agent</button>`;
-      document.getElementById('turnCount').textContent = 'MD Detail';
-      document.getElementById('turnCard').innerHTML = `<div class="conversation"><div class="bubble agent"><h3>${f.title}</h3>${assets.map(a => `<p><b>${a.title}</b><br>${a.content_md || a.due_at || ''}<br><button class="terminal-chat" onclick="${a.source_session_id === 'session_flash' ? 'openFlash()' : 'openMeeting()'}">source ${a.source_session_id} · ${a.source_turn_id}</button></p>`).join('<hr>')}</div></div>`;
-      setContinueVisible(false);
-      setTurnNavVisible(false);
-      showInspector('folder:'+folder);
-    }
+/* ── CAPSULE ── */
+const pageCtx={};
+let currentMediaId=null;
+const mediaAnalyzed={};
 
-    function openNoteFile(assetId){
-      const a = state.assets[assetId];
-      state.activeSessionId = null; state.drawer = null; renderHome();
-      showWorkspace();
-      document.getElementById('workspaceTitle').textContent = `${a.title}.md`;
-      document.getElementById('workspaceMeta').textContent = `Detail page · generated note · source ${a.source_session_id} / ${a.source_turn_id}`;
-      document.getElementById('generatedRow').innerHTML = '';
-      document.getElementById('generatedPanel').className = 'generated-panel';
-      document.getElementById('generatedPanel').innerHTML = '';
-      document.getElementById('sourceRow').innerHTML = `<button class="source-card" onclick="askAboutObject('asset','${assetId}')">Ask Agent</button>`;
-      document.getElementById('turnCount').textContent = 'MD Detail';
-      document.getElementById('turnCard').innerHTML = `<div class="conversation"><div class="bubble agent"><div class="markdown-doc">${formatMarkdown(a.content_md)}</div></div></div>`;
-      setContinueVisible(false);
-      setTurnNavVisible(false);
-      showInspector('asset:'+assetId);
-    }
+function updateCapsule(pageId){
+  const cap=document.getElementById('global-cap');
+  const plusBtn=document.getElementById('cap-plus-btn');
+  const mediaPages=['p-img','p-md'];
+  const mAnalyzed=mediaPages.includes(pageId)&&mediaAnalyzed[currentMediaId];
+  const hideAll=pageId==='p-session'
+    ||(pageId==='p-file'&&!D.fileAnalyzed)
+    ||(mediaPages.includes(pageId)&&!mAnalyzed);
+  cap.style.display=hideAll?'none':'flex';
+  if(['p-home','p-file','p-ws-list'].includes(pageId)) plusBtn.classList.remove('hidden-btn');
+  else plusBtn.classList.add('hidden-btn');
+}
 
-    function askAboutObject(kind, id){
-      const isAsset = kind === 'asset';
-      const isContact = kind === 'contact';
-      const obj = isAsset ? state.assets[id] : isContact ? state.contacts[id] : state.folders[id];
-      const title = isAsset ? `${obj.title}.md` : isContact ? obj.name : obj.title;
-      const anchorType = isAsset ? 'asset' : isContact ? 'contact' : 'virtual_markdown';
-      const anchorSource = { type:anchorType, label:title, object_id:id };
-      if(anchorType === 'virtual_markdown'){
-        anchorSource.asset_ids = Object.values(state.assets).filter(a => a.asset_type === obj.asset_type).map(a => a.id);
-      }
-      state.sessions.objectAsk = {
-        id:`session_object_ask_${id}`,
-        session_type:'conversation',
-        status:'ready',
-        title:`Ask: ${title}`,
-        subtitle:`anchored by ${anchorType}`,
-        objectAsk:true,
-        anchor_type:anchorType,
-        anchor_title:title,
-        sources:[anchorSource],
-        inputs:[{ input_id:'input_anchor_001', input_role:'anchor_input', input_type:anchorType, object_id:id, asset_ids:anchorSource.asset_ids || undefined }],
-        turns:[]
-      };
-      openSession('objectAsk');
-    }
+function capCapture(){ alert('触发硬件录音'); }
+function capAsk(){
+  const p=stack[stack.length-1], ctx=pageCtx[p];
+  if(ctx&&ctx.contextObj) openAsk(ctx.contextObj); else openAsk(null);
+}
+function capPlus(){
+  const p=stack[stack.length-1];
+  if(p==='p-home') openPlusSheet('home');
+  else if(p==='p-file') openPlusSheet('file');
+  else if(p==='p-ws-list') openPlusSheet('ws');
+}
+function openSheet(id){ document.getElementById(id).classList.add('show'); }
+function closeSheet(id){ document.getElementById(id).classList.remove('show'); }
 
-    function formatMarkdown(md){
-      return escapeHtml(md).replace(/^# (.*)$/gm, '<h3>$1</h3>').replace(/^## (.*)$/gm, '<b>$1</b>').replace(/\n/g, '<br>');
-    }
+function openPlusSheet(mode){
+  let title='添加内容', items=[];
+  if(mode==='home'){
+    title='上传文件';
+    items=[
+      {ico:'🎙',label:'上传录音',sub:'支持 AAC / M4A / MP3',fn:()=>{closeSheet('sh-plus');alert('选择录音文件');}},
+      {ico:'🖼',label:'上传图片',sub:'支持 JPG / PNG',fn:()=>{closeSheet('sh-plus');alert('选择图片');}},
+      {ico:'📝',label:'上传 Markdown',sub:'支持 .md 文档',fn:()=>{closeSheet('sh-plus');alert('选择 MD 文件');}},
+    ];
+  } else if(mode==='file'){
+    title='添加到此文件';
+    items=[
+      {ico:'✅',label:'添加 Reminder',sub:'手动新增一条待办',fn:()=>{closeSheet('sh-plus');alert('新建 Todo 并关联此文件');}},
+      {ico:'👤',label:'关联联系人',sub:'将说话人与联系人关联',fn:()=>{closeSheet('sh-plus');openSpkSheet('spk_a');}},
+      {ico:'🔗',label:'关联文件',sub:'选择已有文件或上传',fn:()=>{closeSheet('sh-plus');openRelFileSheet();}},
+    ];
+  } else if(mode==='ws'){
+    const ctx=pageCtx['p-ws-list'], typeName=ctx?.typeName||'内容';
+    title=`新建 ${typeName}`;
+    items=[{ico:'✏️',label:`手动新建 ${typeName}`,sub:'填写标题和内容',fn:()=>{closeSheet('sh-plus');alert(`新建 ${typeName}`);}}];
+  }
+  document.getElementById('sh-plus-title').textContent=title;
+  window._plusItems=items;
+  document.getElementById('sh-plus-body').innerHTML=items.map((it,i)=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--border);cursor:pointer" onclick="plusItemClick(${i})">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:16px;flex-shrink:0">${it.ico}</div>
+      <div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">${it.label}</div><div style="font-size:10px;color:#8fb8a8;font-family:var(--mono)">${it.sub}</div></div>
+      <span style="color:var(--ink3);font-size:14px">›</span>
+    </div>`).join('');
+  openSheet('sh-plus');
+}
+function plusItemClick(i){ window._plusItems[i].fn(); }
 
-    function setContinueVisible(visible){
-      document.getElementById('continueRow').classList.toggle('hidden', !visible);
-    }
-    function setTurnNavVisible(visible){
-      document.getElementById('turnNav').classList.toggle('hidden', !visible);
-      document.getElementById('turnStage').classList.toggle('no-nav', !visible);
-    }
-    function usePrompt(text){
-      const input = document.getElementById('continueInput');
-      input.value = text;
-      input.focus();
-    }
-    function prevTurn(){ const s=state.sessions[state.activeSessionId]; if(!s||!s.turns.length) return; state.activeTurnIndex=Math.max(0,state.activeTurnIndex-1); renderWorkspace(); showInspector('current'); }
-    function nextTurn(){ const s=state.sessions[state.activeSessionId]; if(!s||!s.turns.length) return; state.activeTurnIndex=Math.min(s.turns.length-1,state.activeTurnIndex+1); renderWorkspace(); showInspector('current'); }
-    function submitFollowup(){
-      const s=state.sessions[state.activeSessionId]; if(!s) return; const input=document.getElementById('continueInput'); const text=input.value.trim() || (s.objectAsk ? `Summarize ${s.anchor_title}` : s.session_type==='meeting'?'这场会有哪些 action items？':'我刚才记录了 Kevin 什么？');
-      const id=`turn_${String(s.turns.length+1).padStart(3,'0')}`;
-      if(s.objectAsk) s.inputs.push({ input_id:`input_${id}`, input_role:'turn_input', input_type:'text', text });
-      s.turns.push({ id, input:{role:'turn_input', type:'text', text}, output:{text: s.objectAsk ? `我会基于 anchor_input「${s.anchor_title}」回答这个问题。当前还没有生成新的结构化 Asset，所以 Generated Assets 仍为空。` : text.includes('action') ? '这场会有两个 action items：整理 demo spec；确认 Kevin 的跟进事项。' : '我根据当前 Session 上下文整理了你的追问结果。', items:[{type:'assistant_message', id:`msg_${id}`}] }});
-      state.activeTurnIndex=s.turns.length-1; input.value=''; renderWorkspace(); showInspector('current');
-    }
+/* ── HOME ── */
+function renderHome(){
+  const analyzed=D.fileAnalyzed;
+  document.getElementById('con-list').innerHTML=`
+    <div class="ev-row" onclick="openFile()">
+      <div class="ev-time">今天<br>14:30</div>
+      <div class="ev-body"><div class="ev-title">Product Design Sync</div><div class="ev-desc">音频 23:14 · ${analyzed?'已解析 · 3 个结论':'待 AI 解析'}</div></div>
+      <div class="ev-dot ${analyzed?'dot-green':'dot-amber'}"></div>
+    </div>
+    <div class="ev-row" onclick="openFlash()">
+      <div class="ev-time">09:21</div>
+      <div class="ev-body"><div class="ev-title">Flash 闪念</div><div class="ev-desc">3 条输入 · 生成 2 个 Todos · 1 个 Idea</div></div>
+      <div class="ev-dot dot-green"></div>
+    </div>`;
+  document.getElementById('home-ws').innerHTML=[
+    {type:'note', ico:'📝',name:'Notes',   cnt:Object.values(D.assets).filter(a=>a.type==='note').length},
+    {type:'todo', ico:'✅',name:'Reminders',cnt:Object.values(D.assets).filter(a=>a.type==='todo').length},
+    {type:'idea', ico:'💡',name:'Ideas',   cnt:Object.values(D.assets).filter(a=>a.type==='idea').length},
+    {type:'contact',ico:'👤',name:'Contacts',cnt:Object.values(D.contacts).length},
+  ].map(c=>`
+    <div class="ws-cell" onclick="openWsList('${c.type}')">
+      <div class="ws-cell-ico">${c.ico}</div>
+      <div class="ws-cell-name">${c.name}</div>
+      <div class="ws-cell-cnt">${c.cnt} 条</div>
+    </div>`).join('');
+  renderHomeFiles();
+}
 
-    function showInspector(key){
-      let data = {};
-      if(key==='current'){ const s=state.sessions[state.activeSessionId]; data=s ? { session:s, current_turn:s.turns[state.activeTurnIndex] || null } : { home:'Agent Console + Files' }; }
-      else if(key==='home') data={ page:'Home', sections:['Agent Console','Files'], rule:'Flash Note lives in Agent Console; conversation sessions do not enter Files' };
-      else if(key==='events') data=state.events;
-      else if(key==='folders') data=state.folders;
-      else if(key==='meetingFile') data={ file_id:'file_meeting_001', file_type:'audio', duration:'23:14', status:'uploaded_not_analyzed' };
-      else if(key && key.startsWith('asset:')) data=state.assets[key.split(':')[1]];
-      else if(key && key.startsWith('contact:')) data=state.contacts[key.split(':')[1]];
-      else if(key && key.startsWith('folder:')) { const folder=key.split(':')[1]; data={ folder:state.folders[folder], generated_from:Object.values(state.assets).filter(a=>a.asset_type===state.folders[folder].asset_type) }; }
-      else if(key && key.startsWith('source:')) data={ source_type:key.split(':')[1], rule:'Session Sources only come from anchor_input' };
-      else data={ key };
-      state.lastInspected = data;
-    }
-    function escapeHtml(str){ return str.replace(/[&<>]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[s])); }
-    function escapeAttr(str){ return escapeHtml(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+function renderHomeFiles(){
+  let files=Object.values(D.files);
+  const folder=D.currentFolder;
+  const lMap={all:'全部文件',audio:'录音',image:'图片',md:'Markdown',ungrouped:'未分组'};
+  document.getElementById('files-folder-label').textContent=lMap[folder]||(D.folders.find(f=>f.id===folder)?.name||folder);
+  if(folder==='audio')    files=files.filter(f=>f.type==='audio');
+  else if(folder==='image')    files=files.filter(f=>f.type==='image');
+  else if(folder==='md')       files=files.filter(f=>f.type==='md');
+  else if(folder==='ungrouped')files=files.filter(f=>!f.folder);
+  else if(folder!=='all')      files=files.filter(f=>f.folder===folder);
+  const tChip={audio:'cb',image:'cp',md:'cm'};
+  const tLabel={audio:'录音',image:'图片',md:'Markdown'};
+  document.getElementById('home-files').innerHTML=files.map(f=>{
+    const isAudio=f.id==='audio_001';
+    const click=isAudio?'openFile()':`openMediaDetail('${f.id}')`;
+    const statusChip=isAudio?(D.fileAnalyzed?`<span class="chip cg">✓ analyzed</span>`:`<span class="chip ca">pending</span>`):'';
+    const fdName=D.folders.find(x=>x.id===f.folder);
+    return `<div class="fcard" onclick="${click}">
+      <div class="fcard-top"><div class="fcard-ico">${f.icon}</div><div class="fcard-meta">${f.date}<br>${f.dur||f.size}</div></div>
+      <div class="fcard-title">${isAudio&&D.fileAnalyzed?'Product Design Sync':f.name}</div>
+      <div class="fcard-sub">${tLabel[f.type]||f.type} · ${f.relatedFiles.length>0?f.relatedFiles.length+' 个关联文件':'无关联'}</div>
+      <div class="chips">
+        <span class="chip ${tChip[f.type]||'cm'}">${tLabel[f.type]||f.type}</span>
+        ${statusChip}
+        ${fdName?`<span class="chip cm">${fdName.name}</span>`:''}
+      </div></div>`;
+  }).join('');
+}
 
-    renderHome(); showHome(); showInspector('home');
-  </script>
+function openFolderSheet(){
+  const cur=D.currentFolder;
+  const sys=[
+    {id:'all',     icon:'📁', label:'全部文件', count:Object.values(D.files).length},
+    {id:'audio',   icon:'🎙', label:'录音',     count:Object.values(D.files).filter(f=>f.type==='audio').length},
+    {id:'image',   icon:'🖼', label:'图片',     count:Object.values(D.files).filter(f=>f.type==='image').length},
+    {id:'md',      icon:'📝', label:'Markdown', count:Object.values(D.files).filter(f=>f.type==='md').length},
+    {id:'ungrouped',icon:'📂',label:'未分组',   count:Object.values(D.files).filter(f=>!f.folder).length},
+  ];
+  document.getElementById('sh-plus-title').textContent='选择文件夹';
+  document.getElementById('sh-plus-body').innerHTML=`<div style="padding:6px 0">
+    <div style="font-size:9px;font-weight:800;font-family:var(--mono);color:#8fb8a8;text-transform:uppercase;letter-spacing:.07em;padding:6px 15px 4px">系统视图</div>
+    ${sys.map(v=>`
+    <div class="sh-cand-row" style="cursor:pointer;${cur===v.id?'background:rgba(126,232,184,.07)':''}" onclick="selectFolder('${v.id}')">
+      <div style="display:flex;align-items:center;gap:10px;flex:1">
+        <div style="width:32px;height:32px;border-radius:9px;background:rgba(126,232,184,.07);border:1px solid var(--border);display:grid;place-items:center;font-size:15px;flex-shrink:0">${v.icon}</div>
+        <div><div class="sh-cand-name">${v.label}</div></div>
+      </div>
+      <span style="font-size:11px;font-family:var(--mono);color:#8fb8a8;margin-right:4px">${v.count}</span>
+      <span style="color:${cur===v.id?'var(--green)':'transparent'};font-size:14px">✓</span>
+    </div>`).join('')}
+    <div style="display:flex;align-items:center;justify-content:space-between;font-size:9px;font-weight:800;font-family:var(--mono);color:#8fb8a8;text-transform:uppercase;letter-spacing:.07em;padding:10px 15px 4px">
+      <span>我的文件夹</span>
+      <button style="font-size:16px;color:var(--green);background:none;border:none;cursor:pointer;line-height:1" onclick="addFolder()">＋</button>
+    </div>
+    ${D.folders.map(fd=>`
+    <div class="sh-cand-row" style="cursor:pointer;${cur===fd.id?'background:rgba(126,232,184,.07)':''}" onclick="selectFolder('${fd.id}')">
+      <div style="display:flex;align-items:center;gap:10px;flex:1">
+        <div style="width:32px;height:32px;border-radius:9px;background:rgba(126,232,184,.07);border:1px solid var(--border);display:grid;place-items:center;font-size:15px;flex-shrink:0">${fd.icon}</div>
+        <div><div class="sh-cand-name">${fd.name}</div><div class="sh-cand-sub">${Object.values(D.files).filter(f=>f.folder===fd.id).length} 个文件</div></div>
+      </div>
+      <span style="color:${cur===fd.id?'var(--green)':'transparent'};font-size:14px">✓</span>
+    </div>`).join('')}
+  </div>`;
+  openSheet('sh-plus');
+}
+function selectFolder(id){ D.currentFolder=id; renderHomeFiles(); closeSheet('sh-plus'); }
+function addFolder(){ const n=prompt('文件夹名称：'); if(!n)return; D.folders.push({id:'f_'+Date.now(),name:n,icon:'📁'}); openFolderSheet(); }
+
+/* ── WORKSPACE LIST ── */
+function openWsList(type){
+  const lMap={note:'Notes',todo:'Reminders',idea:'Ideas',contact:'Contacts'};
+  const typeName=lMap[type]||type;
+  document.getElementById('wl-title').textContent=typeName;
+  pageCtx['p-ws-list']={typeName};
+  let items=type==='contact'
+    ? Object.values(D.contacts).map(c=>({id:c.id,ico:'👤',title:c.name,meta:c.company,type:'contact'}))
+    : Object.values(D.assets).filter(a=>a.type===type).map(a=>({id:a.id,ico:a.icon,title:a.title,meta:a.srcLabel||'手动创建',type:a.type}));
+  document.getElementById('wl-list').innerHTML=items.length
+    ?items.map(it=>`
+    <div class="ws-list-item" onclick="${it.type==='contact'?`openContact('${it.id}')`:`openAsset('${it.id}')`}">
+      <div class="wli-ico">${it.ico}</div>
+      <div class="wli-body"><div class="wli-title">${it.title}</div><div class="wli-meta"><span class="wli-src">${it.meta}</span></div></div>
+      <div class="wli-right" style="color:var(--ink3)">›</div>
+    </div>`).join('')
+    :`<div class="empty-state"><div class="es-ico">📭</div><div class="es-txt">暂无内容</div></div>`;
+  nav('p-ws-list');
+}
+
+/* ── ASSET DETAIL ── */
+function openAsset(id){
+  const a=D.assets[id]; if(!a) return;
+  document.getElementById('ad-nav-title').textContent=a.title;
+  document.getElementById('ad-type-ico').textContent=a.icon;
+  document.getElementById('ad-type-lbl').textContent=a.type.toUpperCase();
+  document.getElementById('ad-title').textContent=a.title;
+  const sw=document.getElementById('ad-source-wrap');
+  sw.innerHTML=a.src&&a.srcLabel?`<div class="asset-source" onclick="goToSource('${id}')"><span class="asset-source-lbl">来源</span><span class="asset-source-val">${a.srcLabel}</span></div>`:'';
+  const body=document.getElementById('ad-body');
+  if(a.type==='todo'){
+    body.innerHTML=`<div class="todo-fields">
+      <div class="todo-field"><span class="tf-lbl">状态</span><span class="tf-val" style="color:var(--amber)">${a.status==='pending_confirmation'?'待确认':'进行中'}</span></div>
+      <div class="todo-field"><span class="tf-lbl">截止日期</span><span class="tf-val">${a.dueAt||'未设置'}</span><button class="tf-btn">编辑</button></div>
+    </div>`;
+  } else {
+    body.innerHTML=`<div class="asset-content">${markdownToHtml(a.content||'')}</div>`;
+  }
+  pageCtx['p-asset']={contextObj:{type:a.type,id,label:a.title,ico:a.icon,sub:a.srcLabel||''}};
+  nav('p-asset');
+}
+function goToSource(assetId){
+  const a=D.assets[assetId]; if(!a) return;
+  if(a.src==='file_analysis') openFile();
+}
+
+/* ── AUDIO FILE ── */
+function openFile(){
+  const analyzed=D.fileAnalyzed;
+  document.getElementById('fd-title').textContent=analyzed?'Product Design Sync':'新录音';
+  document.getElementById('fd-nav-title').textContent=analyzed?'Product Design Sync':'录音文件';
+  const badge=document.getElementById('fd-status-badge');
+  badge.textContent=analyzed?'✓ 已解析':'待解析';
+  badge.className='fh-status '+(analyzed?'fhs-done':'fhs-pending');
+  document.getElementById('fd-ai-cta').classList.toggle('hidden',analyzed);
+  document.getElementById('fd-tabs-wrap').classList.toggle('hidden',!analyzed);
+  if(analyzed) renderFile();
+  pageCtx['p-file']={contextObj:{type:'file',id:'audio_001',label:'Product Design Sync',ico:'🎙',sub:'音频 · 23:14'}};
+  nav('p-file');
+}
+
+function startAnalysis(){
+  const btn=document.getElementById('fd-analyze-btn');
+  btn.textContent='分析中…'; btn.classList.add('loading');
+  document.getElementById('fd-ai-cta').querySelector('.ai-cta-row-body').innerHTML='<div class="analyzing-row"><div class="spinner"></div>正在转写并解析，请稍候…</div>';
+  setTimeout(()=>{
+    D.fileAnalyzed=true;
+    document.getElementById('fd-ai-cta').classList.add('hidden');
+    const badge=document.getElementById('fd-status-badge');
+    badge.textContent='✓ 已解析'; badge.className='fh-status fhs-done';
+    document.getElementById('fd-title').textContent='Product Design Sync';
+    document.getElementById('fd-nav-title').textContent='Product Design Sync';
+    document.getElementById('fd-tabs-wrap').classList.remove('hidden');
+    renderFile(); renderHome(); updateCapsule('p-file');
+  },1800);
+}
+
+function renderFile(){
+  renderFdNoteCard(D.currentFdNoteIdx);
+  renderFdTranscript(); renderFdReminders(); renderFdContacts(); renderFdRelFiles();
+  const ft=document.querySelector('#fd-tabs .ftab');
+  if(ft) switchFdTab('notes',ft);
+}
+
+function switchFdTab(tab,el){
+  document.querySelectorAll('#fd-tabs .ftab').forEach(t=>t.classList.remove('on'));
+  if(el) el.classList.add('on');
+  ['notes','transcript','reminders','contacts','relfiles'].forEach(t=>{
+    document.getElementById(`fd-tab-${t}`).classList.toggle('hidden',t!==tab);
+  });
+}
+
+function renderFdNoteCard(idx){
+  const ids=D.fileNotes; if(!ids.length) return;
+  D.currentFdNoteIdx=idx;
+  document.getElementById('fd-note-subtabs').innerHTML=ids.map((id,i)=>{
+    const a=D.assets[id]; if(!a) return '';
+    const s=a.title.length>14?a.title.slice(0,14)+'…':a.title;
+    return `<button class="nstab ${i===idx?'on':''}" onclick="renderFdNoteCard(${i})">${s}</button>`;
+  }).join('');
+  const a=D.assets[ids[idx]]; if(!a) return;
+  document.getElementById('fd-note-display').innerHTML=`
+    <div class="note-card">
+      <div class="note-card-hdr"><div class="note-card-title">${a.title}</div><div class="note-card-acts"><button class="nca" onclick="openAsset('${a.id}')">查看</button></div></div>
+      <div class="note-body">${markdownToHtml(a.content||'')}</div>
+      ${a.src?`<div class="note-source"><span class="note-source-lbl">来源</span><span class="note-source-link" onclick="goToSource('${a.id}')">${a.srcLabel}</span></div>`:''}
+    </div>`;
+}
+
+function renderFdTranscript(){
+  document.getElementById('fd-transcript').innerHTML=D.speakers.map(spk=>{
+    const linked=spk.contactId?D.contacts[spk.contactId]:null;
+    return `<div class="spk-block">
+      <div class="spk-hdr">
+        <div class="spk-name">
+          <div class="pav ${!linked?'unknown':''}" style="width:22px;height:22px;font-size:9px">${linked?linked.name[0]:'?'}</div>
+          ${linked?linked.name:spk.label} <span class="spk-pct">${spk.pct}</span>
+          ${!linked?'<span class="unlinked">未关联</span>':''}
+        </div>
+        <button class="spk-link" onclick="openSpkSheet('${spk.id}')">${linked?'更换':'关联联系人'}</button>
+      </div>
+      <div class="spk-body">
+        ${spk.id==='spk_a'?`
+          <div><div class="spk-seg-t">00:02</div><div class="spk-seg">那我们今天的核心议题，主要是讨论 agentic flow 的两个管线问题。</div></div>
+          <div><div class="spk-seg-t">05:14</div><div class="spk-seg">我认为 File 应该是主体，Session 只作为追问的容器。</div></div>
+        `:`
+          <div><div class="spk-seg-t">01:30</div><div class="spk-seg">好的，那解析完成后，产生的 Notes 和 Todos 挂在哪里？</div></div>
+          <div><div class="spk-seg-t">08:22</div><div class="spk-seg">context 是背景不是 input，这个设计感觉很优雅。</div></div>
+        `}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderFdReminders(){
+  document.getElementById('fd-reminders').innerHTML=Object.values(D.assets).filter(a=>a.type==='todo'&&a.src==='file_analysis').map(t=>`
+    <div class="todo-item" onclick="openAsset('${t.id}')">
+      <div class="todo-chk ${t.status==='done'?'done':''}">${t.status==='done'?'✓':''}</div>
+      <div class="todo-body"><div class="todo-title ${t.status==='done'?'done':''}">${t.title}</div><div class="todo-meta">${t.dueAt||''}${t.status==='pending_confirmation'?' · <span style="color:var(--amber)">待确认</span>':''}</div></div>
+      <button class="claim-btn" onclick="event.stopPropagation();claimTodo('${t.id}',this)">认领</button>
+    </div>`).join('');
+}
+function claimTodo(id,btn){ D.assets[id].status='in_progress'; btn.textContent='✓ 已认领'; btn.className='claimed-badge'; }
+
+function renderFdContacts(){
+  document.getElementById('fd-contacts').innerHTML=D.speakers.map(spk=>{
+    const linked=spk.contactId?D.contacts[spk.contactId]:null;
+    return `<div class="pcard" onclick="${linked?`openContact('${spk.contactId}')`:''}" style="${!linked?'cursor:default':''}">
+      <div class="pav ${!linked?'unknown':''}">${linked?linked.name[0]:'?'}</div>
+      <div style="flex:1;min-width:0"><div class="pname">${linked?linked.name:spk.label}</div><div class="psub">${linked?linked.company:'未关联联系人'}</div></div>
+      ${!linked?'<span class="unlinked">未关联</span>':'<span style="color:var(--ink3)">›</span>'}
+    </div>`;
+  }).join('');
+}
+
+function renderFdRelFiles(){
+  document.getElementById('fd-relfiles-list').innerHTML=D.files.audio_001.relatedFiles.map(rid=>{
+    const rf=D.files[rid]; if(!rf) return '';
+    return `<div class="rel-file-row" onclick="openMediaDetail('${rid}')">
+      <div class="rel-file-ico">${rf.icon}</div>
+      <div class="rel-file-info"><div class="rel-file-name">${rf.name}</div><div class="rel-file-meta">${rf.date} · ${rf.size}</div></div>
+      <span class="rel-file-unlink" onclick="event.stopPropagation();unlinkRelFile('${rid}')">×</span>
+    </div>`;
+  }).join('');
+}
+function unlinkRelFile(fid){
+  D.files.audio_001.relatedFiles=D.files.audio_001.relatedFiles.filter(x=>x!==fid);
+  if(D.files[fid]) D.files[fid].relatedFiles=D.files[fid].relatedFiles.filter(x=>x!=='audio_001');
+  renderFdRelFiles();
+}
+
+function openSpkSheet(spkId){
+  D.currentSpkId=spkId;
+  const spk=D.speakers.find(s=>s.id===spkId);
+  document.getElementById('sh-spk-title').textContent=`关联 ${spk?.label||'说话人'}`;
+  document.getElementById('sh-spk-body').innerHTML=
+    `<div class="sh-hint">选择联系人与该说话人关联：</div>`+
+    Object.values(D.contacts).map(c=>`
+      <div class="sh-cand-row">
+        <div style="display:flex;align-items:center;gap:10px;flex:1"><div class="pav" style="width:34px;height:34px;font-size:13px">${c.name[0]}</div><div><div class="sh-cand-name">${c.name}</div><div class="sh-cand-sub">${c.company}</div></div></div>
+        <button class="sh-btn-pri" onclick="linkSpk('${c.id}')">关联</button>
+      </div>`).join('')+
+    `<div class="sh-cand-row" style="cursor:pointer" onclick="closeSheet('sh-spk')"><span style="font-size:12px;color:var(--ink2)">＋ 新建联系人…</span></div>`;
+  openSheet('sh-spk');
+}
+function linkSpk(cid){
+  const spk=D.speakers.find(s=>s.id===D.currentSpkId); if(spk) spk.contactId=cid;
+  closeSheet('sh-spk');
+  if(D.fileAnalyzed){ renderFdTranscript(); renderFdContacts(); }
+}
+
+function openRelFileSheet(){
+  const cur=D.files.audio_001.relatedFiles;
+  document.getElementById('sh-relfile-body').innerHTML=
+    `<div class="sh-hint">选择要关联的文件：</div>`+
+    Object.values(D.files).filter(f=>f.id!=='audio_001'&&!cur.includes(f.id)).map(f=>`
+      <div class="sh-cand-row">
+        <div style="display:flex;align-items:center;gap:10px;flex:1"><div style="font-size:20px">${f.icon}</div><div><div class="sh-cand-name">${f.name}</div><div class="sh-cand-sub">${f.date} · ${f.size}</div></div></div>
+        <button class="sh-btn-pri" onclick="linkRelFile('${f.id}')">关联</button>
+      </div>`).join('')+
+    `<div class="sh-cand-row" style="cursor:pointer" onclick="closeSheet('sh-relfile')"><span style="font-size:12px;color:var(--ink2)">⬆ 上传新文件…</span></div>`;
+  openSheet('sh-relfile');
+}
+function linkRelFile(fid){
+  if(!D.files.audio_001.relatedFiles.includes(fid)) D.files.audio_001.relatedFiles.push(fid);
+  if(D.files[fid]&&!D.files[fid].relatedFiles.includes('audio_001')) D.files[fid].relatedFiles.push('audio_001');
+  closeSheet('sh-relfile');
+  if(D.fileAnalyzed) renderFdRelFiles();
+}
+
+/* ── MEDIA DETAIL (image / md) ── */
+function openMediaDetail(fileId){
+  const f=D.files[fileId]; if(!f) return;
+  currentMediaId=fileId;
+  const isImg=f.type==='image', isMd=f.type==='md';
+  const pageId=isImg?'p-img':'p-md';
+  const analyzed=!!mediaAnalyzed[fileId];
+  if(isImg){
+    document.getElementById('img-name').textContent=f.name;
+    document.getElementById('img-sub').textContent=`图片 · ${f.date}`;
+    document.getElementById('img-title').textContent=f.name;
+    document.getElementById('img-size').textContent=f.size;
+    const st=document.getElementById('img-status');
+    st.textContent=analyzed?'✓ 已解析':'待解析'; st.className='fh-status '+(analyzed?'fhs-done':'fhs-pending');
+    document.getElementById('img-ai-cta').classList.toggle('hidden',analyzed);
+    document.getElementById('img-tabs-wrap').classList.toggle('hidden',!analyzed);
+    if(analyzed) renderImgTabs(fileId);
+    if(!analyzed){ document.querySelectorAll('#p-img .ftab').forEach(t=>t.classList.remove('on')); }
+  } else if(isMd){
+    document.getElementById('md-name').textContent=f.name;
+    document.getElementById('md-sub').textContent=`Markdown · ${f.date}`;
+    document.getElementById('md-title').textContent=f.name;
+    document.getElementById('md-size').textContent=f.size;
+    const st=document.getElementById('md-status');
+    st.textContent=analyzed?'✓ 已解析':'待解析'; st.className='fh-status '+(analyzed?'fhs-done':'fhs-pending');
+    document.getElementById('md-preview-text').textContent=MD_PREVIEW;
+    document.getElementById('md-ai-cta').classList.toggle('hidden',analyzed);
+    document.getElementById('md-tabs-wrap').classList.toggle('hidden',!analyzed);
+    if(analyzed) renderMdTabs(fileId);
+  }
+  pageCtx[pageId]={contextObj:{type:'file',id:fileId,label:f.name,ico:f.icon,sub:isImg?'图片':'Markdown'}};
+  nav(pageId);
+}
+
+function renderRelFilesList(listEl, fileId){
+  const f=D.files[fileId];
+  listEl.innerHTML=f.relatedFiles.length
+    ? f.relatedFiles.map(rid=>{ const rf=D.files[rid]; if(!rf) return '';
+        return `<div class="rel-file-row" onclick="openMediaDetail('${rid}')">
+          <div class="rel-file-ico">${rf.icon}</div>
+          <div class="rel-file-info"><div class="rel-file-name">${rf.name}</div><div class="rel-file-meta">${rf.date} · ${rf.size}</div></div>
+        </div>`; }).join('')
+    : '<div class="empty-state"><div class="es-ico">🔗</div><div class="es-txt">暂无关联文件</div></div>';
+}
+
+function renderImgTabs(fileId){
+  document.getElementById('img-ai-result-block').innerHTML=`
+    <div class="ai-result-lbl">OCR 文字</div>
+    <div class="ai-result-val">「API 设计原则 · 单一职责 · 接口版本化 · 向下兼容」</div>
+    <div class="ai-result-lbl">图像描述</div>
+    <div class="ai-result-val">白板上记录的 API 设计关键原则，红色框标记重点，包含三条核心条目。</div>`;
+  document.getElementById('img-notes-list').innerHTML=`
+    <div class="note-card">
+      <div class="note-card-hdr"><div class="note-card-title">白板内容 OCR 笔记</div></div>
+      <div class="note-body"><p>OCR 识别到三条核心 API 设计原则：单一职责、接口版本化、向下兼容。</p></div>
+    </div>`;
+  renderRelFilesList(document.getElementById('img-relfiles-list'), fileId);
+}
+
+function renderMdTabs(fileId){
+  document.getElementById('md-ai-result-block').innerHTML=`
+    <div class="ai-result-lbl">文档摘要</div>
+    <div class="ai-result-val">本文档定义 V2.0 API 接口规范，包含认证方式（JWT + OAuth2）、分页标准（cursor-based）和错误码体系，共 3 大模块 18 个接口。</div>`;
+  document.getElementById('md-notes-list').innerHTML=`
+    <div class="note-card">
+      <div class="note-card-hdr"><div class="note-card-title">API V2.0 文档摘要</div></div>
+      <div class="note-body"><p>定义 V2.0 API 接口规范，含认证、分页、错误码三大模块，共 18 个接口。</p></div>
+    </div>`;
+  document.getElementById('md-reminders-list').innerHTML=`
+    <div class="todo-item"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">Review 认证模块接口规范</div><div class="todo-meta">截止日期待定</div></div></div>
+    <div class="todo-item"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">确认错误码体系与前端对齐</div><div class="todo-meta">截止日期待定</div></div></div>`;
+  renderRelFilesList(document.getElementById('md-relfiles-list'), fileId);
+}
+
+function switchMediaTab(prefix,tab,el){
+  document.querySelectorAll(`#p-${prefix} .ftab`).forEach(t=>t.classList.remove('on'));
+  if(el) el.classList.add('on');
+  const tabIds={img:['notes','relfiles'], md:['notes','reminders','relfiles']};
+  (tabIds[prefix]||[]).forEach(t=>{
+    document.getElementById(`${prefix}-tab-${t}`).classList.toggle('hidden',t!==tab);
+  });
+}
+
+function startImgAnalysis(){
+  const btn=document.getElementById('img-analyze-btn');
+  btn.textContent='分析中…'; btn.classList.add('loading');
+  document.getElementById('img-ai-cta').querySelector('.ai-cta-row-body').innerHTML='<div class="analyzing-row"><div class="spinner"></div>图像识别中…</div>';
+  setTimeout(()=>{
+    mediaAnalyzed[currentMediaId]=true;
+    document.getElementById('img-ai-cta').classList.add('hidden');
+    const st=document.getElementById('img-status'); st.textContent='✓ 已解析'; st.className='fh-status fhs-done';
+    document.getElementById('img-tabs-wrap').classList.remove('hidden');
+    renderImgTabs(currentMediaId);
+    const ft=document.querySelector('#p-img .ftab'); if(ft){document.querySelectorAll('#p-img .ftab').forEach(t=>t.classList.remove('on'));ft.classList.add('on');}
+    updateCapsule('p-img');
+  },1600);
+}
+
+function startMdAnalysis(){
+  const btn=document.getElementById('md-analyze-btn');
+  btn.textContent='分析中…'; btn.classList.add('loading');
+  document.getElementById('md-ai-cta').querySelector('.ai-cta-row-body').innerHTML='<div class="analyzing-row"><div class="spinner"></div>解析文档中…</div>';
+  setTimeout(()=>{
+    mediaAnalyzed[currentMediaId]=true;
+    document.getElementById('md-ai-cta').classList.add('hidden');
+    const st=document.getElementById('md-status'); st.textContent='✓ 已解析'; st.className='fh-status fhs-done';
+    document.getElementById('md-tabs-wrap').classList.remove('hidden');
+    renderMdTabs(currentMediaId);
+    const ft=document.querySelector('#p-md .ftab'); if(ft){document.querySelectorAll('#p-md .ftab').forEach(t=>t.classList.remove('on'));ft.classList.add('on');}
+    updateCapsule('p-md');
+  },1600);
+}
+
+const MD_PREVIEW=`# V2.0 API 接口设计文档\n\n## 1. 认证方式\n\n采用 JWT + OAuth2 双模认证，Token 有效期 7 天，支持 Refresh Token 自动续签。\n\n## 2. 分页标准\n\n统一采用 cursor-based 分页。\n\n## 3. 错误码体系\n\n4xx 客户端错误，5xx 服务端错误。`;
+
+/* ── CONTACT DETAIL ── */
+function openContact(id){
+  const c=D.contacts[id]; if(!c) return;
+  document.getElementById('cd-nav-name').textContent=c.name;
+  document.getElementById('cd-av').textContent=c.name.charAt(0);
+  document.getElementById('cd-name').textContent=c.name;
+  document.getElementById('cd-sub').textContent=`${c.company} · ${c.title}`;
+  document.getElementById('cd-body').innerHTML=`
+    <div class="cf-row"><div class="cf-lbl">公司</div><div class="cf-val">${c.company}</div></div>
+    <div class="cf-row"><div class="cf-lbl">职位</div><div class="cf-val">${c.title}</div></div>
+    <div class="cf-row"><div class="cf-lbl">电话</div><div class="cf-val">${c.phone}</div></div>
+    ${c.notes.length?`<div class="cf-row"><div class="cf-lbl">备注</div>${c.notes.map(n=>`<div class="related-note">${n}</div>`).join('')}</div>`:''}`;
+  pageCtx['p-contact']={contextObj:{type:'contact',id,label:c.name,ico:'👤',sub:c.company}};
+  nav('p-contact');
+}
+
+/* ── SESSION ── */
+let sessionTurns=[]; let turnIdx=0;
+
+function openFlash(){
+  D.sessionTag='flash';
+  document.getElementById('ss-title').textContent='Flash';
+  document.getElementById('ss-sub').textContent='全局闪念对话';
+  document.getElementById('ss-ctx-banner').classList.add('hidden');
+  sessionTurns=D.flashTurns;
+  const ci=document.getElementById('ss-chat'); ci.innerHTML='';
+  if(!sessionTurns.length){
+    appendVoiceBubble('ss-chat','00:18','今晚 5 点开会，另外 Kevin 喜欢喝拿铁。',null,true);
+    const r=getReply('今晚5点开会 kevin喜欢喝拿铁',null,'flash');
+    appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false);
+    D.flashTurns=[...sessionTurns];
+  } else {
+    sessionTurns.forEach(t=>{
+      if(t.role==='user-voice') appendVoiceBubble('ss-chat',t.dur,t.transcript,null,false);
+      else if(t.role==='user-text') appendTextBubble('ss-chat',t.text,false);
+      else appendAgentBubble('ss-chat',t.text,t.cards,t.prompts,false,false);
+    });
+  }
+  nav('p-session'); scrollChat();
+}
+
+function openAsk(ctx){
+  D.sessionCtx=ctx; D.sessionTag=ctx?'anchored':'general';
+  document.getElementById('ss-title').textContent=ctx?ctx.label:'Ask Agent';
+  document.getElementById('ss-sub').textContent=ctx?`上下文：${ctx.type}`:'通用对话';
+  const banner=document.getElementById('ss-ctx-banner');
+  if(ctx){
+    banner.classList.remove('hidden');
+    document.getElementById('ss-ctx-ico').textContent=ctx.ico||'📄';
+    document.getElementById('ss-ctx-val').textContent=ctx.label;
+    document.getElementById('ss-ctx-sub').textContent=ctx.sub||ctx.type;
+  } else { banner.classList.add('hidden'); }
+  sessionTurns=[]; document.getElementById('ss-chat').innerHTML='';
+  const intro=ctx?`我已加载 <strong>${ctx.label}</strong> 作为背景。可以基于它问我任何问题。`:'你好，有什么我可以帮你的？';
+  const prompts=ctx?getCtxPrompts(ctx):['我今天有哪些待处理事项？','查询 Kevin 的联系方式','帮我记录一个 Idea'];
+  appendAgentBubble('ss-chat',intro,[],prompts,true,true);
+  nav('p-session'); scrollChat();
+}
+
+function ctxBannerTap(){
+  const ctx=D.sessionCtx; if(!ctx) return;
+  if(ctx.type==='file') openFile();
+  else if(['note','idea','todo'].includes(ctx.type)) openAsset(ctx.id);
+  else if(ctx.type==='contact') openContact(ctx.id);
+}
+
+function getCtxPrompts(ctx){
+  if(ctx.type==='file')    return ['这场会有哪些核心结论？','有遗漏的 action items 吗？','帮我生成一个新版摘要'];
+  if(ctx.type==='note')    return ['把关键点提炼成 3 条','帮我起草一封跟进邮件','从中提取 action items'];
+  if(ctx.type==='idea')    return ['如何把这个想法落地？','提炼 3 个关键点'];
+  if(ctx.type==='contact') return ['总结我与他的互动','有哪些未跟进事项？'];
+  return [];
+}
+
+function sendMsg(){
+  const inp=document.getElementById('ss-input'); const text=inp.value.trim(); if(!text) return; inp.value='';
+  appendTextBubble('ss-chat',text,true);
+  const r=getReply(text,D.sessionCtx,D.sessionTag);
+  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false);
+  if(D.sessionTag==='flash') D.flashTurns=[...sessionTurns];
+  scrollChat();
+}
+
+function sendVoiceMsg(){
+  const samples=[
+    {dur:'00:12',t:'在星巴克花了 38 块，两杯拿铁。'},
+    {dur:'00:08',t:'帮我记一下，B2B 偏好标签这个想法很值得做。'},
+    {dur:'00:15',t:'提醒我下午三点和 Sarah 对设计稿。'},
+  ];
+  const s=samples[Math.floor(Math.random()*samples.length)];
+  appendVoiceBubble('ss-chat',s.dur,s.t,null,true);
+  const r=getReply(s.t,D.sessionCtx,D.sessionTag);
+  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false);
+  if(D.sessionTag==='flash') D.flashTurns=[...sessionTurns];
+  scrollChat();
+}
+
+function fillAndSend(txt){ document.getElementById('ss-input').value=txt; sendMsg(); }
+function scrollChat(){ const a=document.getElementById('ss-chat-area'); if(a) a.scrollTop=a.scrollHeight; }
+
+function appendTextBubble(ciId,text,record){
+  document.getElementById(ciId).innerHTML+=`<div class="brow-u"><div class="bu-text">${esc(text)}</div></div>`;
+  if(record) sessionTurns.push({role:'user-text',text});
+}
+
+function appendVoiceBubble(ciId,dur,transcript,id,record){
+  const bid=id||('vb_'+Date.now());
+  document.getElementById(ciId).innerHTML+=`
+    <div class="brow-u"><div class="bu-voice">
+      <div class="bv-player"><div class="bv-btn">&#9654;</div><div class="bv-wave"></div><span class="bv-dur">${dur}</span></div>
+      <div class="bv-transcript">
+        <div class="bv-tran-lbl">转录文字</div>
+        <div class="bv-tran-text" id="${bid}-t">${esc(transcript)}</div>
+        ${transcript.length>60?`<div class="bv-expand" onclick="expandTran('${bid}-t',this)">展开全文</div>`:''}
+      </div>
+    </div></div>`;
+  if(record) sessionTurns.push({role:'user-voice',dur,transcript});
+}
+
+function expandTran(elId,btn){
+  document.getElementById(elId).classList.toggle('expanded');
+  btn.textContent=btn.textContent==='展开全文'?'收起':'展开全文';
+}
+
+function appendAgentBubble(ciId,text,cards,prompts,record,isIntro){
+  turnIdx++;
+  const id='turn_'+turnIdx;
+  const cardsHtml=(cards||[]).map(c=>renderRcard(c)).join('');
+  const promptsHtml=(prompts||[]).length?`<div class="pcards">${(prompts||[]).map(p=>`<button class="pcard-btn" onclick="fillAndSend('${esc(p)}')">${esc(p)}</button>`).join('')}</div>`:'';
+  const stripped=text.replace(/<[^>]+>/g,'').trim();
+  const showSave=!isIntro&&stripped.length>60;
+  const saveHtml=showSave?`<button class="save-note-btn" id="snb-${id}" onclick="saveAsNote('${id}','${esc(text)}')">＋ 保存为 Note</button>`:'';
+  document.getElementById(ciId).innerHTML+=`
+    <div class="brow-a" id="${id}"><div class="ba">
+      <span class="ba-lbl">AGENT</span>
+      <div class="ba-text">${text}</div>
+      ${cardsHtml?`<div class="rcards">${cardsHtml}</div>`:''}
+      ${promptsHtml}${saveHtml}
+    </div></div>`;
+  if(record) sessionTurns.push({role:'agent',text,cards,prompts,id});
+}
+
+function saveAsNote(turnId,text){
+  const btn=document.getElementById('snb-'+turnId); if(btn.classList.contains('saved')) return;
+  const nid='n_saved_'+Date.now(); const ctx=D.sessionCtx;
+  D.assets[nid]={id:nid,type:'note',icon:'📝',title:'对话笔记 · '+new Date().toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit'}),
+    noteType:'conversation_note',src:'session',srcLabel:ctx?ctx.label:'对话',
+    content:text.replace(/<[^>]+>/g,' ')};
+  if(ctx&&ctx.type==='file'&&!D.fileNotes.includes(nid)) D.fileNotes.push(nid);
+  btn.textContent='✓ 已保存为 Note'; btn.classList.add('saved');
+}
+
+function renderRcard(c){
+  const tc={todo:'rt-todo',note:'rt-note',idea:'rt-idea',contact:'rt-contact'}[c.type]||'rt-note';
+  const isClaimed=c.claimId&&D.assets[c.claimId]&&D.assets[c.claimId].status==='in_progress';
+  let act='';
+  if(c.claimId) act=isClaimed?`<span class="rca-claimed">✓ 已认领</span>`:`<button class="rca-claim" onclick="claimCard('${c.claimId}',this)">认领</button>`;
+  else if(c.contactId) act=`<button class="rca-view" onclick="openContact('${c.contactId}')">查看</button>`;
+  else if(c.assetId) act=`<button class="rca-view" onclick="openAsset('${c.assetId}')">查看</button>`;
+  return `<div class="rcard" onclick="${c.assetId?`openAsset('${c.assetId}')`:c.contactId?`openContact('${c.contactId}')`:''}" style="${!c.assetId&&!c.contactId?'cursor:default':''}">
+    <div class="rcard-top"><div class="rcard-left"><div class="rcard-title">${c.title}</div>${c.meta?`<div class="rcard-meta">${c.meta}</div>`:''}</div><span class="rcard-type ${tc}">${c.type}</span></div>
+    ${c.body?`<div class="rcard-body">${c.body}</div>`:''}
+    ${act?`<div class="rcard-acts">${act}</div>`:''}
+  </div>`;
+}
+function claimCard(id,btn){ D.assets[id].status='in_progress'; btn.textContent='✓ 已认领'; btn.className='claimed-badge'; }
+
+function getReply(text,ctx,tag){
+  const t=text.toLowerCase();
+  if(ctx&&ctx.type==='file'){
+    if(t.includes('结论')||t.includes('核心')) return {text:'这场会有 4 个核心结论：',cards:[
+      {type:'note',title:'两条管线分离',meta:'文件解析无 Session，对话有 Session'},
+      {type:'note',title:'File 是主体',meta:'解析产物归属 File，追问是可选附属'},
+      {type:'note',title:'context 是背景不是输入',meta:'Agent 自动获取，用户无感知'},
+      {type:'note',title:'首页 Workspace 分类管理',meta:'Files 与 Workspace 分离展示'},
+    ],prompts:[]};
+    if(t.includes('action')||t.includes('todo')||t.includes('reminder')) return {text:'找到 2 个 action items：',cards:[
+      {type:'todo',title:'整理 demo spec',meta:D.assets.t001.dueAt,claimId:'t001'},
+      {type:'todo',title:'确认 Kevin 跟进',meta:D.assets.t002.dueAt,claimId:'t002'},
+    ],prompts:[]};
+    if(t.includes('摘要')||t.includes('summary')){
+      const nid='n_conv_'+Date.now();
+      D.assets[nid]={id:nid,type:'note',icon:'📝',title:'精简版决策摘要',noteType:'conversation_note',
+        src:'session',srcLabel:'Product Design Sync · 追问',content:'两条管线独立，File 是主体，Session 只服务对话，context 是背景不是输入。'};
+      if(!D.fileNotes.includes(nid)) D.fileNotes.push(nid);
+      return {text:'已为您生成精简版摘要，并挂载到该文件的 Notes Tab 下：',cards:[{type:'note',title:'精简版决策摘要',meta:'对话生成',assetId:nid}],prompts:[]};
+    }
+  }
+  if(tag==='flash'||!ctx){
+    if(t.includes('开会')||t.includes('会议')) return {text:'已为您创建会议提醒：',cards:[{type:'todo',title:'今晚 5 点团队会议',meta:'今天 17:00',claimId:'t001'}],prompts:['还需要设置其他提醒吗？','帮我生成会议议程']};
+    if(t.includes('kevin')||t.includes('拿铁')) return {text:'已记录联系人偏好：',cards:[{type:'contact',title:'Kevin Chen',meta:'偏好：拿铁咖啡',contactId:'kevin'}],prompts:['查看 Kevin 的完整信息']};
+    if(t.includes('idea')||t.includes('想法')||t.includes('b2b')) return {text:'已记录您的想法：',cards:[{type:'idea',title:'B2B 偏好标签系统',meta:'Flash 闪念 · 刚刚',assetId:'i001'}],prompts:['展开这个想法','关联到某个项目']};
+    if(t.includes('提醒')||t.includes('三点')||t.includes('sarah')) return {text:'已创建提醒：',cards:[{type:'todo',title:'下午三点和 Sarah 对设计稿',meta:'今天 15:00'}],prompts:['修改时间','添加备注']};
+    if(t.includes('星巴克')||t.includes('38')||t.includes('记账')) return {text:'已记录消费：',cards:[{type:'note',title:'星巴克消费记录',meta:'¥38 · 两杯拿铁'}],prompts:[]};
+  }
+  return {text:`明白了，我来帮您处理这个请求。根据您的输入，我正在分析相关内容并准备给出建议。`,cards:[],prompts:['继续','换个方式表达']};
+}
+
+/* ── SESSION HISTORY ── */
+const SESSION_HISTORY=[
+  {id:'sh1',tag:'flash',title:'Flash 闪念',sub:'今晚5点开会 · Kevin 喜欢拿铁',time:'今天 09:21',turns:3},
+  {id:'sh2',tag:'ask',title:'Product Design Sync',sub:'会议分析 · 4个核心结论',time:'昨天 18:44',turns:5},
+  {id:'sh3',tag:'ask',title:'Ask Agent',sub:'查询本周待处理事项',time:'昨天 14:30',turns:2},
+  {id:'sh4',tag:'ask',title:'Q1 Roadmap Review',sub:'文档解析 · 生成摘要和 Todos',time:'5月5日',turns:4},
+];
+function openSessionHistory(){
+  document.getElementById('sh-history-body').innerHTML='<div class="hist-list">'+SESSION_HISTORY.map(s=>`
+    <div class="hist-item" onclick="closeSheet('sh-history')">
+      <span class="hist-item-badge ${s.tag==='flash'?'hb-flash':'hb-ask'}">${s.tag==='flash'?'Flash':'Ask'}</span>
+      <div class="hist-item-title">${s.title}</div>
+      <div class="hist-item-meta">${s.sub}</div>
+      <div class="hist-item-meta">${s.time} · ${s.turns} 条对话</div>
+    </div>`).join('')+'</div>';
+  openSheet('sh-history');
+}
+
+/* ── UTILS ── */
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function markdownToHtml(md){
+  return md
+    .replace(/^# (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h4>$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^- (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g,'<ul>$1</ul>')
+    .split('\n').map(l=>l.startsWith('<')?l:(l.trim()?`<p>${l}</p>`:'')).join('');
+}
+
+/* ── INIT ── */
+pageCtx['p-home']={contextObj:null};
+pageCtx['p-session']={contextObj:null};
+renderHome();
+updateCapsule('p-home');
+</script>
 </body>
 </html>
