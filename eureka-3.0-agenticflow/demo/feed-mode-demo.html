@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Eureka 3.0 · Feed Mode Demo</title>
+<style>
+:root{
+  --bg:#07090e;--card:#0d1118;--border:rgba(130,220,180,.13);--bhi:rgba(130,220,180,.3);
+  --ink:#daf5ea;--ink2:#8fb8a8;--ink3:rgba(218,245,234,.35);
+  --green:#7ee8b8;--gdim:rgba(126,232,184,.07);
+  --amber:#ffc96a;--adim:rgba(255,201,106,.09);
+  --blue:#6ab4ff;--bdim:rgba(106,180,255,.09);
+  --purple:#b89bff;--pdim:rgba(184,155,255,.09);
+  --r:14px;--mono:"SFMono-Regular",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;color:inherit}
+body{font-family:var(--sans);background:#040608;color:#daf5ea;display:flex;justify-content:center;
+  align-items:center;min-height:100vh;padding:20px;
+  background-image:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(126,232,184,.06) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 90%,rgba(106,180,255,.04) 0%,transparent 60%)}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+
+.shell{width:393px;height:852px;background:#07090e;color:#daf5ea;border-radius:50px;
+  border:1px solid rgba(130,220,180,.12);position:relative;display:flex;flex-direction:column;
+  overflow:hidden;box-shadow:0 0 0 9px rgba(10,14,20,.9),0 0 0 10px rgba(130,220,180,.06),
+  0 50px 140px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.06)}
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:14px 30px 0;
+  font-size:11px;font-weight:700;color:var(--ink3);font-family:var(--mono);flex-shrink:0;letter-spacing:.02em}
+
+.pages{position:relative;flex:1;min-height:0;overflow:hidden}
+.page{position:absolute;inset:0;display:flex;flex-direction:column;background:#07090e;color:#daf5ea;
+  transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .28s ease;will-change:transform}
+.page.off{transform:translateX(100%);pointer-events:none;opacity:0}
+.page.behind{transform:translateX(-28px);opacity:.55;pointer-events:none}
+
+.nav{display:flex;align-items:center;gap:10px;padding:12px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.back{width:30px;height:30px;border-radius:50%;background:var(--gdim);border:1px solid var(--border);
+  display:grid;place-items:center;font-size:17px;color:var(--green);flex-shrink:0}
+.ntitle{flex:1;min-width:0}
+.ntitle h2{font-size:15px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
+.ntitle .nsub{font-size:10px;color:var(--ink3);font-family:var(--mono);margin-top:1px}
+
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{display:none}
+
+/* HEADER */
+.feed-hdr{padding:14px 18px 8px;flex-shrink:0}
+.feed-brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.logo{width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 5%,#aef 12%,#46f 50%,#a5f 100%);display:grid;place-items:center;font-size:15px;box-shadow:0 6px 18px rgba(80,120,255,.4)}
+.wordmark{font-family:var(--mono);font-size:14px;font-weight:900;letter-spacing:-.04em;color:var(--green)}
+.avatar{width:30px;height:30px;border-radius:50%;background:rgba(126,232,184,.12);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;color:var(--ink3)}
+.feed-tagline{font-size:11px;color:var(--ink2);line-height:1.45;margin-bottom:12px;font-family:var(--mono)}
+
+/* Quick entries */
+.qe-row{display:flex;gap:8px;margin-bottom:14px}
+.qe-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 10px;
+  border:1px solid var(--border);border-radius:var(--r);background:var(--card);transition:all .15s;cursor:pointer}
+.qe-btn:hover{border-color:var(--bhi)}
+.qe-ico{font-size:18px}
+.qe-txt{text-align:left;flex:1;min-width:0}
+.qe-txt .qe-title{font-size:12px;font-weight:800;font-family:var(--mono)}
+.qe-txt .qe-sub{font-size:9px;color:var(--ink3);font-family:var(--mono);margin-top:2px}
+.qe-arr{color:var(--ink3);font-size:14px}
+
+/* Filter chips */
+.filter-row{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:10px;margin:0 -4px}
+.filter-row::-webkit-scrollbar{display:none}
+.fchip{font-size:9px;font-weight:800;font-family:var(--mono);padding:5px 11px;border-radius:999px;
+  border:1px solid var(--border);color:var(--ink3);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s}
+.fchip.on{background:var(--gdim);color:var(--green);border-color:rgba(126,232,184,.28)}
+
+/* Feed */
+.feed-wrap{padding:0 14px 100px}
+.feed-day{font-size:10px;font-weight:800;font-family:var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 10px;padding-left:2px}
+.feed-item{border:1px solid var(--border);border-radius:var(--r);background:var(--card);margin-bottom:9px;overflow:hidden;
+  cursor:pointer;transition:all .15s}
+.feed-item:hover{border-color:var(--bhi)}
+.fi-top{display:flex;align-items:flex-start;gap:10px;padding:11px 12px}
+.fi-ico{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:17px;flex-shrink:0;border:1px solid}
+.fi-ico.flash{background:var(--adim);border-color:rgba(255,201,106,.22)}
+.fi-ico.audio{background:var(--bdim);border-color:rgba(106,180,255,.2)}
+.fi-ico.upload{background:rgba(218,245,234,.06);border-color:var(--border)}
+.fi-ico.agent{background:var(--gdim);border-color:rgba(126,232,184,.22)}
+.fi-ico.ws{background:var(--pdim);border-color:rgba(184,155,255,.22)}
+.fi-main{flex:1;min-width:0}
+.fi-badge{font-size:8px;font-weight:900;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;display:inline-block;margin-bottom:5px;border:1px solid}
+.fb-flash{background:var(--adim);color:var(--amber);border-color:rgba(255,201,106,.25)}
+.fb-audio{background:var(--bdim);color:var(--blue);border-color:rgba(106,180,255,.22)}
+.fb-upload{color:var(--ink2);border-color:var(--border)}
+.fb-agent{background:var(--gdim);color:var(--green);border-color:var(--border)}
+.fb-ws{background:var(--pdim);color:var(--purple);border-color:rgba(184,155,255,.22)}
+.fi-title{font-size:12px;font-weight:800;line-height:1.35;margin-bottom:3px;font-family:var(--mono)}
+.fi-body{font-size:10px;color:var(--ink2);line-height:1.45}
+.fi-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border);background:rgba(10,14,20,.45)}
+.fi-time{font-size:9px;font-family:var(--mono);color:var(--ink3)}
+.fi-act{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--green)}
+.fi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:6px}
+.dot-green{background:var(--green)}.dot-amber{background:var(--amber)}.dot-blue{background:var(--blue)}
+
+/* Files library (subpage) */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.sec-title{font-size:18px;font-weight:900;letter-spacing:-.04em;font-family:var(--mono)}
+.sec-more{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink3);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
+.fcard{border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:7px;cursor:pointer;transition:all .15s;background:var(--card)}
+.fcard:hover{border-color:var(--bhi)}
+.fcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.fcard-ico{width:34px;height:34px;border-radius:9px;background:var(--bdim);border:1px solid rgba(106,180,255,.18);display:grid;place-items:center;font-size:16px;flex-shrink:0}
+.fcard-meta{font-size:9px;font-family:var(--mono);color:var(--ink3);text-align:right;line-height:1.5}
+.fcard-title{font-size:12px;font-weight:800;margin-bottom:3px}
+.fcard-sub{font-size:10px;color:var(--ink2);line-height:1.4}
+.chips{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.chip{font-size:9px;font-weight:800;padding:2px 7px;border-radius:999px;font-family:var(--mono);border:1px solid}
+.cg{background:var(--gdim);color:var(--green);border-color:rgba(126,232,184,.2)}
+.ca{background:var(--adim);color:var(--amber);border-color:rgba(255,201,106,.2)}
+.cb{background:var(--bdim);color:var(--blue);border-color:rgba(106,180,255,.2)}
+.cp{background:var(--pdim);color:var(--purple);border-color:rgba(184,155,255,.22)}
+.cm{background:rgba(218,245,234,.04);color:var(--ink3);border-color:var(--border)}
+
+.ws-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.ws-cell{border:1px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:all .15s;background:var(--card)}
+.ws-cell:hover{border-color:var(--bhi)}
+.ws-cell-ico{font-size:22px;margin-bottom:6px}
+.ws-cell-name{font-size:12px;font-weight:800;font-family:var(--mono);margin-bottom:2px}
+.ws-cell-cnt{font-size:10px;color:var(--ink3);font-family:var(--mono)}
+
+/* Capsule */
+.float-cap{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;
+  background:rgba(15,20,30,.96);border:1px solid rgba(130,220,180,.18);border-radius:999px;padding:6px 8px;
+  box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 0 1px rgba(130,220,180,.05);z-index:10;backdrop-filter:blur(16px)}
+.cap-ico{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:17px;transition:all .18s;cursor:pointer;flex-shrink:0;border:1px solid transparent}
+.cap-mic{background:rgba(126,232,184,.08);border-color:rgba(126,232,184,.18);color:#daf5ea}
+.cap-mic:hover{background:rgba(126,232,184,.18)}
+.cap-ask{width:44px;height:44px;background:radial-gradient(circle at 38% 35%,#fff 0 5%,#b8e8ff 14%,#4499ff 48%,#9966ff 100%);box-shadow:0 4px 18px rgba(80,140,255,.45);border-color:transparent}
+.cap-ask:hover{transform:scale(1.06)}
+.cap-ask-ico{font-size:19px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+.cap-plus{background:rgba(218,245,234,.08);border-color:rgba(218,245,234,.15);color:#daf5ea}
+.cap-plus:hover{background:rgba(218,245,234,.16)}
+
+.sh-ov{position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:200;display:none;align-items:flex-end}
+.sh-ov.show{display:flex}
+.sh{width:100%;max-height:72%;border-radius:22px 22px 0 0;background:rgba(10,14,22,.98);border:1px solid var(--border);border-bottom:none;display:flex;flex-direction:column;overflow:hidden;animation:slideup .24s cubic-bezier(.4,0,.2,1)}
+@keyframes slideup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sh-handle{padding:9px;display:grid;place-items:center;flex-shrink:0;cursor:pointer}
+.sh-handle-bar{width:34px;height:4px;border-radius:999px;background:rgba(126,232,184,.18)}
+.sh-header{display:flex;align-items:center;justify-content:space-between;padding:0 15px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.sh-title{font-size:12px;font-weight:800;font-family:var(--mono);color:var(--green)}
+.sh-close{width:24px;height:24px;border-radius:50%;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;color:var(--ink2)}
+.sh-body{overflow-y:auto;scrollbar-width:none;flex:1;padding-bottom:10px}
+.sh-body::-webkit-scrollbar{display:none}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="sbar"><span>9:41</span><span>&#128310; WiFi</span></div>
+  <div class="pages" id="pages">
+
+    <div class="page" id="p-home">
+      <div class="feed-hdr">
+        <div class="feed-brand">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="logo">&#10022;</div>
+            <span class="wordmark">Eureka · Feed</span>
+          </div>
+          <div class="avatar">&#9673;</div>
+        </div>
+        <p class="feed-tagline">统一时间线：闪念、录音解析、上传与 Workspace 产出都在一条流里可追踪。</p>
+        <div class="qe-row">
+          <button type="button" class="qe-btn" onclick="nav('p-files')">
+            <span class="qe-ico">&#128193;</span>
+            <span class="qe-txt"><span class="qe-title">文件库</span><span class="qe-sub" id="qe-files-count">按类型与文件夹浏览</span></span>
+            <span class="qe-arr">›</span>
+          </button>
+          <button type="button" class="qe-btn" onclick="nav('p-ws-hub')">
+            <span class="qe-ico">&#10024;</span>
+            <span class="qe-txt"><span class="qe-title">Workspace</span><span class="qe-sub" id="qe-ws-count">Notes / Todos / Ideas…</span></span>
+            <span class="qe-arr">›</span>
+          </button>
+        </div>
+        <div class="filter-row" id="feed-filters"></div>
+      </div>
+      <div class="scroll">
+        <div class="feed-wrap" id="feed-root"></div>
+      </div>
+    </div>
+
+    <div class="page off" id="p-files">
+      <div class="nav">
+        <button type="button" class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2>文件库</h2><div class="nsub">library · mock</div></div>
+      </div>
+      <div class="scroll" style="padding:12px 14px 90px">
+        <div class="sec-hdr">
+          <span class="sec-title" id="files-folder-label">全部文件</span>
+          <button type="button" class="sec-more" onclick="cycleFolder()">切换视图</button>
+        </div>
+        <div id="lib-files"></div>
+      </div>
+    </div>
+
+    <div class="page off" id="p-ws-hub">
+      <div class="nav">
+        <button type="button" class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2>Workspace</h2><div class="nsub">资产汇总</div></div>
+      </div>
+      <div class="scroll" style="padding:12px 14px 90px">
+        <p style="font-size:11px;color:var(--ink2);line-height:1.5;margin-bottom:12px">按类型管理由 Agent 提取或你手动创建的结构化内容；与首页 Feed 中的「产出事件」一一对应。</p>
+        <div class="ws-grid" id="ws-hub-grid"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="float-cap" id="global-cap">
+    <div class="cap-ico cap-mic" onclick="toast('硬件录音 → 闪念 / 会议管线')">&#127908;</div>
+    <div class="cap-ico cap-ask" onclick="toast('New Chat：与主 demo 相同，可接到 conversation Session')"><span class="cap-ask-ico">&#10022;</span></div>
+    <div class="cap-ico cap-plus" onclick="openUploadSheet()">+</div>
+  </div>
+
+  <div class="sh-ov" id="sh-plus" onclick="closeSheet('sh-plus')">
+    <div class="sh" onclick="event.stopPropagation()">
+      <div class="sh-handle" onclick="closeSheet('sh-plus')"><div class="sh-handle-bar"></div></div>
+      <div class="sh-header"><span class="sh-title" id="sh-plus-title">上传文件</span><button type="button" class="sh-close" onclick="closeSheet('sh-plus')">&#215;</button></div>
+      <div class="sh-body" id="sh-plus-body"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FOLDER_ORDER = ['all','audio','image','md','ungrouped','work','personal'];
+const FOLDER_LABEL = {
+  all:'全部文件', audio:'录音', image:'图片', md:'Markdown', ungrouped:'未分组',
+  work:'工作', personal:'个人'
+};
+
+const D = {
+  fileAnalyzed: false,
+  currentFolder: 'all',
+  folders:[
+    { id:'work', name:'工作', icon:'💼' },
+    { id:'personal', name:'个人', icon:'🏠' },
+  ],
+  files: {
+    audio_001:{ id:'audio_001', type:'audio', icon:'🎙', name:'Product Design Sync', dur:'23:14', date:'2026-05-08', size:'18.2 MB', folder:null, relatedFiles:['img_001','doc_001'] },
+    img_001:  { id:'img_001', type:'image', icon:'🖼', name:'会议现场照片 1.jpg', dur:null, date:'2026-05-08', size:'3.1 MB', folder:null, relatedFiles:['audio_001'] },
+    img_002:  { id:'img_002', type:'image', icon:'🖼', name:'白板拍照.jpg', dur:null, date:'2026-05-08', size:'2.4 MB', folder:null, relatedFiles:['audio_001'] },
+    doc_001:  { id:'doc_001', type:'md', icon:'📝', name:'V2.0 API 接口设计文档.md', dur:null, date:'2026-05-07', size:'64 KB', folder:'work', relatedFiles:['audio_001'] },
+    img_003:  { id:'img_003', type:'image', icon:'🖼', name:'产品截图.png', dur:null, date:'2026-05-06', size:'1.8 MB', folder:null, relatedFiles:[] },
+  },
+  assets: {
+    n001:{ type:'note' }, n002:{ type:'note' }, t001:{ type:'todo' }, t002:{ type:'todo' }, i001:{ type:'idea' },
+  },
+  contacts: { kevin:{}, sarah:{} },
+};
+
+/** Feed 条目：与主 demo 同源语义；用户上传插入 feedUserAdds，不与静态模板互相覆盖 */
+let FEED_ITEMS = [];
+let feedUserAdds = [];
+
+function buildFeedItems(){
+  const analyzed = D.fileAnalyzed;
+  const core = [
+    { id:'ev_audio', sort:'2026-05-08T14:30:00', kind:'audio', badge:'Meeting', badgeCls:'fb-audio', icoCls:'audio',
+      title: analyzed ? 'Product Design Sync · 解析完成' : 'Product Design Sync · 待解析',
+      body: analyzed ? 'ASR + 说话人 + 摘要已就绪 · 打开文件库查看 Notes / Transcript' : '录音已入库 · 进入详情页点击「分析」触发管线（与主 demo 一致）',
+      footL:'今天 14:30', footR: analyzed ? '查看文件' : '去解析', dot: analyzed ? 'dot-green':'dot-amber',
+      filter:'audio', onClick:()=>{ toast(analyzed?'可在主 demo 打开完整文件详情':'主 demo 中点击「分析」可切换状态'); } },
+    { id:'ev_upload_md', sort:'2026-05-08T13:10:00', kind:'upload', badge:'Upload', badgeCls:'fb-upload', icoCls:'upload',
+      title:'Markdown 已上传', body:'V2.0 API 接口设计文档.md → 工作文件夹',
+      footL:'今天 13:10', footR:'文件库', dot:'dot-blue', filter:'upload', onClick:()=>{ D.currentFolder='md'; nav('p-files'); renderLibrary(); } },
+    { id:'ev_flash', sort:'2026-05-08T09:21:00', kind:'flash', badge:'Flash', badgeCls:'fb-flash', icoCls:'flash',
+      title:'闪念批量结构化完成', body:'3 条输入 → 2 个 Reminders · 1 个 Idea 已写入 Workspace',
+      footL:'今天 09:21', footR:'Workspace', dot:'dot-green', filter:'flash', onClick:()=> nav('p-ws-hub') },
+    { id:'ev_ws', sort:'2026-05-07T18:40:00', kind:'ws', badge:'Workspace', badgeCls:'fb-ws', icoCls:'ws',
+      title:'资产库更新', body:`Notes ${countAssets('note')} · Reminders ${countAssets('todo')} · Ideas ${countAssets('idea')} · Contacts ${Object.keys(D.contacts).length}`,
+      footL:'昨天 18:40', footR:'打开汇总', dot:'dot-green', filter:'ws', onClick:()=> nav('p-ws-hub') },
+    { id:'ev_agent', sort:'2026-05-07T11:02:00', kind:'agent', badge:'Agent', badgeCls:'fb-agent', icoCls:'agent',
+      title:'会话：接口字段对齐', body:'与 Kevin 对齐 V2 分页参数 · 生成跟进草稿（conversation Session）',
+      footL:'昨天 11:02', footR:'历史', dot:'dot-blue', filter:'agent', onClick:()=> toast('对话历史在主 agentic-flow-demo 中演示') },
+  ];
+  FEED_ITEMS = [...feedUserAdds, ...core].sort((a,b)=> b.sort.localeCompare(a.sort));
+}
+
+function countAssets(t){ return Object.values(D.assets).filter(a=>a.type===t).length; }
+
+let feedFilter = 'all';
+const FILTERS = [
+  { id:'all', label:'全部' },
+  { id:'flash', label:'闪念' },
+  { id:'audio', label:'录音 / 文件' },
+  { id:'upload', label:'上传' },
+  { id:'agent', label:'Agent' },
+  { id:'ws', label:'Workspace' },
+];
+
+function renderFilters(){
+  document.getElementById('feed-filters').innerHTML = FILTERS.map(f=>`
+    <button type="button" class="fchip ${feedFilter===f.id?'on':''}" onclick="setFilter('${f.id}')">${f.label}</button>`).join('');
+}
+
+function setFilter(id){ feedFilter=id; renderFilters(); renderFeed(); }
+
+function renderFeed(){
+  buildFeedItems();
+  const items = FEED_ITEMS.filter(x=>{
+    if(feedFilter==='all') return true;
+    if(feedFilter==='audio') return x.filter==='audio' || x.filter==='upload';
+    return x.filter===feedFilter;
+  });
+  const byDay = {};
+  items.forEach(it=>{
+    const day = it.sort.slice(0,10);
+    if(!byDay[day]) byDay[day]=[];
+    byDay[day].push(it);
+  });
+  const dayOrder = Object.keys(byDay).sort((a,b)=> b.localeCompare(a));
+  const dayLabel = (d)=>{
+    const today = new Date().toISOString().slice(0,10);
+    if(d===today) return '今天';
+    const y = new Date(d+'T12:00:00');
+    return isNaN(y)? d : y.toLocaleDateString('zh-CN',{month:'long',day:'numeric'});
+  };
+  let html = '';
+  dayOrder.forEach(d=>{
+    html += `<div class="feed-day">${dayLabel(d)}</div>`;
+    byDay[d].forEach(it=>{
+      const ico = { flash:'⚡', audio:'🎙', upload:'📤', agent:'✦', ws:'✨' }[it.kind] || '•';
+      html += `
+      <div class="feed-item" onclick="feedClick('${it.id}')">
+        <div class="fi-top">
+          <div class="fi-ico ${it.icoCls}">${ico}</div>
+          <div class="fi-main">
+            <span class="fi-badge ${it.badgeCls}">${it.badge}</span>
+            <div class="fi-title">${it.title}</div>
+            <div class="fi-body">${it.body}</div>
+          </div>
+          <div class="fi-dot ${it.dot}"></div>
+        </div>
+        <div class="fi-foot">
+          <span class="fi-time">${it.footL}</span>
+          <span class="fi-act">${it.footR} ›</span>
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('feed-root').innerHTML = html || '<p style="text-align:center;color:#8fb8a8;padding:24px;font-size:12px">此筛选下暂无条目</p>';
+}
+
+function feedClick(id){
+  const it = FEED_ITEMS.find(x=>x.id===id);
+  if(it&&it.onClick) it.onClick();
+}
+
+function renderQuickCounts(){
+  const nFiles = Object.keys(D.files).length;
+  const nWs = countAssets('note')+countAssets('todo')+countAssets('idea')+Object.keys(D.contacts).length;
+  document.getElementById('qe-files-count').textContent = nFiles + ' 个文件 · 汇总浏览';
+  document.getElementById('qe-ws-count').textContent = nWs + ' 条资产 · 分类管理';
+}
+
+function renderWsHub(){
+  document.getElementById('ws-hub-grid').innerHTML = [
+    { type:'note', ico:'📝', name:'Notes', cnt:countAssets('note') },
+    { type:'todo', ico:'✅', name:'Reminders', cnt:countAssets('todo') },
+    { type:'idea', ico:'💡', name:'Ideas', cnt:countAssets('idea') },
+    { type:'contact', ico:'👤', name:'Contacts', cnt:Object.keys(D.contacts).length },
+  ].map(c=>`
+    <div class="ws-cell" onclick="toast('${c.name} 列表页与主 demo 的 Workspace 列表一致')">
+      <div class="ws-cell-ico">${c.ico}</div>
+      <div class="ws-cell-name">${c.name}</div>
+      <div class="ws-cell-cnt">${c.cnt} 条</div>
+    </div>`).join('');
+}
+
+let folderIdx = 0;
+function cycleFolder(){
+  folderIdx = (folderIdx+1) % FOLDER_ORDER.length;
+  D.currentFolder = FOLDER_ORDER[folderIdx];
+  renderLibrary();
+}
+
+function renderLibrary(){
+  let files = Object.values(D.files);
+  const folder = D.currentFolder;
+  document.getElementById('files-folder-label').textContent = FOLDER_LABEL[folder] || (D.folders.find(f=>f.id===folder)?.name) || folder;
+  if(folder==='audio') files = files.filter(f=>f.type==='audio');
+  else if(folder==='image') files = files.filter(f=>f.type==='image');
+  else if(folder==='md') files = files.filter(f=>f.type==='md');
+  else if(folder==='ungrouped') files = files.filter(f=>!f.folder);
+  else if(folder!=='all') files = files.filter(f=>f.folder===folder);
+  const tChip = { audio:'cb', image:'cp', md:'cm' };
+  const tLabel = { audio:'录音', image:'图片', md:'Markdown' };
+  document.getElementById('lib-files').innerHTML = files.map(f=>{
+    const isAudio = f.id==='audio_001';
+    const statusChip = isAudio
+      ? (D.fileAnalyzed ? `<span class="chip cg">✓ analyzed</span>` : `<span class="chip ca">pending</span>`)
+      : '';
+    const fdName = D.folders.find(x=>x.id===f.folder);
+    return `<div class="fcard" onclick="toast('文件详情见 agentic-flow-demo.html')">
+      <div class="fcard-top"><div class="fcard-ico">${f.icon}</div><div class="fcard-meta">${f.date}<br>${f.dur||f.size}</div></div>
+      <div class="fcard-title">${isAudio&&D.fileAnalyzed?'Product Design Sync':f.name}</div>
+      <div class="fcard-sub">${tLabel[f.type]||f.type} · ${f.relatedFiles.length?f.relatedFiles.length+' 个关联':'无关联'}</div>
+      <div class="chips">
+        <span class="chip ${tChip[f.type]||'cm'}">${tLabel[f.type]||f.type}</span>
+        ${statusChip}
+        ${fdName?`<span class="chip cm">${fdName.name}</span>`:''}
+      </div></div>`;
+  }).join('');
+}
+
+const stack = ['p-home'];
+function nav(id){
+  const cur = stack[stack.length-1];
+  if(cur===id) return;
+  document.getElementById(cur).classList.add('behind');
+  const el = document.getElementById(id);
+  el.classList.remove('off','behind');
+  stack.push(id);
+  if(id==='p-files') renderLibrary();
+  if(id==='p-ws-hub') renderWsHub();
+}
+
+function goBack(){
+  if(stack.length<=1) return;
+  const leave = stack.pop();
+  document.getElementById(leave).classList.add('off');
+  document.getElementById(leave).classList.remove('behind');
+  const ret = stack[stack.length-1];
+  document.getElementById(ret).classList.remove('behind');
+}
+
+function openSheet(id){ document.getElementById(id).classList.add('show'); }
+function closeSheet(id){ document.getElementById(id).classList.remove('show'); }
+
+function openUploadSheet(){
+  const items = [
+    { ico:'🎙', label:'上传录音', sub:'AAC / M4A / MP3', fn:()=> addFeedUpload('录音') },
+    { ico:'🖼', label:'上传图片', sub:'JPG / PNG', fn:()=> addFeedUpload('图片') },
+    { ico:'📝', label:'上传 Markdown', sub:'.md', fn:()=> addFeedUpload('Markdown') },
+  ];
+  document.getElementById('sh-plus-title').textContent = '上传到文件库';
+  document.getElementById('sh-plus-body').innerHTML = items.map((it,i)=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--border);cursor:pointer" onclick="uploadPick(${i})">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:16px">${it.ico}</div>
+      <div style="flex:1"><div style="font-size:12px;font-weight:700">${it.label}</div><div style="font-size:10px;color:#8fb8a8;font-family:var(--mono)">${it.sub}</div></div>
+      <span style="color:var(--ink3)">›</span>
+    </div>`).join('');
+  window._uploadItems = items;
+  openSheet('sh-plus');
+}
+function uploadPick(i){
+  window._uploadItems[i].fn();
+}
+function addFeedUpload(label){
+  closeSheet('sh-plus');
+  const now = new Date();
+  const iso = now.toISOString().slice(0,19);
+  feedUserAdds.push({
+    id:'up_'+Date.now(), sort:iso, kind:'upload', badge:'Upload', badgeCls:'fb-upload', icoCls:'upload',
+    title:`${label} 上传（模拟）`, body:'已写入文件库时间线 · 后台可接真实上传队列',
+    footL: now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}), footR:'完成', dot:'dot-green',
+    filter:'upload', onClick:()=> nav('p-files'),
+  });
+  toast(`已插入 Feed：${label} 上传`);
+  renderFeed();
+}
+
+function toast(msg){ alert(msg); }
+
+/* 与主 demo 对齐：解析完成后 Feed 中 Meeting 卡片应变更为「已解析」 */
+function syncFromMainDemoConcept(){
+  try{
+    const q = new URLSearchParams(location.search);
+    if(q.get('analyzed')==='1') D.fileAnalyzed = true;
+  }catch(e){}
+}
+
+syncFromMainDemoConcept();
+renderFilters();
+renderFeed();
+renderQuickCounts();
+renderWsHub();
+renderLibrary();
+</script>
+</body>
+</html>
