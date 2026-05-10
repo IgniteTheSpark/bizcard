@@ -3,7 +3,7 @@
 | 属性 | 内容 |
 |---|---|
 | 状态 | 草案 |
-| 版本 | v0.1 |
+| 版本 | v0.3 |
 | 目标 | 定义 App 首页中 Agent Console、Files、系统文件夹与内容入口之间的关系。 |
 | 关联文档 | [ASSET_AND_SESSION_ARCHITECTURE.md](./ASSET_AND_SESSION_ARCHITECTURE.md)、[APP_PRD.md](./APP_PRD.md)、[DEMO_SPEC.md](./DEMO_SPEC.md)、[NOTES_FOLDERS_SPEC.md](../bizcard-3.0/NOTES_FOLDERS_SPEC.md) |
 
@@ -34,11 +34,20 @@
 
 ## 2. 首页结构
 
-首页包含两个主要区域：
+首页主滚动区 **自上而下** 建议顺序：
+
+1. **顶栏**：个人中心、品牌区、设备连接、日历（全局导航，不占主列表篇幅）。
+2. **Agent Console**：四类推送 + Flash / New Chat 入口。
+3. **Workspace**：按资产类型 **横向滑动** 入口（Notes / Reminders / Ideas / Contacts 等），置于 Files **之上**，避免被长文件列表挤出首屏。
+4. **Files**：文件夹与文件列表。
+
+下面按「区域」归纳职责（与垂直顺序一致）：
 
 | 区域 | 作用 | 展示对象 |
 |---|---|---|
-| Agent Console | 展示 Agent 动态、待处理事项、完成通知、主动消息 | agent events / pending confirmations / processing updates |
+| 顶栏 | 账户与设备、时间与日程入口 | 个人中心、设备连接状态、Calendar |
+| Agent Console | **四类推送**：到期 Todo、文件状态、Agent 主动推送、闪念处理；并提供 Flash / New Chat **入口**（后者不产生列表项） | agent events（限定范围） |
+| Workspace | 结构化资产分类入口，**横向布局** 便于扫一眼进入各类列表 | Notes / Reminders / Ideas / Contacts 等 |
 | Files | 展示硬件采集、file input 产生的 Session，以及系统文件夹 | meeting audio session、Markdown 文件、系统文件夹 |
 
 普通 `conversation` Session 不默认展示在首页 Files 中。用户通过 Agent Console 的 `Start a new chat` 进入 Ask Agent；历史 conversation 可在 Ask Agent 内部 history 中管理。
@@ -47,30 +56,42 @@
 
 ## 3. Agent Console
 
-Agent Console 是首页的动态工作台，回答：
+Agent Console 是首页的 **轻量信号区**，只推送 **与事务进展、文件管线、闪念、Agent 主动摘要** 相关的条目；**不用于展示普通 Ask Agent 会话列表**（Ask 仅在入口进入，历史在 Ask Agent 内管理）。
 
-> Agent 最近处理了什么？有什么需要我确认？有什么可以继续查看？
+回答的核心问题：
 
-### 3.1 Console item 类型
+> 哪些事到期了？文件到哪一步了？闪念与 Agent 主动推送有什么新动态？
 
-| 类型 | 示例 | 点击后 |
-|---|---|---|
-| 处理完成 | 闪念已处理：创建 1 条 Todo、2 个 Idea | 进入对应 flash_note turn |
-| 待确认 | 找到 2 个 Kevin，请确认要更新哪一位 | 打开 Contact 确认面板 |
-| 待触发 | 新会议已上传，点击开始转写并解析 | 进入 Meeting 待解析页 |
-| 长任务完成 | 产品设计同步会已完成解析 | 进入 Meeting Session Workspace |
-| 错误恢复 | 一条录音转写失败，点击重试 | 进入错误 turn 或重试动作 |
-| 主动消息 | 你有 3 条 AI 提取的 Todo 待认领 | 进入对应 Generated Results |
+### 3.1 Console 推送范围（四类）
 
-### 3.2 Start New Chat
+| 类别 | 内容 | 典型示例 | 点击后 |
+|---|---|---|---|
+| **① 到期 Todo** | 即将到期或今日到期的 Reminder / Todo | 「整理 demo · 今天 18:00」 | 进入 Calendar / Reminders 或对应 Todo 详情（与既有 Todo 主入口策略一致） |
+| **② 文件状态** | 与 File 生命周期相关的状态节点 | 「已上传，待解析」「已解析，可查看摘要 / Transcript」 | 进入该 File 详情（状态与 Files 列表一致，Console 只是更快到达） |
+| **③ Agent 主动推送** | 系统或 Agent 发起的非对话型通知 | 周期小结、解析完成汇总、「你有 N 条待认领 Todo」等 | 进入对应 Workspace 分类、汇总页或详情 |
+| **④ 闪念处理** | 硬件 / Capture 进入的闪念流式处理结果 | 「闪念已处理：已写入 Todo / Idea / 联系人偏好」 | 进入闪念对话或对应产出（与 `flash` conversation 一致） |
 
-Agent Console 需要提供 `Start a new chat` 入口。
+以上四类以外的 **普通 Ask Agent 对话**（无上下文锚点的闲聊、追问）**不出现在 Console 列表**；用户通过 **Start New Chat / 悬浮 Ask** 进入，记录在 Ask Agent 历史内。
+
+### 3.2 与旧版「Console item 类型」的关系
+
+下列情形仍可归入上表某一类，而不单独作为一类「Console 专属类型」：
+
+| 情形 | 归入 |
+|---|---|
+| 待确认联系人、待认领 Todo（由 Agent 推送） | ③ 主动推送，或 ① 到期/待办 |
+| 解析失败、可重试 | ② 文件状态（异常态）或 ③ 主动推送 |
+| 长任务完成通知 | ② 文件状态（已解析）或 ③ 主动推送 |
+
+### 3.3 Start New Chat
+
+Agent Console **区域上仍保留** `Start a new chat`（或与 Flash 并列的快捷按钮），仅作为 **入口**，不产生 Console 列表项。
 
 规则：
 
-1. 点击后创建新的 `conversation` Session。
-2. 新 conversation 不进入 Files 列表。
-3. conversation history 在 Ask Agent 内部管理，不与硬件采集列表混合。
+1. 点击后创建新的 `conversation` Session（通用 Ask）。
+2. 新 conversation **不进入 Console 推送列表**，也不进入 Files 列表。
+3. conversation history 仅在 Ask Agent 内管理。
 
 ---
 
@@ -216,15 +237,17 @@ Attachments 暂不在首页 Files 主列表展示。
 | File | 可出现在 Files 中，例如 Meeting audio。 |
 | Session | 由 file input 产生的 Session 可作为 Files item 进入；普通 conversation 不进入 Files。 |
 | Asset | 可通过系统文件夹中的系统生成 Markdown 展示；可以是一条 Asset 一个 `.md`，也可以是聚合 Markdown。 |
-| Agent Event | 出现在 Agent Console。 |
+| Agent Event | 出现在 Agent Console（仅限 §3.1 四类推送）；**不包括**普通 Ask Agent 会话条目。 |
 | Attachment | 默认只在所属 File / Session 详情中展示。 |
 
 ---
 
 ## 8. 验收标准
 
-- [ ] 首页包含 Agent Console 和 Files 两个核心区域。
-- [ ] Agent Console 提供 `Start a new chat`。
+- [ ] 首页纵向顺序为：**顶栏 → Agent Console → Workspace（横向）→ Files**；Workspace 置于 Files 之上。
+- [ ] 顶栏包含：**个人中心**、**设备连接**（含连接状态提示）、**日历**入口。
+- [ ] Agent Console 提供 `Start a new chat`（入口即可，不要求出现在推送列表中）。
+- [ ] Agent Console 推送覆盖四类：**到期 Todo**、**文件状态（已上传 / 已解析等）**、**Agent 主动推送**、**闪念处理**；**不**将普通 Ask Agent 会话作为 Console 列表项。
 - [ ] 普通 conversation Session 不进入 Files 主列表。
 - [ ] Flash Note 通过 Agent Console 或底部 `capture` 进入，不作为 Files item。
 - [ ] Meeting audio session 按时间排列在 Files 中。
@@ -243,4 +266,6 @@ Attachments 暂不在首页 Files 主列表展示。
 | 版本 | 日期 | 说明 |
 |---|---|---|
 | v0.1 | 2026-05-07 | 初版，合并 Notes Folder 思路与 Agentic Flow 首页逻辑。 |
+| v0.3 | 2026-05-09 | 首页纵向顺序：顶栏 → Console → Workspace（横向）→ Files；顶栏含个人中心 / 设备 / 日历。 |
+| v0.2 | 2026-05-09 | 收紧 Agent Console：四类推送（到期 Todo、文件状态、Agent 主动、闪念）；明确普通 Ask 不出现在 Console 列表。 |
 

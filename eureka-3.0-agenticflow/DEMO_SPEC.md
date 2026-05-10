@@ -3,9 +3,9 @@
 | 属性 | 内容 |
 |---|---|
 | 状态 | 草案 |
-| 版本 | v0.1 |
-| 目标 | 用一个可交互 demo 让技术同事和管理层理解 File / Session / Turn / Asset / Contact / Ask Agent 的完整链路。 |
-| 关联文档 | [ASSET_AND_SESSION_ARCHITECTURE.md](./ASSET_AND_SESSION_ARCHITECTURE.md)、[FLASH_NOTE_SKILL_ARCHITECTURE.md](./FLASH_NOTE_SKILL_ARCHITECTURE.md)、[APP_PRD.md](./APP_PRD.md)、[HOME_LOGIC_SPEC.md](./HOME_LOGIC_SPEC.md) |
+| 版本 | v2.0 |
+| 目标 | 用一个单手机窗口的可交互 Demo，演示 File 解析管线、Ask Agent 对话、Asset / Contact 管理的完整链路。 |
+| 关联文档 | [ASSET_AND_SESSION_ARCHITECTURE.md](./ASSET_AND_SESSION_ARCHITECTURE.md)、[HOME_LOGIC_SPEC.md](./HOME_LOGIC_SPEC.md) |
 
 ---
 
@@ -15,296 +15,463 @@
 
 | 目标 | 说明 |
 |---|---|
-| 串起主链路 | 展示硬件上传后，File 如何进入 Session，并通过 Agent 生成 Asset / Contact 操作结果。 |
-| 解释 Session 工作台 | 展示 Current Turn、Session Sources、Generated Results、Continue Input 的关系。 |
-| 对比三类 Session | 展示 `flash_note`、`meeting`、`conversation` 的差异与统一底座。 |
-| 解释 Meeting 门禁 | Meeting 上传后不自动 ASR + AI 解析，用户进入详情后点击“开始解析”才触发首轮处理。 |
-| 解释闪念流 | Flash Note 是每用户一个逻辑 Session，每次硬件短录音或文字追问都是新的 turn。 |
-| 支持关系理解 | 通过手机 App 内的 source block、Generated Results 与详情页串起实体关系。 |
+| 串起主链路 | File 上传 → AI 解析 → 生成 Note / Todo / Idea；Ask Agent 对话 → 实时写入 Asset。 |
+| 展示两条独立管线 | 文件解析管线不产生 Session；Ask Agent 对话才有 Session。两条管线互不依赖。 |
+| 展示文件类型统一模板 | 音频 / 图片 / Markdown 三种文件，进入详情时共用 Hero + AI Analysis CTA + Tab 结构。 |
+| 展示 Flash 闪念 | Flash 是单个持续对话（context_tag: flash），所有闪念输入在同一个对话流中累积。 |
+| 展示 Ask Agent 对话 | 气泡对话形式；支持文字 / 语音输入；支持 Context 绑定；支持「保存为 Note」。 |
+| 展示 Asset 管理 | Note / Todo / Idea 有独立详情页；Note 支持子 Tab 切换；可从详情页发起 Ask Agent。 |
+| 展示对话历史 | 历史记录底部弹层；点击条目可恢复完整对话。 |
 
 ### 1.2 非目标
 
 | 非目标 | 说明 |
 |---|---|
-| 不定义 Skill prompt | Skill 的详细触发词、prompt、schema 设计放到下一阶段。 |
-| 不做完整 App UIUX | Demo 只表达逻辑和交互骨架，不作为最终 UI 设计稿。 |
-| 不接真实后端 | 使用本地 mock 数据，不依赖接口、账号或硬件。 |
-| 不覆盖所有异常 | 只覆盖会议待解析、Contact 多候选、Todo 认领等关键分支。 |
-| 不做完整 CRUD | Asset / Contact 详情只做 demo 展开态，不实现真实编辑表单。 |
+| 不接真实后端 | 全部使用本地 mock 数据，不依赖接口 / 账号 / 硬件。 |
+| 不做完整 CRUD | Asset / Contact 编辑只做展开态，不实现真实表单。 |
+| 不覆盖所有异常 | 只覆盖文件解析、闪念处理、Ask Agent 核心分支。 |
+| 不支持 PDF | 文件类型仅限：音频 / 图片 / Markdown。 |
 
 ---
 
-## 2. 核心模型
+## 2. 核心架构原则
 
-### 2.1 Session 工作台
+### 2.1 两条独立管线
 
-Demo 中所有 Session 详情页使用同一套工作台语义：
+```
+管线 A：文件解析
+  File 上传 → 待解析状态 → 用户点击 AI Analysis CTA
+  → 解析（ASR / OCR / 摘要）→ 生成 Note / Todo
+  → 结果以 Tab 形式挂载在 File 详情页
+  → 不产生 Session
 
-| 区域 | 数据来源 | 规则 |
-|---|---|---|
-| Current Turn | `turns[current]` | 主内容只展示当前轮 input 和 output。 |
-| Session Sources | `anchor_input` | 只展示 Session 级上下文锚点及其派生资料。 |
-| Generated Results | `output.items[]` | 展示当前 Session 累计生成的 Note / Todo / Idea / Contact 操作。 |
-| Continue Input | 新增 `turn_input` | 用户继续追问后生成下一轮 turn。 |
-
-### 2.2 Input Role
-
-| input_role | 是否进入 Session Sources | 说明 |
-|---|---|---|
-| `anchor_input` | 是 | 建立整个 Session 上下文的核心输入，例如 Meeting 首轮音频。 |
-| `turn_input` | 否 | 某一轮用户输入，例如闪念短录音、文字追问、普通 Ask 语音转文字。闪念短录音虽然不进入 Session Sources，但需要在当前 Turn 内展示音频原内容和 ASR 转录文本。 |
-
-对象详情页进入 Ask Agent 时，当前对象也会成为新 `conversation` Session 的 `anchor_input`。例如 note `.md`、`idea.MD`、Contact、普通 File 或手动创建的 Asset。用户选择建议问题或手动输入后，才生成第一轮 `turn_input`。
-
-对象详情页本身不是 Ask Agent 页面。Demo 中点击 `idea.MD`、单条 note `.md` 或 Contact，应先打开详情页展示内容；详情页中的 `Ask Agent` 入口被点击后，才创建带对象 `anchor_input` 的 conversation。
-
-`idea.MD` 是由多个 `idea` Asset 组成的聚合 Markdown。它进入 Ask Agent 后应展示为组合型 anchor source block，而不是只显示一个普通 Markdown 标签。点击该 block 后，Demo 展开所有组成 idea。
-
-### 2.3 Session 类型
-
-| session_type | 数量 | Source 特征 | Turn 特征 |
-|---|---:|---|---|
-| `flash_note` | 每用户 1 个逻辑 Session | 通常无 anchor source | 每轮可以是硬件短录音或文字追问；音频 turn 展示原始音频和转录文本 |
-| `meeting` | N 个 | 首轮会议音频是 anchor source | 后续围绕会议追问 |
-| `conversation` | N 个 | 普通 Ask 无 anchor；Object Detail Ask 有对象 anchor | 用户主动文字 / 语音对话 |
-
----
-
-## 3. Demo 信息架构
-
-```mermaid
-flowchart TD
-    A[Agent Console] --> D[Start New Chat -> Conversation Session]
-    A --> C[Meeting 待解析通知]
-    A --> N[闪念处理完成通知]
-    L --> M[Meeting audio session]
-    L --> Q[Markdown 文件 / 系统文件夹]
-    N --> B
-    M --> C
-    C --> E[点击开始解析]
-    E --> R[Meeting Session: 已解析 Turn 1]
-    B --> G[Session Workspace]
-    E --> G
-    D --> G
-    G --> H[Generated Results Inline List]
-    G --> I[Session Sources Drawer]
-    G --> K[Continue Input -> Next Turn]
+管线 B：Ask Agent 对话
+  用户发起对话（Flash / General / Context-anchored）
+  → 创建 conversation Session
+  → 对话气泡流（用户右 / Agent 左）
+  → Agent 回复可生成卡片（Asset / Contact）
+  → 分析类回复可「保存为 Note」
+  → Session 写入对话历史
 ```
 
+### 2.2 Session 定义
+
+Demo 中只有一种 Session：**conversation**。Flash 闪念是 `context_tag: flash` 的特殊 conversation，每用户一个持续对话流。
+
+| Session 标签 | 入口 | 特征 |
+|---|---|---|
+| `flash` | 首页 Flash 按钮 / 悬浮胶囊 Capture | 单个持续对话；预置 3 轮历史；新语音 / 文字追加到同一流 |
+| `general` | New Chat / 悬浮 ✦ | 无 Context；每次新建 |
+| `anchored` | 从 File / Asset / Contact 详情发起 | 顶部 Context Banner 常驻；回复带来源锚点 |
+
+### 2.3 Asset 类型
+
+| 类型 | 图标 | 典型来源 |
+|---|---|---|
+| note | 📝 | 文件解析（`file_analysis`）/ 对话生成（`session`）/ 手动 |
+| todo | ✅ | 文件解析 / 对话生成 |
+| idea | 💡 | 对话生成 |
+| contact | 👤 | 独立实体（非 Asset），在 Contacts 列表管理 |
+
 ---
 
-## 4. 关键页面与状态
+## 3. 页面结构
 
-### 4.1 Agent Console + Files
+Demo 为单手机窗口，所有页面在同一壳层内以页面栈形式切换。
 
-| 区域 | 元素 | 说明 |
-|---|---|
-| Agent Console | Start a new chat | 创建普通 conversation Session。 |
-| Agent Console | 闪念处理完成通知 | 点击进入对应 flash_note turn。 |
-| Agent Console | Meeting 待解析 / 已解析通知 | 点击进入 Meeting 待解析页或 Workspace。 |
-| Agent Console | Contact 待确认 | 点击进入确认面板。 |
-| Files | Meeting audio session | 按时间排列，展示待解析 / 解析中 / 已解析状态。 |
-| Files | Markdown 文件 | 全部文件中展示 meeting audio、note `.md`、idea.MD 等文件项。 |
+### 3.1 页面列表
 
-规则：
+| 页面 ID | 名称 | 入口 |
+|---|---|---|
+| `p-home` | 首页 | 初始页 |
+| `p-file` | 音频文件详情 | Files 列表点击音频文件 |
+| `p-img` | 图片文件详情 | Files 列表点击图片文件 |
+| `p-md` | Markdown 文件详情 | Files 列表点击 MD 文件 |
+| `p-ws-list` | Workspace 资产列表 | Workspace 横向条各类目 / 顶部「管理」 |
+| `p-asset` | Asset 详情 | Workspace 列表 / Note Tab 卡片点击 |
+| `p-contact` | Contact 详情 | Contacts 列表 / Agent 回复卡片 |
+| `p-session` | Ask Agent / Flash 对话 | Flash 入口 / New Chat / 悬浮 ✦ |
 
-1. Demo 不提供 Capture Hub，capture 发生在硬件端。
-2. 首页不是完整 Session List，而是 Agent Console + Files。
-3. Flash Note 不进入 Files 主列表，通过 Agent Console 的 `open flash` 或底部 `capture` 进入。
-4. 普通 conversation 不进入 Files 主列表，只通过 Start a new chat 进入。
-5. Meeting 待解析状态下，进入详情后需要用户手动触发解析。
-
-### 4.2 Meeting 待解析页
+### 3.2 全局浮动元素
 
 | 元素 | 说明 |
 |---|---|
-| 原始音频信息 | 文件名、时长、上传时间。 |
-| 状态 | `waiting_for_analysis`。 |
-| 主 CTA | “开始转写并解析”。 |
+| 悬浮胶囊 | 三个按钮：Capture（🎙）/ Ask（✦）/ Plus（＋，条件显示） |
+| 底部弹层（Sheet） | 加号操作、说话人关联、关联文件、对话历史 |
 
-点击 CTA 后：
-
-1. 模拟 ASR；
-2. 生成 transcript / speakers；
-3. 创建 Turn 1；
-4. 生成 Summary Note 和 Todo；
-5. 状态变为 `done`。
-
-### 4.3 Session Workspace
-
-| 区域 | 说明 |
-|---|---|
-| Header | 显示 session_type、状态、当前 turn 序号。 |
-| Generated Results | 常驻展示累计结果，例如 `Notes 1`、`Todos 3`、`Contacts 1`。 |
-| Current Turn | 展示当前轮 input 与 Agent text output；Flash Note 的 audio turn 需要展示音频条和 transcript。 |
-| Session Sources | 只展示 anchor source；Meeting 展示 Audio / Transcript / Speakers / Attachments，Flash Note 默认无 source。 |
-| Continue Input | 输入下一轮文字；demo 中可用预设问题快速触发。 |
-
-规则：
-
-1. 轮次切换使用垂直时间流：上一轮 / 当前轮 / 下一轮。
-2. 单轮 Agent text 可以在当前 turn 内滚动。
-3. Generated Results 是 Session 级累计，不随 turn 切换消失。
-4. Generated Results block 是类型聚合入口，点击后在同一屏展开列表。
-5. 列表 item 需要标注来自哪个 turn。
-
-### 4.4 Generated Results Inline List
-
-| block | 展开后 |
-|---|---|
-| `Notes N` | Note 列表，每条显示 title、summary、source_turn_id。 |
-| `Todos N` | Todo 列表，每条显示 title、due_at、status、source_turn_id。 |
-| `Ideas N` | Idea 列表，每条显示 content、tags、source_turn_id。 |
-| `Contacts N` | Contact 操作列表，显示 updated / pending 状态。 |
-
-规则：
-
-1. 列表在 Session Workspace 内展开，不切换到独立第三屏。
-2. 点击 note item 可进入该 note `.md` 阅读页。
-3. 点击 `idea.MD` 可进入汇总 Markdown 阅读页。
-4. 在 note `.md` 或 `idea.MD` 中点击 Ask，创建新的 `conversation` Session，并将当前 Markdown 作为 `anchor_input`。
-5. 在 existing Session 的 Continue Input 中追问时，只追加 `turn_input`，沿用原 Session 的 anchor。
-6. Object Detail Ask 的首屏只展示 anchor source、建议问题和输入框；Generated Results 初始为空。
-7. `idea.MD` 的 anchor source block 显示包含的 idea 数量，点击后展开全部 idea Asset。
-
-### 4.5 Session Sources Drawer
-
-| session_type | 展示内容 |
-|---|---|
-| `meeting` | Audio、Transcript、Speakers、Attachments。 |
-| `flash_note` | 默认无 anchor source；每轮录音只在对应 Current Turn 中展示，包含原始音频信息和 ASR 转录文本。 |
-| `conversation` | 默认无 anchor source；未来文件分析场景可展示上传文件。 |
+**悬浮胶囊可见规则：**
+- 在 `p-session`（对话页）时**隐藏**。
+- 文件详情页（音频 / 图片 / MD）在文件**未解析时**，**不显示**胶囊。
+- Plus（＋）按钮只在 `p-home`、`p-file`（已解析）、`p-ws-list` 等页面显示。
 
 ---
 
-## 5. 主流程
+## 4. 首页（p-home）
 
-### 5.1 Flash Note 流程
+### 4.1 顶部 Header
 
-```mermaid
-flowchart TD
-    A[Agent Console: open flash] --> B[进入 flash_note Session]
-    B --> C[Turn 1 input: 硬件短录音 audio turn_input]
-    C --> C1[Current Turn 展示音频条 + transcript]
-    C1 --> D[Agent output text]
-    D --> E[Generated Results: Todo 1 + Contact pending 1]
-    E --> F[点击 Todo block -> 认领 Todo]
-    E --> G[点击 Contact block -> 选择 Kevin Chen]
-    G --> H[追加 contact_updated 结果]
-    H --> I[继续追问: 我刚才记录了 Kevin 什么]
-    I --> J[Turn 2 input: text]
-    J --> K[Agent 回复已记录内容]
-```
+从左到右：
 
-### 5.2 Meeting 流程
-
-```mermaid
-flowchart TD
-    A[Agent Console 或 Files: Meeting 待解析] --> B[进入 Meeting 待解析页]
-    B --> C[点击开始转写并解析]
-    C --> D[生成 anchor source: Audio + Transcript + Speakers]
-    D --> E[Turn 1 output: Summary Note + Todos]
-    E --> F[Generated Results: Notes 1 + Todos 2]
-    F --> G[继续追问: 这场会有哪些 action items]
-    G --> H[Turn 2 input: text]
-    H --> I[Agent 回复 action items]
-```
-
-### 5.3 Conversation 流程
-
-```mermaid
-flowchart TD
-    A[Global Ask Agent] --> B[创建 conversation Session]
-    B --> C[Turn 1 input: text]
-    C --> D[Agent output text]
-    D --> E[按需生成 Asset 或 Contact 操作]
-```
-
----
-
-## 6. Mock 数据
-
-### 6.1 Flash Note
-
-| 字段 | 值 |
+| 区域 | 内容 |
 |---|---|
-| transcript | 今晚 5 点开会，另外 Kevin 喜欢喝拿铁 |
-| audio | 硬件短录音，00:18，作为 `audio turn_input` 展示在 Turn 内 |
-| Todo | 今晚 5 点开会 |
-| Contact candidates | Kevin Chen / Acme Corp；Kevin Wang / Beta Inc |
-| Follow-up | 我刚才记录了 Kevin 什么？ |
+| 左 | 个人中心入口（圆形头像按钮）|
+| 中 | 品牌字标「Eureka 3.0」|
+| 右 | 设备连接（耳机图标 + 绿点表示已连接）/ 日历入口 |
 
-### 6.2 Meeting
+### 4.2 Agent Console
 
-| 字段 | 值 |
-|---|---|
-| title | Product Design Sync |
-| audio duration | 23:14 |
-| speakers | Speaker 1、Speaker 2 |
-| Summary Note | 本次会议讨论了首页入口、Agent Session 工作台、Todo 认领机制 |
-| Todos | 整理 demo spec；确认 Kevin 的跟进事项 |
-| Follow-up | 这场会有哪些 action items？ |
+首页固定区域，推送四类信号（不展示普通 Ask 对话记录）：
 
----
+| 标签 | 颜色 | 典型内容 | 点击后 |
+|---|---|---|---|
+| 到期 | 琥珀色 | 今日到期的 Todo | Reminders 列表 |
+| 文件 | 蓝色 | 文件已上传 / 已解析状态 | 对应 File 详情 |
+| Agent | 绿色 | 系统摘要 / 主动推送 | 对应 Workspace 分类 |
+| 闪念 | 紫色 | 闪念处理结果 | Flash 对话 |
 
-## 7. Demo 交互要求
+Console 右上角常驻两个入口按钮：**🎙 Flash**（进入闪念对话）、**New Chat**（创建通用 Ask 对话）。
 
-| 交互 | 结果 |
-|---|---|
-| 点击 Agent Console 的 open flash | 进入已解析的 flash_note 工作台。 |
-| 点击 Meeting audio session | 若待解析，进入待解析页。 |
-| 点击 Start a new chat | 创建 conversation Session。 |
-| 点击“开始转写并解析” | Meeting 生成 Turn 1、sources、summary note 和 todos。 |
-| 点击 Generated Results block | 在同一屏展开对应类型列表。 |
-| 点击列表 item | Note 进入 `.md` 阅读页；其他 Asset / Contact 在同一手机窗口内展开详情或确认面板。 |
-| 点击详情页的 Ask Agent | 创建带当前对象 `anchor_input` 的 conversation，首屏展示建议问题。 |
-| 点击 `idea.MD` 的 anchor source block | 展开该 Markdown 包含的所有 idea Asset。 |
-| 点击 Contact pending | 展示候选联系人列表。 |
-| 选择 Kevin Chen | 追加 `contact_updated` 结果，并更新 Generated Results。 |
-| 点击继续追问预设问题 | 生成下一轮 turn。 |
-| 切换上一轮 / 下一轮 | Current Turn 更新，Generated Results 保持累计。 |
+### 4.3 Workspace 横向条
 
----
+位于 Console **下方**、Files **上方**，横向可滑动，四个类目：
 
-## 8. 状态与规则
-
-| 对象 | 状态 | 规则 |
+| 类目 | 图标 | 点击后 |
 |---|---|---|
-| Meeting Session | `waiting_for_analysis` | 只展示 file 信息和开始解析 CTA。 |
-| Meeting Session | `processing` | 展示模拟处理状态，不允许重复点击解析。 |
-| Meeting Session | `done` | 展示 Session Workspace。 |
-| Todo | `pending_confirmation` | 出现在 Generated Results，可被认领。 |
-| Todo | `pending` | 用户认领后进入正式状态。 |
-| Contact 操作 | `contact_update_pending` | 多候选时必须用户确认。 |
-| Contact 操作 | `contact_updated` | 用户确认后追加更新结果。 |
+| Notes | 📝 | Notes 列表 |
+| Reminders | ✅ | Reminders 列表 |
+| Ideas | 💡 | Ideas 列表 |
+| Contacts | 👤 | Contacts 列表 |
+
+### 4.4 Files 区域
+
+文件列表，顶部标题可点击切换文件夹视图。
+
+**系统视图（文件夹筛选）：**
+
+| 视图 | 说明 |
+|---|---|
+| 全部文件 | 所有文件（默认） |
+| 录音 | type = audio |
+| 图片 | type = image |
+| Markdown | type = md |
+| 未分组 | 无所属文件夹的文件 |
+
+**用户文件夹：** 工作、个人（可自定义创建）。
+
+**文件卡片展示内容：** 类型图标、文件名、日期 / 时长 / 大小、关联文件数量、类型标签、解析状态标签（仅音频）、所属文件夹标签。
+
+**Mock 文件数据：**
+
+| 文件 | 类型 | 关联文件 |
+|---|---|---|
+| Product Design Sync | 音频（23:14） | 会议现场照片 1.jpg、白板拍照.jpg、V2.0 API 接口设计文档.md |
+| 会议现场照片 1.jpg | 图片 | Product Design Sync |
+| 白板拍照.jpg | 图片 | Product Design Sync |
+| V2.0 API 接口设计文档.md | Markdown | Product Design Sync |
+| 产品截图.png | 图片 | 无 |
 
 ---
 
-## 9. 验收标准
+## 5. 文件详情页
 
-- [ ] Demo 不出现 Capture Hub，首页入口为 Agent Console + Files。
-- [ ] Agent Console 提供 Start a new chat。
-- [ ] Files 中 Flash Note 作为单例入口置顶展示。
-- [ ] 普通 conversation Session 不进入 Files 主列表。
-- [ ] Flash Note Session 首次进入时已经有 Turn 1 和解析结果。
-- [ ] Meeting Session 首次进入时为待解析状态，点击后才生成 Turn 1。
-- [ ] Session Workspace 主内容一次只聚焦一个 Current Turn。
-- [ ] Generated Results 在切换 turn 后仍常驻且累计。
-- [ ] Meeting 的 Session Sources 展示 Audio / Transcript / Speakers / Attachments。
-- [ ] Flash Note 默认不展示 Session Sources；录音 input 只在对应 turn 中展示。
-- [ ] Flash Note 的 audio turn 同时展示原始音频信息和 ASR 转录文本。
-- [ ] Generated Results block 在同一屏展开列表，列表 item 标注 source turn。
-- [ ] Object Detail Ask 会创建新的 `conversation` Session，并把当前对象作为 `anchor_input`。
-- [ ] Existing Session 的 Continue Input 只追加新的 `turn_input`，不创建新 Session。
-- [ ] Contact 多候选必须通过用户选择后才变为 updated。
-- [ ] Demo 只使用一个手机 App 窗口，不再展示独立 Data Inspector。
-- [ ] Demo 能完整演示 Flash Note、Meeting、Conversation 三条 Session 类型。
+三种文件类型（音频 / 图片 / Markdown）共用**统一模板**，结构如下：
+
+```
+Nav 栏（返回 / 文件名 / FILE 徽章）
+└─ File Hero 卡片
+    ├─ 文件信息（名称 / 元数据 / 解析状态）
+    ├─ 原始内容预览区（各类型不同）
+    └─ AI Analysis CTA（待解析时显示）
+└─ Tab 栏（解析完成后显示）
+└─ Tab 内容区（可滚动）
+```
+
+### 5.1 音频文件详情（p-file）
+
+**Hero 区：**
+- 文件名、时长、解析状态（待解析 / 已解析）、格式
+- 音频播放器（播放按钮 + 波形条 + 时长）
+- AI Analysis CTA：「ASR 转写 + 说话人识别 + 生成摘要」→ 点击「分析」触发
+
+**解析后 Tabs：**
+
+| Tab | 内容 |
+|---|---|
+| Notes | 子 Tab 切换多条 Note（Asset），每条可「查看」进详情页 |
+| Transcript | 分 Speaker 显示转录内容；每个 Speaker 可点击关联联系人 |
+| Reminders | Todo 列表 |
+| Contacts | 已关联联系人列表（从 Transcript 说话人匹配） |
+| 关联文件 | 与该文件双向关联的其他文件，可叉号取消关联 |
+
+**CTA 触发后逻辑（模拟）：**
+1. 按钮变为「分析中…」loading 状态
+2. 约 2 秒后：状态变「✓ 已解析」，CTA 隐藏，Tab 栏出现
+3. Notes Tab 默认激活，展示 AI 生成的摘要 Note
+
+### 5.2 图片文件详情（p-img）
+
+**Hero 区：**
+- 文件名、文件大小、解析状态
+- 图片预览占位区（模拟）
+- AI Analysis CTA：「OCR 文字识别 + 图像内容理解」
+
+**解析后 Tabs：**
+
+| Tab | 内容 |
+|---|---|
+| Notes | 子 Tab 切换（OCR 笔记等），每条 Note 是 Asset，可进详情 |
+| 关联文件 | 双向关联文件列表 |
+
+### 5.3 Markdown 文件详情（p-md）
+
+**Hero 区：**
+- 文件名、文件大小、解析状态
+- Markdown 原文预览（底部渐隐遮罩）
+- AI Analysis CTA：「生成摘要 Note · 提取 Action Items」
+
+**解析后 Tabs：**
+
+| Tab | 内容 |
+|---|---|
+| Notes | 子 Tab 切换多条 Note（摘要 / 关键点等） |
+| Reminders | 提取的 Todo 列表 |
+| 关联文件 | 双向关联文件列表 |
+
+### 5.4 Notes Tab：子 Tab 机制
+
+解析生成的每条 Note 都是 **Asset**（`type: note`，`noteType: file_analysis`）：
+
+- Notes Tab 顶部横向子 Tab，每个 Tab 对应一条 Note
+- 切换子 Tab，下方卡片更新
+- Note 卡片包含：标题、正文（Markdown 渲染）、来源标注、「查看」按钮（进 Asset 详情）
+- 音频：1 条摘要 Note；图片：1 条 OCR 笔记；Markdown：2 条（摘要 + 关键点）
 
 ---
 
-## 10. 修订记录
+## 6. Workspace 资产列表（p-ws-list）
+
+列出某类 Asset（或 Contacts），每条显示图标、标题、来源。
+
+点击 Asset → 进入 **Asset 详情（p-asset）**。
+点击 Contact → 进入 **Contact 详情（p-contact）**。
+
+---
+
+## 7. Asset 详情（p-asset）
+
+```
+Nav 栏（返回 / 标题）
+└─ Hero 区
+    ├─ 类型图标 + 类型标签（NOTE / TODO / IDEA）
+    ├─ 标题
+    └─ 来源标注（可回跳 File 详情或 Session）
+└─ Body 区（按类型渲染）
+```
+
+**按类型渲染规则：**
+
+| 类型 | Body 内容 |
+|---|---|
+| note | Markdown 渲染正文 |
+| todo | 标题、截止时间、状态 |
+| idea | 正文内容 |
+
+从 Asset 详情发起 Ask Agent：点击悬浮胶囊 ✦ → 进入 `anchored` 对话，Context Banner 显示该 Asset 信息。
+
+---
+
+## 8. Contact 详情（p-contact）
+
+```
+Nav 栏（返回 / 姓名）
+└─ Hero 区（头像首字母、姓名、公司 + 职位）
+└─ Body 区（电话、备注列表）
+```
+
+Mock 数据：Kevin Chen（Acme Corp）、Sarah Liu（Eureka HQ）。
+
+---
+
+## 9. Ask Agent / Flash 对话（p-session）
+
+### 9.1 页面结构
+
+```
+Nav 栏（返回 / 标题 + 副标题 / ☰ 历史记录）
+└─ Context Banner（anchored 时显示，点击回跳来源）
+└─ 对话区（可滚动）
+    ├─ 用户气泡（右对齐）：文字 / 语音（音频条 + 转录文字）
+    └─ Agent 气泡（左对齐）：AGENT 标签 + 回复文本 + 卡片 + 「＋保存为 Note」按钮
+└─ 输入栏（🎙 语音 / 文字输入框 / ↑ 发送）
+```
+
+### 9.2 气泡规则
+
+**用户气泡（右侧）：**
+- 文字输入 → 文字气泡
+- 语音输入 → 语音气泡（播放按钮 + 波形 + 时长 + 「转录文字」标题 + 转录内容）；超过 60 字符可展开 / 收起
+
+**Agent 气泡（左侧）：**
+- 顶部显示「AGENT」标签
+- 回复文本（支持 HTML，如 `<br>`、`<code>`、`<strong>`）
+- 卡片区（若有 Asset / Contact 卡片）
+- **「＋保存为 Note」按钮**：仅当 `_save: true`（即分析类 / 观点类回复，无卡片）时出现；纯卡片回复或系统 intro 不显示
+
+### 9.3 回复卡片类型
+
+| 卡片类型 | 典型内容 | 动作 |
+|---|---|---|
+| todo | 标题 + 截止时间 | 「认领」按钮（点击变「✓ 已认领」） |
+| note | 标题 + 元信息 | 「查看」按钮（进 Asset 详情） |
+| idea | 标题 + 元信息 | 「查看」按钮 |
+| contact | 姓名 + 偏好摘要 | 「查看」按钮（进 Contact 详情） |
+
+### 9.4 Flash 闪念规则
+
+- 单个持续对话流（`sessionTag: 'flash'`），预置 3 轮历史：
+  1. 语音「今晚 5 点开会，提醒我」→ 创建 Todo 卡片
+  2. 语音「Kevin 喜欢喝拿铁，帮我记一下」→ 创建 Contact 偏好卡片
+  3. 语音「B2B 客户打标签这个功能值得做，记个 Idea」→ 创建 Idea 卡片
+- 发送新消息（文字或语音）→ 追加到同一对话流末尾
+- Flash 对话历史持久化（`D.flashTurns`），再次进入 Flash 时还原
+
+### 9.5 Context Banner（anchored 对话）
+
+从 File / Asset / Contact 详情发起 Ask 时显示：
+
+- 显示来源图标、名称、类型
+- 点击 Banner → 回跳来源详情页
+
+### 9.6 getReply 回复逻辑（Mock）
+
+| 关键词 / 场景 | Agent 回复形式 | 是否可保存 |
+|---|---|---|
+| 「核心结论 / 结论」（file ctx） | 长文分析（4点结论）| 是 |
+| 「action items / todo / 遗漏」（file ctx） | Todo 卡片列表 | 否 |
+| 「邮件 / 跟进」（file ctx） | 草稿长文 | 是 |
+| 「摘要 / summary / 新版」（file ctx） | Note 卡片（生成并挂载到 File） | 否 |
+| `flash_meeting`（预置） | Todo 卡片 | 否 |
+| `flash_kevin`（预置） | Contact 卡片 | 否 |
+| `flash_idea`（预置） | Idea 卡片 | 否 |
+| 「名片 / 自动生成联系人」 | 产品想法分析长文 | 是 |
+| 「离线 / 硬件 + ASR」 | 方向分析长文 | 是 |
+| 其他 | 「收到，已记录」| 否 |
+
+---
+
+## 10. 对话历史
+
+### 10.1 访问方式
+
+Session 页右上角 ☰ 按钮 → 打开「对话历史」底部弹层。
+
+### 10.2 历史列表
+
+展示所有 Session（Flash + Ask），按时间倒序排列。每条显示：
+- 标签（Flash / Ask）
+- 标题（文件名 / Ask Agent 等）
+- 摘要（首条用户输入前 20 字）
+- 时间 + 对话轮数
+
+### 10.3 历史写入规则
+
+- 进入 `openAsk()` → 立即在 `SESSION_HISTORY` 头部插入一条 `_live: true` 记录
+- 每次发送消息 → `syncLiveSession()` 实时同步 turns
+- 返回（`goBack()`）时：
+  - 若无实质对话（只有系统 intro）→ **删除该记录**
+  - 若有实质对话 → 保存 turns，更新摘要，清除 `_live` 标记
+- Flash 对话不写入历史（单例持久化）
+
+### 10.4 预置历史（4 条）
+
+| # | 标题 | 场景 | Ctx |
+|---|---|---|---|
+| sh1 | Flash 闪念 | 3 轮语音预置（todo + contact + idea） | 无 |
+| sh2 | Product Design Sync | 结论 + action items + 生成摘要 | 音频文件 |
+| sh3 | Ask Agent | 查今日待办 + 更新截止 | 无 |
+| sh4 | Q1 Roadmap Review | 文档摘要 + Todos + 方向分析 | MD 文件 |
+
+---
+
+## 11. 底部弹层（Sheets）
+
+| Sheet | 触发 | 内容 |
+|---|---|---|
+| Plus 操作 | 悬浮胶囊 ＋ | 按当前页面上下文显示添加选项（关联文件 / 上传 / 新建 Todo 等） |
+| 说话人关联 | 音频 Transcript Tab 点击 Speaker | 联系人候选列表，选择后建立 Speaker ↔ Contact 关联 |
+| 关联文件 | 文件详情关联文件 Tab 点击添加 | 已有文件列表，选择后建立双向关联 |
+| 文件夹切换 | Files 区域标题按钮 | 系统视图 + 用户文件夹列表，可新建文件夹 |
+| 对话历史 | Session 页 ☰ 按钮 | 历史 Session 列表，点击恢复对话 |
+
+---
+
+## 12. Mock 数据摘要
+
+### Assets
+
+| ID | 类型 | 标题 | 来源 |
+|---|---|---|---|
+| n001 | note | 产品设计会议摘要 | file_analysis / Product Design Sync |
+| n002 | note | 架构精简摘要 | session / Product Design Sync 追问 |
+| t001 | todo | 整理 demo spec 并发给技术团队 | file_analysis（待认领） |
+| t002 | todo | 确认 Kevin 跟进接口文档 | file_analysis（待认领） |
+| i001 | idea | B2B 偏好标签系统 | session / Flash 闪念 |
+
+### Contacts
+
+| ID | 姓名 | 公司 | 备注 |
+|---|---|---|---|
+| kevin | Kevin Chen | Acme Corp | 喜欢喝拿铁咖啡 |
+| sarah | Sarah Liu | Eureka HQ | 无 |
+
+---
+
+## 13. 验收标准
+
+**首页**
+- [ ] 顶栏包含个人中心 / 品牌字标 / 设备连接（绿点）/ 日历三类入口
+- [ ] Agent Console 推送四类：到期 / 文件 / Agent / 闪念；**不含**普通 Ask 记录
+- [ ] Console 内有 Flash 和 New Chat 两个快捷按钮
+- [ ] Workspace 横向条位于 Console 与 Files 之间，四类资产可点击进入列表
+- [ ] Files 支持文件夹切换；文件卡片显示状态和关联文件数
+
+**文件详情**
+- [ ] 三种文件类型（音频 / 图片 / Markdown）进入时只显示 Hero 和「待解析」CTA
+- [ ] 点击「分析」后模拟加载，完成后显示 Tab 栏并隐藏 CTA
+- [ ] 解析状态变为「✓ 已解析」
+- [ ] 音频解析后：Notes / Transcript / Reminders / Contacts / 关联文件 五个 Tab
+- [ ] 图片解析后：Notes / 关联文件 两个 Tab
+- [ ] Markdown 解析后：Notes / Reminders / 关联文件 三个 Tab
+- [ ] Notes Tab 内有子 Tab，每条 Note 是独立 Asset，可进详情页
+- [ ] 悬浮胶囊在**未解析**的文件详情页不显示
+
+**Ask Agent**
+- [ ] 用户气泡右对齐；Agent 气泡左对齐并标注「AGENT」
+- [ ] 语音气泡展示音频条 + 转录文字；超 60 字可展开收起
+- [ ] 分析类回复（`_save: true`）显示「＋保存为 Note」按钮；卡片回复不显示
+- [ ] Context Banner 在 anchored 对话中常驻显示，点击可回跳来源
+- [ ] 悬浮胶囊在对话页**不显示**
+
+**Flash 闪念**
+- [ ] 进入 Flash 时已有 3 轮预置对话（todo / contact / idea 各一条）
+- [ ] 新发语音 / 文字追加到同一对话流末尾
+- [ ] 再次进入 Flash 时历史保留
+
+**对话历史**
+- [ ] Session 页右上角 ☰ 按钮打开历史弹层
+- [ ] 预置 4 条历史（sh1～sh4），点击可恢复完整对话
+- [ ] 新建 Ask 对话有实质内容后，返回时自动写入历史
+- [ ] 新建 Ask 对话无实质内容（只有 intro），返回时**不写入**历史
+
+**Asset / Contact 详情**
+- [ ] 来源标注可点击，回跳到对应 File 详情或 Session
+- [ ] 从 Asset / Contact 详情发起 Ask 时显示 Context Banner
+
+---
+
+## 14. 修订记录
 
 | 版本 | 日期 | 说明 |
 |---|---|---|
-| v0.1 | 2026-05-07 | 初版，定义 Agentic Flow 可交互 demo 的目标、模型、流程和验收标准。 |
-
+| v0.1 | 2026-05-07 | 初版：三种 Session 类型 + anchor_input + Generated Results Block。 |
+| v2.0 | 2026-05-09 | 完整重写，与当前 demo 实现对齐：两条独立管线、统一文件详情模板、气泡对话、Workspace 横向条、对话历史写入规则。 |

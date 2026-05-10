@@ -60,10 +60,15 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 .scroll::-webkit-scrollbar{display:none}
 
 /* HOME */
-.home-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;flex-shrink:0}
-.logo{width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 5%,#aef 12%,#46f 50%,#a5f 100%);display:grid;place-items:center;font-size:15px;box-shadow:0 6px 18px rgba(80,120,255,.4)}
+.home-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;flex-shrink:0;gap:8px;border-bottom:1px solid rgba(130,220,180,.08)}
+.hdr-act{width:38px;height:38px;border-radius:50%;background:rgba(126,232,184,.08);border:1px solid var(--border);display:grid;place-items:center;font-size:17px;color:var(--ink2);cursor:pointer;transition:all .15s;flex-shrink:0;padding:0}
+.hdr-act:hover{background:var(--gdim);border-color:rgba(126,232,184,.28);color:var(--green)}
+.hdr-profile{font-size:15px;color:var(--ink)}
+.hdr-center{flex:1;min-width:0;text-align:center}
 .wordmark{font-family:var(--mono);font-size:14px;font-weight:900;letter-spacing:-.04em;color:var(--green)}
-.avatar{width:30px;height:30px;border-radius:50%;background:rgba(126,232,184,.12);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;color:var(--ink3)}
+.hdr-act-wrap{position:relative;display:inline-flex}
+.hdr-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.hdr-dot{width:6px;height:6px;border-radius:50%;background:var(--green);position:absolute;top:5px;right:5px;box-shadow:0 0 0 2px #07090e;pointer-events:none}
 .console{border:1px solid var(--border);border-radius:var(--r);background:var(--card);overflow:hidden;margin-bottom:14px}
 .con-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;font-weight:900;color:var(--green);letter-spacing:.08em;text-transform:uppercase}
 .con-btns{display:flex;gap:5px}
@@ -76,6 +81,11 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 .ev-body .ev-title{font-size:11px;font-weight:700;font-family:var(--mono)}
 .ev-body .ev-desc{font-size:10px;color:var(--ink2);margin-top:1px;line-height:1.35}
 .ev-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.con-tag{display:inline-block;font-size:8px;font-weight:800;font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;line-height:1.2}
+.ct-todo{color:var(--amber)}
+.ct-file{color:var(--blue)}
+.ct-agent{color:var(--green)}
+.ct-flash{color:var(--purple)}
 .dot-green{background:var(--green)}.dot-amber{background:var(--amber)}.dot-blue{background:var(--blue)}
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
 .sec-title{font-size:18px;font-weight:900;letter-spacing:-.04em;font-family:var(--mono)}
@@ -94,12 +104,15 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 .cb{background:var(--bdim);color:var(--blue);border-color:rgba(106,180,255,.2)}
 .cp{background:var(--pdim);color:var(--purple);border-color:rgba(184,155,255,.2)}
 .cm{background:rgba(218,245,234,.04);color:var(--ink3);border-color:var(--border)}
-.ws-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.ws-cell{border:1px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:all .15s;background:var(--card)}
+.ws-strip{margin-bottom:14px}
+.ws-strip .sec-hdr{margin-bottom:8px}
+.ws-strip-inner{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.ws-strip-inner::-webkit-scrollbar{display:none}
+.ws-cell{flex:0 0 auto;width:118px;scroll-snap-align:start;border:1px solid var(--border);border-radius:var(--r);padding:11px 10px;cursor:pointer;transition:all .15s;background:var(--card)}
 .ws-cell:hover{border-color:var(--bhi)}
-.ws-cell-ico{font-size:22px;margin-bottom:6px}
-.ws-cell-name{font-size:12px;font-weight:800;font-family:var(--mono);margin-bottom:2px}
-.ws-cell-cnt{font-size:10px;color:var(--ink3);font-family:var(--mono)}
+.ws-cell-ico{font-size:20px;margin-bottom:5px}
+.ws-cell-name{font-size:11px;font-weight:800;font-family:var(--mono);margin-bottom:2px;line-height:1.25}
+.ws-cell-cnt{font-size:9px;color:var(--ink3);font-family:var(--mono)}
 
 /* FLOAT CAPSULE */
 .float-cap{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;
@@ -367,9 +380,15 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
     <!-- HOME PAGE -->
     <div class="page" id="p-home">
       <div class="home-hdr">
-        <div class="logo">&#10022;</div>
-        <span class="wordmark">Eureka 3.0</span>
-        <div class="avatar">&#9673;</div>
+        <button type="button" class="hdr-act hdr-profile" onclick="openProfile()" title="个人中心">&#9673;</button>
+        <div class="hdr-center"><span class="wordmark">Eureka 3.0</span></div>
+        <div class="hdr-actions">
+          <div class="hdr-act-wrap">
+            <button type="button" class="hdr-act" onclick="openDevice()" title="设备连接">&#127911;</button>
+            <span class="hdr-dot" title="已连接"></span>
+          </div>
+          <button type="button" class="hdr-act" onclick="openCalendar()" title="日历">&#128197;</button>
+        </div>
       </div>
       <div class="scroll">
         <div style="padding:0 14px 100px">
@@ -383,19 +402,21 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
             </div>
             <div id="con-list"></div>
           </div>
-          <div class="sec-hdr">
-            <button style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:0" onclick="openFolderSheet()">
+          <div class="ws-strip">
+            <div class="sec-hdr">
+              <span class="sec-title">Workspace</span>
+              <button type="button" class="sec-more" onclick="openWsList('note')">管理</button>
+            </div>
+            <div class="ws-strip-inner" id="home-ws"></div>
+          </div>
+          <div class="sec-hdr" style="margin-top:14px">
+            <button type="button" style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:0;color:inherit" onclick="openFolderSheet()">
               <span class="sec-title" id="files-folder-label">全部文件</span>
               <span style="font-size:13px;color:#8fb8a8;margin-top:2px">&#8964;</span>
             </button>
-            <button class="sec-more" onclick="openFolderSheet()">切换</button>
+            <button type="button" class="sec-more" onclick="openFolderSheet()">切换</button>
           </div>
           <div id="home-files"></div>
-          <div class="sec-hdr" style="margin-top:16px">
-            <span class="sec-title">Workspace</span>
-            <button class="sec-more">管理</button>
-          </div>
-          <div class="ws-grid" id="home-ws"></div>
         </div>
       </div>
     </div>
@@ -793,17 +814,31 @@ function openPlusSheet(mode){
 function plusItemClick(i){ window._plusItems[i].fn(); }
 
 /* ── HOME ── */
+function openProfile(){ alert('个人中心（占位）'); }
+function openDevice(){ alert('设备连接与管理（占位）'); }
+function openCalendar(){ alert('日历 / Reminders（占位）'); }
+
 function renderHome(){
   const analyzed=D.fileAnalyzed;
   document.getElementById('con-list').innerHTML=`
+    <div class="ev-row" onclick="openWsList('todo')">
+      <div class="ev-time"><span class="con-tag ct-todo">到期</span><br>今天</div>
+      <div class="ev-body"><div class="ev-title">整理 demo spec</div><div class="ev-desc">Reminders · 18:00 截止</div></div>
+      <div class="ev-dot dot-amber"></div>
+    </div>
     <div class="ev-row" onclick="openFile()">
-      <div class="ev-time">今天<br>14:30</div>
-      <div class="ev-body"><div class="ev-title">Product Design Sync</div><div class="ev-desc">音频 23:14 · ${analyzed?'已解析 · 3 个结论':'待 AI 解析'}</div></div>
+      <div class="ev-time"><span class="con-tag ct-file">文件</span><br>14:30</div>
+      <div class="ev-body"><div class="ev-title">Product Design Sync</div><div class="ev-desc">音频 23:14 · ${analyzed?'已解析 · 可查看 Notes / Transcript':'已上传 · 待 AI 解析'}</div></div>
       <div class="ev-dot ${analyzed?'dot-green':'dot-amber'}"></div>
     </div>
+    <div class="ev-row" onclick="openWsList('note')">
+      <div class="ev-time"><span class="con-tag ct-agent">Agent</span><br>摘要</div>
+      <div class="ev-body"><div class="ev-title">本周小结</div><div class="ev-desc">新增 4 条 Note，2 条来自会议解析 · 点击查看</div></div>
+      <div class="ev-dot dot-green"></div>
+    </div>
     <div class="ev-row" onclick="openFlash()">
-      <div class="ev-time">09:21</div>
-      <div class="ev-body"><div class="ev-title">Flash 闪念</div><div class="ev-desc">3 条输入 · 生成 2 个 Todos · 1 个 Idea</div></div>
+      <div class="ev-time"><span class="con-tag ct-flash">闪念</span><br>09:21</div>
+      <div class="ev-body"><div class="ev-title">闪念已处理</div><div class="ev-desc">语音已拆解 · 已写入 Todo / 联系人偏好 · 共 3 条输入</div></div>
       <div class="ev-dot dot-green"></div>
     </div>`;
   document.getElementById('home-ws').innerHTML=[
