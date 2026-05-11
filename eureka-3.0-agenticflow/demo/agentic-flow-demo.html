@@ -18,9 +18,22 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;color:inherit}
 body{font-family:var(--sans);background:#040608;color:#daf5ea;display:flex;justify-content:center;
-  align-items:center;min-height:100vh;padding:20px;
+  align-items:flex-start;min-height:100vh;padding:24px 16px 32px;
   background-image:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(126,232,184,.06) 0%,transparent 60%),
     radial-gradient(ellipse 50% 40% at 80% 90%,rgba(106,180,255,.04) 0%,transparent 60%)}
+.demo-wrap{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:center;gap:28px 32px;max-width:1180px;width:100%}
+.demo-rail{flex:1 1 260px;max-width:380px;min-width:220px;font-size:12px;line-height:1.65;color:rgba(218,245,234,.78);
+  padding:14px 16px 16px;border-radius:16px;border:1px solid rgba(130,220,180,.14);
+  background:rgba(10,14,20,.72);backdrop-filter:blur(8px)}
+.demo-rail-h{font-family:var(--mono);font-size:10px;font-weight:900;color:var(--green);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.demo-rail-p{margin:0 0 10px}
+.demo-rail ul{margin:0;padding-left:1.15em}
+.demo-rail li{margin-bottom:6px}
+.demo-rail code{font-family:var(--mono);font-size:10px;color:var(--amber);background:rgba(255,201,106,.08);padding:1px 5px;border-radius:4px}
+.shell-wrap{flex:0 0 auto}
+.hist-item.hist-resident{border-color:rgba(255,201,106,.28);background:rgba(255,201,106,.06)}
+.hist-item.hist-resident:hover{border-color:rgba(255,201,106,.45)}
+.hist-div{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink3);letter-spacing:.06em;text-transform:uppercase;padding:10px 2px 6px}
 button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 input,textarea{font:inherit;color:inherit;outline:none;border:none;background:none}
 
@@ -52,8 +65,8 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 .nb-ask{background:var(--gdim);color:var(--green);border-color:var(--border)}
 .nb-file{background:var(--bdim);color:var(--blue);border-color:rgba(106,180,255,.22)}
 .nb-ws{background:var(--pdim);color:var(--purple);border-color:rgba(184,155,255,.22)}
-.nav-hist-btn{background:none;border:none;color:#8fb8a8;font-size:17px;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0}
-.nav-hist-btn:hover{color:#daf5ea}
+.nav-hist-btn{background:none;border:none;color:#8fb8a8;font-size:20px;cursor:pointer;padding:6px 8px;line-height:1;flex-shrink:0;border-radius:10px}
+.nav-hist-btn:hover{color:#daf5ea;background:var(--gdim)}
 
 /* SCROLL */
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -104,9 +117,14 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 .cb{background:var(--bdim);color:var(--blue);border-color:rgba(106,180,255,.2)}
 .cp{background:var(--pdim);color:var(--purple);border-color:rgba(184,155,255,.2)}
 .cm{background:rgba(218,245,234,.04);color:var(--ink3);border-color:var(--border)}
-.ws-strip{margin-bottom:14px}
+.ws-strip{margin-bottom:14px;width:100%;max-width:100%;min-width:0;overflow:hidden}
 .ws-strip .sec-hdr{margin-bottom:8px}
-.ws-strip-inner{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.ws-strip-inner{
+  display:flex;flex-wrap:nowrap;gap:8px;width:100%;max-width:100%;min-width:0;
+  overflow-x:auto;overflow-y:hidden;padding:2px 0 8px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
+  touch-action:pan-x;overscroll-behavior-x:contain
+}
 .ws-strip-inner::-webkit-scrollbar{display:none}
 .ws-cell{flex:0 0 auto;width:118px;scroll-snap-align:start;border:1px solid var(--border);border-radius:var(--r);padding:11px 10px;cursor:pointer;transition:all .15s;background:var(--card)}
 .ws-cell:hover{border-color:var(--bhi)}
@@ -143,12 +161,58 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 .ap-dur{font-size:10px;font-weight:700;font-family:var(--mono);color:var(--ink2)}
 .img-preview-hero{overflow:hidden;border-top:1px solid var(--border)}
 .img-placeholder-hero{background:rgba(14,18,28,.9);height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8fb8a8;gap:6px}
-.md-preview-hero{padding:12px 13px;border-top:1px solid var(--border);max-height:140px;overflow:hidden;position:relative}
-.md-preview-hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,#0d1118)}
-.md-preview-text{font-size:10px;line-height:1.7;color:#6a9880;font-family:var(--mono)}
+.md-preview-hero{padding:12px 13px;border-top:1px solid var(--border);max-height:140px;overflow:hidden;position:relative;transition:max-height .32s ease}
+.md-preview-hero.expanded{max-height:none}
+.md-preview-hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,#0d1118);pointer-events:none}
+.md-preview-hero.expanded::after{display:none}
+.md-preview-text{font-size:10px;line-height:1.7;color:#6a9880;font-family:var(--mono);white-space:pre-wrap;word-break:break-word}
+.md-preview-toolbar{padding:0 13px 8px;border-top:1px solid var(--border)}
+.md-expand-btn{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--green);border:1px solid rgba(126,232,184,.25);border-radius:999px;padding:4px 11px;background:var(--gdim);margin-top:6px}
+.md-expand-btn:hover{border-color:var(--bhi)}
+/* 无对应内容时隐藏 tab 标签（不占位、不置灰） */
+.ftab.ftab-hidden{display:none!important}
 
-/* AI CTA in hero */
+/* File tabs — 激活态：薄荷字色 + 居中圆角下划线 */
+.ftab{
+  position:relative;
+  padding:9px 12px 11px;
+  font-size:10px;
+  font-weight:800;
+  font-family:var(--mono);
+  color:var(--ink3);
+  border-bottom:2px solid transparent;
+  transition:color .15s;
+  cursor:pointer;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.ftab:not(.on):hover{color:var(--ink2)}
+.ftab.on{color:var(--green);border-bottom-color:transparent}
+.ftab.on::after{
+  content:'';
+  position:absolute;
+  left:50%;
+  bottom:0;
+  transform:translateX(-50%);
+  width:calc(100% - 10px);
+  min-width:22px;
+  height:2px;
+  background:var(--green);
+  border-radius:999px;
+  box-shadow:0 0 10px rgba(126,232,184,.25);
+}
 .ai-cta-row{display:flex;align-items:center;gap:10px;padding:10px 13px;border-top:1px solid var(--border);background:rgba(126,232,184,.03)}
+/* AI 解析 CTA：脱离主内容区，贴底悬浮（与 .ai-cta-row 同一条，避免解析后主区高度跳变） */
+.ai-cta-row.ai-cta-float{
+  position:absolute;left:12px;right:12px;bottom:14px;z-index:8;
+  border-radius:var(--r);border:1px solid var(--border);
+  background:rgba(11,15,22,.94);backdrop-filter:blur(12px);
+  box-shadow:0 12px 40px rgba(0,0,0,.55);
+}
+#fd-tabs-wrap,#img-tabs-wrap,#md-tabs-wrap{flex:1;min-height:0;display:flex;flex-direction:column;margin-top:6px}
+#fd-tabs-wrap.has-floating-cta .ftab-content,
+#img-tabs-wrap.has-floating-cta .ftab-content,
+#md-tabs-wrap.has-floating-cta .ftab-content{padding-bottom:86px}
 .ai-cta-row-ico{font-size:14px;color:var(--green);flex-shrink:0}
 .ai-cta-row-body{flex:1;min-width:0}
 .ai-cta-row-title{font-size:11px;font-weight:700;color:#daf5ea}
@@ -160,8 +224,6 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 /* File Tabs */
 .file-tabs{display:flex;padding:0 14px;margin-top:10px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;scrollbar-width:none;gap:0}
 .file-tabs::-webkit-scrollbar{display:none}
-.ftab{padding:9px 12px;font-size:10px;font-weight:800;font-family:var(--mono);color:var(--ink3);border-bottom:2px solid transparent;transition:all .15s;cursor:pointer;white-space:nowrap;flex-shrink:0}
-.ftab.on{color:var(--green);border-bottom-color:var(--green)}
 .ftab-content{flex:1;overflow-y:auto;scrollbar-width:none}
 .ftab-content::-webkit-scrollbar{display:none}
 .ftp{padding:12px 14px 90px}
@@ -198,6 +260,10 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 .todo-title{font-size:11px;font-weight:700;line-height:1.3}
 .todo-title.done{text-decoration:line-through;color:var(--ink3)}
 .todo-meta{font-size:9px;font-family:var(--mono);color:var(--ink3);margin-top:1px}
+.asset-pick-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+.asset-pick-row.done{pointer-events:none;opacity:.85}
+.apick-btn{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink2);border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:transparent;cursor:pointer;transition:all .15s}
+.apick-btn:hover{border-color:var(--bhi);color:var(--green)}
 .claim-btn{font-size:9px;font-weight:900;font-family:var(--mono);color:var(--green);border:1px solid rgba(126,232,184,.25);border-radius:999px;padding:3px 8px;background:var(--gdim);white-space:nowrap;transition:all .15s}
 .claim-btn:hover{background:rgba(126,232,184,.14)}
 .claimed-badge{font-size:9px;font-family:var(--mono);color:var(--ink3)}
@@ -373,6 +439,18 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 </style>
 </head>
 <body>
+<div class="demo-wrap">
+  <aside class="demo-rail" aria-label="演示说明（非产品界面）">
+    <div class="demo-rail-h">Demo 导览 · 视图外说明</div>
+    <p class="demo-rail-p">左侧为手机壳内的产品主界面；本栏仅用于串联本 HTML demo 的流程，不会出现在真实 App 中。</p>
+    <ul>
+      <li>首页或图片/Markdown 详情 <code>＋</code> 可<strong>模拟上传</strong>（无需系统文件选择器），默认写入一条 Mock 文件、一条 Console「已上传」，并进入详情。</li>
+      <li>在<strong>任意文件详情</strong>完成一次 <code>AI 分析</code> 后，才可用「基于该文件的 Ask」；底栏 Ask 会随当前页带上文件上下文。</li>
+      <li>首页 <code>New Chat</code> 或底栏 Ask（无文件上下文）会<strong>新建一条会话历史</strong>；离开会话且无有效发言时，空会话会自动丢弃。</li>
+      <li>会话页右上角 <code>☰</code> 打开历史：<strong>Flash</strong> 为常驻入口；其余为 Ask 会话列表。</li>
+    </ul>
+  </aside>
+  <div class="shell-wrap">
 <div class="shell">
   <div class="sbar"><span>9:41</span><span>&#128310; WiFi</span></div>
   <div class="pages" id="pages">
@@ -405,7 +483,7 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
           <div class="ws-strip">
             <div class="sec-hdr">
               <span class="sec-title">Workspace</span>
-              <button type="button" class="sec-more" onclick="openWsList('note')">管理</button>
+              <button type="button" class="sec-more" onclick="openWsHub()">管理</button>
             </div>
             <div class="ws-strip-inner" id="home-ws"></div>
           </div>
@@ -442,22 +520,14 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
           <div class="ap-wave"></div>
           <span class="ap-dur" id="fd-player-dur">23:14</span>
         </div>
-        <div id="fd-ai-cta" class="ai-cta-row">
-          <div class="ai-cta-row-ico">&#10022;</div>
-          <div class="ai-cta-row-body">
-            <div class="ai-cta-row-title">AI Analysis</div>
-            <div class="ai-cta-row-sub">ASR 转写 + 说话人识别 + 生成摘要</div>
-          </div>
-          <button class="ai-cta-row-btn" id="fd-analyze-btn" onclick="startAnalysis()">分析</button>
-        </div>
       </div>
-      <div class="hidden" id="fd-tabs-wrap">
+      <div id="fd-tabs-wrap">
         <div class="file-tabs" id="fd-tabs">
-          <button class="ftab on" onclick="switchFdTab('notes',this)">Notes</button>
-          <button class="ftab" onclick="switchFdTab('transcript',this)">Transcript</button>
-          <button class="ftab" onclick="switchFdTab('reminders',this)">Reminders</button>
-          <button class="ftab" onclick="switchFdTab('contacts',this)">Contacts</button>
-          <button class="ftab" onclick="switchFdTab('relfiles',this)">关联文件</button>
+          <button type="button" class="ftab on" data-tab="notes" onclick="switchFdTab('notes',this)">Notes</button>
+          <button type="button" class="ftab" data-tab="transcript" onclick="switchFdTab('transcript',this)">Transcript</button>
+          <button type="button" class="ftab" data-tab="reminders" onclick="switchFdTab('reminders',this)">Reminders</button>
+          <button type="button" class="ftab" data-tab="contacts" onclick="switchFdTab('contacts',this)">Contacts</button>
+          <button type="button" class="ftab ftab-rel" data-tab="relfiles" onclick="switchFdTab('relfiles',this)">关联文件</button>
         </div>
         <div class="ftab-content">
           <div class="hidden ftp" id="fd-tab-notes"><div class="note-subtabs" id="fd-note-subtabs"></div><div id="fd-note-display"></div></div>
@@ -469,6 +539,14 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
             <div style="margin-top:4px;padding:8px 0;font-size:10px;color:#8fb8a8;font-family:var(--mono);line-height:1.5">叉号可取消关联；如需删除文件，请进入该文件详情页操作</div>
           </div>
         </div>
+      </div>
+      <div id="fd-ai-cta" class="ai-cta-row ai-cta-float">
+        <div class="ai-cta-row-ico">&#10022;</div>
+        <div class="ai-cta-row-body">
+          <div class="ai-cta-row-title">AI Analysis</div>
+          <div class="ai-cta-row-sub">ASR 转写 + 说话人识别 + 生成摘要</div>
+        </div>
+        <button class="ai-cta-row-btn" id="fd-analyze-btn" onclick="startAnalysis()">分析</button>
       </div>
     </div>
 
@@ -490,19 +568,11 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
             <div style="font-size:12px" id="img-preview-label">图片预览</div>
           </div>
         </div>
-        <div id="img-ai-cta" class="ai-cta-row">
-          <div class="ai-cta-row-ico">&#10022;</div>
-          <div class="ai-cta-row-body">
-            <div class="ai-cta-row-title">AI Analysis</div>
-            <div class="ai-cta-row-sub">OCR 文字识别 + 图像内容理解</div>
-          </div>
-          <button class="ai-cta-row-btn" id="img-analyze-btn" onclick="startImgAnalysis()">分析</button>
-        </div>
       </div>
-      <div class="hidden" id="img-tabs-wrap">
-        <div class="file-tabs">
-          <button class="ftab on" onclick="switchMediaTab('img','notes',this)">Notes</button>
-          <button class="ftab" onclick="switchMediaTab('img','relfiles',this)">关联文件</button>
+      <div id="img-tabs-wrap">
+        <div class="file-tabs" id="img-tabs">
+          <button type="button" class="ftab on" data-tab="notes" onclick="switchMediaTab('img','notes',this)">Notes</button>
+          <button type="button" class="ftab ftab-rel" data-tab="relfiles" onclick="switchMediaTab('img','relfiles',this)">关联文件</button>
         </div>
         <div class="ftab-content">
           <div class="ftp" id="img-tab-notes">
@@ -511,6 +581,14 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
           </div>
           <div class="hidden ftp" id="img-tab-relfiles"><div id="img-relfiles-list"></div></div>
         </div>
+      </div>
+      <div id="img-ai-cta" class="ai-cta-row ai-cta-float">
+        <div class="ai-cta-row-ico">&#10022;</div>
+        <div class="ai-cta-row-body">
+          <div class="ai-cta-row-title">AI Analysis</div>
+          <div class="ai-cta-row-sub">OCR 文字识别 + 图像内容理解</div>
+        </div>
+        <button class="ai-cta-row-btn" id="img-analyze-btn" onclick="startImgAnalysis()">分析</button>
       </div>
     </div>
 
@@ -526,23 +604,18 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
           <div class="fh-title" id="md-title">文档文件</div>
           <div class="fh-meta"><span id="md-size">&#8211;</span><div class="fh-sep"></div><span class="fh-status fhs-pending" id="md-status">待解析</span></div>
         </div>
-        <div class="md-preview-hero">
+        <div class="md-preview-hero" id="md-preview-hero">
           <div class="md-preview-text" id="md-preview-text">加载中&hellip;</div>
         </div>
-        <div id="md-ai-cta" class="ai-cta-row">
-          <div class="ai-cta-row-ico">&#10022;</div>
-          <div class="ai-cta-row-body">
-            <div class="ai-cta-row-title">AI Analysis</div>
-            <div class="ai-cta-row-sub">生成摘要 Note &middot; 提取 Action Items</div>
-          </div>
-          <button class="ai-cta-row-btn" id="md-analyze-btn" onclick="startMdAnalysis()">分析</button>
+        <div class="md-preview-toolbar">
+          <button type="button" class="md-expand-btn" id="md-toggle-full" onclick="toggleMdDocExpand()">展开全文</button>
         </div>
       </div>
-      <div class="hidden" id="md-tabs-wrap">
-        <div class="file-tabs">
-          <button class="ftab on" onclick="switchMediaTab('md','notes',this)">Notes</button>
-          <button class="ftab" onclick="switchMediaTab('md','reminders',this)">Reminders</button>
-          <button class="ftab" onclick="switchMediaTab('md','relfiles',this)">关联文件</button>
+      <div id="md-tabs-wrap">
+        <div class="file-tabs" id="md-tabs">
+          <button type="button" class="ftab on" data-tab="notes" onclick="switchMediaTab('md','notes',this)">Notes</button>
+          <button type="button" class="ftab" data-tab="reminders" onclick="switchMediaTab('md','reminders',this)">Reminders</button>
+          <button type="button" class="ftab ftab-rel" data-tab="relfiles" onclick="switchMediaTab('md','relfiles',this)">关联文件</button>
         </div>
         <div class="ftab-content">
           <div class="ftp" id="md-tab-notes">
@@ -553,6 +626,24 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
           <div class="hidden ftp" id="md-tab-relfiles"><div id="md-relfiles-list"></div></div>
         </div>
       </div>
+      <div id="md-ai-cta" class="ai-cta-row ai-cta-float">
+        <div class="ai-cta-row-ico">&#10022;</div>
+        <div class="ai-cta-row-body">
+          <div class="ai-cta-row-title">AI Analysis</div>
+          <div class="ai-cta-row-sub">生成摘要 Note &middot; 提取 Action Items</div>
+        </div>
+        <button class="ai-cta-row-btn" id="md-analyze-btn" onclick="startMdAnalysis()">分析</button>
+      </div>
+    </div>
+
+    <!-- WORKSPACE HUB（全部类目） -->
+    <div class="page off" id="p-ws-hub">
+      <div class="nav">
+        <button class="back" onclick="goBack()">&#8249;</button>
+        <div class="ntitle"><h2>Workspace</h2><div class="nsub">全部容器</div></div>
+        <span class="nbadge nb-ws">WS</span>
+      </div>
+      <div class="scroll"><div id="wh-list" style="padding:12px 14px 80px"></div></div>
     </div>
 
     <!-- WORKSPACE LIST -->
@@ -602,9 +693,9 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
     <!-- SESSION (Ask Agent / Flash) -->
     <div class="page off" id="p-session">
       <div class="nav">
-        <button class="back" onclick="goBack()">&#8249;</button>
+        <button type="button" class="back" onclick="goBack()">&#8249;</button>
         <div class="ntitle"><h2 id="ss-title">Ask Agent</h2><div class="nsub" id="ss-sub">通用对话</div></div>
-        <button class="nav-hist-btn" onclick="openSessionHistory()" title="历史记录">&#9776;</button>
+        <button type="button" class="nav-hist-btn" onclick="openSessionHistory()" title="全部会话历史">&#9776;</button>
       </div>
       <div class="hidden ctx-banner" id="ss-ctx-banner" onclick="ctxBannerTap()">
         <div class="ctx-banner-ico" id="ss-ctx-ico">&#128196;</div>
@@ -640,6 +731,13 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
         <div class="sh-body" id="sh-plus-body"></div>
       </div>
     </div>
+    <div class="sh-ov" id="sh-asset" onclick="closeSheet('sh-asset')">
+      <div class="sh" onclick="event.stopPropagation()">
+        <div class="sh-handle" onclick="closeSheet('sh-asset')"><div class="sh-handle-bar"></div></div>
+        <div class="sh-header"><span class="sh-title">设为 Asset</span><button class="sh-close" onclick="closeSheet('sh-asset')">&#215;</button></div>
+        <div class="sh-body" id="sh-asset-body"></div>
+      </div>
+    </div>
     <div class="sh-ov" id="sh-spk" onclick="closeSheet('sh-spk')">
       <div class="sh" onclick="event.stopPropagation()">
         <div class="sh-handle" onclick="closeSheet('sh-spk')"><div class="sh-handle-bar"></div></div>
@@ -657,18 +755,22 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
     <div class="sh-ov" id="sh-history" onclick="closeSheet('sh-history')">
       <div class="sh" onclick="event.stopPropagation()">
         <div class="sh-handle" onclick="closeSheet('sh-history')"><div class="sh-handle-bar"></div></div>
-        <div class="sh-header"><span class="sh-title">对话历史</span><button class="sh-close" onclick="closeSheet('sh-history')">&#215;</button></div>
+        <div class="sh-header"><span class="sh-title">全部会话历史</span><button class="sh-close" onclick="closeSheet('sh-history')">&#215;</button></div>
         <div class="sh-body" id="sh-history-body"></div>
       </div>
     </div>
 
   </div><!-- end pages -->
 </div><!-- end shell -->
+  </div><!-- shell-wrap -->
+</div><!-- demo-wrap -->
 
 <script>
 /* ── STATE ── */
 const D = {
-  fileAnalyzed: false,
+  /** 各文件 AI 解析是否完成（录音 / 图片 / Markdown 等统一用文件 id） */
+  parsedFiles: {},
+  fdActiveId: 'audio_001',
   currentSpkId: null,
   currentFdNoteIdx: 0,
   sessionCtx: null,
@@ -692,6 +794,8 @@ const D = {
     t001:{ id:'t001', type:'todo', icon:'✅', title:'整理 demo spec 并发给技术团队', src:'file_analysis', srcLabel:'Product Design Sync', status:'pending_confirmation', dueAt:'今天 18:00' },
     t002:{ id:'t002', type:'todo', icon:'✅', title:'确认 Kevin 跟进接口文档', src:'file_analysis', srcLabel:'Product Design Sync', status:'pending_confirmation', dueAt:'明天截止' },
     i001:{ id:'i001', type:'idea', icon:'💡', title:'B2B 偏好标签系统', src:'session', srcLabel:'Flash 闪念', content:'为 B2B 用户建立偏好标签体系，用于个性化推荐和智能匹配。' },
+    m001:{ id:'m001', type:'misc', icon:'📎', title:'闪念杂项 · 未归类', src:'session', srcLabel:'Flash 闪念',
+      content:'（示例）硬件拾音中无法归入 Todo/Idea 的片段，统一落在 misc，可删改。' },
   },
   fileNotes: ['n001','n002'],
   files: {
@@ -706,7 +810,126 @@ const D = {
     { id:'personal', name:'个人', icon:'🏠' },
   ],
   currentFolder: 'all',
+  /** Agent Console 里程碑（与 HOME_LOGIC_SPEC §3.0 对齐） */
+  flashConsoleReceived: false,
+  flashConsoleStructured: false,
+  /** Console 文件里程碑：事件流 + 每文件是否已推过 upload / parsed */
+  fileConsoleEvents:[{ ts: Date.now()-7200000, kind:'upload', fileId:'audio_001' }],
+  consoleFileState:{ audio_001:{ upload:true, parsed:false } },
+  /** 非主会议录音的 Note id 列表（主会议仍用 D.fileNotes） */
+  fileNotesByFd:{},
+  mockUploadSeq:0,
 };
+
+function isParsed(fileId){ return !!(fileId&&D.parsedFiles[fileId]); }
+
+/** 若当前在首页则重绘 Console（文件 / 闪念里程碑） */
+function refreshHomeIfHome(){
+  if(stack.length&&stack[stack.length-1]==='p-home') renderHome();
+}
+
+function fileNotesFor(fdId){
+  if(fdId==='audio_001') return D.fileNotes;
+  if(!D.fileNotesByFd[fdId]) D.fileNotesByFd[fdId]=[];
+  return D.fileNotesByFd[fdId];
+}
+
+function speakersFor(fdId){
+  return fdId==='audio_001'?D.speakers:[];
+}
+
+function ensureFileUploadConsole(fid){
+  const f=D.files[fid]; if(!f) return;
+  if(!D.consoleFileState[fid]) D.consoleFileState[fid]={};
+  if(D.consoleFileState[fid].upload) return;
+  D.consoleFileState[fid].upload=true;
+  D.fileConsoleEvents.push({ ts:Date.now(), kind:'upload', fileId:fid });
+  refreshHomeIfHome();
+}
+
+function pushFileParsedConsole(fid){
+  const f=D.files[fid]; if(!f) return;
+  if(!D.consoleFileState[fid]) D.consoleFileState[fid]={};
+  if(D.consoleFileState[fid].parsed) return;
+  D.consoleFileState[fid].parsed=true;
+  D.fileConsoleEvents.push({ ts:Date.now(), kind:'parsed', fileId:fid });
+  refreshHomeIfHome();
+}
+
+function formatConsoleShortTime(ts){
+  const d=new Date(ts);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function buildFileConsoleRows(){
+  const sorted=[...D.fileConsoleEvents].sort((a,b)=>b.ts-a.ts);
+  return sorted.map(e=>{
+    const f=D.files[e.fileId]; if(!f) return '';
+    const timeLbl=formatConsoleShortTime(e.ts);
+    let desc,dot;
+    if(e.kind==='upload'){
+      const tail=f.type==='audio'?'录音已入库 · 待 AI 解析':f.type==='image'?'图片已入库 · 待 AI 解析':'Markdown 已入库 · 待 AI 解析';
+      desc=`已上传 · ${tail}`;
+      dot='dot-amber';
+    } else {
+      desc=f.type==='audio'?'已解析 · 可查看 Notes / Transcript / Reminders':f.type==='image'?'已解析 · 可查看 Notes':'已解析 · 可查看 Notes / Reminders';
+      dot='dot-green';
+    }
+    const click=f.type==='audio'?`openFile('${e.fileId}')`:`openMediaDetail('${e.fileId}')`;
+    return `<div class="ev-row" onclick="${click}">
+      <div class="ev-time"><span class="con-tag ct-file">文件</span><br>${timeLbl}</div>
+      <div class="ev-body"><div class="ev-title">${esc(f.name)}</div><div class="ev-desc">${desc}</div></div>
+      <div class="ev-dot ${dot}"></div>
+    </div>`;
+  }).join('');
+}
+
+/** 模拟上传：无需文件选择器，写入 Files + Console「已上传」并进入详情 */
+function mockQuickUpload(kind, mode, hostId){
+  D.mockUploadSeq++;
+  const seq=D.mockUploadSeq;
+  const id=`upl_${Date.now()}_${seq}`;
+  const now=new Date();
+  const ds=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const tm=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  let host=null;
+  if(mode==='file') host=D.fdActiveId||null;
+  if(mode==='mediaHost') host=hostId||currentMediaId;
+  const rel=host?[host]:[];
+  if(kind==='image'){
+    D.files[id]={ id, type:'image', icon:'🖼', name:`演示上传_${seq}.jpg`, dur:null, date:ds, size:'2.0 MB', folder:null, relatedFiles:rel.slice() };
+  } else if(kind==='md'){
+    D.files[id]={ id, type:'md', icon:'📝', name:`演示纪要_${seq}.md`, dur:null, date:ds, size:'8 KB', folder:null, relatedFiles:rel.slice() };
+  } else if(kind==='audio'){
+    D.fileNotesByFd[id]=[];
+    D.files[id]={ id, type:'audio', icon:'🎙', name:`新录音 ${ds} ${tm}`, dur:'00:42', date:ds, size:'5.2 MB', folder:null, relatedFiles:rel.slice() };
+  }
+  if(host&&D.files[host]&&!D.files[host].relatedFiles.includes(id)) D.files[host].relatedFiles.push(id);
+  if(!D.consoleFileState[id]) D.consoleFileState[id]={};
+  D.consoleFileState[id].upload=true;
+  D.fileConsoleEvents.push({ ts:Date.now(), kind:'upload', fileId:id });
+  renderHomeFiles();
+  refreshHomeIfHome();
+  if(kind==='audio') openFile(id);
+  else openMediaDetail(id);
+}
+
+function openPlusForCurrentMedia(media){
+  const host=currentMediaId;
+  const title=media==='img'?'添加到此图片':'添加到此文档';
+  const kind=media==='img'?'image':'md';
+  document.getElementById('sh-plus-title').textContent=title;
+  window._plusItems=[
+    { ico:media==='img'?'🖼':'📝', label:`模拟上传${media==='img'?'图片':'Markdown'}`, sub:'无需选择文件 · 默认 Mock 并记入 Console', fn:()=>{ closeSheet('sh-plus'); mockQuickUpload(kind,'mediaHost',host); } },
+  ];
+  document.getElementById('sh-plus-body').innerHTML=window._plusItems.map((it,i)=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--border);cursor:pointer" onclick="plusItemClick(${i})">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:16px;flex-shrink:0">${it.ico}</div>
+      <div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">${it.label}</div><div style="font-size:10px;color:#8fb8a8;font-family:var(--mono)">${it.sub}</div></div>
+      <span style="color:var(--ink3);font-size:14px">›</span>
+    </div>`).join('');
+  openSheet('sh-plus');
+}
 
 /* ── NAV ── */
 const stack = ['p-home'];
@@ -745,28 +968,43 @@ function goBack(){
   const ret=stack[stack.length-1];
   document.getElementById(ret).classList.remove('behind');
   if(ret==='p-home') renderHome();
+  if(ret==='p-ws-hub') renderWsHub();
   updateCapsule(ret);
 }
 
 /* ── CAPSULE ── */
 const pageCtx={};
 let currentMediaId=null;
-const mediaAnalyzed={};
+
+/** Markdown 详情页「原文」：折叠区展示全文，展开后取消高度限制 */
+const MD_SOURCE=`# V2.0 API 接口设计文档\n\n> 版本：2.0 · 状态：草案\n\n## 1. 认证方式\n\n采用 JWT + OAuth2 双模认证，Token 有效期 7 天，支持 Refresh Token 自动续签。所有受保护端点需在 Header 携带 Authorization: Bearer <token>。\n\n## 2. 分页标准\n\n统一采用 cursor-based 分页，避免 offset 在大数据量下的性能问题。响应体包含 next_cursor 与 has_more 字段。\n\n## 3. 错误码体系\n\n4xx 表示客户端错误（参数非法、未授权等），5xx 表示服务端错误。错误体为 JSON：{ code, message, request_id }。\n\n## 4. 模块与端点概览\n\n共 3 大模块、18 个接口：认证模块（登录 / 刷新 / 注销）、资源模块（列表 / 详情 / 批量）、管理模块（配置 / 审计）。\n\n## 5. 兼容性说明\n\nV2.0 与 V1.x 并行窗口 6 个月；Deprecation 头标注下线时间；重大变更走版本协商流程。\n\n---\n\n（以上为 demo 模拟全文，用于「展开全文」交互。）`;
+
+function toggleMdDocExpand(){
+  const hero=document.getElementById('md-preview-hero');
+  const btn=document.getElementById('md-toggle-full');
+  if(!hero||!btn) return;
+  const open=hero.classList.toggle('expanded');
+  btn.textContent=open?'收起':'展开全文';
+}
 
 function updateCapsule(pageId){
   const cap=document.getElementById('global-cap');
   const plusBtn=document.getElementById('cap-plus-btn');
-  const mediaPages=['p-img','p-md'];
-  const mAnalyzed=mediaPages.includes(pageId)&&mediaAnalyzed[currentMediaId];
+  const fdId=D.fdActiveId||'audio_001';
   const hideAll=pageId==='p-session'
-    ||(pageId==='p-file'&&!D.fileAnalyzed)
-    ||(mediaPages.includes(pageId)&&!mAnalyzed);
+    ||(pageId==='p-file'&&!isParsed(fdId));
   cap.style.display=hideAll?'none':'flex';
-  if(['p-home','p-file','p-ws-list'].includes(pageId)) plusBtn.classList.remove('hidden-btn');
+  if(['p-home','p-file','p-ws-list','p-img','p-md'].includes(pageId)) plusBtn.classList.remove('hidden-btn');
   else plusBtn.classList.add('hidden-btn');
 }
 
-function capCapture(){ alert('触发硬件录音'); }
+function capCapture(){
+  if(!D.flashConsoleReceived){
+    D.flashConsoleReceived=true;
+    refreshHomeIfHome();
+  }
+  alert('触发硬件录音（Console 已记「已收到闪念」）');
+}
 function capAsk(){
   const p=stack[stack.length-1], ctx=pageCtx[p];
   if(ctx&&ctx.contextObj) openAsk(ctx.contextObj); else openAsk(null);
@@ -776,6 +1014,8 @@ function capPlus(){
   if(p==='p-home') openPlusSheet('home');
   else if(p==='p-file') openPlusSheet('file');
   else if(p==='p-ws-list') openPlusSheet('ws');
+  else if(p==='p-img') openPlusForCurrentMedia('img');
+  else if(p==='p-md') openPlusForCurrentMedia('md');
 }
 function openSheet(id){ document.getElementById(id).classList.add('show'); }
 function closeSheet(id){ document.getElementById(id).classList.remove('show'); }
@@ -785,13 +1025,14 @@ function openPlusSheet(mode){
   if(mode==='home'){
     title='上传文件';
     items=[
-      {ico:'🎙',label:'上传录音',sub:'支持 AAC / M4A / MP3',fn:()=>{closeSheet('sh-plus');alert('选择录音文件');}},
-      {ico:'🖼',label:'上传图片',sub:'支持 JPG / PNG',fn:()=>{closeSheet('sh-plus');alert('选择图片');}},
-      {ico:'📝',label:'上传 Markdown',sub:'支持 .md 文档',fn:()=>{closeSheet('sh-plus');alert('选择 MD 文件');}},
+      {ico:'🎙',label:'上传录音',sub:'无需选择 · 默认 Mock 新录音',fn:()=>{closeSheet('sh-plus');mockQuickUpload('audio','home');}},
+      {ico:'🖼',label:'上传图片',sub:'无需选择 · 默认 Mock 图片',fn:()=>{closeSheet('sh-plus');mockQuickUpload('image','home');}},
+      {ico:'📝',label:'上传 Markdown',sub:'无需选择 · 默认 Mock 文档',fn:()=>{closeSheet('sh-plus');mockQuickUpload('md','home');}},
     ];
   } else if(mode==='file'){
     title='添加到此文件';
     items=[
+      {ico:'⬆',label:'模拟上传文件',sub:'默认 Mock 图片并关联当前会议',fn:()=>{closeSheet('sh-plus');mockQuickUpload('image','file');}},
       {ico:'✅',label:'添加 Reminder',sub:'手动新增一条待办',fn:()=>{closeSheet('sh-plus');alert('新建 Todo 并关联此文件');}},
       {ico:'👤',label:'关联联系人',sub:'将说话人与联系人关联',fn:()=>{closeSheet('sh-plus');openSpkSheet('spk_a');}},
       {ico:'🔗',label:'关联文件',sub:'选择已有文件或上传',fn:()=>{closeSheet('sh-plus');openRelFileSheet();}},
@@ -819,34 +1060,30 @@ function openDevice(){ alert('设备连接与管理（占位）'); }
 function openCalendar(){ alert('日历 / Reminders（占位）'); }
 
 function renderHome(){
-  const analyzed=D.fileAnalyzed;
-  document.getElementById('con-list').innerHTML=`
-    <div class="ev-row" onclick="openWsList('todo')">
+  const rows=[];
+  rows.push(`<div class="ev-row" onclick="openWsList('todo')">
       <div class="ev-time"><span class="con-tag ct-todo">到期</span><br>今天</div>
       <div class="ev-body"><div class="ev-title">整理 demo spec</div><div class="ev-desc">Reminders · 18:00 截止</div></div>
       <div class="ev-dot dot-amber"></div>
-    </div>
-    <div class="ev-row" onclick="openFile()">
-      <div class="ev-time"><span class="con-tag ct-file">文件</span><br>14:30</div>
-      <div class="ev-body"><div class="ev-title">Product Design Sync</div><div class="ev-desc">音频 23:14 · ${analyzed?'已解析 · 可查看 Notes / Transcript':'已上传 · 待 AI 解析'}</div></div>
-      <div class="ev-dot ${analyzed?'dot-green':'dot-amber'}"></div>
-    </div>
-    <div class="ev-row" onclick="openWsList('note')">
-      <div class="ev-time"><span class="con-tag ct-agent">Agent</span><br>摘要</div>
-      <div class="ev-body"><div class="ev-title">本周小结</div><div class="ev-desc">新增 4 条 Note，2 条来自会议解析 · 点击查看</div></div>
+    </div>`);
+  rows.push(buildFileConsoleRows());
+  /* ④ 闪念：已收到 → 已解析（产出计数为示例） */
+  if(D.flashConsoleStructured){
+    rows.push(`<div class="ev-row" onclick="openFlash()">
+      <div class="ev-time"><span class="con-tag ct-flash">闪念</span><br>完成</div>
+      <div class="ev-body"><div class="ev-title">闪念已解析</div><div class="ev-desc">已产生 2 条 Notes、1 条 Todo（示例计数）· 点按进入 Flash</div></div>
       <div class="ev-dot dot-green"></div>
-    </div>
-    <div class="ev-row" onclick="openFlash()">
-      <div class="ev-time"><span class="con-tag ct-flash">闪念</span><br>09:21</div>
-      <div class="ev-body"><div class="ev-title">闪念已处理</div><div class="ev-desc">语音已拆解 · 已写入 Todo / 联系人偏好 · 共 3 条输入</div></div>
-      <div class="ev-dot dot-green"></div>
-    </div>`;
-  document.getElementById('home-ws').innerHTML=[
-    {type:'note', ico:'📝',name:'Notes',   cnt:Object.values(D.assets).filter(a=>a.type==='note').length},
-    {type:'todo', ico:'✅',name:'Reminders',cnt:Object.values(D.assets).filter(a=>a.type==='todo').length},
-    {type:'idea', ico:'💡',name:'Ideas',   cnt:Object.values(D.assets).filter(a=>a.type==='idea').length},
-    {type:'contact',ico:'👤',name:'Contacts',cnt:Object.values(D.contacts).length},
-  ].map(c=>`
+    </div>`);
+  }
+  if(D.flashConsoleReceived){
+    rows.push(`<div class="ev-row" onclick="openFlash()">
+      <div class="ev-time"><span class="con-tag ct-flash">闪念</span><br>收到</div>
+      <div class="ev-body"><div class="ev-title">已收到闪念</div><div class="ev-desc">${D.flashConsoleStructured?'拾音已入库 · 同批次已完成结构化':'拾音已入库 · 结构化完成后见上一条'}</div></div>
+      <div class="ev-dot ${D.flashConsoleStructured?'dot-green':'dot-amber'}"></div>
+    </div>`);
+  }
+  document.getElementById('con-list').innerHTML=rows.join('');
+  document.getElementById('home-ws').innerHTML=wsCategoryRows().map(c=>`
     <div class="ws-cell" onclick="openWsList('${c.type}')">
       <div class="ws-cell-ico">${c.ico}</div>
       <div class="ws-cell-name">${c.name}</div>
@@ -870,11 +1107,13 @@ function renderHomeFiles(){
   document.getElementById('home-files').innerHTML=files.map(f=>{
     const isAudio=f.id==='audio_001';
     const click=isAudio?'openFile()':`openMediaDetail('${f.id}')`;
-    const statusChip=isAudio?(D.fileAnalyzed?`<span class="chip cg">✓ analyzed</span>`:`<span class="chip ca">pending</span>`):'';
+    const parsed=isParsed(f.id);
+    const showParseChip=f.type==='audio'||f.type==='image'||f.type==='md';
+    const statusChip=showParseChip?(parsed?`<span class="chip cg">✓ parsed</span>`:`<span class="chip ca">pending</span>`):'';
     const fdName=D.folders.find(x=>x.id===f.folder);
     return `<div class="fcard" onclick="${click}">
       <div class="fcard-top"><div class="fcard-ico">${f.icon}</div><div class="fcard-meta">${f.date}<br>${f.dur||f.size}</div></div>
-      <div class="fcard-title">${isAudio&&D.fileAnalyzed?'Product Design Sync':f.name}</div>
+      <div class="fcard-title">${isAudio&&parsed?'Product Design Sync':f.name}</div>
       <div class="fcard-sub">${tLabel[f.type]||f.type} · ${f.relatedFiles.length>0?f.relatedFiles.length+' 个关联文件':'无关联'}</div>
       <div class="chips">
         <span class="chip ${tChip[f.type]||'cm'}">${tLabel[f.type]||f.type}</span>
@@ -923,12 +1162,37 @@ function openFolderSheet(){
 function selectFolder(id){ D.currentFolder=id; renderHomeFiles(); closeSheet('sh-plus'); }
 function addFolder(){ const n=prompt('文件夹名称：'); if(!n)return; D.folders.push({id:'f_'+Date.now(),name:n,icon:'📁'}); openFolderSheet(); }
 
-/* ── WORKSPACE LIST ── */
+/* ── WORKSPACE HUB & LIST ── */
+function wsCategoryRows(){
+  return[
+    {type:'note',ico:'📝',name:'Notes',cnt:Object.values(D.assets).filter(a=>a.type==='note').length},
+    {type:'todo',ico:'✅',name:'Reminders',cnt:Object.values(D.assets).filter(a=>a.type==='todo').length},
+    {type:'idea',ico:'💡',name:'Ideas',cnt:Object.values(D.assets).filter(a=>a.type==='idea').length},
+    {type:'contact',ico:'👤',name:'Contacts',cnt:Object.values(D.contacts).length},
+    {type:'misc',ico:'📎',name:'Misc',cnt:Object.values(D.assets).filter(a=>a.type==='misc').length},
+  ];
+}
+function renderWsHub(){
+  const el=document.getElementById('wh-list');
+  if(!el) return;
+  el.innerHTML='<div style="font-size:10px;font-weight:800;font-family:var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px">选择容器</div>'+
+    wsCategoryRows().map(c=>`
+    <div class="ws-list-item" onclick="openWsList('${c.type}')">
+      <div class="wli-ico">${c.ico}</div>
+      <div class="wli-body"><div class="wli-title">${c.name}</div><div class="wli-meta"><span class="wli-src">${c.cnt} 条</span></div></div>
+      <div class="wli-right" style="color:var(--ink3)">›</div>
+    </div>`).join('');
+}
+function openWsHub(){
+  renderWsHub();
+  nav('p-ws-hub');
+}
+
 function openWsList(type){
-  const lMap={note:'Notes',todo:'Reminders',idea:'Ideas',contact:'Contacts'};
+  const lMap={note:'Notes',todo:'Reminders',idea:'Ideas',contact:'Contacts',misc:'Misc'};
   const typeName=lMap[type]||type;
   document.getElementById('wl-title').textContent=typeName;
-  pageCtx['p-ws-list']={typeName};
+  pageCtx['p-ws-list']={typeName,wsType:type};
   let items=type==='contact'
     ? Object.values(D.contacts).map(c=>({id:c.id,ico:'👤',title:c.name,meta:c.company,type:'contact'}))
     : Object.values(D.assets).filter(a=>a.type===type).map(a=>({id:a.id,ico:a.icon,title:a.title,meta:a.srcLabel||'手动创建',type:a.type}));
@@ -966,36 +1230,128 @@ function openAsset(id){
 }
 function goToSource(assetId){
   const a=D.assets[assetId]; if(!a) return;
-  if(a.src==='file_analysis') openFile();
+  if(a.src==='file_analysis'){
+    const f=Object.values(D.files).find(x=>x.name===a.srcLabel);
+    if(f){ openMediaDetail(f.id); return; }
+    openFile('audio_001');
+  }
+}
+
+function setFloatingCtaPad(wrapId, on){
+  const w=document.getElementById(wrapId);
+  if(w) w.classList.toggle('has-floating-cta',!!on);
+}
+
+function updateFdTabStrip(){
+  const fdId=D.fdActiveId||'audio_001';
+  const analyzed=isParsed(fdId);
+  const nids=fileNotesFor(fdId);
+  const remN=Object.values(D.assets).filter(a=>a.type==='todo'&&a.src==='file_analysis').length;
+  const spks=speakersFor(fdId);
+  document.querySelectorAll('#fd-tabs [data-tab]').forEach(btn=>{
+    const key=btn.getAttribute('data-tab');
+    let show=true;
+    if(!analyzed) show=key==='relfiles';
+    else if(key==='notes') show=nids.length>0;
+    else if(key==='transcript') show=spks.length>0;
+    else if(key==='reminders') show=remN>0;
+    else if(key==='contacts') show=spks.length>0;
+    else if(key==='relfiles') show=true;
+    btn.classList.toggle('ftab-hidden',!show);
+  });
+}
+
+function updateImgTabStrip(fileId){
+  const analyzed=isParsed(fileId);
+  const noteIds=(D.mediaNotes||{})[fileId]||[];
+  document.querySelectorAll('#img-tabs [data-tab]').forEach(btn=>{
+    const key=btn.getAttribute('data-tab');
+    let show=true;
+    if(!analyzed) show=key==='relfiles';
+    else if(key==='notes') show=noteIds.length>0;
+    else if(key==='relfiles') show=true;
+    btn.classList.toggle('ftab-hidden',!show);
+  });
+}
+
+function updateMdTabStrip(fileId){
+  const analyzed=isParsed(fileId);
+  const noteIds=(D.mediaNotes||{})[fileId]||[];
+  const remEl=document.getElementById('md-reminders-list');
+  const hasRem=!!(remEl&&remEl.querySelector('.todo-item'));
+  document.querySelectorAll('#md-tabs [data-tab]').forEach(btn=>{
+    const key=btn.getAttribute('data-tab');
+    let show=true;
+    if(!analyzed) show=key==='relfiles';
+    else if(key==='notes') show=noteIds.length>0;
+    else if(key==='reminders') show=hasRem;
+    else if(key==='relfiles') show=true;
+    btn.classList.toggle('ftab-hidden',!show);
+  });
+}
+
+function activateFirstVisibleMediaTab(prefix){
+  const stripId=prefix==='img'?'img-tabs':'md-tabs';
+  const btn=document.querySelector(`#${stripId} .ftab:not(.ftab-hidden)`);
+  if(!btn) return;
+  const tab=btn.getAttribute('data-tab');
+  switchMediaTab(prefix,tab,btn);
 }
 
 /* ── AUDIO FILE ── */
-function openFile(){
-  const analyzed=D.fileAnalyzed;
-  document.getElementById('fd-title').textContent=analyzed?'Product Design Sync':'新录音';
-  document.getElementById('fd-nav-title').textContent=analyzed?'Product Design Sync':'录音文件';
+function openFile(fid){
+  const id=(typeof fid==='string'&&fid)?fid:'audio_001';
+  const f=D.files[id];
+  if(!f||f.type!=='audio') return;
+  D.fdActiveId=id;
+  D.currentFdNoteIdx=0;
+  ensureFileUploadConsole(id);
+  const analyzed=isParsed(id);
+  document.getElementById('fd-title').textContent=analyzed?(id==='audio_001'?'Product Design Sync':f.name):(id==='audio_001'?'新录音':f.name);
+  document.getElementById('fd-nav-title').textContent=analyzed?(id==='audio_001'?'Product Design Sync':f.name):f.name;
   const badge=document.getElementById('fd-status-badge');
   badge.textContent=analyzed?'✓ 已解析':'待解析';
   badge.className='fh-status '+(analyzed?'fhs-done':'fhs-pending');
   document.getElementById('fd-ai-cta').classList.toggle('hidden',analyzed);
-  document.getElementById('fd-tabs-wrap').classList.toggle('hidden',!analyzed);
-  if(analyzed) renderFile();
-  pageCtx['p-file']={contextObj:{type:'file',id:'audio_001',label:'Product Design Sync',ico:'🎙',sub:'音频 · 23:14'}};
-  nav('p-file');
+  setFloatingCtaPad('fd-tabs-wrap',!analyzed);
+  document.getElementById('fd-tabs-wrap').classList.remove('hidden');
+  const dispName=analyzed&&(id==='audio_001')?'Product Design Sync':f.name;
+  pageCtx['p-file']={contextObj:{type:'file',id,label:dispName,ico:f.icon||'🎙',sub:`音频 · ${f.dur||'--'}`}};
+  while(stack.length>1&&(stack[stack.length-1]==='p-img'||stack[stack.length-1]==='p-md')){
+    goBack();
+  }
+  if(stack[stack.length-1]!=='p-file') nav('p-file');
+  else updateCapsule('p-file');
+  updateFdTabStrip();
+  if(!analyzed){
+    renderFdRelFiles();
+    const relBtn=document.querySelector('#fd-tabs [data-tab="relfiles"]');
+    if(relBtn) switchFdTab('relfiles',relBtn);
+  } else {
+    renderFile();
+  }
 }
 
 function startAnalysis(){
+  const id=D.fdActiveId||'audio_001';
   const btn=document.getElementById('fd-analyze-btn');
   btn.textContent='分析中…'; btn.classList.add('loading');
   document.getElementById('fd-ai-cta').querySelector('.ai-cta-row-body').innerHTML='<div class="analyzing-row"><div class="spinner"></div>正在转写并解析，请稍候…</div>';
   setTimeout(()=>{
-    D.fileAnalyzed=true;
+    D.parsedFiles[id]=true;
+    pushFileParsedConsole(id);
     document.getElementById('fd-ai-cta').classList.add('hidden');
+    setFloatingCtaPad('fd-tabs-wrap',false);
     const badge=document.getElementById('fd-status-badge');
     badge.textContent='✓ 已解析'; badge.className='fh-status fhs-done';
-    document.getElementById('fd-title').textContent='Product Design Sync';
-    document.getElementById('fd-nav-title').textContent='Product Design Sync';
-    document.getElementById('fd-tabs-wrap').classList.remove('hidden');
+    const f=D.files[id];
+    if(id==='audio_001'){
+      document.getElementById('fd-title').textContent='Product Design Sync';
+      document.getElementById('fd-nav-title').textContent='Product Design Sync';
+    } else if(f){
+      document.getElementById('fd-title').textContent=f.name;
+      document.getElementById('fd-nav-title').textContent=f.name;
+    }
     renderFile(); renderHome(); updateCapsule('p-file');
   },1800);
 }
@@ -1003,8 +1359,9 @@ function startAnalysis(){
 function renderFile(){
   renderFdNoteCard(D.currentFdNoteIdx);
   renderFdTranscript(); renderFdReminders(); renderFdContacts(); renderFdRelFiles();
-  const ft=document.querySelector('#fd-tabs .ftab');
-  if(ft) switchFdTab('notes',ft);
+  updateFdTabStrip();
+  const ft=document.querySelector('#fd-tabs .ftab:not(.ftab-hidden)');
+  if(ft){ const tab=ft.getAttribute('data-tab'); switchFdTab(tab,ft); }
 }
 
 function switchFdTab(tab,el){
@@ -1016,7 +1373,15 @@ function switchFdTab(tab,el){
 }
 
 function renderFdNoteCard(idx){
-  const ids=D.fileNotes; if(!ids.length) return;
+  const fdId=D.fdActiveId||'audio_001';
+  const ids=fileNotesFor(fdId);
+  if(!ids.length){
+    const st=document.getElementById('fd-note-subtabs');
+    const disp=document.getElementById('fd-note-display');
+    if(st) st.innerHTML='';
+    if(disp) disp.innerHTML='<div class="empty-state" style="padding:20px 12px"><div class="es-txt">暂无 Note</div><div class="es-sub" style="margin-top:6px">解析完成后将出现在此</div></div>';
+    return;
+  }
   D.currentFdNoteIdx=idx;
   document.getElementById('fd-note-subtabs').innerHTML=ids.map((id,i)=>{
     const a=D.assets[id]; if(!a) return '';
@@ -1033,7 +1398,13 @@ function renderFdNoteCard(idx){
 }
 
 function renderFdTranscript(){
-  document.getElementById('fd-transcript').innerHTML=D.speakers.map(spk=>{
+  const fdId=D.fdActiveId||'audio_001';
+  const spks=speakersFor(fdId);
+  if(!spks.length){
+    document.getElementById('fd-transcript').innerHTML='<div class="empty-state" style="padding:20px 12px"><div class="es-txt">暂无转写</div></div>';
+    return;
+  }
+  document.getElementById('fd-transcript').innerHTML=spks.map(spk=>{
     const linked=spk.contactId?D.contacts[spk.contactId]:null;
     return `<div class="spk-block">
       <div class="spk-hdr">
@@ -1068,7 +1439,13 @@ function renderFdReminders(){
 function claimTodo(id,btn){ D.assets[id].status='in_progress'; btn.textContent='✓ 已认领'; btn.className='claimed-badge'; }
 
 function renderFdContacts(){
-  document.getElementById('fd-contacts').innerHTML=D.speakers.map(spk=>{
+  const fdId=D.fdActiveId||'audio_001';
+  const spks=speakersFor(fdId);
+  if(!spks.length){
+    document.getElementById('fd-contacts').innerHTML='<div class="empty-state" style="padding:20px 12px"><div class="es-txt">暂无说话人</div></div>';
+    return;
+  }
+  document.getElementById('fd-contacts').innerHTML=spks.map(spk=>{
     const linked=spk.contactId?D.contacts[spk.contactId]:null;
     return `<div class="pcard" onclick="${linked?`openContact('${spk.contactId}')`:''}" style="${!linked?'cursor:default':''}">
       <div class="pav ${!linked?'unknown':''}">${linked?linked.name[0]:'?'}</div>
@@ -1079,19 +1456,19 @@ function renderFdContacts(){
 }
 
 function renderFdRelFiles(){
-  document.getElementById('fd-relfiles-list').innerHTML=D.files.audio_001.relatedFiles.map(rid=>{
-    const rf=D.files[rid]; if(!rf) return '';
-    return `<div class="rel-file-row" onclick="openMediaDetail('${rid}')">
-      <div class="rel-file-ico">${rf.icon}</div>
-      <div class="rel-file-info"><div class="rel-file-name">${rf.name}</div><div class="rel-file-meta">${rf.date} · ${rf.size}</div></div>
-      <span class="rel-file-unlink" onclick="event.stopPropagation();unlinkRelFile('${rid}')">×</span>
-    </div>`;
-  }).join('');
+  renderRelFilesList(document.getElementById('fd-relfiles-list'), D.fdActiveId||'audio_001');
+}
+function unlinkRelPair(hostId, otherId){
+  const h=D.files[hostId], o=D.files[otherId];
+  if(h?.relatedFiles) h.relatedFiles=h.relatedFiles.filter(x=>x!==otherId);
+  if(o?.relatedFiles) o.relatedFiles=o.relatedFiles.filter(x=>x!==hostId);
+  const top=stack[stack.length-1];
+  if(top==='p-file') renderFdRelFiles();
+  if(top==='p-img'&&currentMediaId) renderRelFilesList(document.getElementById('img-relfiles-list'), currentMediaId);
+  if(top==='p-md'&&currentMediaId) renderRelFilesList(document.getElementById('md-relfiles-list'), currentMediaId);
 }
 function unlinkRelFile(fid){
-  D.files.audio_001.relatedFiles=D.files.audio_001.relatedFiles.filter(x=>x!==fid);
-  if(D.files[fid]) D.files[fid].relatedFiles=D.files[fid].relatedFiles.filter(x=>x!=='audio_001');
-  renderFdRelFiles();
+  unlinkRelPair(D.fdActiveId||'audio_001', fid);
 }
 
 function openSpkSheet(spkId){
@@ -1111,14 +1488,16 @@ function openSpkSheet(spkId){
 function linkSpk(cid){
   const spk=D.speakers.find(s=>s.id===D.currentSpkId); if(spk) spk.contactId=cid;
   closeSheet('sh-spk');
-  if(D.fileAnalyzed){ renderFdTranscript(); renderFdContacts(); }
+  if(isParsed(D.fdActiveId||'audio_001')){ renderFdTranscript(); renderFdContacts(); }
 }
 
 function openRelFileSheet(){
-  const cur=D.files.audio_001.relatedFiles;
+  const host=D.fdActiveId||'audio_001';
+  const cur=D.files[host];
+  const curRf=cur.relatedFiles||[];
   document.getElementById('sh-relfile-body').innerHTML=
     `<div class="sh-hint">选择要关联的文件：</div>`+
-    Object.values(D.files).filter(f=>f.id!=='audio_001'&&!cur.includes(f.id)).map(f=>`
+    Object.values(D.files).filter(f=>f.id!==host&&!curRf.includes(f.id)).map(f=>`
       <div class="sh-cand-row">
         <div style="display:flex;align-items:center;gap:10px;flex:1"><div style="font-size:20px">${f.icon}</div><div><div class="sh-cand-name">${f.name}</div><div class="sh-cand-sub">${f.date} · ${f.size}</div></div></div>
         <button class="sh-btn-pri" onclick="linkRelFile('${f.id}')">关联</button>
@@ -1127,19 +1506,25 @@ function openRelFileSheet(){
   openSheet('sh-relfile');
 }
 function linkRelFile(fid){
-  if(!D.files.audio_001.relatedFiles.includes(fid)) D.files.audio_001.relatedFiles.push(fid);
-  if(D.files[fid]&&!D.files[fid].relatedFiles.includes('audio_001')) D.files[fid].relatedFiles.push('audio_001');
+  const host=D.fdActiveId||'audio_001';
+  if(!D.files[host].relatedFiles.includes(fid)) D.files[host].relatedFiles.push(fid);
+  if(D.files[fid]&&!D.files[fid].relatedFiles.includes(host)) D.files[fid].relatedFiles.push(host);
   closeSheet('sh-relfile');
-  if(D.fileAnalyzed) renderFdRelFiles();
+  renderFdRelFiles();
 }
 
 /* ── MEDIA DETAIL (image / md) ── */
 function openMediaDetail(fileId){
   const f=D.files[fileId]; if(!f) return;
+  if(f.type==='audio'){
+    openFile(fileId);
+    return;
+  }
+  ensureFileUploadConsole(fileId);
   currentMediaId=fileId;
   const isImg=f.type==='image', isMd=f.type==='md';
   const pageId=isImg?'p-img':'p-md';
-  const analyzed=!!mediaAnalyzed[fileId];
+  const analyzed=isParsed(fileId);
   if(isImg){
     document.getElementById('img-name').textContent=f.name;
     document.getElementById('img-sub').textContent=`图片 · ${f.date}`;
@@ -1148,9 +1533,21 @@ function openMediaDetail(fileId){
     const st=document.getElementById('img-status');
     st.textContent=analyzed?'✓ 已解析':'待解析'; st.className='fh-status '+(analyzed?'fhs-done':'fhs-pending');
     document.getElementById('img-ai-cta').classList.toggle('hidden',analyzed);
-    document.getElementById('img-tabs-wrap').classList.toggle('hidden',!analyzed);
-    if(analyzed) renderImgTabs(fileId);
-    if(!analyzed){ document.querySelectorAll('#p-img .ftab').forEach(t=>t.classList.remove('on')); }
+    setFloatingCtaPad('img-tabs-wrap',!analyzed);
+    document.getElementById('img-tabs-wrap').classList.remove('hidden');
+    updateImgTabStrip(fileId);
+    if(!analyzed){
+      const relBtn=document.querySelector('#img-tabs [data-tab="relfiles"]');
+      if(relBtn){
+        document.querySelectorAll('#p-img .ftab').forEach(t=>t.classList.remove('on'));
+        relBtn.classList.add('on');
+        switchMediaTab('img','relfiles',relBtn);
+      }
+      renderRelFilesList(document.getElementById('img-relfiles-list'), fileId);
+    } else {
+      renderImgTabs(fileId);
+      activateFirstVisibleMediaTab('img');
+    }
   } else if(isMd){
     document.getElementById('md-name').textContent=f.name;
     document.getElementById('md-sub').textContent=`Markdown · ${f.date}`;
@@ -1158,23 +1555,46 @@ function openMediaDetail(fileId){
     document.getElementById('md-size').textContent=f.size;
     const st=document.getElementById('md-status');
     st.textContent=analyzed?'✓ 已解析':'待解析'; st.className='fh-status '+(analyzed?'fhs-done':'fhs-pending');
-    document.getElementById('md-preview-text').textContent=MD_PREVIEW;
+    document.getElementById('md-preview-text').textContent=MD_SOURCE;
+    const hero=document.getElementById('md-preview-hero');
+    if(hero) hero.classList.remove('expanded');
+    const te=document.getElementById('md-toggle-full');
+    if(te) te.textContent='展开全文';
     document.getElementById('md-ai-cta').classList.toggle('hidden',analyzed);
-    document.getElementById('md-tabs-wrap').classList.toggle('hidden',!analyzed);
-    if(analyzed) renderMdTabs(fileId);
+    setFloatingCtaPad('md-tabs-wrap',!analyzed);
+    document.getElementById('md-tabs-wrap').classList.remove('hidden');
+    updateMdTabStrip(fileId);
+    if(!analyzed){
+      const relBtn=document.querySelector('#md-tabs [data-tab="relfiles"]');
+      if(relBtn){
+        document.querySelectorAll('#p-md .ftab').forEach(t=>t.classList.remove('on'));
+        relBtn.classList.add('on');
+        switchMediaTab('md','relfiles',relBtn);
+      }
+      renderRelFilesList(document.getElementById('md-relfiles-list'), fileId);
+    } else {
+      renderMdTabs(fileId);
+      activateFirstVisibleMediaTab('md');
+    }
   }
+  const prevCtx=pageCtx[pageId]?.contextObj?.id;
   pageCtx[pageId]={contextObj:{type:'file',id:fileId,label:f.name,ico:f.icon,sub:isImg?'图片':'Markdown'}};
+  if(stack[stack.length-1]===pageId&&prevCtx===fileId) return;
   nav(pageId);
 }
 
-function renderRelFilesList(listEl, fileId){
-  const f=D.files[fileId];
-  listEl.innerHTML=f.relatedFiles.length
-    ? f.relatedFiles.map(rid=>{ const rf=D.files[rid]; if(!rf) return '';
+function renderRelFilesList(listEl, hostFileId){
+  const f=D.files[hostFileId]; if(!listEl||!f) return;
+  const rfIds=f.relatedFiles||[];
+  listEl.innerHTML=rfIds.length
+    ? rfIds.map(rid=>{
+        const rf=D.files[rid]; if(!rf) return '';
         return `<div class="rel-file-row" onclick="openMediaDetail('${rid}')">
           <div class="rel-file-ico">${rf.icon}</div>
           <div class="rel-file-info"><div class="rel-file-name">${rf.name}</div><div class="rel-file-meta">${rf.date} · ${rf.size}</div></div>
-        </div>`; }).join('')
+          <span class="rel-file-unlink" onclick="event.stopPropagation();unlinkRelPair('${hostFileId}','${rid}')">×</span>
+        </div>`;
+      }).join('')
     : '<div class="empty-state"><div class="es-ico">🔗</div><div class="es-txt">暂无关联文件</div></div>';
 }
 
@@ -1192,24 +1612,22 @@ function renderImgTabs(fileId){
   }
   renderMediaNoteSubtabs('img', fileId);
   renderRelFilesList(document.getElementById('img-relfiles-list'), fileId);
+  updateImgTabStrip(fileId);
 }
 
 function renderMdTabs(fileId){
   if(!D.mediaNotes) D.mediaNotes={};
-  if(!D.mediaNotes[fileId]){
-    const nid1='n_md_sum_'+fileId;
-    const nid2='n_md_act_'+fileId;
-    if(!D.assets[nid1]){
-      D.assets[nid1]={id:nid1,type:'note',icon:'📝',title:'API V2.0 文档摘要',noteType:'file_analysis',
+  const nid='n_md_doc_'+fileId;
+  const old=D.mediaNotes[fileId];
+  const needRebuild=!old||old.length!==1||old[0]!==nid||!D.assets[nid];
+  if(needRebuild){
+    (old||[]).forEach(oid=>{ if(oid&&oid!==nid) delete D.assets[oid]; });
+    if(!D.assets[nid]){
+      D.assets[nid]={id:nid,type:'note',icon:'📝',title:'API V2.0 文档摘要',noteType:'file_analysis',
         src:'file_analysis',srcLabel:D.files[fileId]?.name||'文档',
-        content:`# API V2.0 文档摘要\n\n本文档定义 V2.0 API 接口规范，包含认证方式（JWT + OAuth2）、分页标准（cursor-based）和错误码体系，共 3 大模块 18 个接口。\n\n## 认证方式\n\nJWT + OAuth2 双模认证，Token 有效期 7 天，支持 Refresh Token 自动续签。\n\n## 分页标准\n\n统一采用 cursor-based 分页，避免 offset 性能问题。`};
+        content:`# API V2.0 文档摘要\n\n本文档定义 V2.0 API 接口规范，包含认证方式（JWT + OAuth2）、分页标准（cursor-based）和错误码体系，共 3 大模块 18 个接口。\n\n## 认证方式\n\nJWT + OAuth2 双模认证，Token 有效期 7 天，支持 Refresh Token 自动续签。\n\n## 分页标准\n\n统一采用 cursor-based 分页，避免 offset 性能问题。\n\n## 错误码与模块\n\n4xx 客户端错误，5xx 服务端错误；认证、分页、业务接口三大模块共 18 个端点。\n\n## 关键点速览\n\n- 认证：JWT + OAuth2\n- 分页：cursor-based\n- 错误码：与前端约定对齐`};
     }
-    if(!D.assets[nid2]){
-      D.assets[nid2]={id:nid2,type:'note',icon:'📝',title:'接口规范关键点',noteType:'file_analysis',
-        src:'file_analysis',srcLabel:D.files[fileId]?.name||'文档',
-        content:`# 接口规范关键点\n\n- 认证：JWT + OAuth2\n- 分页：cursor-based\n- 错误码：4xx 客户端错误，5xx 服务端错误\n- 共 3 大模块，18 个接口`};
-    }
-    D.mediaNotes[fileId]=[nid1,nid2];
+    D.mediaNotes[fileId]=[nid];
   }
   renderMediaNoteSubtabs('md', fileId);
   // Reminders (static todos for demo)
@@ -1217,6 +1635,7 @@ function renderMdTabs(fileId){
     <div class="todo-item" style="cursor:default"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">Review 认证模块接口规范</div><div class="todo-meta">截止日期待定</div></div></div>
     <div class="todo-item" style="cursor:default"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">确认错误码体系与前端对齐</div><div class="todo-meta">截止日期待定</div></div></div>`;
   renderRelFilesList(document.getElementById('md-relfiles-list'), fileId);
+  updateMdTabStrip(fileId);
 }
 
 function renderMediaNoteSubtabs(prefix, fileId){
@@ -1225,11 +1644,17 @@ function renderMediaNoteSubtabs(prefix, fileId){
   const displayEl=document.getElementById(prefix+'-note-display');
   if(!subtabsEl||!displayEl) return;
   const idx=D.mediaNoteIdx?.[fileId]||0;
-  subtabsEl.innerHTML=ids.map((id,i)=>{
-    const a=D.assets[id]; if(!a) return '';
-    const s=a.title.length>14?a.title.slice(0,14)+'…':a.title;
-    return `<button class="nstab ${i===idx?'on':''}" onclick="selectMediaNote('${prefix}','${fileId}',${i})">${s}</button>`;
-  }).join('');
+  if(ids.length<=1){
+    subtabsEl.innerHTML='';
+    subtabsEl.style.display='none';
+  }else{
+    subtabsEl.style.display='flex';
+    subtabsEl.innerHTML=ids.map((id,i)=>{
+      const a=D.assets[id]; if(!a) return '';
+      const s=a.title.length>14?a.title.slice(0,14)+'…':a.title;
+      return `<button class="nstab ${i===idx?'on':''}" onclick="selectMediaNote('${prefix}','${fileId}',${i})">${s}</button>`;
+    }).join('');
+  }
   if(ids.length){
     const a=D.assets[ids[idx]]; if(!a) return;
     displayEl.innerHTML=`
@@ -1239,7 +1664,7 @@ function renderMediaNoteSubtabs(prefix, fileId){
           <div class="note-card-acts"><button class="nca" onclick="openAsset('${a.id}')">查看</button></div>
         </div>
         <div class="note-body">${markdownToHtml(a.content||'')}</div>
-        <div class="note-source"><span class="note-source-lbl">来源</span><span class="note-source-link">${a.srcLabel||''}</span></div>
+        <div class="note-source"><span class="note-source-lbl">来源</span><span class="note-source-link" onclick="openMediaDetail('${fileId}')">${a.srcLabel||''}</span></div>
       </div>`;
   }
 }
@@ -1264,12 +1689,16 @@ function startImgAnalysis(){
   btn.textContent='分析中…'; btn.classList.add('loading');
   document.getElementById('img-ai-cta').querySelector('.ai-cta-row-body').innerHTML='<div class="analyzing-row"><div class="spinner"></div>图像识别中…</div>';
   setTimeout(()=>{
-    mediaAnalyzed[currentMediaId]=true;
+    ensureFileUploadConsole(currentMediaId);
+    D.parsedFiles[currentMediaId]=true;
+    pushFileParsedConsole(currentMediaId);
     document.getElementById('img-ai-cta').classList.add('hidden');
+    setFloatingCtaPad('img-tabs-wrap',false);
     const st=document.getElementById('img-status'); st.textContent='✓ 已解析'; st.className='fh-status fhs-done';
     document.getElementById('img-tabs-wrap').classList.remove('hidden');
     renderImgTabs(currentMediaId);
-    const ft=document.querySelector('#p-img .ftab'); if(ft){document.querySelectorAll('#p-img .ftab').forEach(t=>t.classList.remove('on'));ft.classList.add('on');}
+    activateFirstVisibleMediaTab('img');
+    renderHome();
     updateCapsule('p-img');
   },1600);
 }
@@ -1279,17 +1708,19 @@ function startMdAnalysis(){
   btn.textContent='分析中…'; btn.classList.add('loading');
   document.getElementById('md-ai-cta').querySelector('.ai-cta-row-body').innerHTML='<div class="analyzing-row"><div class="spinner"></div>解析文档中…</div>';
   setTimeout(()=>{
-    mediaAnalyzed[currentMediaId]=true;
+    ensureFileUploadConsole(currentMediaId);
+    D.parsedFiles[currentMediaId]=true;
+    pushFileParsedConsole(currentMediaId);
     document.getElementById('md-ai-cta').classList.add('hidden');
+    setFloatingCtaPad('md-tabs-wrap',false);
     const st=document.getElementById('md-status'); st.textContent='✓ 已解析'; st.className='fh-status fhs-done';
     document.getElementById('md-tabs-wrap').classList.remove('hidden');
     renderMdTabs(currentMediaId);
-    const ft=document.querySelector('#p-md .ftab'); if(ft){document.querySelectorAll('#p-md .ftab').forEach(t=>t.classList.remove('on'));ft.classList.add('on');}
+    activateFirstVisibleMediaTab('md');
+    renderHome();
     updateCapsule('p-md');
   },1600);
 }
-
-const MD_PREVIEW=`# V2.0 API 接口设计文档\n\n## 1. 认证方式\n\n采用 JWT + OAuth2 双模认证，Token 有效期 7 天，支持 Refresh Token 自动续签。\n\n## 2. 分页标准\n\n统一采用 cursor-based 分页。\n\n## 3. 错误码体系\n\n4xx 客户端错误，5xx 服务端错误。`;
 
 /* ── CONTACT DETAIL ── */
 function openContact(id){
@@ -1311,13 +1742,17 @@ function openContact(id){
 let sessionTurns=[]; let turnIdx=0; let currentSessionId=null;
 
 function openFlash(){
+  currentSessionId=null;
   D.sessionTag='flash';
+  D.sessionCtx=null;
   document.getElementById('ss-title').textContent='Flash';
   document.getElementById('ss-sub').textContent='全局闪念对话';
   document.getElementById('ss-ctx-banner').classList.add('hidden');
   sessionTurns=D.flashTurns;
   const ci=document.getElementById('ss-chat'); ci.innerHTML='';
+  let justSeeded=false;
   if(!sessionTurns.length){
+    justSeeded=true;
     // Turn 1: todo
     appendVoiceBubble('ss-chat','00:08','今晚 5 点开会，提醒我。',null,true);
     const r1=getReply('flash_meeting',null,'flash');
@@ -1335,15 +1770,36 @@ function openFlash(){
     sessionTurns.forEach(t=>{
       if(t.role==='user-voice') appendVoiceBubble('ss-chat',t.dur,t.transcript,null,false);
       else if(t.role==='user-text') appendTextBubble('ss-chat',t.text,false);
-      else appendAgentBubble('ss-chat',t.text,t.cards,t.prompts,false,false,t.saveable);
+      else appendAgentBubble('ss-chat',t.text,t.cards,t.prompts,false,false,t.saveable,t.pickUserLine||null);
     });
   }
+  if(!D.flashConsoleReceived){
+    D.flashConsoleReceived=true;
+    refreshHomeIfHome();
+  }
   nav('p-session'); scrollChat();
+  /* 模拟闪念结构化完成 → Console 第二条 ④ */
+  if(!D.flashConsoleStructured){
+    const n=sessionTurns.length;
+    if(justSeeded&&n>=6){
+      setTimeout(()=>{ D.flashConsoleStructured=true; refreshHomeIfHome(); },750);
+    } else if(!justSeeded&&n>=6){
+      D.flashConsoleStructured=true;
+      refreshHomeIfHome();
+    }
+  }
 }
 
 function openAsk(ctx){
+  if(ctx&&ctx.type==='file'){
+    const fid=ctx.id;
+    if(!isParsed(fid)){
+      alert('请先在该文件详情页完成 AI 解析，再基于文件发起 Ask。');
+      return;
+    }
+  }
   D.sessionCtx=ctx; D.sessionTag=ctx?'anchored':'general';
-  document.getElementById('ss-title').textContent=ctx?ctx.label:'Ask Agent';
+  document.getElementById('ss-title').textContent=ctx?ctx.label:'New Chat';
   document.getElementById('ss-sub').textContent=ctx?`上下文：${ctx.type}`:'通用对话';
   const banner=document.getElementById('ss-ctx-banner');
   if(ctx){
@@ -1353,14 +1809,13 @@ function openAsk(ctx){
     document.getElementById('ss-ctx-sub').textContent=ctx.sub||ctx.type;
   } else { banner.classList.add('hidden'); }
   sessionTurns=[]; document.getElementById('ss-chat').innerHTML='';
-  // Create a live history entry
   currentSessionId='live_'+Date.now();
   const now=new Date(); const timeStr=`今天 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   SESSION_HISTORY.unshift({
     id:currentSessionId,
-    tag:ctx?'ask':'ask',
-    title:ctx?ctx.label:'Ask Agent',
-    sub:ctx?`基于 ${ctx.type} 的对话`:'通用对话',
+    tag:'ask',
+    title:ctx?ctx.label:'New Chat',
+    sub:ctx?`基于 ${ctx.type} 的追问`:'通用对话',
     time:timeStr,
     ctx:ctx||null,
     turns:[],
@@ -1375,7 +1830,7 @@ function openAsk(ctx){
 function ctxBannerTap(){
   const ctx=D.sessionCtx; if(!ctx) return;
   if(ctx.type==='file') openFile();
-  else if(['note','idea','todo'].includes(ctx.type)) openAsset(ctx.id);
+  else if(['note','idea','todo','misc'].includes(ctx.type)) openAsset(ctx.id);
   else if(ctx.type==='contact') openContact(ctx.id);
 }
 
@@ -1391,7 +1846,7 @@ function sendMsg(){
   const inp=document.getElementById('ss-input'); const text=inp.value.trim(); if(!text) return; inp.value='';
   appendTextBubble('ss-chat',text,true);
   const r=getReply(text,D.sessionCtx,D.sessionTag);
-  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false,r._save===true);
+  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false,r._save===true,r._assetPick?text:null);
   if(D.sessionTag==='flash') D.flashTurns=[...sessionTurns];
   syncLiveSession();
   scrollChat();
@@ -1409,7 +1864,7 @@ function sendVoiceMsg(){
   const s=samples[Math.floor(Math.random()*samples.length)];
   appendVoiceBubble('ss-chat',s.dur,s.t,null,true);
   const r=getReply(s.t,D.sessionCtx,D.sessionTag);
-  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false,r._save===true);
+  appendAgentBubble('ss-chat',r.text,r.cards,r.prompts,true,false,r._save===true,r._assetPick?s.t:null);
   if(D.sessionTag==='flash') D.flashTurns=[...sessionTurns];
   syncLiveSession();
   scrollChat();
@@ -1448,41 +1903,124 @@ function expandTran(elId,btn){
   btn.textContent=btn.textContent==='展开全文'?'收起':'展开全文';
 }
 
-function appendAgentBubble(ciId,text,cards,prompts,record,isIntro,saveable){
+function appendAgentBubble(ciId,text,cards,prompts,record,isIntro,saveable,pickUserLine){
   turnIdx++;
   const id='turn_'+turnIdx;
   const cardsHtml=(cards||[]).map(c=>renderRcard(c)).join('');
   const promptsHtml=(prompts||[]).length?`<div class="pcards">${(prompts||[]).map(p=>`<button class="pcard-btn" onclick="fillAndSend('${esc(p)}')">${esc(p)}</button>`).join('')}</div>`:'';
   const showSave=!isIntro&&saveable===true;
-  const saveHtml=showSave?`<button class="save-note-btn" id="snb-${id}" onclick="saveAsNote('${id}','${esc(text)}')">＋ 保存为 Note</button>`:'';
+  const saveHtml=showSave?`<div class="asset-slot" id="asset-slot-${id}"><button type="button" class="save-note-btn" onclick="openAssetPickSheet('${id}','agent')">＋ 设为 Asset</button></div>`:'';
+  const pickEnc=pickUserLine!=null&&pickUserLine!==''?encodeURIComponent(pickUserLine):'';
+  const pickHtml=pickEnc?`<div class="asset-slot" id="asset-slot-${id}"><button type="button" class="save-note-btn" onclick="openAssetPickSheet('${id}','userline')">＋ 设为 Asset</button></div>`:'';
+  const dataPick=pickEnc?` data-pickline="${pickEnc}"`:'';
   document.getElementById(ciId).innerHTML+=`
-    <div class="brow-a" id="${id}"><div class="ba">
+    <div class="brow-a" id="${id}"${dataPick}><div class="ba">
       <span class="ba-lbl">AGENT</span>
       <div class="ba-text">${text}</div>
       ${cardsHtml?`<div class="rcards">${cardsHtml}</div>`:''}
-      ${promptsHtml}${saveHtml}
+      ${promptsHtml}${saveHtml}${pickHtml}
     </div></div>`;
-  if(record) sessionTurns.push({role:'agent',text,cards,prompts,id,saveable});
+  if(record) sessionTurns.push({role:'agent',text,cards,prompts,id,saveable,pickUserLine:pickUserLine||undefined});
 }
 
-function saveAsNote(turnId,text){
-  const btn=document.getElementById('snb-'+turnId); if(btn.classList.contains('saved')) return;
-  const nid='n_saved_'+Date.now(); const ctx=D.sessionCtx;
-  D.assets[nid]={id:nid,type:'note',icon:'📝',title:'对话笔记 · '+new Date().toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit'}),
-    noteType:'conversation_note',src:'session',srcLabel:ctx?ctx.label:'对话',
-    content:text.replace(/<[^>]+>/g,' ')};
-  if(ctx&&ctx.type==='file'&&!D.fileNotes.includes(nid)) D.fileNotes.push(nid);
-  btn.textContent='✓ 已保存为 Note'; btn.classList.add('saved');
+function openAssetPickSheet(turnId,source){
+  window._assetPickState={turnId,source};
+  const rows=[
+    {k:'note',ico:'📝',lab:'Note',sub:'笔记 / 摘要片段'},
+    {k:'idea',ico:'💡',lab:'Idea',sub:'想法'},
+    {k:'misc',ico:'📎',lab:'Misc',sub:'杂项 / 未归类'},
+  ];
+  document.getElementById('sh-asset-body').innerHTML='<p style="font-size:10px;color:#8fb8a8;font-family:var(--mono);padding:4px 15px 12px;line-height:1.45">类型由你选择，系统不对这条内容做强分类。</p>'+rows.map(x=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--border);cursor:pointer" onclick="confirmAssetPick('${x.k}')">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--gdim);border:1px solid var(--border);display:grid;place-items:center;font-size:16px;flex-shrink:0">${x.ico}</div>
+      <div style="flex:1"><div style="font-size:12px;font-weight:700">${x.lab}</div><div style="font-size:10px;color:#8fb8a8;font-family:var(--mono)">${x.sub}</div></div>
+      <span style="color:var(--ink3);font-size:14px">›</span>
+    </div>`).join('');
+  openSheet('sh-asset');
+}
+function confirmAssetPick(kind){
+  const st=window._assetPickState; if(!st) return;
+  closeSheet('sh-asset');
+  if(st.source==='agent') saveAgentTurnAs(st.turnId,kind);
+  else saveUserPickAsset(st.turnId,kind);
+  window._assetPickState=null;
+}
+
+function saveUserPickAsset(turnId,kind){
+  const row=document.getElementById(turnId);
+  if(!row||!row.dataset.pickline) return;
+  const wrap=document.getElementById('asset-slot-'+turnId);
+  if(!wrap||wrap.classList.contains('done')) return;
+  const line=decodeURIComponent(row.dataset.pickline);
+  const nid=kind+'_pick_'+Date.now();
+  const icons={note:'📝',idea:'💡',misc:'📎'};
+  const ctx=D.sessionCtx;
+  const srcLb=D.sessionTag==='flash'?'Flash 闪念':(ctx&&ctx.label)?`${ctx.label} · 追问`:'Ask Agent';
+  const title=(line.slice(0,28)+(line.length>28?'…':''))||(D.sessionTag==='flash'?'闪念摘录':'摘录');
+  D.assets[nid]={
+    id:nid,type:kind,icon:icons[kind]||'📎',title,
+    noteType:kind==='note'?'conversation_note':undefined,
+    src:'session',srcLabel:srcLb,
+    content:line
+  };
+  if(ctx&&ctx.type==='file'){
+    const arr=fileNotesFor(ctx.id);
+    if(!arr.includes(nid)) arr.push(nid);
+  }
+  wrap.classList.add('done');
+  wrap.innerHTML='<span style="font-size:10px;font-weight:800;font-family:var(--mono);color:var(--green)">✓ 已保存为 '+kind.toUpperCase()+'</span>';
+  const ag=sessionTurns.find(x=>x.role==='agent'&&x.id===turnId);
+  if(ag){ delete ag.pickUserLine; ag.pickSavedAs=kind; }
+  if(D.sessionTag==='flash') D.flashTurns=[...sessionTurns];
+  syncLiveSession();
+}
+
+function saveAgentTurnAs(turnId,kind){
+  const wrap=document.getElementById('asset-slot-'+turnId);
+  if(!wrap||wrap.classList.contains('done')) return;
+  const row=document.getElementById(turnId);
+  const html=row&&row.querySelector('.ba-text')?row.querySelector('.ba-text').innerHTML:'';
+  const plain=html.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+  const nid=kind+'_ask_'+Date.now();
+  const icons={note:'📝',idea:'💡',misc:'📎'};
+  const ctx=D.sessionCtx;
+  const srcLb=D.sessionTag==='flash'?'Flash 闪念':(ctx&&ctx.label)?`${ctx.label} · 追问`:'Ask Agent';
+  const title=(ctx&&ctx.type==='file')?`${ctx.label} · 追问 · ${kind}`:(ctx&&ctx.label)?`${ctx.label} · ${kind}`:`Ask · ${kind}`;
+  D.assets[nid]={
+    id:nid,type:kind,icon:icons[kind]||'📎',
+    title,
+    noteType:kind==='note'?'conversation_note':undefined,
+    src:'session',srcLabel:srcLb,
+    content:plain||'(空)'
+  };
+  if(ctx&&ctx.type==='file'){
+    const arr=fileNotesFor(ctx.id);
+    if(!arr.includes(nid)) arr.push(nid);
+  }
+  wrap.classList.add('done');
+  wrap.innerHTML='<span style="font-size:10px;font-weight:800;font-family:var(--mono);color:var(--green)">✓ 已保存为 '+kind.toUpperCase()+'</span>';
+  if(D.sessionTag==='flash') D.flashTurns=[...sessionTurns];
+  syncLiveSession();
 }
 
 function renderRcard(c){
-  const tc={todo:'rt-todo',note:'rt-note',idea:'rt-idea',contact:'rt-contact'}[c.type]||'rt-note';
-  const isClaimed=c.claimId&&D.assets[c.claimId]&&D.assets[c.claimId].status==='in_progress';
+  const tc={todo:'rt-todo',note:'rt-note',idea:'rt-idea',contact:'rt-contact',misc:'rt-note'}[c.type]||'rt-note';
+  const flashTodo=D.sessionTag==='flash'&&c.type==='todo'&&c.claimId;
+  let cardOnclick='';
+  if(flashTodo) cardOnclick=`openAsset('${c.claimId}')`;
+  else if(c.assetId) cardOnclick=`openAsset('${c.assetId}')`;
+  else if(c.contactId) cardOnclick=`openContact('${c.contactId}')`;
   let act='';
-  if(c.claimId) act=isClaimed?`<span class="rca-claimed">✓ 已认领</span>`:`<button class="rca-claim" onclick="claimCard('${c.claimId}',this)">认领</button>`;
-  else if(c.contactId) act=`<button class="rca-view" onclick="openContact('${c.contactId}')">查看</button>`;
-  else if(c.assetId) act=`<button class="rca-view" onclick="openAsset('${c.assetId}')">查看</button>`;
-  return `<div class="rcard" onclick="${c.assetId?`openAsset('${c.assetId}')`:c.contactId?`openContact('${c.contactId}')`:''}" style="${!c.assetId&&!c.contactId?'cursor:default':''}">
+  if(flashTodo){
+    act=`<button type="button" class="rca-view" onclick="event.stopPropagation();openAsset('${c.claimId}')">查看</button>`;
+  }else if(c.claimId){
+    const isClaimed=D.assets[c.claimId]&&D.assets[c.claimId].status==='in_progress';
+    act=isClaimed?`<span class="rca-claimed">✓ 已认领</span>`:`<button type="button" class="rca-claim" onclick="event.stopPropagation();claimCard('${c.claimId}',this)">认领</button>`;
+  }else if(c.contactId) act=`<button type="button" class="rca-view" onclick="event.stopPropagation();openContact('${c.contactId}')">查看</button>`;
+  else if(c.assetId) act=`<button type="button" class="rca-view" onclick="event.stopPropagation();openAsset('${c.assetId}')">查看</button>`;
+  const cur=cardOnclick?'pointer':'default';
+  const onAttr=cardOnclick?` onclick="${cardOnclick}"`:'';
+  return `<div class="rcard"${onAttr} style="cursor:${cur}">
     <div class="rcard-top"><div class="rcard-left"><div class="rcard-title">${c.title}</div>${c.meta?`<div class="rcard-meta">${c.meta}</div>`:''}</div><span class="rcard-type ${tc}">${c.type}</span></div>
     ${c.body?`<div class="rcard-body">${c.body}</div>`:''}
     ${act?`<div class="rcard-acts">${act}</div>`:''}
@@ -1492,11 +2030,13 @@ function claimCard(id,btn){ D.assets[id].status='in_progress'; btn.textContent='
 
 function getReply(text,ctx,tag){
   const t=text.toLowerCase();
+  /** Demo：未命中任何预设意图时统一兜底（避免「正在分析文件」等与输入无关的话术） */
+  const demoPickFallback=()=>({_save:false,text:'暂未识别为可演示的意图。请换一句与当前场景相关的问题；若仍想先记下这句话，可使用下方按钮选择类型。',cards:[],prompts:[],_assetPick:true});
 
-  /* ── File-context replies ── */
-  if(ctx&&ctx.type==='file'){
+  /* ── File-context replies（Flash 无文件背景，且须避免沿用上一会话的 ctx） ── */
+  if(tag!=='flash'&&ctx&&ctx.type==='file'){
     if(t.includes('结论')||t.includes('核心')) return {_save:true,text:'这场会的 4 个核心结论：<br><br>1. 文件解析与对话是两条独立管线，解析不产生 Session；<br>2. File 是主体，所有解析产物归属 File；<br>3. <code>context</code> 是背景信息，Agent 自动加载，用户无感知；<br>4. 首页 Workspace 以资产类型分类管理，与 Files 分离展示。',cards:[],prompts:[]};
-    if(t.includes('action')||t.includes('todo')||t.includes('遗漏')) return {_save:false,text:'找到 2 个 action items：',cards:[
+    if(t.includes('action')||t.includes('todo')||t.includes('遗漏')||t.includes('代办')||t.includes('待办')) return {_save:false,text:'找到 2 个 action items：',cards:[
       {type:'todo',title:'整理 demo spec',meta:D.assets.t001.dueAt,claimId:'t001'},
       {type:'todo',title:'确认 Kevin 跟进',meta:D.assets.t002.dueAt,claimId:'t002'},
     ],prompts:[]};
@@ -1504,19 +2044,13 @@ function getReply(text,ctx,tag){
       return {_save:true,text:'起草跟进邮件草稿如下：<br><br>Hi Kevin，<br>感谢今天的会议。以下是我们达成的几点共识：文件解析无 Session、context 仅作背景、Workspace 分类展示。请确认无误后回复，我会同步更新 spec。<br><br>Best,',cards:[],prompts:[]};
     }
     if(t.includes('摘要')||t.includes('summary')||t.includes('新版')){
-      const nid='n_conv_'+Date.now();
-      D.assets[nid]={id:nid,type:'note',icon:'📝',title:'精简版决策摘要',noteType:'conversation_note',
-        src:'session',srcLabel:'Product Design Sync · 追问',
-        content:'两条管线独立，File 是主体，Session 只服务对话，context 是背景不是输入。'};
-      if(!D.fileNotes.includes(nid)) D.fileNotes.push(nid);
-      return {_save:false,text:'已生成精简版摘要，挂载到该文件的 Notes Tab：',cards:[{type:'note',title:'精简版决策摘要',meta:'对话生成',assetId:nid}],prompts:[]};
+      return {_save:true,text:'以下为精简版决策摘要：<br><br>两条管线独立：文件解析不产生 Session，解析产物归属 File；对话管线以 Session 为主体，承载追问与多轮协作；<code>context</code> 是系统自动加载的背景信息，不是用户的第二份输入；首页上 Files（文件列表）与 Workspace（按资产类型浏览）分区展示。',cards:[],prompts:[]};
     }
     if(t.includes('参会人')||t.includes('speaker')||t.includes('联系人')){
       return {_save:false,text:'该会议 transcript 中识别出 3 位 speaker，可在文件详情 Transcript Tab 中配对联系人：',cards:[
         {type:'contact',title:'Kevin Chen',meta:'Speaker 2 · 已匹配',contactId:'kevin'},
       ],prompts:[]};
     }
-    return {_save:false,text:'好的，正在基于这份文件分析你的问题，请稍候。',cards:[],prompts:[]};
   }
 
   /* ── Flash / general replies ── */
@@ -1535,87 +2069,52 @@ function getReply(text,ctx,tag){
   if(t.includes('idea')||t.includes('想法')) return {_save:false,text:'已记录：',cards:[{type:'idea',title:'产品想法',meta:'Flash 闪念',assetId:'i001'}],prompts:[]};
   if(t.includes('开会')||t.includes('会议')||t.includes('提醒')) return {_save:false,text:'已创建提醒：',cards:[{type:'todo',title:'会议提醒',meta:'时间已记录',claimId:'t001'}],prompts:[]};
 
-  return {_save:false,text:'收到，已记录。',cards:[],prompts:[]};
+  if(tag==='flash'&&(t.includes('代办')||t.includes('待办')||t.includes('建一个')&&t.includes('办'))){
+    return {_save:false,text:'已创建待办：',cards:[{type:'todo',title:'新待办',meta:'时间可后填',claimId:'t002'}],prompts:[]};
+  }
+
+  return demoPickFallback();
 }
 
-/* ── SESSION HISTORY ── */
-const SESSION_HISTORY=[
-  {
-    id:'sh1',tag:'flash',title:'Flash 闪念',sub:'今晚5点开会 · Kevin 喜欢拿铁',time:'今天 09:21',
-    ctx:null,
-    turns:[
-      {role:'user-voice',dur:'00:08',transcript:'今晚 5 点开会，提醒我。'},
-      {role:'agent',text:'已创建提醒：',cards:[{type:'todo',title:'今晚 5 点团队会议',meta:'今天 17:00',claimId:'t001'}],prompts:[],saveable:false},
-      {role:'user-voice',dur:'00:11',transcript:'Kevin 喜欢喝拿铁，帮我记一下。'},
-      {role:'agent',text:'已记录偏好：',cards:[{type:'contact',title:'Kevin Chen',meta:'偏好：拿铁咖啡',contactId:'kevin'}],prompts:[],saveable:false},
-      {role:'user-voice',dur:'00:14',transcript:'B2B 客户打标签这个功能值得做，记个 Idea。'},
-      {role:'agent',text:'已记录：',cards:[{type:'idea',title:'B2B 客户打标签',meta:'Flash 闪念',assetId:'i001'}],prompts:[],saveable:false},
-    ]
-  },
-  {
-    id:'sh2',tag:'ask',title:'Product Design Sync',sub:'会议分析 · 4个核心结论',time:'昨天 18:44',
-    ctx:{type:'file',label:'Product Design Sync',ico:'🎙',sub:'audio'},
-    turns:[
-      {role:'agent',text:'我已加载 <strong>Product Design Sync</strong> 作为背景。可以基于它问我任何问题。',cards:[],prompts:[],saveable:false},
-      {role:'user-text',text:'这场会有哪些核心结论？'},
-      {role:'agent',text:'这场会的 4 个核心结论：<br><br>1. 文件解析与对话是两条独立管线，解析不产生 Session；<br>2. File 是主体，所有解析产物归属 File；<br>3. <code>context</code> 是背景信息，Agent 自动加载，用户无感知；<br>4. 首页 Workspace 以资产类型分类管理，与 Files 分离展示。',cards:[],prompts:[],saveable:true},
-      {role:'user-text',text:'有遗漏的 action items 吗？'},
-      {role:'agent',text:'找到 2 个 action items：',cards:[{type:'todo',title:'整理 demo spec',meta:'下周一',claimId:'t001'},{type:'todo',title:'确认 Kevin 跟进',meta:'本周五',claimId:'t002'}],prompts:[],saveable:false},
-      {role:'user-text',text:'帮我生成一个新版摘要'},
-      {role:'agent',text:'已生成精简版摘要，挂载到该文件的 Notes Tab：',cards:[{type:'note',title:'精简版决策摘要',meta:'对话生成'}],prompts:[],saveable:false},
-    ]
-  },
-  {
-    id:'sh3',tag:'ask',title:'Ask Agent',sub:'查询本周待处理事项',time:'昨天 14:30',
-    ctx:null,
-    turns:[
-      {role:'agent',text:'你好，有什么我可以帮你的？',cards:[],prompts:[],saveable:false},
-      {role:'user-text',text:'我今天有哪些待处理事项？'},
-      {role:'agent',text:'以下是今日待处理事项：',cards:[
-        {type:'todo',title:'整理 demo spec',meta:'今天截止',claimId:'t001'},
-        {type:'todo',title:'设计稿交付 · Sarah',meta:'今天 18:00'},
-      ],prompts:[],saveable:false},
-      {role:'user-text',text:'下周一之前把 demo spec 整理出来'},
-      {role:'agent',text:'已更新截止日期：',cards:[{type:'todo',title:'整理 demo spec',meta:'下周一',claimId:'t001'}],prompts:[],saveable:false},
-    ]
-  },
-  {
-    id:'sh4',tag:'ask',title:'Q1 Roadmap Review',sub:'文档解析 · 生成摘要和 Todos',time:'5月5日',
-    ctx:{type:'file',label:'Q1 Roadmap Review.md',ico:'📝',sub:'markdown'},
-    turns:[
-      {role:'agent',text:'我已加载 <strong>Q1 Roadmap Review.md</strong> 作为背景。可以基于它问我任何问题。',cards:[],prompts:[],saveable:false},
-      {role:'user-text',text:'帮我生成一个新版摘要'},
-      {role:'agent',text:'Q1 Roadmap 核心方向：BizCard Eureka 3.0 硬件 + Agentic 双引擎并行；重点模块为 Flash、Ask Agent、File Analysis Pipeline；Q2 目标是完成闭环 demo 并启动用户验证。',cards:[],prompts:[],saveable:true},
-      {role:'user-text',text:'有哪些 action items？'},
-      {role:'agent',text:'提取到 3 个 action items：',cards:[
-        {type:'todo',title:'完成 Agentic Flow Demo',meta:'Q1 末'},
-        {type:'todo',title:'硬件样机第一版验收',meta:'5月底'},
-        {type:'todo',title:'用户访谈 · 5 人',meta:'6月初'},
-      ],prompts:[],saveable:false},
-      {role:'user-text',text:'离线录音 + 联网后 ASR 这个方向怎么看？'},
-      {role:'agent',text:'这个方向值得深入。离线录音 + 联网后 ASR 的方案，核心优势是：1. 弱网/无网环境也能录音；2. 后端异步处理，体验更稳定；3. 与硬件形态结合自然。可以作为 Eureka 硬件差异化卖点。',cards:[],prompts:[],saveable:true},
-    ]
-  },
-];
+/* ── SESSION HISTORY（Ask 会话列表；Flash 为 ☰ 内常驻入口，不占用此数组） ── */
+const FLASH_RESIDENT_ID='__flash_resident__';
+let SESSION_HISTORY=[];
 
 function openSessionHistory(){
-  document.getElementById('sh-history-body').innerHTML='<div class="hist-list">'+SESSION_HISTORY.map(s=>`
+  const flashRow=`
+    <div class="hist-item hist-resident" onclick="loadHistorySession('${FLASH_RESIDENT_ID}')">
+      <span class="hist-item-badge hb-flash">Flash</span>
+      <div class="hist-item-title">Flash 闪念</div>
+      <div class="hist-item-meta">全局拾音 · 常驻入口</div>
+      <div class="hist-item-meta">随时继续上次的闪念会话</div>
+    </div>
+    <div class="hist-div">会话记录</div>`;
+  const askList=SESSION_HISTORY.length
+    ? SESSION_HISTORY.map(s=>`
     <div class="hist-item" onclick="loadHistorySession('${s.id}')">
-      <span class="hist-item-badge ${s.tag==='flash'?'hb-flash':'hb-ask'}">${s.tag==='flash'?'Flash':'Ask'}</span>
-      <div class="hist-item-title">${s.title}</div>
-      <div class="hist-item-meta">${s.sub}</div>
-      <div class="hist-item-meta">${s.time} · ${s.turns.filter(t=>t.role!=='agent'||!t.text.includes('作为背景')).length} 条对话</div>
-    </div>`).join('')+'</div>';
+      <span class="hist-item-badge hb-ask">Ask</span>
+      <div class="hist-item-title">${esc(s.title)}</div>
+      <div class="hist-item-meta">${esc(s.sub)}</div>
+      <div class="hist-item-meta">${esc(s.time)} · ${(s.turns||[]).filter(t=>t.role!=='agent'||!(t.text&&(t.text.includes('作为背景')||t.text.includes('有什么我可以帮你的')))).length} 条对话</div>
+    </div>`).join('')
+    : `<div class="empty-state" style="padding:16px 12px 20px"><div class="es-ico">&#128172;</div><div class="es-sub">暂无 Ask 会话。使用首页 <strong>New Chat</strong>、已解析文件的追问，或底栏 Ask 开始。</div></div>`;
+  document.getElementById('sh-history-body').innerHTML=`<div class="hist-list">${flashRow}${askList}</div>`;
   openSheet('sh-history');
 }
 
 function loadHistorySession(id){
+  if(id===FLASH_RESIDENT_ID){
+    closeSheet('sh-history');
+    openFlash();
+    return;
+  }
   const s=SESSION_HISTORY.find(x=>x.id===id); if(!s) return;
   closeSheet('sh-history');
-  D.sessionTag=s.tag==='flash'?'flash':(s.ctx?'anchored':'general');
+  currentSessionId=null;
+  D.sessionTag='ask';
   D.sessionCtx=s.ctx||null;
   document.getElementById('ss-title').textContent=s.title;
-  document.getElementById('ss-sub').textContent=s.ctx?`上下文：${s.ctx.type}`:(s.tag==='flash'?'全局闪念对话':'通用对话');
+  document.getElementById('ss-sub').textContent=s.ctx?`上下文：${s.ctx.type}`:'通用对话';
   const banner=document.getElementById('ss-ctx-banner');
   if(s.ctx){
     banner.classList.remove('hidden');
@@ -1627,7 +2126,7 @@ function loadHistorySession(id){
   s.turns.forEach(t=>{
     if(t.role==='user-voice') appendVoiceBubble('ss-chat',t.dur,t.transcript,null,false);
     else if(t.role==='user-text') appendTextBubble('ss-chat',t.text,false);
-    else appendAgentBubble('ss-chat',t.text,t.cards,t.prompts,false,false,t.saveable);
+    else appendAgentBubble('ss-chat',t.text,t.cards,t.prompts,false,false,t.saveable,t.pickUserLine||null);
   });
   nav('p-session'); scrollChat(); updateCapsule('p-session');
 }
