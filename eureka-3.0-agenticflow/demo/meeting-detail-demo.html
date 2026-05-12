@@ -1,0 +1,1426 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meeting Detail Demo (Audio-first)</title>
+    <style>
+      :root{
+        --bg:#f5f6f8;
+        --card:#ffffff;
+        --text:#101828;
+        --muted:#667085;
+        --line:#eaecf0;
+        --primary:#2563eb;
+        --danger:#dc2626;
+        --shadow: 0 8px 28px rgba(16,24,40,.10);
+        --radius: 14px;
+        --pill: 999px;
+      }
+      *{box-sizing:border-box}
+      body{
+        margin:0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans", sans-serif;
+        background:var(--bg);
+        color:var(--text);
+      }
+      .wrap{
+        max-width: 520px;
+        margin: 20px auto;
+        padding: 0 14px 120px;
+      }
+      .topbar{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        margin-bottom: 10px;
+      }
+      .iconbtn{
+        border:none;
+        background:transparent;
+        color:var(--muted);
+        padding:10px;
+        border-radius:10px;
+        cursor:pointer;
+      }
+      .iconbtn:hover{ background: rgba(102,112,133,.08); }
+      .titlebar{
+        font-weight:700;
+        letter-spacing:.2px;
+      }
+
+      .card{
+        background:var(--card);
+        border:1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 10px rgba(16,24,40,.04);
+      }
+      .headerCard{
+        padding: 14px 14px 12px;
+      }
+      .hTitle{
+        font-size: 18px;
+        font-weight: 800;
+        margin: 2px 0 6px;
+      }
+      .hMeta{
+        display:flex;
+        gap:10px;
+        color:var(--muted);
+        font-size: 12px;
+        align-items:center;
+      }
+      .dot{width:4px;height:4px;background:var(--muted);border-radius:50%;}
+      .player{
+        margin-top: 12px;
+        background: #f1f5ff;
+        border: 1px solid #dbe7ff;
+        border-radius: 12px;
+        padding: 10px;
+        display:flex;
+        gap:10px;
+        align-items:center;
+      }
+      .play{
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border:none;
+        background: var(--primary);
+        color: white;
+        cursor:pointer;
+        display:grid;
+        place-items:center;
+        font-weight:800;
+      }
+      .seek{
+        flex:1;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        color:var(--muted);
+        font-size: 12px;
+      }
+      input[type="range"]{ width: 100%; }
+      .sourceRow{
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+        display:flex;
+        flex-direction:column;
+        gap:6px;
+      }
+      .label{
+        font-size: 12px;
+        color:var(--muted);
+      }
+      .tag{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #fafafa;
+        font-size: 13px;
+        color:#344054;
+      }
+      .tagcode{
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        color:#111827;
+      }
+
+      .tabs{
+        margin-top: 12px;
+        display:flex;
+        gap: 16px;
+        padding: 0 4px;
+        overflow:auto;
+        scrollbar-width: none;
+      }
+      .tabs::-webkit-scrollbar{display:none}
+      .tab{
+        white-space:nowrap;
+        padding: 10px 2px 12px;
+        border:none;
+        background:transparent;
+        cursor:pointer;
+        color:var(--muted);
+        font-weight: 700;
+        border-bottom: 2px solid transparent;
+      }
+      .tab.active{
+        color: var(--text);
+        border-bottom-color: var(--text);
+      }
+
+      .panel{
+        margin-top: 10px;
+        padding: 14px;
+      }
+      .panelTitle{
+        font-weight: 800;
+        margin: 0 0 12px;
+        font-size: 14px;
+      }
+      .list{
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      }
+      .rowCard{
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        display:flex;
+        justify-content:space-between;
+        gap: 10px;
+        background: #fff;
+      }
+      .rowMain{min-width:0;}
+      .rowMain .t{
+        font-weight: 750;
+        font-size: 13px;
+        margin:0 0 4px;
+      }
+      .rowMain .s{
+        font-size: 12px;
+        color: var(--muted);
+        margin:0;
+        line-height: 1.35;
+      }
+      .pill{
+        border: 1px solid var(--line);
+        border-radius: var(--pill);
+        padding: 6px 10px;
+        font-size: 12px;
+        color:#344054;
+        background:#fafafa;
+        align-self:flex-start;
+        white-space:nowrap;
+      }
+      .muted{ color: var(--muted); }
+
+      /* Note sub-tabs */
+      .subtabs{
+        display:flex;
+        gap: 10px;
+        overflow:auto;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+        scrollbar-width: none;
+      }
+      .subtabs::-webkit-scrollbar{display:none}
+      .subtab{
+        border: 1px solid var(--line);
+        background:#fff;
+        border-radius: 10px;
+        padding: 8px 10px;
+        cursor:pointer;
+        color:#344054;
+        font-weight: 700;
+        font-size: 12px;
+        white-space:nowrap;
+      }
+      .subtab.active{
+        border-color: #101828;
+        background:#101828;
+        color:#fff;
+      }
+      .noteBody{
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 0;
+        background:#fff;
+        overflow: visible;
+      }
+      .noteHdr{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        background:#fff;
+      }
+      .tplDropWrap{
+        position:relative;
+        flex:1;
+        min-width:0;
+      }
+      .tplDropBtn{
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        border:1px solid var(--line);
+        background:#fafafa;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 750;
+        color:#344054;
+        cursor:pointer;
+        max-width:100%;
+      }
+      .tplDropBtn:hover{ background:#f1f5f9; }
+      .tplDropIcon{ font-size: 14px; line-height:1; }
+      .tplChev{ font-size:10px; opacity:.7; margin-left:2px; }
+      .tplDropMenu{
+        position:absolute;
+        left:0;
+        top: calc(100% + 6px);
+        min-width: 200px;
+        background:#fff;
+        border:1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        z-index: 20;
+        padding: 6px;
+        display:flex;
+        flex-direction:column;
+        gap:4px;
+      }
+      .tplDropMenu.hidden{ display:none; }
+      .tplMenuItem{
+        text-align:left;
+        border:none;
+        background:transparent;
+        padding: 10px 10px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 650;
+        color:#344054;
+        cursor:pointer;
+      }
+      .tplMenuItem:hover{ background:#f8fafc; }
+      .tplMenuItem.on{
+        background:#eef2ff;
+        color:#1e3a8a;
+        font-weight: 800;
+      }
+      .noteHdrActs{
+        display:flex;
+        gap:6px;
+        flex-shrink:0;
+      }
+      .iconAct{
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        border:1px solid var(--line);
+        background:#fff;
+        cursor:pointer;
+        display:grid;
+        place-items:center;
+        font-size: 16px;
+        line-height:1;
+        color:#344054;
+      }
+      .iconAct:hover{ background:#f8fafc; }
+      .noteSummary{
+        margin: 12px 12px 0;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background:#f8fafc;
+        border: 1px solid var(--line);
+        font-size: 13px;
+        line-height: 1.55;
+        color:#475467;
+      }
+      .noteSumLbl{
+        font-weight: 800;
+        color: var(--text);
+        margin-right: 6px;
+      }
+      .noteTextWrap{
+        padding: 12px;
+      }
+      .toolbtn{
+        border:1px solid var(--line);
+        background:#fff;
+        color:#344054;
+        padding: 8px 10px;
+        border-radius: 10px;
+        cursor:pointer;
+        font-weight: 700;
+        font-size: 12px;
+      }
+      .toolbtn:hover{ background:#f8fafc; }
+      .noteText{
+        margin:0;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+      }
+      .noteTplRow{
+        display:flex;
+        flex-wrap:wrap;
+        align-items:center;
+        gap:8px;
+        flex:1;
+        min-width:0;
+      }
+      .contactsEmptyBanner{
+        cursor:pointer;
+        transition: background .15s, border-color .15s;
+      }
+      .contactsEmptyBanner:hover{
+        background:#f1f5f9;
+        border-color:#cbd5e1;
+      }
+      .contactsTxLink{
+        display:inline-block;
+        margin-top:10px;
+        font-size:12px;
+        font-weight:800;
+        color: var(--primary);
+        cursor:pointer;
+        background:none;
+        border:none;
+        padding:0;
+        text-decoration: underline;
+      }
+      .contactsTxLink:hover{ opacity:.85; }
+
+      .contactCard{
+        display:flex;
+        align-items:center;
+        gap:12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 14px;
+        background:#fff;
+      }
+      .contactAv{
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg,#6366f1,#2563eb);
+        color:#fff;
+        font-weight: 900;
+        font-size: 16px;
+        display:grid;
+        place-items:center;
+        flex-shrink:0;
+      }
+      .contactAv.a2{ background: linear-gradient(135deg,#0ea5e9,#2563eb); }
+      .contactAv.a3{ background: linear-gradient(135deg,#10b981,#059669); }
+      .contactTxt{ min-width:0; flex:1; }
+      .contactName{
+        font-weight: 800;
+        font-size: 14px;
+        margin: 0 0 4px;
+        color: var(--text);
+      }
+      .contactMeta{
+        font-size: 12px;
+        color: var(--muted);
+        margin:0;
+      }
+
+      .noteTplLbl{
+        font-size:11px;
+        font-weight:800;
+        color: var(--muted);
+        text-transform:uppercase;
+        letter-spacing:.05em;
+        margin-right:4px;
+      }
+      .tplChip{
+        border:1px solid var(--line);
+        background:#fafafa;
+        border-radius:999px;
+        padding:6px 12px;
+        font-size:12px;
+        font-weight:750;
+        cursor:pointer;
+        color:#344054;
+      }
+      .tplChip:hover{ background:#f1f5f9; }
+      .tplChip.active{
+        border-color:#c7d2fe;
+        background:#eef2ff;
+        color:#1e3a8a;
+      }
+
+      .todoSecTitle{
+        font-size:11px;
+        font-weight:800;
+        color: var(--muted);
+        text-transform:uppercase;
+        letter-spacing:.06em;
+        margin:16px 0 8px;
+      }
+      .todoSecTitle:first-of-type{ margin-top:0; }
+      .todoRow{
+        display:grid;
+        grid-template-columns:56px 26px 1fr auto;
+        gap:10px;
+        align-items:center;
+        padding:12px;
+        border:1px solid var(--line);
+        border-radius:12px;
+        background:#fff;
+        margin-bottom:8px;
+      }
+      .todoTime{
+        font-size:11px;
+        color: var(--muted);
+        font-variant-numeric:tabular-nums;
+        line-height:1.3;
+      }
+      .todoChk{
+        width:22px;
+        height:22px;
+        border-radius:50%;
+        border:2px solid #cbd5e1;
+        display:grid;
+        place-items:center;
+        cursor:pointer;
+        font-size:11px;
+        font-weight:900;
+        background:#fff;
+        flex-shrink:0;
+      }
+      .todoChk.done{
+        border-color:#22c55e;
+        background:#22c55e;
+        color:#fff;
+      }
+      .todoChk.muted{
+        opacity:.45;
+        pointer-events:none;
+      }
+      .todoTitle{
+        font-size:13px;
+        font-weight:750;
+        margin:0;
+        line-height:1.35;
+      }
+      .todoTitle.done{
+        text-decoration:line-through;
+        color: var(--muted);
+      }
+      .claimBtn{
+        border:1px solid var(--line);
+        background:#fff;
+        border-radius:10px;
+        padding:6px 10px;
+        font-size:12px;
+        font-weight:800;
+        cursor:pointer;
+        white-space:nowrap;
+      }
+      .claimBtn:hover{ background:#f8fafc; }
+
+      /* File sub-tabs */
+      .grid{
+        display:grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .thumb{
+        border:1px solid var(--line);
+        border-radius: 10px;
+        background: linear-gradient(180deg, #f8fafc, #fff);
+        padding: 10px;
+        min-height: 66px;
+        display:flex;
+        flex-direction:column;
+        gap:6px;
+        justify-content:center;
+      }
+      .thumb .k{ font-weight:800; font-size: 12px; }
+      .thumb .v{ font-size: 11px; color: var(--muted); }
+
+      /* Floating bar */
+      .fab{
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 18px;
+        width: min(520px, calc(100% - 28px));
+        display:flex;
+        justify-content:center;
+        pointer-events:none;
+      }
+      .fabInner{
+        pointer-events:auto;
+        background:#0b1220;
+        color:#fff;
+        padding: 10px;
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        display:flex;
+        gap: 10px;
+        align-items:center;
+      }
+      .fabBtn{
+        width: 46px;
+        height: 40px;
+        border-radius: 14px;
+        border: none;
+        cursor:pointer;
+        background: rgba(255,255,255,.10);
+        color:#fff;
+        font-weight: 900;
+      }
+      .fabBtn:hover{ background: rgba(255,255,255,.16); }
+      .fabBtn.primary{
+        background: radial-gradient(80% 90% at 30% 20%, #9ae6ff 0%, #4f46e5 52%, #111827 100%);
+      }
+      .fabBtn:disabled{
+        opacity: .45;
+        cursor:not-allowed;
+      }
+
+      /* Drawer */
+      .overlay{
+        position: fixed;
+        inset:0;
+        background: rgba(16,24,40,.45);
+        display:none;
+        align-items:flex-end;
+        justify-content:center;
+        padding: 0 14px 14px;
+      }
+      .overlay.show{ display:flex; }
+      .drawer{
+        width: min(520px, 100%);
+        background:#fff;
+        border-radius: 16px;
+        border:1px solid var(--line);
+        box-shadow: var(--shadow);
+        overflow:hidden;
+      }
+      .drawerHead{
+        padding: 12px 14px;
+        border-bottom:1px solid var(--line);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 10px;
+      }
+      .drawerTitle{
+        font-weight: 900;
+      }
+      .drawerBody{
+        padding: 12px 14px 14px;
+      }
+      .menu{
+        display:flex;
+        flex-direction:column;
+        gap: 10px;
+      }
+      .menuItem{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap: 10px;
+        border:1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background:#fff;
+        cursor:pointer;
+      }
+      .menuItem:hover{ background:#f8fafc; }
+      .menuItem .l .t{ margin:0; font-weight: 900; font-size: 13px; }
+      .menuItem .l .s{ margin:4px 0 0; font-size: 12px; color: var(--muted); }
+      .menuItem .r{ color: var(--muted); font-weight: 900; }
+      .danger{ border-color: #fecaca; background: #fff7f7; }
+      .danger:hover{ background: #fff1f2; }
+      .danger .r{ color: var(--danger); }
+
+      /* Session view */
+      .session{
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      }
+      .chat{
+        border:1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        max-height: 52vh;
+        overflow:auto;
+        background:#fff;
+      }
+      .msg{
+        display:flex;
+        gap:8px;
+        margin-bottom: 10px;
+      }
+      .bubble{
+        border:1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        font-size: 13px;
+        line-height:1.45;
+        max-width: 86%;
+        background:#fff;
+      }
+      .msg.user{ justify-content:flex-end; }
+      .msg.user .bubble{ background:#eff6ff; border-color:#dbeafe; }
+      .msg.agent .bubble{ background:#f8fafc; }
+      .chatMeta{
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0 0 8px;
+      }
+      .composer{
+        display:flex;
+        gap: 8px;
+        align-items:center;
+      }
+      .composer input{
+        flex:1;
+        border:1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 13px;
+      }
+      .send{
+        border:none;
+        background: var(--primary);
+        color:#fff;
+        padding: 12px 14px;
+        border-radius: 12px;
+        font-weight: 900;
+        cursor:pointer;
+      }
+      .send:disabled{ opacity:.5; cursor:not-allowed; }
+
+      .banner{
+        margin-top: 12px;
+        border: 1px dashed #cbd5e1;
+        background:#f8fafc;
+        color:#334155;
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <button class="iconbtn" id="btnBack" aria-label="back">‹</button>
+        <div class="titlebar">Details</div>
+        <button class="iconbtn" id="btnShare" aria-label="share">↗</button>
+      </div>
+
+      <div class="card headerCard" id="headerCard">
+        <div class="hTitle" id="meetingTitle">Customer Review Meeting</div>
+        <div class="hMeta">
+          <span id="meetingDuration">34s</span><span class="dot"></span>
+          <span id="meetingTime">2026-04-09 09:18</span>
+        </div>
+
+        <div class="player">
+          <button class="play" id="btnPlay" title="play/pause">▶</button>
+          <div class="seek">
+            <span id="curTime">00:00</span>
+            <input type="range" min="0" max="34" value="0" id="rangeSeek" />
+            <span id="totalTime">00:34</span>
+          </div>
+        </div>
+
+        <div class="sourceRow">
+          <div class="label">Source</div>
+          <div class="tag">
+            <span class="tagcode" id="sourceCode">meeting_recorded</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs"></div>
+
+      <div class="card panel" id="panel"></div>
+
+      <div class="banner" id="deletedBanner" style="display:none"></div>
+    </div>
+
+    <!-- Floating bar -->
+    <div class="fab">
+      <div class="fabInner" role="toolbar" aria-label="meeting actions">
+        <button class="fabBtn" id="btnRecord" title="录音">🎙</button>
+        <button class="fabBtn primary" id="btnAgent" title="Ask Agent">✦</button>
+        <button class="fabBtn" id="btnPlus" title="更多">＋</button>
+      </div>
+    </div>
+
+    <!-- Drawer overlay -->
+    <div class="overlay" id="overlay" aria-hidden="true">
+      <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+        <div class="drawerHead">
+          <div class="drawerTitle" id="drawerTitle">Menu</div>
+          <button class="iconbtn" id="btnCloseDrawer" aria-label="close">✕</button>
+        </div>
+        <div class="drawerBody" id="drawerBody"></div>
+      </div>
+    </div>
+
+    <script>
+      // ---- Mock state (per file/meeting) ----
+      const state = {
+        fileId: "file_meeting_001",
+        deleted: false,
+        playing: false,
+        seconds: 0,
+        durationSeconds: 34,
+        activeTab: "transcription",
+        noteActiveId: "note_1",
+        sessionByFile: new Map(), // fileId -> session object (single session per file)
+        contacts: [],
+        reminders: [
+          { id: "r1", title: "Prepare technical spec document", due: "今天 18:00", done: false, bucket: "suggested" },
+          { id: "r2", title: "Send follow-up email to customer", due: "明天 12:00", done: false, bucket: "suggested" },
+          { id: "r3", title: "Review Q4 deck with sales", due: "周一", done: false, bucket: "claimed" },
+          { id: "r4", title: "Book room for next sync", due: "今日", done: true, bucket: "claimed" },
+        ],
+        notes: [
+          {
+            id: "note_1",
+            title: "Meeting Minutes",
+            pickedTemplate: null,
+            summary:
+              "Today, we'll first review the budget and schedule, focusing on the boundary checks before next week's version freeze...",
+            body:
+              "1. Key Points\n" +
+              "- Q4 revenue exceeded projections by 15%\n" +
+              "- Customer satisfaction score improved to 4.7/5.0\n" +
+              "- Prepare technical specification document for mobile app\n\n" +
+              "2. Action Items\n" +
+              "- Draft spec by tomorrow 18:00\n" +
+              "- Share minutes with stakeholders\n",
+          },
+          {
+            id: "note_2",
+            title: "Key Decisions",
+            pickedTemplate: null,
+            summary: "Phase 2 推进、音频会议详情迭代优先，全量 Event 集成暂缓。",
+            body:
+              "- Move forward with Phase 2 rollout next sprint\n" +
+              "- Prioritize audio-first meeting detail iteration\n" +
+              "- Defer full Event integration\n",
+          },
+          {
+            id: "note_3",
+            title: "Open Questions",
+            pickedTemplate: null,
+            summary: "联系人匹配置信度与审计；文件上传最小后端契约待澄清。",
+            body:
+              "- How to handle contact matching confidence + audit?\n" +
+              "- What is minimal viable File tab upload backend contract?\n",
+          },
+        ],
+        transcript: [
+          { spk: "Speaker A", at: "00:30", text: "Good morning everyone. Let's start with our Q4 business review..." },
+          { spk: "Speaker B", at: "00:30", text: "I'm pleased to share that our revenue exceeded projections..." },
+          { spk: "Speaker C", at: "00:30", text: "Customer satisfaction score improved to 4.7 out of 5..." },
+          { spk: "Speaker D", at: "00:30", text: "Next, let's discuss the mobile app technical specification..." },
+        ],
+        files: {
+          image: [
+            { id: "img1", name: "whiteboard_1.jpg", meta: "Uploaded 2026-04-09" },
+            { id: "img2", name: "meeting_photo.jpg", meta: "Uploaded 2026-04-09" },
+            { id: "img3", name: "slides_snap.png", meta: "Uploaded 2026-04-09" },
+            { id: "img4", name: "room.jpg", meta: "Uploaded 2026-04-09" },
+            { id: "img5", name: "agenda.png", meta: "Uploaded 2026-04-09" },
+            { id: "img6", name: "diagram.png", meta: "Uploaded 2026-04-09" },
+          ],
+          md: [
+            { id: "md1", name: "meeting_notes.md", meta: "Uploaded 2026-04-09" },
+          ],
+          other: [],
+        },
+      };
+
+      function pad2(n){ return String(n).padStart(2, "0"); }
+      function formatMMSS(s){
+        const m = Math.floor(s / 60);
+        const ss = s % 60;
+        return `${pad2(m)}:${pad2(ss)}`;
+      }
+
+      const elTabs = document.getElementById("tabs");
+      const elPanel = document.getElementById("panel");
+      const elOverlay = document.getElementById("overlay");
+      const elDrawerBody = document.getElementById("drawerBody");
+      const elDrawerTitle = document.getElementById("drawerTitle");
+      const elDeletedBanner = document.getElementById("deletedBanner");
+      const elHeaderCard = document.getElementById("headerCard");
+      const elBtnAgent = document.getElementById("btnAgent");
+      const elBtnPlus = document.getElementById("btnPlus");
+
+      const elCurTime = document.getElementById("curTime");
+      const elTotalTime = document.getElementById("totalTime");
+      const elRange = document.getElementById("rangeSeek");
+      const elBtnPlay = document.getElementById("btnPlay");
+
+      elTotalTime.textContent = formatMMSS(state.durationSeconds);
+      elRange.max = String(state.durationSeconds);
+
+      // ---- Rendering ----
+      const TABS = [
+        { id: "transcription", label: "Transcription" },
+        { id: "note", label: "Note" },
+        { id: "todo", label: "Todo" },
+        { id: "contacts", label: "Contacts" },
+        { id: "attachment", label: "关联文件" },
+      ];
+
+      const NOTE_TEMPLATES = ["会议摘要", "架构评审", "行动项清单", "空白"];
+
+      const SEED_DEMO_CONTACTS = [
+        { id: "c_d1", name: "Emily Chen", title: "PM", company: "ACME" },
+        { id: "c_d2", name: "Kevin Zhao", title: "VP", company: "Example Co." },
+        { id: "c_d3", name: "Yuki Wang", title: "Sales", company: "ACME" },
+      ];
+
+      function contactInitial(name){
+        const t = (name || "").trim();
+        return t ? t.charAt(0).toUpperCase() : "?";
+      }
+
+      function revealDemoContacts(){
+        state.contacts = SEED_DEMO_CONTACTS.map((c) => ({ ...c }));
+        toast("Demo：已加载示例联系人");
+        render();
+      }
+
+      function renderTabs(){
+        elTabs.innerHTML = "";
+        for (const t of TABS){
+          const b = document.createElement("button");
+          b.className = "tab" + (state.activeTab === t.id ? " active" : "");
+          b.textContent = t.label;
+          b.onclick = () => {
+            if (state.deleted) return;
+            state.activeTab = t.id;
+            render();
+          };
+          elTabs.appendChild(b);
+        }
+      }
+
+      function renderTranscription(){
+        const html = `
+          <div class="panelTitle">Transcript</div>
+          <div class="list">
+            ${state.transcript.map(x => `
+              <div class="rowCard">
+                <div class="rowMain">
+                  <p class="t">${escapeHtml(x.spk)} <span class="muted" style="font-weight:700">▼</span> <span class="muted" style="font-weight:700">·</span> <span class="muted">${escapeHtml(x.at)}</span></p>
+                  <p class="s">${escapeHtml(x.text)}</p>
+                </div>
+                <div class="pill">${escapeHtml(x.at)}</div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+        elPanel.innerHTML = html;
+      }
+
+      function renderNote(){
+        const subtabs = state.notes.map(n => `
+          <button class="subtab ${state.noteActiveId === n.id ? "active" : ""}" data-note="${n.id}">
+            ${escapeHtml(n.title)}
+          </button>
+        `).join("");
+        const cur = state.notes.find(n => n.id === state.noteActiveId) || state.notes[0];
+        const tplMenu = NOTE_TEMPLATES.map((t, i) => `
+          <button type="button" class="tplMenuItem ${cur.pickedTemplate === t ? "on" : ""}" data-tpl-i="${i}">${escapeHtml(t)}</button>
+        `).join("");
+        const sumHtml = cur.summary
+          ? `<div class="noteSummary"><span class="noteSumLbl">摘要：</span>${escapeHtml(cur.summary)}</div>`
+          : "";
+        const html = `
+          <div class="subtabs" id="noteSubtabs">${subtabs}</div>
+          <div class="noteBody">
+            <div class="noteHdr">
+              <div class="tplDropWrap">
+                <button type="button" class="tplDropBtn" id="btnTplDrop" aria-expanded="false" aria-haspopup="listbox">
+                  <span class="tplDropIcon" aria-hidden="true">📄</span>
+                  <span>Template</span>
+                  <span class="tplChev" aria-hidden="true">▾</span>
+                </button>
+                <div class="tplDropMenu hidden" id="tplDropMenu" role="listbox">
+                  ${tplMenu}
+                </div>
+              </div>
+              <div class="noteHdrActs">
+                <button type="button" class="iconAct" id="btnCopy" title="Copy">⧉</button>
+                <button type="button" class="iconAct" id="btnEdit" title="Edit">✎</button>
+              </div>
+            </div>
+            ${sumHtml}
+            <div class="noteTextWrap">
+              <pre class="noteText">${escapeHtml(cur.body)}</pre>
+            </div>
+          </div>
+        `;
+        elPanel.innerHTML = html;
+        const el = document.getElementById("noteSubtabs");
+        el?.addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-note]");
+          if (!btn) return;
+          state.noteActiveId = btn.getAttribute("data-note");
+          render();
+        });
+        const menu = document.getElementById("tplDropMenu");
+        const dropBtn = document.getElementById("btnTplDrop");
+        dropBtn?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          menu.classList.toggle("hidden");
+          const open = !menu.classList.contains("hidden");
+          dropBtn.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+        menu?.addEventListener("click", (e) => {
+          const item = e.target.closest("button[data-tpl-i]");
+          if (!item) return;
+          e.stopPropagation();
+          const ti = +item.getAttribute("data-tpl-i");
+          const name = NOTE_TEMPLATES[ti];
+          const n = state.notes.find(x => x.id === state.noteActiveId);
+          if (n) n.pickedTemplate = name;
+          menu.classList.add("hidden");
+          dropBtn?.setAttribute("aria-expanded", "false");
+          toast("已选模板：" + name);
+          render();
+        });
+        document.getElementById("btnCopy")?.addEventListener("click", async () => {
+          const c = state.notes.find(n => n.id === state.noteActiveId) || state.notes[0];
+          const blob = (c.summary ? "摘要：\n" + c.summary + "\n\n" : "") + c.body;
+          try{
+            await navigator.clipboard.writeText(blob);
+            toast("已复制 Note 内容");
+          }catch{
+            toast("复制失败（浏览器权限）");
+          }
+        });
+        document.getElementById("btnEdit")?.addEventListener("click", () => {
+          toast("Demo：编辑入口（未实现）");
+        });
+      }
+
+      function claimMeetingTodo(id){
+        const r = state.reminders.find(x => x.id === id);
+        if (!r || r.bucket !== "suggested") return;
+        r.bucket = "claimed";
+        r.done = false;
+        render();
+      }
+
+      function toggleMeetingTodoDone(id){
+        const r = state.reminders.find(x => x.id === id);
+        if (!r || r.bucket !== "claimed") return;
+        r.done = !r.done;
+        render();
+      }
+
+      function renderTodo(){
+        const suggested = state.reminders.filter(r => r.bucket === "suggested");
+        const claimed = state.reminders.filter(r => r.bucket === "claimed");
+        const rowHtml = (r) => {
+          const isSug = r.bucket === "suggested";
+          const chkClass = "todoChk" + (r.done ? " done" : "") + (isSug ? " muted" : "");
+          const chkMark = r.done ? "✓" : "";
+          const titleClass = "todoTitle" + (r.done ? " done" : "");
+          const claimBtn = isSug
+            ? `<button type="button" class="claimBtn" onclick="event.stopPropagation();claimMeetingTodo('${escapeHtml(r.id)}')">claim</button>`
+            : `<span></span>`;
+          const onChk = isSug ? "" : `onclick="event.stopPropagation();toggleMeetingTodoDone('${escapeHtml(r.id)}')"`;
+          return `
+            <div class="todoRow">
+              <div class="todoTime">${escapeHtml(r.due)}</div>
+              <div class="${chkClass}" role="checkbox" aria-checked="${r.done}" ${onChk}>${chkMark}</div>
+              <p class="${titleClass}">${escapeHtml(r.title)}</p>
+              ${claimBtn}
+            </div>`;
+        };
+        const html = `
+          <div class="panelTitle">Todo</div>
+          <div class="list">
+            ${suggested.length ? `<div class="todoSecTitle">Suggested</div>${suggested.map(rowHtml).join("")}` : ""}
+            ${claimed.length ? `<div class="todoSecTitle">Claimed</div>${claimed.map(rowHtml).join("")}` : ""}
+            ${!suggested.length && !claimed.length ? `<div class="banner">暂无 Todo。</div>` : ""}
+          </div>
+        `;
+        elPanel.innerHTML = html;
+      }
+
+      function renderContacts(){
+        const list = state.contacts || [];
+        if (!list.length){
+          elPanel.innerHTML = `
+            <div class="panelTitle">Contacts</div>
+            <div class="banner contactsEmptyBanner" id="contactsHintReveal" role="region" style="margin-top:4px;line-height:1.55;cursor:pointer">
+              <p style="margin:0 0 10px;font-weight:800;font-size:14px;color:var(--text)">尚未添加联系人</p>
+              <ul style="margin:0 0 10px;padding-left:18px;color:#475467;font-size:13px;line-height:1.6">
+                <li>前往 <b>Transcription</b>：在转写中将说话人与参会人 / 通讯录匹配。</li>
+                <li>或点击底部 <b>＋</b>（右下角）→「添加关联 Contact」手动添加。</li>
+              </ul>
+              <p style="margin:0;color:var(--primary);font-weight:800;font-size:13px">点击本区域：加载示例联系人（Demo）→</p>
+            </div>
+            <div style="margin-top:12px;text-align:center">
+              <button type="button" class="contactsTxLink" id="contactsJumpTx">仅跳转 Transcription</button>
+            </div>`;
+          document.getElementById("contactsHintReveal")?.addEventListener("click", revealDemoContacts);
+          document.getElementById("contactsJumpTx")?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            state.activeTab = "transcription";
+            render();
+          });
+          return;
+        }
+        const avClass = ["", "a2", "a3"];
+        const html = `
+          <div class="panelTitle">Contacts</div>
+          <div class="list">
+            ${list.map((c, i) => `
+              <div class="contactCard">
+                <div class="contactAv ${avClass[i % 3] || ""}">${escapeHtml(contactInitial(c.name))}</div>
+                <div class="contactTxt">
+                  <p class="contactName">${escapeHtml(c.name)}</p>
+                  <p class="contactMeta">${escapeHtml(c.title)} | ${escapeHtml(c.company)}</p>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+        elPanel.innerHTML = html;
+      }
+
+      /** 关联文件：混排列表（不按类型分栏；多类型 round-robin 交错） */
+      function flatAttachments(){
+        const img = (state.files.image || []).map((x) => ({ ...x, _kind: "image", _pill: "IMG" }));
+        const md = (state.files.md || []).map((x) => ({ ...x, _kind: "md", _pill: "MD" }));
+        const ot = (state.files.other || []).map((x) => ({ ...x, _kind: "other", _pill: "FILE" }));
+        const out = [];
+        while (img.length || md.length || ot.length){
+          if (img.length) out.push(img.shift());
+          if (md.length) out.push(md.shift());
+          if (ot.length) out.push(ot.shift());
+        }
+        return out;
+      }
+
+      function renderAttachment(){
+        const list = flatAttachments();
+        const rows = list.map((x) => `
+          <div class="rowCard">
+            <div class="rowMain">
+              <p class="t">${escapeHtml(x.name)}</p>
+              <p class="s">${escapeHtml(x.meta)}</p>
+            </div>
+            <div class="pill">${escapeHtml(x._pill)}</div>
+          </div>
+        `).join("");
+        const html = `
+          <div class="panelTitle">关联文件</div>
+          <div class="list">
+            ${list.length ? rows : `<div class="banner">暂无关联文件。可通过底部 「+」→ Upload 关联文件 添加。</div>`}
+          </div>
+        `;
+        elPanel.innerHTML = html;
+      }
+
+      function renderDeleted(){
+        elHeaderCard.style.display = "none";
+        elTabs.style.display = "none";
+        elPanel.style.display = "none";
+        elDeletedBanner.style.display = "block";
+        elDeletedBanner.innerHTML =
+          `<b>该会议已删除</b><br/>` +
+          `当前逻辑：删除 file 后，Note / Transcription / 图片等与其断开关联且无独立入口进入（伪删除表现）。` +
+          `<br/><br/>` +
+          `Ask Agent 会话将被冻结为只读（可查看历史记录，不可继续聊天）。`;
+        // Disable buttons that require active context
+        elBtnAgent.disabled = false; // still can open session (read-only)
+        elBtnPlus.disabled = true;
+      }
+
+      function renderActive(){
+        elHeaderCard.style.display = "block";
+        elTabs.style.display = "flex";
+        elPanel.style.display = "block";
+        elDeletedBanner.style.display = "none";
+        elBtnPlus.disabled = false;
+        elBtnAgent.disabled = false;
+
+        switch(state.activeTab){
+          case "transcription": return renderTranscription();
+          case "note": return renderNote();
+          case "todo": return renderTodo();
+          case "contacts": return renderContacts();
+          case "attachment": return renderAttachment();
+          default: return renderTranscription();
+        }
+      }
+
+      function render(){
+        renderTabs();
+        if (state.deleted) renderDeleted();
+        else renderActive();
+        syncPlayerUI();
+      }
+
+      // ---- Drawer / menus ----
+      function openDrawer(title, bodyNode){
+        elDrawerTitle.textContent = title;
+        elDrawerBody.innerHTML = "";
+        elDrawerBody.appendChild(bodyNode);
+        elOverlay.classList.add("show");
+        elOverlay.setAttribute("aria-hidden", "false");
+      }
+      function closeDrawer(){
+        elOverlay.classList.remove("show");
+        elOverlay.setAttribute("aria-hidden", "true");
+      }
+      document.getElementById("btnCloseDrawer").onclick = closeDrawer;
+      elOverlay.addEventListener("click", (e) => {
+        if (e.target === elOverlay) closeDrawer();
+      });
+
+      // “+” menu in meeting context
+      function openPlusMenu(){
+        const box = document.createElement("div");
+        box.className = "menu";
+        box.innerHTML = `
+          <div class="menuItem" data-act="add_contact">
+            <div class="l">
+              <p class="t">添加关联 Contact</p>
+              <p class="s">在当前会议下关联联系人</p>
+            </div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuItem" data-act="upload_file">
+            <div class="l">
+              <p class="t">Upload 关联文件</p>
+              <p class="s">上传图片/MD 等作为会议关联文件（混排展示）</p>
+            </div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuItem" data-act="add_reminder">
+            <div class="l">
+              <p class="t">添加 Todo（Suggested）</p>
+              <p class="s">写入一条建议待办，在 Todo 页点击 claim 认领</p>
+            </div>
+            <div class="r">›</div>
+          </div>
+          <div class="menuItem danger" data-act="delete_file">
+            <div class="l">
+              <p class="t">删除会议（File）</p>
+              <p class="s">断开关联并冻结会话（Demo）</p>
+            </div>
+            <div class="r">删除</div>
+          </div>
+        `;
+        box.addEventListener("click", (e) => {
+          const item = e.target.closest(".menuItem");
+          if (!item) return;
+          const act = item.getAttribute("data-act");
+          closeDrawer();
+          if (act === "add_contact") {
+            state.contacts.push({
+              id: "c_" + Date.now(),
+              name: "新联系人（+）",
+              title: "待定职位",
+              company: "待定公司",
+            });
+            toast("已从底部「+」添加关联联系人（Demo）");
+            state.activeTab = "contacts";
+            render();
+          } else if (act === "upload_file") {
+            // Simulate upload: add one image
+            const n = state.files.image.length + 1;
+            state.files.image.unshift({ id:`img_new_${n}`, name:`upload_${n}.jpg`, meta:"Just now" });
+            toast("已模拟上传：upload_" + n + ".jpg");
+            state.activeTab = "attachment";
+            render();
+          } else if (act === "add_reminder") {
+            const nid = "r_" + Date.now();
+            state.reminders.unshift({ id: nid, title: "New todo (Demo)", due: "待定", done: false, bucket: "suggested" });
+            toast("已添加至 Suggested");
+            state.activeTab = "todo";
+            render();
+          } else if (act === "delete_file") {
+            deleteFile();
+          }
+        });
+        openDrawer("+", box);
+      }
+
+      // Ask Agent: single session per file; when file deleted -> session frozen (read-only)
+      function openAgentSession(){
+        const session = getOrCreateSession(state.fileId);
+        const box = document.createElement("div");
+        box.className = "session";
+
+        const frozen = session.frozen;
+        box.innerHTML = `
+          <div class="chatMeta">
+            Session: <b>${escapeHtml(session.id)}</b> · Context: <span class="tagcode">${escapeHtml(session.contextFileId)}</span>
+            ${frozen ? ` · <span style="color: var(--danger); font-weight: 900">已冻结（只读）</span>` : ""}
+          </div>
+          <div class="chat" id="chat"></div>
+          <div class="composer">
+            <input id="chatInput" placeholder="${frozen ? "会话已冻结，仅可查看历史记录" : "输入消息（Demo）"}" ${frozen ? "disabled" : ""} />
+            <button class="send" id="btnSend" ${frozen ? "disabled" : ""}>发送</button>
+          </div>
+          <div class="banner">
+            规则演示：每个 meeting/file 仅一个 session。删除会议后，session 冻结：可查看历史，不可继续聊天。
+          </div>
+        `;
+
+        openDrawer("Ask Agent", box);
+
+        const elChat = box.querySelector("#chat");
+        renderChat(elChat, session);
+
+        const input = box.querySelector("#chatInput");
+        const send = box.querySelector("#btnSend");
+        const sendMsg = () => {
+          const txt = (input.value || "").trim();
+          if (!txt) return;
+          session.messages.push({ role:"user", text: txt });
+          session.messages.push({ role:"agent", text: mockAgentReply(txt) });
+          input.value = "";
+          renderChat(elChat, session);
+        };
+        send?.addEventListener("click", sendMsg);
+        input?.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") sendMsg();
+        });
+      }
+
+      function getOrCreateSession(fileId){
+        if (state.sessionByFile.has(fileId)) return state.sessionByFile.get(fileId);
+        const s = {
+          id: "session_" + Math.random().toString(16).slice(2, 8),
+          contextFileId: fileId,
+          frozen: false,
+          messages: [
+            { role:"agent", text: "我已进入本次会议上下文（Demo）。你可以问我总结、待办或联系人相关问题。" },
+          ],
+        };
+        state.sessionByFile.set(fileId, s);
+        return s;
+      }
+
+      function renderChat(container, session){
+        container.innerHTML = session.messages.map(m => `
+          <div class="msg ${m.role}">
+            <div class="bubble">${escapeHtml(m.text)}</div>
+          </div>
+        `).join("");
+        container.scrollTop = container.scrollHeight;
+      }
+
+      function mockAgentReply(userText){
+        if (/总结|纪要|minutes|summary/i.test(userText)) return "（Demo）我可以基于转写生成会议纪要，并同步到 Note 子 Tab。";
+        if (/提醒|ddl|todo/i.test(userText)) return "（Demo）我可以把行动项写入 Todo 的 Suggested 区，由你在 Todo Tab 点击 claim 认领后勾选完成。";
+        if (/联系人|contact/i.test(userText)) return "（Demo）我可以从对话中抽取参与人并建议关联 Contacts。";
+        return "（Demo）收到。我会在该会议上下文内持续对话（单会议单 session）。";
+      }
+
+      function deleteFile(){
+        state.deleted = true;
+        // Freeze session if exists (read-only, still viewable)
+        const s = state.sessionByFile.get(state.fileId);
+        if (s) s.frozen = true;
+        closeDrawer();
+        render();
+        toast("已删除会议（Demo）：会话已冻结");
+      }
+
+      // ---- Player (fake) ----
+      let timer = null;
+      function syncPlayerUI(){
+        elCurTime.textContent = formatMMSS(state.seconds);
+        elRange.value = String(state.seconds);
+        elBtnPlay.textContent = state.playing ? "❚❚" : "▶";
+        elBtnPlay.disabled = state.deleted;
+        elRange.disabled = state.deleted;
+      }
+      function setPlaying(next){
+        if (state.deleted) return;
+        state.playing = next;
+        if (timer) { clearInterval(timer); timer = null; }
+        if (state.playing){
+          timer = setInterval(() => {
+            state.seconds += 1;
+            if (state.seconds >= state.durationSeconds){
+              state.seconds = state.durationSeconds;
+              state.playing = false;
+              clearInterval(timer); timer = null;
+            }
+            syncPlayerUI();
+          }, 1000);
+        }
+        syncPlayerUI();
+      }
+      elBtnPlay.addEventListener("click", () => setPlaying(!state.playing));
+      elRange.addEventListener("input", () => {
+        state.seconds = Number(elRange.value || 0);
+        syncPlayerUI();
+      });
+
+      // ---- Buttons ----
+      document.getElementById("btnBack").onclick = () => toast("Demo：返回（未实现）");
+      document.getElementById("btnShare").onclick = () => toast("Demo：分享（未实现）");
+      document.getElementById("btnRecord").onclick = () => toast("Demo：录音入口（未实现）");
+      document.getElementById("btnPlus").onclick = () => {
+        if (state.deleted) return;
+        openPlusMenu();
+      };
+      document.getElementById("btnAgent").onclick = () => openAgentSession();
+
+      // ---- Toast ----
+      let toastTimer = null;
+      function toast(msg){
+        let el = document.getElementById("toast");
+        if (!el){
+          el = document.createElement("div");
+          el.id = "toast";
+          el.style.position = "fixed";
+          el.style.left = "50%";
+          el.style.transform = "translateX(-50%)";
+          el.style.bottom = "92px";
+          el.style.background = "rgba(16,24,40,.92)";
+          el.style.color = "#fff";
+          el.style.padding = "10px 12px";
+          el.style.borderRadius = "12px";
+          el.style.boxShadow = "0 10px 24px rgba(0,0,0,.18)";
+          el.style.fontWeight = "800";
+          el.style.fontSize = "12px";
+          el.style.maxWidth = "min(520px, calc(100% - 28px))";
+          el.style.width = "fit-content";
+          el.style.textAlign = "center";
+          el.style.zIndex = "50";
+          document.body.appendChild(el);
+        }
+        el.textContent = msg;
+        el.style.display = "block";
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { el.style.display = "none"; }, 1700);
+      }
+
+      function escapeHtml(str){
+        return String(str)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      // initial
+      render();
+    </script>
+  </body>
+</html>
+

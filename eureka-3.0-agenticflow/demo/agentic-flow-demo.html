@@ -254,6 +254,19 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
 .ai-result-val{font-size:12px;color:#a8d4bc;line-height:1.6;background:#0a0e14;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px}
 .todo-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:5px;cursor:pointer;transition:all .15s}
 .todo-item:hover{border-color:var(--bhi)}
+.todo-row-prd{display:grid;grid-template-columns:52px 22px 1fr auto;gap:8px;align-items:center}
+.todo-time-prd{font-size:9px;font-family:var(--mono);color:var(--ink3);line-height:1.35;white-space:nowrap}
+.todo-title-col{min-width:0}
+.todo-sec-h{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px}
+.todo-sec-h:first-child{margin-top:2px}
+.todo-chk.suggested-muted{opacity:.45;pointer-events:none}
+.note-template-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.note-template-lbl{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
+.tpl-chip{font-size:9px;font-weight:800;font-family:var(--mono);color:var(--ink2);border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:rgba(14,18,28,.5);cursor:pointer;transition:all .15s}
+.tpl-chip:hover{border-color:var(--bhi);color:var(--green)}
+.tpl-chip.on{border-color:rgba(126,232,184,.45);color:var(--green);background:var(--gdim)}
+.tpl-feedback{font-size:9px;font-family:var(--mono);color:var(--green);margin-top:8px;min-height:14px}
+.note-detail-acts{display:flex;gap:8px;margin-top:12px}
 .todo-chk{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(126,232,184,.4);display:grid;place-items:center;flex-shrink:0;font-size:8px;color:var(--green)}
 .todo-chk.done{background:var(--green);color:#061510;border-color:var(--green)}
 .todo-body{flex:1;min-width:0}
@@ -445,7 +458,7 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
     <p class="demo-rail-p">左侧为手机壳内的产品主界面；本栏仅用于串联本 HTML demo 的流程，不会出现在真实 App 中。</p>
     <ul>
       <li>首页或图片/Markdown 详情 <code>＋</code> 可<strong>模拟上传</strong>（无需系统文件选择器），默认写入一条 Mock 文件、一条 Console「已上传」，并进入详情。</li>
-      <li>在<strong>任意文件详情</strong>完成一次 <code>AI 分析</code> 后，才可用「基于该文件的 Ask」；底栏 Ask 会随当前页带上文件上下文。</li>
+      <li>录音详情 <strong>Todo</strong> 分区：<strong>Suggested</strong> / <strong>Claimed</strong>；每行 <strong>时间 · checkbox · 标题</strong>，Claimed 勾选完成后标题删除线；认领后为个人待办（无 assignee）。Note 卡片/详情展示 <strong>Template</strong> 选项 chips，Copy/Edit 在详情页。</li>
       <li>首页 <code>New Chat</code> 或底栏 Ask（无文件上下文）会<strong>新建一条会话历史</strong>；离开会话且无有效发言时，空会话会自动丢弃。</li>
       <li>会话页右上角 <code>☰</code> 打开历史：<strong>Flash</strong> 为常驻入口；其余为 Ask 会话列表。</li>
     </ul>
@@ -525,7 +538,7 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
         <div class="file-tabs" id="fd-tabs">
           <button type="button" class="ftab on" data-tab="notes" onclick="switchFdTab('notes',this)">Notes</button>
           <button type="button" class="ftab" data-tab="transcript" onclick="switchFdTab('transcript',this)">Transcript</button>
-          <button type="button" class="ftab" data-tab="reminders" onclick="switchFdTab('reminders',this)">Reminders</button>
+          <button type="button" class="ftab" data-tab="reminders" onclick="switchFdTab('reminders',this)">Todo</button>
           <button type="button" class="ftab" data-tab="contacts" onclick="switchFdTab('contacts',this)">Contacts</button>
           <button type="button" class="ftab ftab-rel" data-tab="relfiles" onclick="switchFdTab('relfiles',this)">关联文件</button>
         </div>
@@ -614,7 +627,7 @@ input,textarea{font:inherit;color:inherit;outline:none;border:none;background:no
       <div id="md-tabs-wrap">
         <div class="file-tabs" id="md-tabs">
           <button type="button" class="ftab on" data-tab="notes" onclick="switchMediaTab('md','notes',this)">Notes</button>
-          <button type="button" class="ftab" data-tab="reminders" onclick="switchMediaTab('md','reminders',this)">Reminders</button>
+          <button type="button" class="ftab" data-tab="reminders" onclick="switchMediaTab('md','reminders',this)">Todo</button>
           <button type="button" class="ftab ftab-rel" data-tab="relfiles" onclick="switchMediaTab('md','relfiles',this)">关联文件</button>
         </div>
         <div class="ftab-content">
@@ -791,8 +804,9 @@ const D = {
     n002:{ id:'n002', type:'note', icon:'📝', title:'架构精简摘要', noteType:'conversation_note',
       src:'session', srcLabel:'Product Design Sync · 追问', srcInputAnchor:'turn_3',
       content:`两条管线独立，File 是主体，Session 只服务对话，context 是背景不是输入。`},
-    t001:{ id:'t001', type:'todo', icon:'✅', title:'整理 demo spec 并发给技术团队', src:'file_analysis', srcLabel:'Product Design Sync', status:'pending_confirmation', dueAt:'今天 18:00' },
-    t002:{ id:'t002', type:'todo', icon:'✅', title:'确认 Kevin 跟进接口文档', src:'file_analysis', srcLabel:'Product Design Sync', status:'pending_confirmation', dueAt:'明天截止' },
+    t001:{ id:'t001', type:'todo', icon:'✅', title:'整理 demo spec 并发给技术团队', fileId:'audio_001', src:'file_analysis', srcLabel:'Product Design Sync', todoBucket:'suggested', done:false, dueAt:'今天 18:00' },
+    t002:{ id:'t002', type:'todo', icon:'✅', title:'确认 Kevin 跟进接口文档', fileId:'audio_001', src:'file_analysis', srcLabel:'Product Design Sync', todoBucket:'suggested', done:false, dueAt:'明天' },
+    t003:{ id:'t003', type:'todo', icon:'✅', title:'同步周会结论到 Confluence', fileId:'audio_001', src:'file_analysis', srcLabel:'Product Design Sync', todoBucket:'claimed', done:true, dueAt:'周一' },
     i001:{ id:'i001', type:'idea', icon:'💡', title:'B2B 偏好标签系统', src:'session', srcLabel:'Flash 闪念', content:'为 B2B 用户建立偏好标签体系，用于个性化推荐和智能匹配。' },
     m001:{ id:'m001', type:'misc', icon:'📎', title:'闪念杂项 · 未归类', src:'session', srcLabel:'Flash 闪念',
       content:'（示例）硬件拾音中无法归入 Todo/Idea 的片段，统一落在 misc，可删改。' },
@@ -820,6 +834,45 @@ const D = {
   fileNotesByFd:{},
   mockUploadSeq:0,
 };
+
+/** Note 详情 / 卡片中展示的 Template 选项（仅 UI，不演示生成逻辑） */
+const NOTE_TEMPLATES=['会议摘要','架构评审','行动项清单','空白'];
+
+function fileTodosForFd(fdId){
+  return Object.values(D.assets).filter(a=>{
+    if(a.type!=='todo') return false;
+    const fid=a.fileId||(a.src==='file_analysis'?'audio_001':null);
+    return fid===fdId;
+  });
+}
+
+function noteTemplateRowHtml(noteId){
+  const picked=(noteId&&D.assets[noteId])?D.assets[noteId].pickedTemplate:null;
+  const chips=NOTE_TEMPLATES.map((nm,i)=>{
+    const on=picked===nm?' on':'';
+    return `<button type="button" class="tpl-chip${on}" onclick="pickNoteTemplate(${i},'${noteId}')">${esc(nm)}</button>`;
+  }).join('');
+  return `<div class="note-template-row"><span class="note-template-lbl">Template</span>${chips}</div><div class="tpl-feedback" id="note-tpl-feedback-${noteId}">${picked?('已选：'+esc(picked)):''}</div>`;
+}
+function pickNoteTemplate(ti, noteId){
+  const name=NOTE_TEMPLATES[ti];
+  if(noteId&&D.assets[noteId]) D.assets[noteId].pickedTemplate=name;
+  const top=stack[stack.length-1];
+  const fdId=D.fdActiveId||'audio_001';
+  const fn=fileNotesFor(fdId);
+  if(top==='p-file'&&fn.includes(noteId)) renderFdNoteCard(fn.indexOf(noteId));
+  if(top==='p-img'&&currentMediaId&&((D.mediaNotes||{})[currentMediaId]||[]).includes(noteId)) renderMediaNoteSubtabs('img',currentMediaId);
+  if(top==='p-md'&&currentMediaId&&((D.mediaNotes||{})[currentMediaId]||[]).includes(noteId)) renderMediaNoteSubtabs('md',currentMediaId);
+  const pc=pageCtx['p-asset'];
+  if(top==='p-asset'&&pc&&pc.contextObj&&pc.contextObj.id===noteId) openAsset(noteId);
+}
+function copyNoteContent(id){
+  const a=D.assets[id]; if(!a||a.type!=='note') return;
+  const t=a.content||'';
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(function(){ window.prompt('复制以下内容：',t); });
+  else window.prompt('复制以下内容：',t);
+}
+function demoNoteEdit(id){ alert('Demo：编辑态（占位）'); }
 
 function isParsed(fileId){ return !!(fileId&&D.parsedFiles[fileId]); }
 
@@ -872,7 +925,7 @@ function buildFileConsoleRows(){
       desc=`已上传 · ${tail}`;
       dot='dot-amber';
     } else {
-      desc=f.type==='audio'?'已解析 · 可查看 Notes / Transcript / Reminders':f.type==='image'?'已解析 · 可查看 Notes':'已解析 · 可查看 Notes / Reminders';
+      desc=f.type==='audio'?'已解析 · Notes / Transcript / Todo':f.type==='image'?'已解析 · 可查看 Notes':'已解析 · Notes / Todo';
       dot='dot-green';
     }
     const click=f.type==='audio'?`openFile('${e.fileId}')`:`openMediaDetail('${e.fileId}')`;
@@ -1166,7 +1219,7 @@ function addFolder(){ const n=prompt('文件夹名称：'); if(!n)return; D.fold
 function wsCategoryRows(){
   return[
     {type:'note',ico:'📝',name:'Notes',cnt:Object.values(D.assets).filter(a=>a.type==='note').length},
-    {type:'todo',ico:'✅',name:'Reminders',cnt:Object.values(D.assets).filter(a=>a.type==='todo').length},
+    {type:'todo',ico:'✅',name:'Todo',cnt:Object.values(D.assets).filter(a=>a.type==='todo').length},
     {type:'idea',ico:'💡',name:'Ideas',cnt:Object.values(D.assets).filter(a=>a.type==='idea').length},
     {type:'contact',ico:'👤',name:'Contacts',cnt:Object.values(D.contacts).length},
     {type:'misc',ico:'📎',name:'Misc',cnt:Object.values(D.assets).filter(a=>a.type==='misc').length},
@@ -1189,7 +1242,7 @@ function openWsHub(){
 }
 
 function openWsList(type){
-  const lMap={note:'Notes',todo:'Reminders',idea:'Ideas',contact:'Contacts',misc:'Misc'};
+  const lMap={note:'Notes',todo:'Todo',idea:'Ideas',contact:'Contacts',misc:'Misc'};
   const typeName=lMap[type]||type;
   document.getElementById('wl-title').textContent=typeName;
   pageCtx['p-ws-list']={typeName,wsType:type};
@@ -1218,12 +1271,19 @@ function openAsset(id){
   sw.innerHTML=a.src&&a.srcLabel?`<div class="asset-source" onclick="goToSource('${id}')"><span class="asset-source-lbl">来源</span><span class="asset-source-val">${a.srcLabel}</span></div>`:'';
   const body=document.getElementById('ad-body');
   if(a.type==='todo'){
-    body.innerHTML=`<div class="todo-fields">
-      <div class="todo-field"><span class="tf-lbl">状态</span><span class="tf-val" style="color:var(--amber)">${a.status==='pending_confirmation'?'待确认':'进行中'}</span></div>
-      <div class="todo-field"><span class="tf-lbl">截止日期</span><span class="tf-val">${a.dueAt||'未设置'}</span><button class="tf-btn">编辑</button></div>
-    </div>`;
+    const sug=a.todoBucket==='suggested';
+    body.innerHTML=`
+      <div class="todo-item todo-row-prd" style="cursor:default;margin-bottom:14px">
+        <div class="todo-time-prd">${esc(a.dueAt||'--')}</div>
+        <div class="todo-chk ${a.done?'done':''} ${sug?'suggested-muted':''}" ${sug?'':`onclick="toggleTodoDoneFromAsset('${id}')"`}>${a.done?'✓':''}</div>
+        <div class="todo-title-col"><div class="todo-title ${a.done?'done':''}">${esc(a.title)}</div>
+          <div style="font-size:9px;font-family:var(--mono);color:var(--ink3);margin-top:4px">${sug?'Suggested':'Claimed'}</div></div>
+      </div>
+      ${sug?`<button type="button" class="claim-btn" onclick="claimTodo('${id}',event);openAsset('${id}')">认领</button>`:''}`;
   } else {
-    body.innerHTML=`<div class="asset-content">${markdownToHtml(a.content||'')}</div>`;
+    const tpl=a.type==='note'?noteTemplateRowHtml(id):'';
+    const acts=a.type==='note'?`<div class="note-detail-acts"><button type="button" class="nca" onclick="copyNoteContent('${id}')">Copy</button><button type="button" class="nca" onclick="demoNoteEdit('${id}')">Edit</button></div>`:'';
+    body.innerHTML=`<div class="asset-content">${markdownToHtml(a.content||'')}</div>${tpl}${acts}`;
   }
   pageCtx['p-asset']={contextObj:{type:a.type,id,label:a.title,ico:a.icon,sub:a.srcLabel||''}};
   nav('p-asset');
@@ -1246,7 +1306,7 @@ function updateFdTabStrip(){
   const fdId=D.fdActiveId||'audio_001';
   const analyzed=isParsed(fdId);
   const nids=fileNotesFor(fdId);
-  const remN=Object.values(D.assets).filter(a=>a.type==='todo'&&a.src==='file_analysis').length;
+  const remN=fileTodosForFd(fdId).length;
   const spks=speakersFor(fdId);
   document.querySelectorAll('#fd-tabs [data-tab]').forEach(btn=>{
     const key=btn.getAttribute('data-tab');
@@ -1393,6 +1453,7 @@ function renderFdNoteCard(idx){
     <div class="note-card">
       <div class="note-card-hdr"><div class="note-card-title">${a.title}</div><div class="note-card-acts"><button class="nca" onclick="openAsset('${a.id}')">查看</button></div></div>
       <div class="note-body">${markdownToHtml(a.content||'')}</div>
+      ${noteTemplateRowHtml(a.id)}
       ${a.src?`<div class="note-source"><span class="note-source-lbl">来源</span><span class="note-source-link" onclick="goToSource('${a.id}')">${a.srcLabel}</span></div>`:''}
     </div>`;
 }
@@ -1429,14 +1490,54 @@ function renderFdTranscript(){
 }
 
 function renderFdReminders(){
-  document.getElementById('fd-reminders').innerHTML=Object.values(D.assets).filter(a=>a.type==='todo'&&a.src==='file_analysis').map(t=>`
-    <div class="todo-item" onclick="openAsset('${t.id}')">
-      <div class="todo-chk ${t.status==='done'?'done':''}">${t.status==='done'?'✓':''}</div>
-      <div class="todo-body"><div class="todo-title ${t.status==='done'?'done':''}">${t.title}</div><div class="todo-meta">${t.dueAt||''}${t.status==='pending_confirmation'?' · <span style="color:var(--amber)">待确认</span>':''}</div></div>
-      <button class="claim-btn" onclick="event.stopPropagation();claimTodo('${t.id}',this)">认领</button>
-    </div>`).join('');
+  const fdId=D.fdActiveId||'audio_001';
+  const list=fileTodosForFd(fdId);
+  const el=document.getElementById('fd-reminders');
+  if(!list.length){
+    el.innerHTML='<div class="empty-state" style="padding:20px 12px"><div class="es-txt">暂无 Todo</div><div class="es-sub" style="margin-top:6px">解析或助手建议后将出现在此</div></div>';
+    return;
+  }
+  const sug=list.filter(t=>t.todoBucket==='suggested');
+  const cla=list.filter(t=>t.todoBucket==='claimed');
+  function row(t){
+    const isSug=t.todoBucket==='suggested';
+    const done=!!t.done;
+    const claimBtn=isSug?`<button type="button" class="claim-btn" onclick="event.stopPropagation();claimTodo('${t.id}',event)">认领</button>`:'';
+    const chkCls='todo-chk'+(done?' done':'')+(isSug?' suggested-muted':'');
+    const chkInner=done?'✓':'';
+    const chkAttr=isSug?'':' onclick="event.stopPropagation();toggleFdTodoDone(\''+t.id+'\',event)"';
+    return `<div class="todo-item todo-row-prd" onclick="openAsset('${t.id}')">
+      <div class="todo-time-prd">${esc(t.dueAt||'--')}</div>
+      <div class="${chkCls}"${chkAttr}>${chkInner}</div>
+      <div class="todo-title-col"><div class="todo-title ${done?'done':''}">${esc(t.title)}</div></div>
+      ${claimBtn||'<span></span>'}
+    </div>`;
+  }
+  let html='';
+  if(sug.length) html+=`<div class="todo-sec-h">Suggested</div>`+sug.map(row).join('');
+  if(cla.length) html+=`<div class="todo-sec-h">Claimed</div>`+cla.map(row).join('');
+  el.innerHTML=html;
 }
-function claimTodo(id,btn){ D.assets[id].status='in_progress'; btn.textContent='✓ 已认领'; btn.className='claimed-badge'; }
+function claimTodo(id,e){
+  if(e) e.stopPropagation();
+  const t=D.assets[id];
+  if(!t||t.type!=='todo'||t.todoBucket!=='suggested') return;
+  t.todoBucket='claimed';
+  t.done=false;
+  renderFdReminders();
+}
+function toggleFdTodoDone(id,e){
+  if(e&&e.stopPropagation) e.stopPropagation();
+  const t=D.assets[id];
+  if(!t||t.type!=='todo'||t.todoBucket!=='claimed') return;
+  t.done=!t.done;
+  renderFdReminders();
+  const pc=pageCtx['p-asset'];
+  if(stack[stack.length-1]==='p-asset'&&pc&&pc.contextObj&&pc.contextObj.id===id) openAsset(id);
+}
+function toggleTodoDoneFromAsset(id){
+  toggleFdTodoDone(id,null);
+}
 
 function renderFdContacts(){
   const fdId=D.fdActiveId||'audio_001';
@@ -1630,10 +1731,28 @@ function renderMdTabs(fileId){
     D.mediaNotes[fileId]=[nid];
   }
   renderMediaNoteSubtabs('md', fileId);
-  // Reminders (static todos for demo)
+  // Todo 静态示意（与录音详情相同的 Suggested / Claimed 分区与行结构）
   document.getElementById('md-reminders-list').innerHTML=`
-    <div class="todo-item" style="cursor:default"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">Review 认证模块接口规范</div><div class="todo-meta">截止日期待定</div></div></div>
-    <div class="todo-item" style="cursor:default"><div class="todo-chk"></div><div class="todo-body"><div class="todo-title">确认错误码体系与前端对齐</div><div class="todo-meta">截止日期待定</div></div></div>`;
+    <div class="todo-sec-h">Suggested</div>
+    <div class="todo-item todo-row-prd" style="cursor:default">
+      <div class="todo-time-prd">待定</div>
+      <div class="todo-chk suggested-muted"></div>
+      <div class="todo-title-col"><div class="todo-title">Review 认证模块接口规范</div></div>
+      <button type="button" class="claim-btn" onclick="alert('Demo：Markdown 页 Todo 为静态示意')">认领</button>
+    </div>
+    <div class="todo-item todo-row-prd" style="cursor:default">
+      <div class="todo-time-prd">待定</div>
+      <div class="todo-chk suggested-muted"></div>
+      <div class="todo-title-col"><div class="todo-title">确认错误码体系与前端对齐</div></div>
+      <button type="button" class="claim-btn" onclick="alert('Demo：Markdown 页 Todo 为静态示意')">认领</button>
+    </div>
+    <div class="todo-sec-h">Claimed</div>
+    <div class="todo-item todo-row-prd" style="cursor:default">
+      <div class="todo-time-prd">今日</div>
+      <div class="todo-chk done">✓</div>
+      <div class="todo-title-col"><div class="todo-title done">对齐错误码与前端字段命名</div></div>
+      <span></span>
+    </div>`;
   renderRelFilesList(document.getElementById('md-relfiles-list'), fileId);
   updateMdTabStrip(fileId);
 }
@@ -1664,6 +1783,7 @@ function renderMediaNoteSubtabs(prefix, fileId){
           <div class="note-card-acts"><button class="nca" onclick="openAsset('${a.id}')">查看</button></div>
         </div>
         <div class="note-body">${markdownToHtml(a.content||'')}</div>
+        ${noteTemplateRowHtml(a.id)}
         <div class="note-source"><span class="note-source-lbl">来源</span><span class="note-source-link" onclick="openMediaDetail('${fileId}')">${a.srcLabel||''}</span></div>
       </div>`;
   }
@@ -2014,7 +2134,7 @@ function renderRcard(c){
   if(flashTodo){
     act=`<button type="button" class="rca-view" onclick="event.stopPropagation();openAsset('${c.claimId}')">查看</button>`;
   }else if(c.claimId){
-    const isClaimed=D.assets[c.claimId]&&D.assets[c.claimId].status==='in_progress';
+    const isClaimed=D.assets[c.claimId]&&D.assets[c.claimId].todoBucket==='claimed';
     act=isClaimed?`<span class="rca-claimed">✓ 已认领</span>`:`<button type="button" class="rca-claim" onclick="event.stopPropagation();claimCard('${c.claimId}',this)">认领</button>`;
   }else if(c.contactId) act=`<button type="button" class="rca-view" onclick="event.stopPropagation();openContact('${c.contactId}')">查看</button>`;
   else if(c.assetId) act=`<button type="button" class="rca-view" onclick="event.stopPropagation();openAsset('${c.assetId}')">查看</button>`;
@@ -2026,7 +2146,10 @@ function renderRcard(c){
     ${act?`<div class="rcard-acts">${act}</div>`:''}
   </div>`;
 }
-function claimCard(id,btn){ D.assets[id].status='in_progress'; btn.textContent='✓ 已认领'; btn.className='claimed-badge'; }
+function claimCard(id,btn){
+  claimTodo(id,null);
+  if(btn){ btn.textContent='✓ 已认领'; btn.className='claimed-badge'; }
+}
 
 function getReply(text,ctx,tag){
   const t=text.toLowerCase();
