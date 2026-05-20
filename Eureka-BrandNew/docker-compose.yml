@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: eureka
+      POSTGRES_PASSWORD: eureka
+      POSTGRES_DB: eureka
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eureka"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://eureka:eureka@db:5432/eureka
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      USER_ID: default
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:
