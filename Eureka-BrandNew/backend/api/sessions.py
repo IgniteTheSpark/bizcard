@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy import select, func
 
-from db.models import Session as DBSession, Asset
+from db.models import Session as DBSession, Asset, Message
 from db.database import AsyncSessionLocal
 import uuid
 
@@ -111,4 +111,31 @@ async def get_session(session_id: str):
                 for a in assets
             ],
         }
+    }
+
+
+@router.get("/sessions/{session_id}/messages")
+async def get_session_messages(session_id: str):
+    """Return messages for a session, oldest first."""
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Message)
+            .where(Message.session_id == uuid.UUID(session_id))
+            .order_by(Message.created_at.asc())
+        )
+        messages = result.scalars().all()
+
+    return {
+        "ok": True,
+        "messages": [
+            {
+                "id": str(m.id),
+                "role": m.role,
+                "text": m.text,
+                "cards": m.cards or [],
+                "elapsed_ms": m.elapsed_ms,
+                "created_at": m.created_at.isoformat(),
+            }
+            for m in messages
+        ]
     }

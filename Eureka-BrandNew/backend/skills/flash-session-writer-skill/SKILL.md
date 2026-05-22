@@ -40,9 +40,12 @@ results: [
     "asset_type":  "todo | idea | expense | contact",
     "payload":     { ...asset payload fields... },
 
-    // Present on contact success (create or update):
-    "contact_id":  "<uuid>",
+    // Present on contact success (create or update) — fields are at top level, not in payload:
+    "contact_id":     "<uuid>",
     "contact_action": "created | updated",
+    "name":           "<contact name>",
+    "company":        "<company or empty>",
+    "title":          "<job title or empty>",
 
     // Present on qa success:
     "answer":      "<answer string>",
@@ -68,32 +71,83 @@ Each card has this base shape:
   "card_type": "<see below>",
   "title":     "<primary display text>",
   "subtitle":  "<secondary display text, one line>",
+  "asset_id":  "<UUID of the created asset, if applicable — used for deep-link navigation>",
   "action":    { "type": "...", ...action fields... } | null
 }
 ```
 
+Always include `asset_id` when the result contains an `asset_id`. For contact results, use `contact_id` as the `asset_id` value.
+
 ### `todo`
-- `title`: task title from `payload.title`
-- `subtitle`: formatted due date, or "无截止时间" if `due_at` is null
-  - With date + time: "5月14日 09:00"
-  - Today: "今天 15:00"
+
+The todo-skill handles create, update, and delete. Check the result to determine which happened:
+
+**Create** (`payload` present with `content`):
+- `title`: `payload.content` (fall back to `payload.title`)
+- `subtitle`: formatted due date (see rules below), or "无截止时间"
+- `asset_id`: from result's `asset_id`
 - `action`: `{ "type": "navigate", "route": "/todos/<asset_id>" }`
 
+**Update** (`payload` present, result came from update_asset — recognizable when `payload` has updated fields but no `status: "pending"` creation pattern, or skill result says "updated"):
+- `title`: `payload.content` or the content from the matched todo
+- `subtitle`: "已更新" + formatted new due date if due_date changed, e.g. "已更新 · 5月22日 12:00"
+- `asset_id`: from result's `asset_id`
+- `action`: `{ "type": "navigate", "route": "/todos/<asset_id>" }`
+
+**Delete** (result has `asset_id` but no `payload`):
+- `title`: "已删除待办"
+- `subtitle`: `asset_id` truncated, or empty
+- `asset_id`: from result's `asset_id`
+- `action`: null
+
+**Due date formatting rules** (apply to create and update subtitles):
+- Date only (YYYY-MM-DD): "M月D日截止"  e.g. "5月22日截止"
+- With time component: "M月D日 HH:MM"  e.g. "5月22日 12:00"
+- Never output the raw ISO string
+
 ### `idea`
-- `title`: idea title from `payload.title`
-- `subtitle`: first 30 characters of `payload.content`, trimmed to a clean break point
+
+**Create** (`payload.title` present):
+- `title`: `payload.title`
+- `subtitle`: first 30 characters of `payload.content`
 - `action`: `{ "type": "navigate", "route": "/ideas/<asset_id>" }`
 
+**Update** (`asset_id` present, result from update_asset):
+- `title`: `payload.title` or keyword from source
+- `subtitle`: "已更新"
+- `action`: `{ "type": "navigate", "route": "/ideas/<asset_id>" }`
+
+**Delete** (`asset_id` present, no `payload`):
+- `title`: "已删除想法"
+- `subtitle`: ""
+- `action`: null
+
 ### `expense`
-- `title`: amount + currency, e.g. "¥68" or "¥399"
+
+**Create** (`payload.amount` present):
+- `title`: amount + currency, e.g. "¥68"
 - `subtitle`: category + description, e.g. "餐饮 · 午饭日料"
 - `action`: `{ "type": "navigate", "route": "/expenses/<asset_id>" }`
 
+**Update** (`asset_id` present, result from update_asset):
+- `title`: "¥" + updated amount (from `payload.amount` if present, else "消费")
+- `subtitle`: "已更新" + category if available
+- `action`: `{ "type": "navigate", "route": "/expenses/<asset_id>" }`
+
+**Delete** (`asset_id` present, no `payload`):
+- `title`: "已删除消费记录"
+- `subtitle`: ""
+- `action`: null
+
 ### `contact`
-- `title`: contact name from `payload.name` or `contact.name`
-- `subtitle`: action badge + company if present
-  - "已新建 · XX科技" or "已更新" or "已新建"
-- `action`: `{ "type": "navigate", "route": "/contacts/<contact_id>" }`
+- `title`: contact name — use `name` field from the result (top-level, not inside `payload`)
+- `subtitle`: based on `contact_action` + `company` field:
+  - "已新建 · XX科技" (when contact_action="created" and company present)
+  - "已新建" (when contact_action="created", no company)
+  - "已更新" (when contact_action="updated")
+  - "已删除" (when contact_action="deleted")
+- `asset_id`: use `contact_id` value here (contacts live in a separate table)
+- `action`: `{ "type": "navigate", "route": "/contacts/<contact_id>" }` (null if deleted)
 
 ### `qa`
 - `title`: "回答"
@@ -165,7 +219,7 @@ Return only this JSON, no explanation, no markdown wrapper:
   {
     "skill": "todo-skill", "ok": true, "status": "success",
     "asset_id": "a-001", "asset_type": "todo",
-    "payload": { "title": "给刘洋发合同", "due_at": "2026-05-14T09:00:00+08:00", "status": "active" }
+    "payload": { "content": "给刘洋发合同", "due_date": "2026-05-14T09:00:00+08:00", "status": "pending" }
   },
   {
     "skill": "idea-skill", "ok": true, "status": "success",
@@ -193,6 +247,7 @@ Return only this JSON, no explanation, no markdown wrapper:
       "card_type": "todo",
       "title": "给刘洋发合同",
       "subtitle": "5月14日 09:00",
+      "asset_id": "a-001",
       "action": { "type": "navigate", "route": "/todos/a-001" }
     },
     {

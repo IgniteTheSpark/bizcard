@@ -6,7 +6,8 @@ Create Date: 2026-05-20
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB, TIMESTAMPTZ, ARRAY
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+TIMESTAMPTZ = sa.TIMESTAMP(timezone=True)
 
 revision = "0001"
 down_revision = None
@@ -23,7 +24,7 @@ def upgrade() -> None:
         sa.Column("id",          sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("name",        sa.String(50), nullable=False, unique=True),
         sa.Column("description", sa.Text()),
-        sa.Column("created_at",  TIMESTAMPTZ(), server_default=sa.func.now()),
+        sa.Column("created_at",  TIMESTAMPTZ, server_default=sa.func.now()),
     )
 
     op.create_table(
@@ -33,7 +34,7 @@ def upgrade() -> None:
         sa.Column("skill_id",         sa.Integer(), sa.ForeignKey("global_skills.id")),
         sa.Column("payload_schema",   JSONB()),
         sa.Column("queryable_fields", JSONB()),
-        sa.Column("created_at",       TIMESTAMPTZ(), server_default=sa.func.now()),
+        sa.Column("created_at",       TIMESTAMPTZ, server_default=sa.func.now()),
     )
 
     op.create_table(
@@ -43,7 +44,7 @@ def upgrade() -> None:
         sa.Column("session_type", sa.String(20), nullable=False),
         sa.Column("title",        sa.String(255)),
         sa.Column("date",         sa.Date()),
-        sa.Column("created_at",   TIMESTAMPTZ(), server_default=sa.func.now()),
+        sa.Column("created_at",   TIMESTAMPTZ, server_default=sa.func.now()),
     )
 
     op.create_table(
@@ -53,7 +54,7 @@ def upgrade() -> None:
         sa.Column("user_skill_id", UUID(as_uuid=True), sa.ForeignKey("user_skills.id")),
         sa.Column("session_id",    UUID(as_uuid=True), sa.ForeignKey("sessions.id")),
         sa.Column("payload",       JSONB(), nullable=False),
-        sa.Column("created_at",    TIMESTAMPTZ(), server_default=sa.func.now()),
+        sa.Column("created_at",    TIMESTAMPTZ, server_default=sa.func.now()),
     )
     op.create_index("idx_assets_user", "assets", ["user_id", "created_at"])
 
@@ -64,7 +65,7 @@ def upgrade() -> None:
         sa.Column("field_name",   sa.String(100), nullable=False, primary_key=True),
         sa.Column("value_text",   sa.Text()),
         sa.Column("value_number", sa.Numeric()),
-        sa.Column("value_date",   TIMESTAMPTZ()),
+        sa.Column("value_date",   TIMESTAMPTZ),
     )
     op.create_index("idx_asset_fields_num",  "asset_fields", ["user_id", "field_name", "value_number"])
     op.create_index("idx_asset_fields_text", "asset_fields", ["user_id", "field_name", "value_text"])
@@ -80,7 +81,7 @@ def upgrade() -> None:
         sa.Column("title",      sa.String(255)),
         sa.Column("email",      sa.String(255)),
         sa.Column("notes",      ARRAY(sa.Text()), server_default="{}"),
-        sa.Column("created_at", TIMESTAMPTZ(), server_default=sa.func.now()),
+        sa.Column("created_at", TIMESTAMPTZ, server_default=sa.func.now()),
     )
     op.create_index("idx_contacts_name", "contacts", ["user_id", "name"])
 

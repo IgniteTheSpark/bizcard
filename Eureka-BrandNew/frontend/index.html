@@ -57,11 +57,13 @@ body{
 .page{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);transition:transform .26s cubic-bezier(.4,0,.2,1),opacity .26s ease;will-change:transform}
 .page.off{transform:translateX(100%);pointer-events:none;opacity:0}
 .page.behind{transform:translateX(-20px);opacity:.55;pointer-events:none}
+/* Active page always receives pointer events, even when nested inside a .behind parent */
+.page:not(.off):not(.behind){pointer-events:auto}
 
 /* ── Hardware status chip ── */
 .hw-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
 .hw-chip:active{background:var(--green-t);border-color:rgba(22,163,74,.2)}
-.hw-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+.hw-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);flex-shrink:0}
 
 /* ── Flow Timeline ── */
 .flow-timeline{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:var(--surface2)}
@@ -759,8 +761,8 @@ body{
         5月 2026 <span class="mtb-arr">▾</span>
       </button>
       <div class="hdr-r">
-        <div class="hw-chip" onclick="toast('BizCard 设备')">
-          <div class="hw-dot"></div>已连接
+        <div class="hw-chip" id="hw-chip" onclick="toggleHw()">
+          <div class="hw-dot" id="hw-dot"></div><span id="hw-label">未连接</span>
         </div>
         <div class="icon-btn" onclick="toast('搜索')">🔍</div>
         <div class="ava">Y</div>
@@ -796,144 +798,34 @@ body{
     <!-- ══ FLOW TIMELINE ══ -->
     <div class="flow-timeline" id="flow-timeline">
 
-    <!-- ── 5月13日 周二 ── -->
-    <div class="flow-day fd-past">
-      <div class="flow-date-col" onclick="openDayView(2026,5,13)" style="cursor:pointer">
+    <!-- TODAY — dynamically populated -->
+    <div class="flow-day fd-today" id="flow-today">
+      <div class="flow-date-col">
+        <div class="flow-dow" id="td-dow"></div>
+        <div class="flow-num fd-today" id="td-num"></div>
+        <div class="flow-day-tag">今天</div>
+      </div>
+      <div class="flow-content" id="today-content">
+        <div id="today-empty" style="padding:20px 8px;color:var(--text3);font-size:12px;text-align:center">
+          点击麦克风或底部 Agent 开始记录
+        </div>
+      </div>
+    </div>
+
+    <!-- PLACEHOLDER to keep old code from breaking (will not be shown) -->
+    <div class="flow-day fd-past" style="display:none">
+      <div class="flow-date-col">
         <div class="flow-dow">周二</div>
         <div class="flow-num">13</div>
       </div>
       <div class="flow-content">
-        <div class="flow-row" data-type="capture" onclick="toast('5月13日 闪念')">
+        <div class="flow-row" data-type="capture">
           <div class="flow-time">16:42</div>
           <div class="flow-ico">⚡</div>
-          <div class="flow-main"><div class="flow-title">闪念 · 2 条录音</div><div class="flow-sub">市场调研笔记</div></div>
+          <div class="flow-main"><div class="flow-title">闪念</div><div class="flow-sub">笔记</div></div>
           <div class="flow-right"><div class="flow-badge done">已解析</div></div>
         </div>
       </div>
-    </div><!-- /5月13 -->
-
-    <!-- ── 5月14日 周三 ── -->
-    <div class="flow-day fd-past">
-      <div class="flow-date-col" onclick="openDayView(2026,5,14)" style="cursor:pointer">
-        <div class="flow-dow">周三</div>
-        <div class="flow-num">14</div>
-      </div>
-      <div class="flow-content">
-        <div class="flow-row" data-type="event" onclick="toast('产品周会')">
-          <div class="flow-time">10:00</div>
-          <div class="flow-ico">🗓</div>
-          <div class="flow-main"><div class="flow-title">产品周会</div><div class="flow-sub">会议室 B · 6 人</div></div>
-          <div class="flow-right"><div class="flow-arr">›</div></div>
-        </div>
-        <div class="flow-row" data-type="expense" onclick="toast('工作餐')">
-          <div class="flow-time">13:20</div>
-          <div class="flow-ico">🍜</div>
-          <div class="flow-main"><div class="flow-title">¥45 工作餐</div><div class="flow-sub">餐饮</div></div>
-        </div>
-      </div>
-    </div><!-- /5月14 -->
-
-    <!-- ── TODAY 5月15日 周四 ── -->
-    <div class="flow-day fd-today" id="flow-today">
-      <div class="flow-date-col" onclick="openDayView(2026,5,15)" style="cursor:pointer">
-        <div class="flow-dow">周四</div>
-        <div class="flow-num">15</div>
-        <div class="flow-day-tag">今天</div>
-      </div>
-      <div class="flow-content">
-        <div class="flow-row" data-type="capture" onclick="navTo('p-flash-sess')">
-          <div class="flow-time">09:12</div>
-          <div class="flow-ico">⚡</div>
-          <div class="flow-main"><div class="flow-title">闪念 Turn 1</div><div class="flow-sub">联系人·待办·想法</div></div>
-          <div class="flow-right"><div class="flow-badge pending">1 待确认</div><div class="flow-arr">›</div></div>
-        </div>
-        <div class="flow-row" data-type="event" onclick="navTo('p-meeting-sess')">
-          <div class="flow-time">10:00</div>
-          <div class="flow-ico">🗓</div>
-          <div class="flow-main"><div class="flow-title">Q3 产品复盘</div><div class="flow-sub">会议室 A · 4 人</div></div>
-          <div class="flow-right"><div class="flow-badge done">已分析</div><div class="flow-arr">›</div></div>
-        </div>
-        <div class="flow-row" data-type="capture" onclick="navTo('p-flash-sess')">
-          <div class="flow-time">11:18</div>
-          <div class="flow-ico">⚡</div>
-          <div class="flow-main"><div class="flow-title">闪念 Turn 2</div><div class="flow-sub">整理Q3数据 · 想法记录</div></div>
-          <div class="flow-right"><div class="flow-arr">›</div></div>
-        </div>
-        <div class="flow-row" data-type="event" onclick="toast('客户电话')">
-          <div class="flow-time">14:00</div>
-          <div class="flow-ico">📞</div>
-          <div class="flow-main"><div class="flow-title">客户电话 · 刘洋</div><div class="flow-sub">XX科技 · 融资进展</div></div>
-          <div class="flow-right"><div class="flow-arr">›</div></div>
-        </div>
-        <div class="flow-row" data-type="capture expense" onclick="navTo('p-flash-sess')">
-          <div class="flow-time">14:30</div>
-          <div class="flow-ico">⚡</div>
-          <div class="flow-main"><div class="flow-title">闪念 Turn 3</div><div class="flow-sub">¥68 午饭 · 餐饮消费</div></div>
-          <div class="flow-right"><div class="flow-arr">›</div></div>
-        </div>
-        <div class="flow-row" data-type="capture" onclick="navTo('p-file-ready')">
-          <div class="flow-time">—</div>
-          <div class="flow-ico">📁</div>
-          <div class="flow-main"><div class="flow-title">周会录音 0512.m4a</div><div class="flow-sub">31分钟 · 待分析</div></div>
-          <div class="flow-right"><button class="analyze-btn" style="padding:3px 8px;font-size:10px" onclick="event.stopPropagation();startAnalyze()">✦ 分析</button></div>
-        </div>
-        <div class="flow-row" data-type="capture" onclick="navTo('p-flash-sess')">
-          <div class="flow-time">17:45</div>
-          <div class="flow-ico">⚡</div>
-          <div class="flow-main"><div class="flow-title">闪念 Turn 4</div><div class="flow-sub">1 项待确认</div></div>
-          <div class="flow-right"><div class="flow-badge pending">待确认</div><div class="flow-arr">›</div></div>
-        </div>
-      </div>
-    </div><!-- /today -->
-
-    <!-- ── 5月16日 周五 明天 ── -->
-    <div class="flow-day fd-future">
-      <div class="flow-date-col">
-        <div class="flow-dow">周五</div>
-        <div class="flow-num">16</div>
-        <div class="flow-day-tag">明天</div>
-      </div>
-      <div class="flow-content">
-        <div class="flow-row" data-type="todo" onclick="toast('去工厂考察')">
-          <div class="flow-time">06:00</div>
-          <div class="flow-ico">✅</div>
-          <div class="flow-main"><div class="flow-title">去工厂考察</div><div class="flow-sub">截止 · 来源：闪念 Turn 4</div></div>
-          <div class="flow-right"><div class="flow-arr">›</div></div>
-        </div>
-      </div>
-    </div><!-- /5月16 -->
-
-    <!-- ── 5月17日 周六 ── -->
-    <div class="flow-day fd-future">
-      <div class="flow-date-col">
-        <div class="flow-dow">周六</div>
-        <div class="flow-num">17</div>
-      </div>
-      <div class="flow-content">
-        <div class="flow-row" data-type="todo" onclick="toast('给刘洋发合同')">
-          <div class="flow-time">09:00</div>
-          <div class="flow-ico">✅</div>
-          <div class="flow-main"><div class="flow-title">给刘洋发合同</div><div class="flow-sub">截止 · 来源：闪念 Turn 1</div></div>
-          <div class="flow-right"><div class="flow-arr">›</div></div>
-        </div>
-      </div>
-    </div><!-- /5月17 -->
-
-    <!-- ── 5月18日 周日 ── -->
-    <div class="flow-day fd-future">
-      <div class="flow-date-col">
-        <div class="flow-dow">周日</div>
-        <div class="flow-num">18</div>
-      </div>
-      <div class="flow-content" style="padding-bottom:86px">
-        <div class="flow-row" data-type="todo" onclick="toast('整理Q3数据表格')">
-          <div class="flow-time">EOD</div>
-          <div class="flow-ico">✅</div>
-          <div class="flow-main"><div class="flow-title">整理 Q3 数据表格</div><div class="flow-sub">截止 · 来源：Q3产品复盘会议</div></div>
-          <div class="flow-right"><div class="flow-arr">›</div></div>
-        </div>
-      </div>
-    </div><!-- /5月18 -->
 
     </div><!-- /flow-timeline -->
 
@@ -982,6 +874,8 @@ body{
         <button class="tn-btn" id="flash-next" onclick="switchTurn('flash',1)">▼</button>
       </div>
       <button class="overall-btn" onclick="navTo('p-flash-overall')">总资产 ›</button>
+      <button onclick="openSessHist()" title="历史会话"
+        style="background:none;border:none;font-size:20px;color:var(--text2);padding:4px 6px;cursor:pointer;line-height:1;margin-left:2px">≡</button>
     </div>
 
     <div class="turn-area">
@@ -1530,8 +1424,65 @@ body{
 
   </div><!-- /p-transcript -->
 
+  <!-- ══════════════════════════════════════ -->
+  <!-- AGENT CHAT SESSION                      -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="page off" id="p-agent-chat">
+    <div class="sess-top-bar">
+      <button class="back-btn" onclick="goBack()">‹</button>
+      <div class="stb-info">
+        <div class="stb-title">✦ Ask Agent</div>
+        <div class="stb-sub">随时记录或查询你的知识库</div>
+      </div>
+      <button onclick="openSessHist()" title="历史会话"
+        style="background:none;border:none;font-size:20px;color:var(--text2);padding:4px 8px;cursor:pointer;line-height:1">≡</button>
+    </div>
+
+    <!-- Quick suggestions (shown when no chat yet) -->
+    <div id="agent-suggestions" style="padding:14px 16px 0;flex-shrink:0;overflow:hidden">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">快捷提问</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <div class="chip ch-todo" onclick="agentFill('今天有哪些待办？')">今天待办</div>
+        <div class="chip ch-expense" onclick="agentFill('今天消费了多少？')">今日消费</div>
+        <div class="chip ch-idea" onclick="agentFill('帮我整理今天的想法')">整理想法</div>
+        <div class="chip ch-transcript" onclick="agentFill('会议里有哪些行动项？')">会议行动项</div>
+      </div>
+      <div style="margin-top:16px;padding:12px 14px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">💡 你也可以直接说：</div>
+        <div style="font-size:12px;color:var(--text3);line-height:1.7">
+          "今天花了120块吃了火锅"<br>
+          "提醒我明天下午3点联系刘洋"<br>
+          "想到一个关于AI产品的新想法"
+        </div>
+      </div>
+    </div>
+
+    <div id="agent-chat-log" style="flex:1;overflow-y:auto;padding:12px 16px 8px;-webkit-overflow-scrolling:touch;min-height:0"></div>
+
+    <div style="padding:8px 12px 28px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;background:var(--surface)">
+      <input id="agent-inp" placeholder="问 Agent 任何事，或说出要记录的内容…"
+        onkeydown="if(event.key==='Enter')sendAgentChat()"
+        style="flex:1;border:1.5px solid var(--border-m);border-radius:999px;padding:9px 14px;font-size:13px;background:var(--surface2);color:var(--text)"/>
+      <button onclick="sendAgentChat()"
+        style="width:38px;height:38px;border-radius:50%;background:var(--grad);border:none;color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">✦</button>
+    </div>
+  </div><!-- /p-agent-chat -->
+
   </div><!-- /pages -->
 
+  <!-- Session history side panel (shared across all session pages) -->
+  <div id="sess-hist-backdrop" onclick="closeSessHist()"
+    style="position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:299;display:none;backdrop-filter:blur(2px)"></div>
+  <div id="sess-hist-panel"
+    style="position:absolute;top:0;right:0;bottom:0;width:82%;background:var(--surface);z-index:300;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;border-radius:var(--r) 0 0 var(--r);pointer-events:none">
+    <div style="padding:16px 16px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div style="font-size:15px;font-weight:700;color:var(--text)">会话历史</div>
+      <button onclick="closeSessHist()" style="font-size:22px;color:var(--text2);background:none;border:none;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div id="sess-hist-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      <div style="padding:20px 16px;text-align:center;color:var(--text3);font-size:13px">加载中…</div>
+    </div>
+  </div>
 
   <!-- ══ Overlays ══ -->
 
@@ -1644,29 +1595,7 @@ body{
     </div>
   </div>
 
-  <!-- Agent sheet -->
-  <div class="sheet-ov" id="sh-agent" onclick="if(event.target===this)closeSheet('sh-agent')">
-    <div class="sheet" style="max-height:55%">
-      <div class="sh-handle" onclick="closeSheet('sh-agent')"><div class="sh-handle-bar"></div></div>
-      <div class="sh-hdr">
-        <div class="sh-title">✦ Ask Agent</div>
-        <div class="sh-close" onclick="closeSheet('sh-agent')">✕</div>
-      </div>
-      <div class="sh-scroll" style="padding:12px 16px 8px">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-          <div class="chip ch-todo" onclick="fillAgent('今天有哪些待办？')">今天待办</div>
-          <div class="chip ch-expense" onclick="fillAgent('今天消费了多少？')">今日消费</div>
-          <div class="chip ch-idea" onclick="fillAgent('帮我整理今天的想法')">整理想法</div>
-          <div class="chip ch-transcript" onclick="fillAgent('会议里有哪些行动项？')">会议行动项</div>
-        </div>
-        <div id="agent-chat-log" style="min-height:40px;margin-bottom:8px"></div>
-      </div>
-      <div style="padding:8px 12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">
-        <input class="fb-inp" id="agent-inp" placeholder="问 Agent 任何事…" onkeydown="if(event.key==='Enter')sendAgentChat()" style="flex:1;border:1.5px solid var(--border-m);border-radius:999px;padding:8px 14px;font-size:13px;background:var(--surface2)"/>
-        <div class="fb-send" onclick="sendAgentChat()">✦</div>
-      </div>
-    </div>
-  </div>
+  <!-- (Agent chat moved to p-agent-chat page) -->
 
   <!-- Quick add sheet -->
   <div class="sheet-ov" id="sh-quickadd" onclick="if(event.target===this)closeSheet('sh-quickadd')">
@@ -1710,12 +1639,98 @@ body{
     <div class="fab-sep"></div>
     <button class="fab-btn fab-mic" id="mic-btn" onclick="toggleRec()" title="录音">🎙</button>
     <div class="fab-sep"></div>
-    <button class="fab-agent" onclick="openSheet('sh-agent')">✦ <span>Agent</span></button>
+    <button class="fab-agent" onclick="navTo('p-agent-chat')">✦ <span>Agent</span></button>
   </div>
+
+  <!-- Hardware not connected sheet -->
+  <div class="sheet-ov" id="sh-hw-noconn" onclick="closeSheet('sh-hw-noconn')">
+    <div class="sheet" onclick="event.stopPropagation()" style="padding-bottom:32px">
+      <div class="sh-handle" onclick="closeSheet('sh-hw-noconn')"><div class="sh-handle-bar"></div></div>
+      <div class="sh-hdr">
+        <span class="sh-title">硬件设备未连接</span>
+        <div class="sh-close" onclick="closeSheet('sh-hw-noconn')">✕</div>
+      </div>
+      <div style="padding:0 20px 8px;color:var(--text2);font-size:13px;line-height:1.6">
+        检测不到 BizCard 硬件设备。你可以：
+      </div>
+      <div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+        <button onclick="closeSheet('sh-hw-noconn');toast('请将设备连接到手机后重试')"
+          style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;text-align:left;width:100%">
+          <span style="font-size:22px">📡</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">连接硬件设备</div>
+            <div style="font-size:11px;color:var(--text2)">通过蓝牙或有线连接 BizCard</div>
+          </div>
+        </button>
+        <button onclick="closeSheet('sh-hw-noconn');document.getElementById('hw-upload-input').click()"
+          style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;text-align:left;width:100%">
+          <span style="font-size:22px">📁</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">上传录音文件</div>
+            <div style="font-size:11px;color:var(--text2)">支持 .m4a .mp3 .wav .aac</div>
+          </div>
+        </button>
+        <div style="padding:8px 4px;text-align:center;font-size:11px;color:var(--text3)">
+          或使用页面右侧 🎙 按钮通过电脑麦克风直接录音
+        </div>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="hw-upload-input" accept=".m4a,.mp3,.wav,.aac,audio/*" style="display:none"
+    onchange="handleHwUpload(this)">
 
   <!-- Toast -->
   <div class="toast" id="toast"></div>
 </div><!-- /shell -->
+
+<!-- ── Voice FAB outside shell ── -->
+<div id="voice-outer-fab" onclick="toggleVoiceCapture()" title="语音闪念">
+  🎙
+</div>
+<div id="voice-status" style="display:none"></div>
+
+<style>
+#voice-outer-fab {
+  position: fixed;
+  right: calc(50% - 197px - 72px);
+  bottom: 120px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg,#3B82F6,#8B5CF6);
+  color: #fff;
+  font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(59,91,245,.45);
+  transition: transform .15s, box-shadow .15s;
+  z-index: 200;
+  user-select: none;
+}
+#voice-outer-fab:active { transform: scale(.92); }
+#voice-outer-fab.recording {
+  background: linear-gradient(135deg,#DC2626,#F97316);
+  box-shadow: 0 0 0 0 rgba(220,38,38,.5);
+  animation: voice-pulse 1.2s infinite;
+}
+@keyframes voice-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.5); }
+  70%  { box-shadow: 0 0 0 14px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+#voice-status {
+  position: fixed;
+  right: calc(50% - 197px - 140px);
+  bottom: 130px;
+  background: rgba(220,38,38,.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  z-index: 200;
+}
+</style>
 
 <script>
 /* ── Session turn state ── */
@@ -1908,6 +1923,9 @@ const LIB={
 };
 
 /* ── Page nav ── */
+// Pages that have their own bottom input bar → hide the global FAB
+const PAGES_NO_FAB = new Set(['p-agent-chat','p-flash-sess','p-meeting-sess','p-transcript','p-flash-overall']);
+
 const stack=['p-stream'];
 function navTo(id){
   const cur=stack[stack.length-1];
@@ -1917,6 +1935,8 @@ function navTo(id){
   el.classList.remove('off','behind');
   stack.push(id);
   populatePage(id);
+  // Hide FAB when entering pages with own input/nav
+  document.getElementById('fab-bar').style.display = PAGES_NO_FAB.has(id) ? 'none' : '';
 }
 function toggleSec(hdr) {
   const arr = hdr.querySelector('.sec-arr');
@@ -1991,7 +2011,10 @@ function goBack(){
   const leave=stack.pop();
   document.getElementById(leave).classList.add('off');
   document.getElementById(leave).classList.remove('behind');
-  document.getElementById(stack[stack.length-1]).classList.remove('behind');
+  const returning=stack[stack.length-1];
+  document.getElementById(returning).classList.remove('behind');
+  // Restore FAB when returning to a non-input page
+  document.getElementById('fab-bar').style.display = PAGES_NO_FAB.has(returning) ? 'none' : '';
 }
 function populatePage(id){
   // Init session turn state on entry
@@ -2275,9 +2298,23 @@ function switchLayout(layout) {
   if (layout === 'lib') populatePage('p-library');
 }
 
-/* ── Recording ── */
+/* ── Hardware connection state ── */
+let hwConnected = false;
+function toggleHw(){
+  hwConnected = !hwConnected;
+  document.getElementById('hw-dot').style.background = hwConnected ? 'var(--green)' : 'var(--text3)';
+  document.getElementById('hw-label').textContent = hwConnected ? '已连接' : '未连接';
+  toast(hwConnected ? '✓ BizCard 已连接' : 'BizCard 已断开');
+}
+
+/* ── Recording (hardware) ── */
 let recInt=null,recSec=0,isRec=false;
 function toggleRec(){
+  // If hardware not connected, show prompt sheet instead
+  if(!hwConnected){
+    openSheet('sh-hw-noconn');
+    return;
+  }
   if(isRec){stopRec();return;}
   isRec=true;recSec=0;
   document.getElementById('mic-btn').classList.add('rec','fab-mic');
@@ -2293,54 +2330,19 @@ function stopRec(){
   clearInterval(recInt);recInt=null;isRec=false;
   document.getElementById('mic-btn').classList.remove('rec','fab-mic');
   document.getElementById('rec-ov').classList.remove('show');
-  if(recSec>0)setTimeout(()=>toast('🎙 录音 '+recSec+'s · 上传中…'),100);
+  if(recSec>0)setTimeout(()=>toast('🎙 录音 '+recSec+'s · 同步至设备…'),100);
   recSec=0;document.getElementById('rec-timer').textContent='00:00';
 }
 function setTag(el){document.querySelectorAll('.rtag').forEach(t=>t.classList.remove('active'));el.classList.add('active');}
 
-/* ── Agent chat (in sheet) ── */
-const CHAT_REPLIES={
-  '待办':'今天共有 1 个待办到期：「整理Q3数据表格」。另有 2 项近期到期。',
-  '消费':'今日消费 ¥68（午饭）。本周累计 ¥223，共 3 笔。',
-  '会议':'今日 1 个会议（Q3产品复盘），产出 4 个行动项，联系人 2 人。',
-  '想法':'今天从闪念中提炼出 1 条想法：「客户偏好标签系统」。',
-};
-async function sendAgentChat(){
-  const inp=document.getElementById('agent-inp');
-  const text=inp.value.trim();
-  if(!text)return;
-  inp.value='';
-  const log=document.getElementById('agent-chat-log');
-  log.innerHTML+=`<div class="chat-user" style="margin-bottom:6px"><div class="bubble-user">${text}</div></div>`;
+function handleHwUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+  toast(`📁 已上传：${file.name}（${(file.size/1024/1024).toFixed(1)} MB）· 分析中…`);
+  input.value = '';
+}
 
-  // Try real API if available, fallback to mock
-  if(window.API){
-    const thinking=`<div class="chat-agent" id="agent-thinking" style="margin-bottom:6px"><div class="agent-ava">✦</div><div class="agent-turn"><div class="bubble-agent" style="opacity:.5">思考中…</div></div></div>`;
-    log.innerHTML+=thinking;
-    log.scrollTop=log.scrollHeight;
-    try{
-      const res=await window.API.askAgent(text);
-      document.getElementById('agent-thinking')?.remove();
-      const reply=res.answer||'已处理';
-      log.innerHTML+=`<div class="chat-agent" style="margin-bottom:6px"><div class="agent-ava">✦</div><div class="agent-turn"><div class="bubble-agent">${reply}</div></div></div>`;
-    }catch(e){
-      document.getElementById('agent-thinking')?.remove();
-      log.innerHTML+=`<div class="chat-agent" style="margin-bottom:6px"><div class="agent-ava">✦</div><div class="agent-turn"><div class="bubble-agent" style="color:var(--red)">连接失败，请检查后端服务 (${e.message})</div></div></div>`;
-    }
-  } else {
-    let reply='已收到，Agent 处理中…';
-    for(const[k,v]of Object.entries(CHAT_REPLIES)){if(text.includes(k)){reply=v;break;}}
-    setTimeout(()=>{
-      log.innerHTML+=`<div class="chat-agent" style="margin-bottom:6px"><div class="agent-ava">✦</div><div class="agent-turn"><div class="bubble-agent">${reply}</div></div></div>`;
-    },400);
-  }
-  log.scrollTop=log.scrollHeight;
-}
-function fillAgent(text){
-  document.getElementById('agent-inp').value=text;
-  document.getElementById('agent-inp').focus();
-}
-// Legacy: kept for session-level chat
+// sendAgentChat, fillAgent defined below (after timeline helpers)
 function sendChat(){
   const inp=document.getElementById('agent-inp');
   if(inp)sendAgentChat();
@@ -2414,6 +2416,279 @@ function toast(msg){
 }
 
 renderLib('todo');
+
+/* ── Today date init ── */
+(function(){
+  const now = new Date();
+  const dows = ['周日','周一','周二','周三','周四','周五','周六'];
+  const dowEl = document.getElementById('td-dow');
+  const numEl = document.getElementById('td-num');
+  if(dowEl) dowEl.textContent = dows[now.getDay()];
+  if(numEl) numEl.textContent = now.getDate();
+})();
+
+/* ── Timeline: add row dynamically ── */
+const CARD_ICO = {expense:'💰',todo:'✅',contact:'👤',idea:'💡',note:'📝',qa:'💬'};
+function addTimelineRows(cards, summary) {
+  const content = document.getElementById('today-content');
+  const empty   = document.getElementById('today-empty');
+  if(empty) empty.style.display = 'none';
+
+  const now = new Date();
+  const hhmm = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+
+  cards.forEach(card => {
+    const ico   = CARD_ICO[card.type] || '⚡';
+    const title = card.title || card.type;
+    const sub   = card.subtitle || card.summary || '';
+    const row   = document.createElement('div');
+    row.className = 'flow-row';
+    row.setAttribute('data-type', card.type || 'capture');
+    row.innerHTML = `
+      <div class="flow-time">${hhmm}</div>
+      <div class="flow-ico">${ico}</div>
+      <div class="flow-main">
+        <div class="flow-title">${title}</div>
+        <div class="flow-sub">${sub}</div>
+      </div>`;
+    content.appendChild(row);
+  });
+
+  // Summary flash row if multiple cards
+  if(cards.length > 1 && summary) {
+    const badge = document.createElement('div');
+    badge.style.cssText = 'font-size:11px;color:var(--text3);padding:2px 8px 6px;';
+    badge.textContent = `⚡ ${summary}`;
+    content.appendChild(badge);
+  }
+}
+
+/* ── sendAgentChat — handle both flash cards and query answers ── */
+function _agentMeta(res, elapsed_ms){
+  const secs = (elapsed_ms / 1000).toFixed(1);
+  const parts = [`⏱ ${secs}s`];
+  if(res.input_tokens)  parts.push(`↑${res.input_tokens}`);
+  if(res.output_tokens) parts.push(`↓${res.output_tokens}`);
+  return `<div style="margin-top:5px;font-size:10px;color:var(--text3);display:flex;gap:6px;align-items:center;letter-spacing:.02em">${parts.join(' · ')}</div>`;
+}
+
+async function sendAgentChat(){
+  const inp  = document.getElementById('agent-inp');
+  const text = inp.value.trim();
+  if(!text) return;
+  inp.value = '';
+  // Hide suggestions once user starts chatting
+  const sug = document.getElementById('agent-suggestions');
+  if(sug) sug.style.display='none';
+  const log = document.getElementById('agent-chat-log');
+  log.innerHTML += `<div class="chat-user" style="margin-bottom:6px"><div class="bubble-user">${text}</div></div>`;
+
+  if(window.API){
+    const thinkId = 'think-' + Date.now();
+    const t0 = Date.now();
+    log.innerHTML += `<div class="chat-agent" id="${thinkId}" style="margin-bottom:6px"><div class="agent-ava">✦</div><div class="agent-turn"><div class="bubble-agent" style="opacity:.5">思考中…</div></div></div>`;
+    log.scrollTop = log.scrollHeight;
+    try{
+      const res = await window.API.askAgent(text);
+      const elapsed = Date.now() - t0;
+      document.getElementById(thinkId)?.remove();
+
+      if(res.cards && res.cards.length > 0){
+        // Flash result — show cards in chat and update timeline
+        addTimelineRows(res.cards, res.summary);
+        const cardHtml = res.cards.map(c =>
+          `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:7px 10px;margin-top:5px;font-size:12px">
+            <span style="margin-right:5px">${CARD_ICO[c.type]||'⚡'}</span>
+            <strong>${c.title||c.type}</strong>
+            ${c.subtitle ? `<div style="color:var(--text2);margin-top:2px">${c.subtitle}</div>` : ''}
+          </div>`
+        ).join('');
+        const reply = res.summary ? `已录入：${res.summary}` : `已录入 ${res.cards.length} 条记录`;
+        log.innerHTML += `<div class="chat-agent" style="margin-bottom:6px"><div class="agent-ava">✦</div><div class="agent-turn"><div class="bubble-agent">${reply}${cardHtml}</div>${_agentMeta(res, elapsed)}</div></div>`;
+      } else {
+        // Query answer
+        const reply = res.answer || '已处理';
+        log.innerHTML += `<div class="chat-agent" style="margin-bottom:6px"><div class="agent-ava">✦</div><div class="agent-turn"><div class="bubble-agent">${reply}</div>${_agentMeta(res, elapsed)}</div></div>`;
+      }
+    } catch(e){
+      document.getElementById(thinkId)?.remove();
+      log.innerHTML += `<div class="chat-agent" style="margin-bottom:6px"><div class="agent-ava">✦</div><div class="agent-turn"><div class="bubble-agent" style="color:var(--red)">连接失败 (${e.message})</div></div></div>`;
+    }
+  }
+  log.scrollTop = log.scrollHeight;
+}
+function fillAgent(text){ document.getElementById('agent-inp').value=text; }
+function agentFill(text){
+  fillAgent(text);
+  document.getElementById('agent-suggestions').style.display='none';
+  document.getElementById('agent-inp').focus();
+}
+
+/* ── Session history panel ── */
+async function openSessHist(){
+  const panel = document.getElementById('sess-hist-panel');
+  document.getElementById('sess-hist-backdrop').style.display='block';
+  panel.style.transform='translateX(0)';
+  panel.style.pointerEvents='auto';
+  const list=document.getElementById('sess-hist-list');
+  list.innerHTML='<div style="padding:20px 16px;text-align:center;color:var(--text3);font-size:13px">加载中…</div>';
+  try{
+    const sessions = window.API ? await window.API.getSessions({limit:30}) : [];
+    if(!sessions.length){
+      list.innerHTML='<div style="padding:24px 16px;text-align:center;color:var(--text3);font-size:13px">暂无历史会话</div>';
+      return;
+    }
+    list.innerHTML=sessions.map(s=>{
+      const typeIco={daily:'⚡',meeting:'🗓',research:'🔍'}[s.session_type]||'📋';
+      const title=s.title||s.session_type;
+      const sub=`${s.date||''} · ${s.session_type==='daily'?'闪念':s.session_type==='meeting'?'会议':'研究'}`;
+      return `<div onclick="closeSessHist();toast('打开：${title.replace(/'/g,"")}')"
+        style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">${typeIco}</span>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${title}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px">${sub}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    list.innerHTML=`<div style="padding:16px;text-align:center;color:var(--red);font-size:12px">加载失败</div>`;
+  }
+}
+function closeSessHist(){
+  const panel = document.getElementById('sess-hist-panel');
+  panel.style.transform='translateX(100%)';
+  panel.style.pointerEvents='none';
+  document.getElementById('sess-hist-backdrop').style.display='none';
+}
+
+/* ── Voice capture (Web Speech API) ── */
+let _voiceRec = null;
+let _voiceActive = false;
+
+function toggleVoiceCapture(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ toast('请使用 Chrome 或 Edge 以使用语音功能'); return; }
+
+  const fab    = document.getElementById('voice-outer-fab');
+  const status = document.getElementById('voice-status');
+
+  if(_voiceActive){
+    _voiceRec?.stop();
+    return;
+  }
+
+  _voiceRec = new SR();
+  _voiceRec.lang = 'zh-CN';
+  _voiceRec.continuous = false;
+  _voiceRec.interimResults = true;
+  _voiceRec.maxAlternatives = 1;
+
+  _voiceRec.onstart = () => {
+    _voiceActive = true;
+    fab.classList.add('recording');
+    fab.textContent = '⏹';
+    status.style.display = 'block';
+    status.textContent = '● 录音中…';
+  };
+
+  let interim = '';
+  _voiceRec.onresult = e => {
+    interim = e.results[0][0].transcript;
+    status.textContent = '● ' + interim;
+  };
+
+  _voiceRec.onend = () => {
+    _voiceActive = false;
+    fab.classList.remove('recording');
+    fab.textContent = '🎙';
+    status.style.display = 'none';
+    if(interim) _sendVoiceFlash(interim);
+  };
+
+  _voiceRec.onerror = e => {
+    _voiceActive = false;
+    fab.classList.remove('recording');
+    fab.textContent = '🎙';
+    status.style.display = 'none';
+    toast('语音识别错误：' + e.error);
+  };
+
+  _voiceRec.start();
+}
+
+async function _sendVoiceFlash(text){
+  // 1. Add a pending flash row to today's timeline immediately
+  const now = new Date();
+  const hhmm = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const rowId = 'vf-' + Date.now();
+
+  const content = document.getElementById('today-content');
+  const empty   = document.getElementById('today-empty');
+  if(empty) empty.style.display='none';
+
+  const row = document.createElement('div');
+  row.id = rowId;
+  row.className = 'flow-row';
+  row.setAttribute('data-type','capture');
+  row.innerHTML = `
+    <div class="flow-time">${hhmm}</div>
+    <div class="flow-ico">⚡</div>
+    <div class="flow-main">
+      <div class="flow-title">闪念 · 语音录入</div>
+      <div class="flow-sub" id="${rowId}-sub" style="color:var(--text3)">处理中…</div>
+    </div>
+    <div class="flow-right"><div class="flow-badge" style="background:var(--blue10);color:var(--blue)">处理中</div></div>`;
+  content.appendChild(row);
+
+  if(!window.API){ row.querySelector('.flow-right').innerHTML='<div class="flow-badge" style="background:var(--red-t);color:var(--red)">API未连接</div>'; return; }
+
+  try{
+    const res = await window.API.sendFlash(text);
+    const badge = row.querySelector('.flow-right');
+    const sub   = document.getElementById(rowId+'-sub');
+
+    if(res.ok && res.cards?.length){
+      // Update row with real result
+      const title = row.querySelector('.flow-title');
+      title.textContent = `闪念 · ${res.cards.length} 项资产`;
+      sub.style.color = '';
+      sub.textContent = res.summary || res.cards.map(c=>c.title||c.type).join(' · ');
+      badge.innerHTML = `<div class="flow-badge done">${res.cards.length} 项</div><div class="flow-arr">›</div>`;
+
+      // Clicking opens result detail sheet
+      const cardsSafe = JSON.stringify(res.cards).replace(/'/g,"\\'");
+      row.setAttribute('onclick', `showVoiceCards(${cardsSafe.replace(/"/g,'&quot;')},'${res.summary||''}')`);
+      row.style.cursor='pointer';
+      toast(`✓ 已录入 ${res.cards.length} 条记录`);
+    } else {
+      sub.textContent = res.summary || text.slice(0,30);
+      sub.style.color = '';
+      badge.innerHTML = '<div class="flow-badge done">已处理</div>';
+    }
+  } catch(e){
+    const badge = row.querySelector('.flow-right');
+    badge.innerHTML = '<div class="flow-badge" style="background:var(--red-t);color:var(--red)">失败</div>';
+    toast('处理失败：' + e.message);
+  }
+}
+
+function showVoiceCards(cards, summary){
+  const body = document.getElementById('sh-dock-body');
+  const title = document.getElementById('sh-dock-title');
+  if(!body||!title) return;
+  title.textContent = summary || `闪念 · ${cards.length} 项资产`;
+  body.innerHTML = cards.map(c=>`
+    <div class="lib-row">
+      <div class="lr-ico" style="font-size:18px;background:var(--blue10)">${CARD_ICO[c.type]||'⚡'}</div>
+      <div class="lr-main">
+        <div class="lr-title">${c.title||c.type}</div>
+        <div class="lr-sub">${c.subtitle||''}</div>
+      </div>
+    </div>`).join('');
+  openSheet('sh-dock');
+}
+
 </script>
 </body>
 </html>

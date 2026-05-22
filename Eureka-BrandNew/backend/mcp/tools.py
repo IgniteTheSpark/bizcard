@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, Text
 from sqlalchemy.orm import Session as SyncSession
 
 from db.models import Asset, AssetField, Contact, UserSkill, GlobalSkill
@@ -17,7 +17,7 @@ from db.database import AsyncSessionLocal
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-VALID_ASSET_TYPES = {"todo", "idea", "note", "expense", "transcript", "misc"}
+VALID_ASSET_TYPES = {"todo", "idea", "note", "expense", "transcript", "misc", "flash"}
 
 
 async def _get_user_skill(db: AsyncSession, user_id: str, asset_type: str):
@@ -57,6 +57,9 @@ async def create_asset(
         return _err(f"invalid payload JSON: {e}")
 
     payload_dict["asset_type"] = asset_type
+    # Store input_id so the frontend can group derived assets under their flash source
+    if input_id:
+        payload_dict["input_id"] = input_id
 
     async with AsyncSessionLocal() as db:
         user_skill = await _get_user_skill(db, user_id, asset_type)
@@ -94,14 +97,19 @@ async def query_asset(
         if asset_type:
             stmt = stmt.where(Asset.payload["asset_type"].astext == asset_type)
         if contains:
-            stmt = stmt.where(Asset.payload.cast(str).ilike(f"%{contains}%"))
+            stmt = stmt.where(Asset.payload.cast(Text).ilike(f"%{contains}%"))
         stmt = stmt.order_by(Asset.created_at.desc()).limit(100)
         result = await db.execute(stmt)
         assets = result.scalars().all()
 
     return _ok(assets=[
-        {"asset_id": str(a.id), "asset_type": a.payload.get("asset_type", ""),
-         "payload": a.payload, "created_at": a.created_at.isoformat()}
+        {
+            "asset_id": str(a.id),
+            "asset_type": a.payload.get("asset_type", ""),
+            "payload": a.payload,
+            "session_id": str(a.session_id) if a.session_id else None,
+            "created_at": a.created_at.isoformat(),
+        }
         for a in assets
     ])
 
@@ -182,6 +190,7 @@ async def create_contact(
 
     return _ok(
         contact_id=str(contact.id),
+        contact_action="created",
         name=name, phone=phone, company=company,
         title=title, email=email, notes=contact.notes,
     )
@@ -227,7 +236,7 @@ async def update_contact(
 
         await db.commit()
 
-    return _ok(contact_id=contact_id, field=field, value=value)
+    return _ok(contact_id=contact_id, contact_action="updated", field=field, value=value)
 
 
 async def delete_contact(contact_id: str, user_id: str = "default") -> dict:
@@ -238,6 +247,7 @@ async def delete_contact(contact_id: str, user_id: str = "default") -> dict:
         contact = result.scalar_one_or_none()
         if not contact:
             return _err(f"contact not found: {contact_id}")
+        name = contact.name
         await db.delete(contact)
         await db.commit()
-    return _ok(contact_id=contact_id)
+    return _ok(contact_id=contact_id, contact_action="deleted", name=name)

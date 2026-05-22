@@ -2,7 +2,10 @@ from sqlalchemy import (
     Column, String, Integer, Numeric, Text, Date, ARRAY,
     ForeignKey, UniqueConstraint, Index
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, TIMESTAMPTZ
+from sqlalchemy import TIMESTAMP
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+
+TIMESTAMPTZ = TIMESTAMP(timezone=True)
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
 import uuid
@@ -89,4 +92,21 @@ class Contact(Base):
 
     __table_args__ = (
         Index("idx_contacts_name", "user_id", "name"),
+    )
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
+    user_id    = Column(String(50), nullable=False, server_default="default")
+    role       = Column(String(10), nullable=False)   # "user" | "agent"
+    text       = Column(Text, nullable=False, server_default="")
+    cards      = Column(JSONB, server_default="[]")
+    elapsed_ms = Column(Integer)
+    created_at = Column(TIMESTAMPTZ, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_messages_session", "session_id", "created_at"),
     )

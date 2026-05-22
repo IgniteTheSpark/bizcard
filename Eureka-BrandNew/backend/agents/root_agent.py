@@ -6,12 +6,10 @@ then delegates to the appropriate sub-agent.
 This is the single entry point for all user interactions.
 """
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 
 from agents.flash_agent import flash_agent
 from agents.query_agent import query_agent
-
-CLAUDE = LiteLlm(model="anthropic/claude-sonnet-4-6")
+from agents.model_config import ROOT_MODEL
 
 ROOT_INSTRUCTION = """
 You are the Eureka routing agent. Your only job is to classify the user's input
@@ -31,7 +29,7 @@ Route to the correct sub-agent and pass the user's original text unchanged.
 
 root_agent = LlmAgent(
     name="router",
-    model=CLAUDE,
+    model=ROOT_MODEL,
     instruction=ROOT_INSTRUCTION,
     description="Routes user input to flash_note agent (capture) or query agent (retrieval).",
     sub_agents=[flash_agent, query_agent],

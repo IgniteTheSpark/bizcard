@@ -1,16 +1,42 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy import create_engine
 from contextlib import asynccontextmanager
-import os
+from pathlib import Path
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+import ssl, os
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://eureka:eureka@localhost:5432/eureka")
 
-# Async engine for FastAPI request handlers
-ASYNC_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-async_engine = create_async_engine(ASYNC_URL, echo=False, pool_pre_ping=True)
+def _strip_query_params(url: str, remove_keys: set) -> str:
+    """Remove specific query params from a DB URL (e.g. sslmode, channel_binding)."""
+    parsed = urlparse(url)
+    params = {k: v for k, v in parse_qs(parsed.query).items() if k not in remove_keys}
+    new_query = urlencode({k: v[0] for k, v in params.items()})
+    return urlunparse(parsed._replace(query=new_query))
+
+# asyncpg doesn't understand sslmode/channel_binding — strip them and pass ssl via connect_args
+_ASYNCPG_URL = _strip_query_params(
+    DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://").replace("postgres://", "postgresql+asyncpg://"),
+    {"sslmode", "channel_binding"},
+)
+_ssl_ctx = ssl.create_default_context()
+_ssl_ctx.check_hostname = False
+_ssl_ctx.verify_mode = ssl.CERT_NONE
+
+async_engine = create_async_engine(
+    _ASYNCPG_URL,
+    echo=False,
+    pool_pre_ping=True,
+    pool_size=20,
+    max_overflow=20,
+    connect_args={"ssl": _ssl_ctx},
+)
 AsyncSessionLocal = async_sessionmaker(async_engine, expire_on_commit=False)
 
-# Sync engine for Alembic migrations and seed scripts
+# Sync engine for Alembic migrations and seed scripts (psycopg2 handles sslmode natively)
 sync_engine = create_engine(DATABASE_URL, echo=False)
 
 

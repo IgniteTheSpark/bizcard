@@ -139,6 +139,11 @@ async def query_assets_structured(
     assets = result.scalars().all()
 
     return [
-        {"id": str(a.id), "payload": a.payload, "created_at": a.created_at.isoformat()}
+        {
+            "id": str(a.id),
+            "payload": a.payload,
+            "session_id": str(a.session_id) if a.session_id else None,
+            "created_at": a.created_at.isoformat(),
+        }
         for a in assets
     ]

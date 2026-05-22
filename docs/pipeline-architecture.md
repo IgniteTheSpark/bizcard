@@ -104,10 +104,10 @@ Contact（联系人实体）
 
 | asset_type | payload 字段 |
 |---|---|
-| `todo` | `title`, `due_at`（ISO8601 或 null）, `status` |
-| `idea` | `title`, `content`（markdown）|
-| `expense` | `amount`, `currency`, `category`, `merchant`, `date`, `description` |
-| `note` | `title`, `content`（markdown）, `template_id`（或 null）|
+| `todo` | `content`（任务内容）, `due_date`（YYYY-MM-DD 或含时间 ISO 串, 可 null）, `status`（pending/done/pending_confirmation） |
+| `idea` | `content`（markdown）, `title`（可选摘要）|
+| `expense` | `amount`, `currency`, `category`, `merchant`, `date`（YYYY-MM-DD）, `description` |
+| `note` | `content`（markdown）, `title`（可选）|
 
 ### 2.5 Contact 表
 
@@ -132,12 +132,20 @@ Contact（联系人实体）
 {
   "session_id": "uuid",
   "session_type": "flash_note | meeting",
+  "source_transcript_id": "uuid | null",
   "file_ids": ["uuid"],
   "transcript_ids": ["uuid"],
   "asset_ids": ["uuid"],
   "created_at": "ISO8601"
 }
 ```
+
+**字段说明：**
+
+| 字段 | 含义 |
+|---|---|
+| `source_transcript_id` | 长文档来源转录 ID（仅 meeting session 填写）。Agent 以此字段按需拉取转录内容，不注入到每轮对话上下文。闪念 session 此字段为 null（闪念转录文本短，由 Pipeline 直接消费，无需懒加载）。|
+| `transcript_ids` | 该 session 关联的所有 Transcript ID 列表（含 source_transcript_id）。|
 
 ---
 
@@ -222,8 +230,8 @@ Session Writer
 ### 4.3 各 Sub-skill 设计
 
 **todo-skill**
-- 提取：`title`（必填）、`due_at`（ISO8601 或 null）
-- 时间规则：有日期无时间 → 当天 09:00+08:00；无时间引用 → null
+- 提取：`content`（必填，任务内容）、`due_date`（YYYY-MM-DD 或含时间的 ISO 串，可 null）、`status: "pending"`
+- 时间规则：有日期无时间 → 只写日期（YYYY-MM-DD）；无时间引用 → null
 - 调用：`create_asset("todo", payload)`
 
 **contact-skill**
@@ -331,6 +339,62 @@ Agent 从对话历史知道 a-001 是"给刘洋发合同"
 
 ---
 
+### 5.5 长 Transcript 处理模式（会议场景）
+
+#### 问题
+
+会议录音转录后可能产生数万 token 的长文本（3 小时会议 ≈ 30,000～60,000 词）。将其完整注入每轮对话 context 会：
+
+- 超出模型 context window 限制
+- 大幅增加 token 成本
+- 使 Agent 每次 turn 都重新处理无关内容
+
+#### 设计原则：Source 引用 + 工具懒加载
+
+```
+session.source_transcript_id = "tid-xxx"   ← 只存 ID，不存文本
+
+每轮对话携带：
+  ├── system prompt（含 source 提示）
+  ├── 对话历史（用户输入 + Agent 回复，不含原始 transcript）
+  └── 本轮用户输入
+
+Agent 需要 transcript 内容时，主动调用工具：
+  ├── query_transcript(tid-xxx, contains="关键词")   ← 优先，返回相关片段
+  └── get_transcript(tid-xxx)                        ← 仅当需要全文时（慎用）
+```
+
+#### System Prompt 中的 Source 提示
+
+```
+你正在处理一个会议 session。
+会议转录文本 ID：{source_transcript_id}
+当用户询问会议内容时，调用 query_transcript 检索相关片段，
+不要假设你已经知道会议内容。
+```
+
+#### 对话历史策略
+
+Agent 对话历史中保存的是**提炼后的结构**，不保存原始 transcript：
+
+| 内容 | 是否进入对话历史 |
+|---|---|
+| 用户的追问文字 | ✅ |
+| Agent 的自然语言回复 | ✅ |
+| Agent 调用工具的 function call + result | ✅（含检索到的 transcript 片段）|
+| 会议原始转录全文 | ❌ 不注入，按需通过工具拉取 |
+
+#### Transcript 工具使用策略
+
+| 场景 | 推荐工具 | 说明 |
+|---|---|---|
+| 用户问"第三项决策是什么" | `query_transcript(id, "决策")` | 语义检索，返回相关段落 |
+| 用户问"李明说了什么" | `query_transcript(id, "李明")` | 按说话人 / 关键词检索 |
+| 用户让 Agent 重新总结全文 | `get_transcript(id)` | 全文，需评估 token 成本 |
+| 用户问与会议无关的问题 | 不调用 transcript 工具 | 直接从对话历史 / 资产库回答 |
+
+---
+
 ## 六、MCP 工具接口
 
 所有 Pipeline 和 Conversational Agent 共用同一套工具。
@@ -363,23 +427,73 @@ Agent 从对话历史知道 a-001 是"给刘洋发合同"
 
 ---
 
-## 七、Session 生命周期（以闪念为例）
+## 七、Session 生命周期
+
+### 7.1 闪念 Session（自动创建）
+
+Session 在用户录音上传后**自动创建**，无需用户手动触发分析。
 
 ```
-① 用户按下硬件闪念按钮
-② 音频上传 → 写 File（asr_status: pending）
-③ App 创建 Session（session_type: flash_note）
-④ ASR 处理 → 写 Transcript，更新 File.asr_status
+① 用户按下硬件闪念按钮，录音完毕
+② 音频上传 → 写 File（source_tag: flash_note, asr_status: pending）
+③ App 自动创建 Session（session_type: flash_note）
+   → source_transcript_id: null（闪念不使用懒加载）
+④ ASR 处理（轻量，秒级）→ 写 Transcript，更新 File.asr_status → completed
 ⑤ App 将 transcript_id 挂载到 Session
-⑥ 触发 Flash Note Pipeline（输入：Transcript.text）
+⑥ 触发 Flash Note Pipeline（输入：Transcript.text 直接注入）
 ⑦ Sub-skills 并行处理 → 写 Asset / Contact
 ⑧ Session Writer 汇总 → 返回卡片 JSON
 ⑨ App 渲染卡片，用户看到结果
 
 ⑩ 用户文字追问 → Conversational Agent
-⑪ Agent 调 MCP 工具修改/查询
+⑪ Agent 调 MCP 工具修改/查询（对话历史携带，无需 transcript 懒加载）
 ⑫ 自然语言回复
 ```
+
+### 7.2 会议 Session（用户手动触发）
+
+Session **不在上传时创建**，而是在用户主动点击分析 CTA 后才创建。
+这一设计允许用户在上传后先查看文件详情、确认无误再触发耗时的 ASR 和 AI 分析。
+
+```
+① 会议录音完毕，音频从硬件上传到 App
+② 写 File（source_tag: meeting, asr_status: pending）
+   → 此时 Session 尚未创建
+③ App 展示「文件详情页」（File Detail Page）
+   - 显示：文件名、时长、上传时间、状态：等待分析
+   - CTA 按钮：「开始 ASR + AI 分析」
+
+④ 用户点击 CTA
+   → 写 Session（session_type: meeting，挂载 file_id）
+   → 触发 ASR（异步，可能需要数分钟）
+
+⑤ ASR 处理（专业云 ASR，含说话人分离）
+   → 写 Transcript（含 speakers 标注）
+   → 更新 File.asr_status → completed
+   → 写入 Session.source_transcript_id = transcript_id
+   → 写入 Session.transcript_ids
+
+⑥ 触发 Meeting Pipeline（输入：transcript_id，不直接传 Transcript.text）
+   → Pipeline 内部通过 get_transcript 分段读取
+⑦ Pipeline 处理 → 写 Asset（action_item / decision / summary 等）
+⑧ Session Writer 汇总 → 返回会议摘要卡片 JSON
+⑨ App 更新 Session 详情页，展示摘要 + 结构化资产
+
+⑩ 用户文字追问（关于会议内容）→ Conversational Agent
+⑪ Agent 从 session.source_transcript_id 获得 transcript 引用
+⑫ 按需调用 query_transcript / get_transcript 拉取相关片段
+⑬ 自然语言回复，不在每轮携带原始转录全文
+```
+
+### 7.3 两种 Session 的关键差异
+
+| | 闪念 Session | 会议 Session |
+|---|---|---|
+| Session 创建时机 | 上传后自动创建 | 用户点击 CTA 后创建 |
+| ASR 时长 | 秒级 | 分钟级（含说话人分离）|
+| Transcript 注入方式 | 直接注入 Pipeline | 以 ID 引用，懒加载 |
+| `source_transcript_id` | null | 填写 transcript_id |
+| 文件详情页 CTA | 无（自动触发）| 有（「开始分析」）|
 
 ---
 
@@ -390,8 +504,10 @@ Agent 从对话历史知道 a-001 是"给刘洋发合同"
 | Flash Note Pipeline | ✅ 已完成 | dispatcher + 6 个 skill + session writer |
 | Mock MCP Server | ✅ 已完成 | server.py + store.py，本地测试用 |
 | 本地 Orchestrator | ✅ 已完成 | orchestrator.py，串联完整 pipeline |
-| Meeting Pipeline | 🔲 待设计 | dispatcher 意图不同（action_item / participant / decision / summary），输入为长 transcript |
-| Conversational Agent | 🔲 待设计 | system prompt + session history + 直接 MCP 调用 |
+| 长 Transcript 处理模式 | ✅ 已设计 | §5.5 + §7.2：source 引用 + 工具懒加载，见 Session 表 source_transcript_id |
+| 会议 Session 生命周期 | ✅ 已设计 | §7.2：用户手动触发 CTA → Session 创建 → ASR → Pipeline |
+| Meeting Pipeline（意图层） | 🔲 待设计 | dispatcher 意图：action_item / participant / decision / summary |
+| Conversational Agent | 🔲 待设计 | system prompt + session history + 直接 MCP 调用（长 transcript 模式已在 §5.5 定义）|
 | 真实数据库对接 | 🔲 待实现 | 替换 store.py 为 MongoDB 或其他非关系型数据库 |
 | 云端部署 | 🔲 待实现 | 替换本地 mock，接真实 ASR 服务和后端 API |
 

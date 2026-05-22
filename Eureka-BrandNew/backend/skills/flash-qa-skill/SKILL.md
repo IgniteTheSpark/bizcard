@@ -27,14 +27,17 @@ input_id: "<input identifier>"
 
 1. Read `source_text` carefully to understand what the user is asking.
 2. Use `user_text` for any surrounding context that helps clarify the question.
-3. Answer the question directly. Prioritize:
-   - Brevity — if the question has a short, definite answer, give it without preamble
-   - Accuracy — don't speculate or fabricate if you're uncertain; say so
-   - Relevance — answer what was asked, not tangential things
+3. If the question asks about the user's **own stored data** (todos, expenses, contacts, ideas, notes), call `tool_query_asset` to fetch relevant assets, then reason over them to answer.
+   - Examples: "今天有几个代办", "最近花了多少钱", "有哪些未完成的事"
+4. For general knowledge questions (not about stored data), answer directly without calling tools.
+5. Answer concisely. Prioritize:
+   - Brevity — short, definite answers without preamble
+   - Accuracy — don't speculate; say so if uncertain
+   - Relevance — answer what was asked
 
 **Do NOT save any asset.** This skill never calls `create_asset` or any write tool.
 
-**Do NOT route back** — if the question seems like it could also be a todo or idea, answer it anyway. The dispatcher already made the routing decision.
+**Do NOT route back** — answer it here. The dispatcher already made the routing decision.
 
 ## Output format
 
