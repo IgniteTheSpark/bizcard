@@ -6,7 +6,7 @@ import json
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
-from mcp.tools import query_asset, query_contact, update_asset, delete_asset
+from mcp.tools import query_asset, query_contact, create_asset, update_asset, delete_asset
 from db.queries import query_assets_structured
 from db.database import AsyncSessionLocal
 from agents.model_config import QUERY_MODEL
@@ -48,11 +48,19 @@ You can BOTH query data AND modify/delete assets when the user asks.
 ### 想法/笔记/其他语义分析
 调用 tool_query_asset_semantic(asset_type="idea"|"note"|"misc"|"")
 
+### 创建新资产（"帮我创建一个待办", "新增一条记账", "记录一个想法"）
+调用 tool_create_asset(asset_type=..., payload_json=JSON字符串)
+- todo payload: {"content": "...", "due_date": "YYYY-MM-DDTHH:MM:SS", "priority": "high|medium|low", "status": "pending"}
+- expense payload: {"amount": 数字, "currency": "CNY", "merchant": "...", "description": "...", "date": "YYYY-MM-DD", "category": "..."}
+- idea/note payload: {"content": "...", "tags": [...]}
+- due_date / date 必须是绝对日期，根据"今天是 YYYY年MM月DD日"推算，禁止存"明天"等相对词
+
 ## 回复规范
 - 必须先调用工具，绝对不能凭记忆或猜测直接回答
 - payload 里 todo 的截止时间字段名是 due_date（不是 due_at）
 - 用中文回复，简洁具体，不要输出 asset_id 等技术细节
 - 修改成功后确认"已将…改为…"
+- 创建成功后确认"已为你创建…"
 """
 
 
@@ -96,17 +104,24 @@ async def tool_delete_asset(asset_id: str) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
+async def tool_create_asset(asset_type: str, payload_json: str) -> str:
+    """Create a new asset. asset_type: todo|expense|idea|note. payload_json is a JSON string of fields."""
+    result = await create_asset(asset_type, payload_json)
+    return json.dumps(result, ensure_ascii=False)
+
+
 query_agent = LlmAgent(
     name="query",
     model=QUERY_MODEL,
     instruction=QUERY_INSTRUCTION,
-    description="Answers questions and manages assets: query, modify, or delete todos/expenses/contacts.",
+    description="Answers questions and manages assets: query, create, modify, or delete todos/expenses/ideas/contacts.",
     tools=[
         FunctionTool(tool_query_assets_structured),
         FunctionTool(tool_query_asset_semantic),
         FunctionTool(tool_query_contacts),
         FunctionTool(tool_update_asset),
         FunctionTool(tool_delete_asset),
+        FunctionTool(tool_create_asset),
     ],
     output_key="query_result",
 )
