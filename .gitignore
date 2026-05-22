@@ -12,6 +12,8 @@ __pycache__/
 .env
 .venv/
 venv/
+uvicorn*.log
+uvicorn*.err.log
 
 # OS
 .DS_Store
