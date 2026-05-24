@@ -2,7 +2,7 @@
 name: flash-contact-skill
 description: >
   Part of the Bizcard flash note pipeline. Receives a dispatched contact intent
-  (source_text + user_text + session_id + input_id) and handles all contact
+  (source_text + user_text + session_id + source_input_turn_id) and handles all contact
   CRUD operations: create, update, and delete. Use this skill whenever the
   dispatcher routes a contact/save-person/update-person/delete-person intent.
 ---
@@ -30,7 +30,7 @@ You will receive:
 source_text: "<the contact-related slice of the user's speech>"
 user_text: "<full original input, for context>"
 session_id: "<session identifier>"
-input_id: "<input identifier>"
+source_input_turn_id: "<input identifier>"
 ```
 
 ## Step 1 — Extract fields from source_text (create/update path)

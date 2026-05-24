@@ -2,7 +2,7 @@
 name: flash-qa-skill
 description: >
   Part of the Bizcard flash note pipeline. Receives a dispatched qa intent
-  (source_text + user_text + session_id + input_id) and answers the user's
+  (source_text + user_text + session_id + source_input_turn_id) and answers the user's
   question directly. Use this skill whenever the dispatcher routes a question
   or information-lookup intent — anything that asks "what is", "help me find",
   "explain", "how do I", or similar direct question forms.
@@ -20,7 +20,7 @@ The dispatcher has already decided this text is a question the user wants answer
 source_text: "<the question slice of the user's speech>"
 user_text: "<full original input, for context>"
 session_id: "<session identifier>"
-input_id: "<input identifier>"
+source_input_turn_id: "<input identifier>"
 ```
 
 ## What to do
@@ -47,7 +47,7 @@ Return a JSON object:
 {
   "ok": true,
   "session_id": "<pass through>",
-  "input_id": "<pass through>",
+  "source_input_turn_id": "<pass through>",
   "answer": "<your answer as a plain text string>"
 }
 ```

@@ -2,7 +2,7 @@
 name: flash-idea-skill
 description: >
   Part of the Bizcard flash note pipeline. Receives a dispatched idea intent
-  (source_text + user_text + session_id + input_id) and handles all idea
+  (source_text + user_text + session_id + source_input_turn_id) and handles all idea
   CRUD operations: create, update, and delete. Use this skill whenever the
   dispatcher routes an idea/thought/insight/inspiration intent — whether
   recording a new idea, expanding or correcting an existing one, or removing one.
@@ -20,7 +20,7 @@ The dispatcher has already decided this text involves an idea. Your job is to de
 source_text: "<the idea-related slice of the user's speech>"
 user_text: "<full original input, for context>"
 session_id: "<session identifier>"
-input_id: "<input identifier>"
+source_input_turn_id: "<input identifier>"
 ```
 
 ---
@@ -46,16 +46,16 @@ When ambiguous, default to `create`.
 **content** — markdown body. Start with the user's original words from `source_text`, optionally add 1-2 lines expanding the thought if it adds genuine value. Never fabricate facts, numbers, or names not in `source_text`.
 
 Call `tool_create_asset`:
-- `asset_type`: `"idea"`
+- `user_skill_name`: `"idea"`
 - `payload`: `{"title": "...", "content": "markdown string"}`
-- `session_id`, `input_id`: pass through
+- `session_id`, `source_input_turn_id`: pass through
 
 ---
 
 ### UPDATE
 
 1. Extract a **search keyword** that identifies the idea (a distinctive word from the title or content).
-2. Call `tool_query_asset` with `asset_type="idea"` and `contains=<keyword>`.
+2. Call `tool_query_asset` with `user_skill_name="idea"` and `contains=<keyword>`.
 3. Pick the most relevant match.
 4. Determine what changes: title, content, or both.
    - For content additions, append to existing content rather than replacing it.
@@ -68,7 +68,7 @@ If no match found, fall back to **CREATE**.
 ### DELETE
 
 1. Extract a **search keyword**.
-2. Call `tool_query_asset` with `asset_type="idea"` and `contains=<keyword>`.
+2. Call `tool_query_asset` with `user_skill_name="idea"` and `contains=<keyword>`.
 3. Pick the most relevant match.
 4. Call `tool_delete_asset` with `asset_id`.
 
@@ -106,7 +106,7 @@ source_text: "下半年可以考虑做一个习惯打卡小程序，帮用户建
 ```
 source_text: "补充一下那个客户标签系统的想法：可以按照行业分类"
 ```
-→ query_asset(asset_type="idea", contains="客户标签")
+→ query_asset(user_skill_name="idea", contains="客户标签")
 → update_asset(asset_id=..., payload_patch={"content": "<original content>\n\n补充：可以按照行业分类。"})
 
 ---
@@ -115,5 +115,5 @@ source_text: "补充一下那个客户标签系统的想法：可以按照行业
 ```
 source_text: "删除那个习惯打卡小程序的想法"
 ```
-→ query_asset(asset_type="idea", contains="习惯打卡")
+→ query_asset(user_skill_name="idea", contains="习惯打卡")
 → delete_asset(asset_id=...)

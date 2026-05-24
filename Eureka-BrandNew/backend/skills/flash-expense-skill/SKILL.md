@@ -2,7 +2,7 @@
 name: flash-expense-skill
 description: >
   Part of the Bizcard flash note pipeline. Receives a dispatched expense intent
-  (source_text + user_text + session_id + input_id) and handles all expense
+  (source_text + user_text + session_id + source_input_turn_id) and handles all expense
   CRUD operations: create, update, and delete. Use this skill whenever the
   dispatcher routes an expense/spending/payment/purchase/reimbursement intent
   — whether creating a new record, correcting an existing one, or removing one.
@@ -20,7 +20,7 @@ The dispatcher has already decided this text involves an expense record. Your jo
 source_text: "<the expense-related slice of the user's speech>"
 user_text: "<full original input, for context>"
 session_id: "<session identifier>"
-input_id: "<input identifier>"
+source_input_turn_id: "<input identifier>"
 ```
 
 ---
@@ -72,16 +72,16 @@ Today's date for relative resolution: use the current date from your context.
 **description** — brief note from `source_text`. Keep it short. Don't invent details.
 
 Call `tool_create_asset`:
-- `asset_type`: `"expense"`
+- `user_skill_name`: `"expense"`
 - `payload`: `{"amount": <number>, "currency": "CNY", "category": "...", "merchant": "...", "date": "YYYY-MM-DD", "description": "..."}`
-- `session_id`, `input_id`: pass through
+- `session_id`, `source_input_turn_id`: pass through
 
 ---
 
 ### UPDATE
 
 1. Extract a **search keyword** — amount, merchant, or description word that identifies the record.
-2. Call `tool_query_asset` with `asset_type="expense"` and `contains=<keyword>`.
+2. Call `tool_query_asset` with `user_skill_name="expense"` and `contains=<keyword>`.
 3. Pick the most relevant match (most recent or closest content match).
 4. Determine which fields changed (amount, category, merchant, date, description).
 5. Call `tool_update_asset` with `asset_id` and a `payload_patch` JSON string of only the changed fields.
@@ -93,7 +93,7 @@ If no match found, fall back to **CREATE**.
 ### DELETE
 
 1. Extract a **search keyword**.
-2. Call `tool_query_asset` with `asset_type="expense"` and `contains=<keyword>`.
+2. Call `tool_query_asset` with `user_skill_name="expense"` and `contains=<keyword>`.
 3. Pick the most relevant match.
 4. Call `tool_delete_asset` with `asset_id`.
 
@@ -133,7 +133,7 @@ source_text: "昨天买了一件外套，花了399"
 ```
 source_text: "刚才记的日料应该是78块，不是68"
 ```
-→ query_asset(asset_type="expense", contains="日料")
+→ query_asset(user_skill_name="expense", contains="日料")
 → update_asset(asset_id=..., payload_patch={"amount": 78})
 
 ---
@@ -142,5 +142,5 @@ source_text: "刚才记的日料应该是78块，不是68"
 ```
 source_text: "删除那笔打车的记录"
 ```
-→ query_asset(asset_type="expense", contains="打车")
+→ query_asset(user_skill_name="expense", contains="打车")
 → delete_asset(asset_id=...)
