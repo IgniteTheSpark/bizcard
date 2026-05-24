@@ -1,8 +1,9 @@
 # Phase B — Eureka 架构蓝图
 
-> 版本：v1.0 | 2026-05-24
-> 状态：定稿
+> 版本：v1.1 | 2026-05-24
+> 状态：定稿(分歧 2 已并入)
 > 用途：Eureka 从零重建的架构基线。定义数据模型、模块边界、Agent 编排、API 契约、前端组件地图。Phase C(后端重建)、Phase D(前端重建)按此为准。
+> v1.0 → v1.1 改动:接受 design `Session + InputTurn` 数据模型(分歧 2)。`transcripts` 重命名为 `input_turns`,Session.session_type 改为 `flash | chat | meeting | manual`,Asset.source_transcript_id → source_input_turn_id;flash session 仍按天聚合,每次闪念是 session 内一个 input_turn。
 
 ---
 
@@ -14,7 +15,7 @@ Phase A 的四条架构原则贯穿全文:
 1. 生产级核心 + demo 级边缘,干净接缝
 2. AI 体验生产级(流式 / 低延迟 / 自然)
 3. 资产类型由 skill 产出、可扩展
-4. 数据模型按生产级设计(多用户-ready / Transcript 一等实体 / 会议留位)
+4. 数据模型按生产级设计(多用户-ready / InputTurn 一等实体 / 会议留位)
 
 ---
 
@@ -24,9 +25,9 @@ Phase A 的四条架构原则贯穿全文:
 |---|---|---|
 | 1 | 多用户准备 | 不建 User 表;FastAPI 依赖 `get_current_user_id()` 做单一来源,demo 返回常量,上线时换鉴权实现 |
 | 2 | MCP 接口形态 | 真 FastMCP server,stdio 子进程;ADK `MCPToolset` 标准接入;部署仍是单服务 |
-| 3 | 对话上下文窗口 | 固定近 N=20 条消息窗口;长 transcript(会议)**不进 chat history**,走 MCP 工具(`query_transcript` / `get_transcript`)按需检索 |
+| 3 | 对话上下文窗口 | 固定近 N=20 条消息窗口;长 input_turn(会议)**不进 chat history**,走 MCP 工具(`query_input_turn` / `get_input_turn`)按需检索 |
 | 4 | agent 编排 | 双形态 ADK:统一助手(单 LlmAgent + tools)+ Flash Pipeline(Python 编排 3 步、内部用 LlmAgent 实例);共用 MCPToolset;自定义 `PostgresSessionService` |
-| 5 | Transcript / File / flash 关系 | 新增 `File`、`Transcript` 表;**取消 `flash` 资产类型**;所有派生资产用 `source_transcript_id` FK 关联 Transcript |
+| 5 | InputTurn / File / flash 关系 | 新增 `File`、`InputTurn` 表(InputTurn 取代原 Transcript 概念);**取消 `flash` 资产类型**;所有派生资产用 `source_input_turn_id` FK 关联 InputTurn |
 | 6 | 流式输出 | SSE。后端 `StreamingResponse` + `text/event-stream`;前端 `EventSource` |
 | 7 | 呈现模式存储 | localStorage + `usePresentationMode()` hook 抽象;上线接鉴权时改 hook 内部实现,调用方不动 |
 | 8 | 资产类型渲染 | D2 完整愿景:`UserSkill.render_spec` 受限 DSL 驱动统一 `SkillCard` 渲染器;5 个初始 skill 预置 spec;**demo 阶段就含 add-skill UI + design agent**,用户加 skill 时 AI 帮设计 card |
@@ -35,32 +36,36 @@ Phase A 的四条架构原则贯穿全文:
 
 ## 三、数据模型
 
-PostgreSQL 16 + pgvector。
+PostgreSQL 16 + pgvector。9 张表。
 
 ### 3.1 总览(ER)
 
 ```
 User(隐式,demo 阶段不建表;user_id 字符串)
     │
-    ├─ owns ─→ File          (音频元数据,demo 不写,真实硬件上线后启用)
+    ├─ owns ─→ File             (音频元数据,demo 不写,真实硬件上线后启用)
+    │
+    ├─ owns ─→ Session          (4 种类型:flash / chat / meeting / manual)
     │              │
-    │              └─ asr ─→ Transcript  (转录文本,可空 file_id 适配「typed」来源)
-    │                            │
-    │                            └─ derives ─→ Asset (派生资产 source_transcript_id)
+    │              ├─ holds ─→ InputTurn   (一对多,session 内的逐次输入)
+    │              │              │
+    │              │              ├─ refs ─→ File   (可空;flash/meeting 有,chat 无)
+    │              │              │
+    │              │              └─ derives ─→ Asset  (派生资产 source_input_turn_id)
+    │              │
+    │              ├─ holds ─→ Asset       (含 manual session 直接创建的)
+    │              └─ holds ─→ Message     (服务统一助手对话流)
     │
-    ├─ owns ─→ Session       (App 层组织:daily / meeting / agent_chat)
-    │              ├─ holds ─→ Transcript  (一对多)
-    │              ├─ holds ─→ Asset
-    │              └─ holds ─→ Message    (对话消息,服务于统一助手)
-    │
-    ├─ owns ─→ Asset         (todo / event / idea / expense / ...,payload JSONB)
+    ├─ owns ─→ Asset            (todo / event / idea / expense / ...,payload JSONB)
     │              └─ indexed_by ─→ AssetField (倒排索引)
     │
-    ├─ owns ─→ Contact       (名片,独立实体)
+    ├─ owns ─→ Contact          (名片,独立实体)
     │
-    └─ owns ─→ UserSkill     (skill 注册表,含 payload_schema + render_spec)
+    └─ owns ─→ UserSkill        (skill 注册表,含 payload_schema + render_spec)
                    └─ ref ─→ GlobalSkill
 ```
+
+> **设计细节**:File 直接挂在 InputTurn 上,**不挂 Session** —— 这样一个 session 可以含多个带各自文件的 input_turn(flash 一天多次、多片段会议)。
 
 ### 3.2 表定义
 
@@ -76,45 +81,57 @@ asr_status      varchar(20)           ← pending | processing | completed | fai
 created_at      timestamptz
 ```
 
-**transcript** —— 转录文本(一等实体)
+**input_turn** —— 一次输入(取代 Transcript 概念,一等实体)
 ```
-id              uuid pk
-user_id         varchar(50) not null
-file_id         uuid fk file(id)      ← nullable;typed 来源没有 file
-session_id      uuid fk session(id)
-text            text not null
-segments        jsonb                 ← meeting 时填 [{speaker: "Speaker 1", start: 0, end: 12.5, text: "..."}]
-source          varchar(20) not null  ← voice_flash | typed | meeting
-asr_provider    varchar(50)           ← web_speech | whisper | ...
-language        varchar(10)           ← zh-CN, en-US, ...
-created_at      timestamptz
-INDEX(user_id, session_id, created_at)
+id                  uuid pk
+user_id             varchar(50) not null
+session_id          uuid fk session(id) not null
+index               integer not null       ← session 内 0-based 序号
+file_id             uuid fk file(id)        ← 可空;chat 无 file,flash/meeting 有
+source_file_offset  integer                 ← ms in audio(meeting 切片用)
+text                text not null
+segments            jsonb                   ← 可选 speaker / per-token 细节
+source              varchar(20) not null    ← flash | chat | meeting
+asr_provider        varchar(50)
+language            varchar(10)
+created_at          timestamptz
+UNIQUE(session_id, index)
+INDEX(user_id, session_id, index)
 INDEX(user_id, source, created_at)
 ```
+> 一个 flash session(按天聚合)有 N 个 source=flash 的 input_turn,每个对应一次闪念,自带 file_id。
+> 一个 chat session 有 N 个 source=chat 的 input_turn,每个对应一条 user message,无 file_id。
+> 一个 meeting session 有 N 个 source=meeting 的 input_turn(按 speaker 切),共享同一个 file_id 但有不同的 source_file_offset。
 
-**session** —— App 层组织(保留并精简 session_type)
+**session** —— App 层组织
 ```
 id              uuid pk
 user_id         varchar(50) not null
-session_type    varchar(20) not null  ← daily | meeting | agent_chat
+session_type    varchar(20) not null  ← flash | chat | meeting | manual
 title           varchar(255)
-date            date                  ← daily session 有,其它可空
+date            date                  ← flash session 按天有;其它可空
 created_at      timestamptz
 INDEX(user_id, date desc)
+INDEX(user_id, session_type, created_at)
 ```
+> session_type 说明:
+> - `flash`:按自然日聚合的闪念容器(标题如「5月21日闪念」),内部多个 input_turn
+> - `chat`:统一助手对话(标题取首条用户消息),内部多个 input_turn(user 消息)
+> - `meeting`:会议(本轮不做,数据模型留位)
+> - `manual`:用户直接创建资产时挂的占位 session,无 input_turn
 
-**asset** —— 派生资产(取消 flash 类型,新增 source_transcript_id)
+**asset** —— 派生资产
 ```
 id                    uuid pk
 user_id               varchar(50) not null
-user_skill_id         uuid fk user_skill(id) not null   ← 强约束,asset 必属于某 skill
+user_skill_id         uuid fk user_skill(id) not null   ← 强约束:asset 必属于某 skill
 session_id            uuid fk session(id)
-source_transcript_id  uuid fk transcript(id)             ← 可空(agent chat 直接 create_asset 时为空)
+source_input_turn_id  uuid fk input_turn(id)             ← 可空(manual session 时为空)
 payload               jsonb not null                     ← 字段集由 user_skill.payload_schema 约束
 created_at            timestamptz
 INDEX(user_id, created_at desc)
 INDEX(user_id, user_skill_id, created_at desc)
-INDEX(user_id, source_transcript_id)
+INDEX(user_id, source_input_turn_id)
 ```
 > 注:`payload.asset_type` 字段移除 —— 类型由 `user_skill_id` 链回 GlobalSkill.name 得到,不再硬编码进 payload。
 
@@ -145,9 +162,9 @@ notes           text[]
 created_at      timestamptz
 INDEX(user_id, name)
 ```
-> 未来手动 speaker↔contact 匹配预留:`transcript_speaker_link` 表,但本轮不建。
+> 未来手动 speaker↔contact 匹配预留:`input_turn_speaker_link` 表,但本轮不建。
 
-**message** —— 对话消息(保留,服务统一助手 + Flash Pipeline 出的 agent_summary 也走这)
+**message** —— 对话消息(服务统一助手 + Flash Pipeline 出的 agent_summary 也写这里)
 ```
 id              uuid pk
 session_id      uuid fk session(id) on delete cascade
@@ -165,7 +182,7 @@ INDEX(session_id, created_at)
 **global_skill** —— 全局 skill 元定义
 ```
 id              serial pk
-name            varchar(50) unique not null     ← todo, event, idea, contact_skill, expense, qa
+name            varchar(50) unique not null     ← todo, event, idea, contact, expense, qa
 description     text
 created_at      timestamptz
 ```
@@ -176,8 +193,8 @@ id                  uuid pk
 user_id             varchar(50) not null
 skill_id            integer fk global_skill(id)
 display_name        varchar(100)
-payload_schema      jsonb not null     ← 字段定义,见 §九
-render_spec         jsonb not null     ← 受限 DSL,见 §九
+payload_schema      jsonb              ← 字段定义,可空(qa 系统 skill 为 null)
+render_spec         jsonb              ← 受限 DSL,可空(qa 系统 skill 为 null)
 queryable_fields    jsonb              ← [{field, index_type}]
 created_at          timestamptz
 UNIQUE(user_id, skill_id)
@@ -186,10 +203,10 @@ UNIQUE(user_id, skill_id)
 ### 3.3 关键关系说明
 
 - **Asset 一定从某个 UserSkill 出**(强 FK):新加资产类型 = 加 UserSkill,不需要改架构。
-- **Asset.source_transcript_id 可空**:agent chat 中用户说「帮我建个待办」直接产生的资产无 transcript 来源。
-- **Transcript 一对多 Asset**:一次闪念可能派生多个 asset(todo + expense + contact);会议同理。
-- **Transcript ↔ Session 多对一**:一个 daily session 有多次闪念 transcripts;一个 meeting session 通常一条主 transcript。
-- **Message 服务于对话流**:统一助手的对话 + Flash Pipeline 完成后的 agent_summary 都写进 message,前端用统一接口拉取。
+- **Asset.source_input_turn_id 可空**:仅 manual session 中用户直接创建的资产无 input_turn 来源;chat 中由 agent 创建的资产**也有** input_turn(指向触发它的用户消息)—— 这是相对 v1.0 修正的 provenance 漏洞。
+- **InputTurn 一对多 Asset**:一次输入可能派生多个 asset(一次闪念说出 todo + expense + contact;一句 chat 提问让 agent 建多个待办)。
+- **InputTurn ↔ Session 多对一**:一个 flash session(按天)有多次闪念 input_turns;一个 chat session 有多次 user-message input_turns;一个 meeting session 有多个 speaker-切片 input_turns;manual session 无 input_turn。
+- **Message 服务于对话流**:统一助手的对话历史 + Flash Pipeline 完成后的 agent_summary 都写进 message,前端用统一接口拉取。
 
 ---
 
@@ -215,10 +232,11 @@ backend/
 │
 ├── api/
 │   ├── chat.py               POST /api/chat   (SSE,统一助手对话)
-│   ├── flash.py              POST /api/flash  (闪念 transcript ingest → Flash Pipeline)
-│   ├── transcripts.py        GET  /api/transcripts/{id}
+│   ├── flash.py              POST /api/flash  (闪念 input_turn ingest → Flash Pipeline)
+│   ├── input_turns.py        GET  /api/input-turns/{id}
 │   ├── sessions.py           GET  /api/sessions, GET /api/sessions/{id}/messages
 │   ├── assets.py             CRUD /api/assets
+│   ├── files.py              GET  /api/files (资产库的文件视图)
 │   ├── contacts.py           CRUD /api/contacts
 │   └── skills.py             GET  /api/skills, POST /api/skills (add-skill + design agent)
 │
@@ -233,7 +251,7 @@ backend/
 │   └── tools.py              工具实现,被 server.py 调用(保留并清理)
 │
 └── skills/
-    └── (5 个 SKILL.md prompts:todo / event / idea / contact / expense / qa)
+    └── (6 个 SKILL.md prompts:todo / event / idea / contact / expense / qa)
 ```
 
 死代码 / 旧文件,在 Phase C 全部删除:
@@ -252,15 +270,20 @@ backend/
 请求:
 ```json
 {
-  "session_id": "uuid (optional, empty = create new agent_chat session)",
+  "session_id": "uuid (optional, empty = create new chat session)",
   "user_text": "用户这一轮的输入"
 }
 ```
 
+服务端处理:
+1. 拿到或创建 chat session
+2. 为本轮 user_text **创建一个 input_turn**(source=chat, index = session 内下一个)
+3. 把 input_turn_id 传给 assistant;任何 agent 创建的 asset 都挂这个 input_turn_id
+
 响应:`text/event-stream`,逐条 SSE event:
 ```
 event: meta
-data: {"session_id": "uuid"}
+data: {"session_id": "uuid", "input_turn_id": "uuid"}
 
 event: token
 data: {"text": "已经"}
@@ -284,25 +307,26 @@ event: done
 data: {"elapsed_ms": 2341, "message_id": "uuid"}
 ```
 
-说明:
-- `tool_call` / `tool_result` 用于前端实时显示资产卡片
-- `precipitate_option` 在「无明确意图、纯生成」时出现,前端据此显示「沉淀为资产」交互(决定 Phase A §五)
-
-### 5.2 POST /api/flash —— 闪念 transcript ingest
+### 5.2 POST /api/flash —— 闪念 ingest
 
 请求:
 ```json
 {
   "text": "转录或文字内容",
-  "session_id": "optional, default = today's daily session",
-  "source": "voice_flash | typed"
+  "session_id": "optional, default = today's flash session(按天聚合)",
+  "source": "flash"
 }
 ```
 
-响应:`text/event-stream`(同 SSE)或同步 JSON(待 Phase C 评估)。最终产物:
+服务端处理:
+1. 拿到或创建当天 flash session(`session_type=flash`, `date=today`)
+2. 创建一个 input_turn(source=flash, index = session 内下一个, file_id 若有)
+3. 运行 Flash Pipeline,所有派生 asset 挂这个 input_turn_id
+
+响应:`text/event-stream`(同 SSE)或同步 JSON。最终产物:
 ```json
 {
-  "transcript_id": "uuid",
+  "input_turn_id": "uuid",
   "session_id": "uuid",
   "derived_assets": [
     {"asset_id": "uuid", "user_skill_id": "uuid", "card": {...}}
@@ -356,14 +380,15 @@ data: {"draft_id": "uuid"}    # 用户审核后 POST /api/skills/{draft_id}/conf
 
 ### 5.5 其它(CRUD)
 
-- `GET /api/sessions?type=daily&date=YYYY-MM-DD`
+- `GET /api/sessions?type=flash&date=YYYY-MM-DD`
 - `GET /api/sessions/{id}/messages`
-- `GET /api/sessions/{id}/transcripts`
+- `GET /api/sessions/{id}/input-turns`
 - `GET /api/assets?type=todo&limit=50&contains=...`
 - `PUT /api/assets/{id}` (payload_patch 合并)
 - `DELETE /api/assets/{id}`
-- `GET /api/transcripts/{id}` —— 拉取完整 transcript text(给 MCP 工具用,也可直接调)
+- `GET /api/input-turns/{id}` —— 拉取完整 input_turn text(给 MCP 工具用,也可直接调)
 - `CRUD /api/contacts`
+- `GET /api/files` —— 资产库的文件视图入口
 
 不再有 `/api/query`(并入 `/api/chat`);不再有 `/api/flash/audio`(暂缓)。
 
@@ -375,7 +400,7 @@ data: {"draft_id": "uuid"}    # 用户审核后 POST /api/skills/{draft_id}/conf
 
 | 工具 | 用途 |
 |---|---|
-| `create_asset(user_skill_name, payload, session_id?, source_transcript_id?)` | 创建资产,根据 skill 名查 user_skill_id |
+| `create_asset(user_skill_name, payload, session_id?, source_input_turn_id?)` | 创建资产,根据 skill 名查 user_skill_id |
 | `query_asset(user_skill_name?, contains?, limit?)` | 查询资产 |
 | `update_asset(asset_id, payload_patch)` | 更新 |
 | `delete_asset(asset_id)` | 删除 |
@@ -383,8 +408,8 @@ data: {"draft_id": "uuid"}    # 用户审核后 POST /api/skills/{draft_id}/conf
 | `query_contact(name_query?)` | 查名片 |
 | `update_contact(contact_id, field, value)` | 更新名片字段 |
 | `delete_contact(contact_id)` | 删除名片 |
-| `query_transcript(contains, source?)` | 全文关键词搜索 transcripts |
-| `get_transcript(transcript_id)` | 拉取完整 transcript(长文档懒加载) |
+| `query_input_turn(contains, source?)` | 全文关键词搜索 input_turns |
+| `get_input_turn(input_turn_id)` | 拉取完整 input_turn(长 transcript 懒加载) |
 
 所有工具签名稳定 —— 跟 Phase A skill prompt 兼容,只是从「直接 import 函数」改为「ADK 通过 stdio 调」。
 
@@ -414,7 +439,7 @@ def make_assistant(user_id: str, session_id: str) -> LlmAgent:
 System prompt 包含:
 - 用户身份(为 personalization 留位)
 - 当前日期、当前 session 信息
-- 关联的 long transcripts ID 列表(让 agent 知道可以调 `query_transcript`)
+- 关联的 long input_turn ID 列表(让 agent 知道可以调 `query_input_turn`)
 - 行为规则:意图明确直接 CRUD,模糊则对答(Phase A §五)
 - 可用工具说明(从 MCP server 自动获取)
 
@@ -422,24 +447,25 @@ System prompt 包含:
 
 ```python
 # backend/agents/flash_pipeline.py
-async def run_flash_pipeline(transcript_id: str, user_id: str) -> FlashResult:
-    tx = await get_transcript(transcript_id)
+async def run_flash_pipeline(input_turn_id: str, user_id: str) -> FlashResult:
+    turn = await get_input_turn(input_turn_id)
 
     # Step 1: dispatcher
-    intents = await dispatch(tx.text, user_id, today_str())
+    intents = await dispatch(turn.text, user_id, today_str())
 
     # Step 2: 并行 sub-skill agents
     results = await asyncio.gather(*[
-        run_intent(i, tx, user_id) for i in intents
+        run_intent(i, turn, user_id) for i in intents
     ])
 
     # Step 3: Python 聚合(无 LLM)
-    return aggregate(results, tx.id)
+    return aggregate(results, turn.id)
 ```
 
 `run_intent` 内部:
 - 根据 intent.type 找 UserSkill,造一个 LlmAgent + MCPToolset
 - 单回合调用,产出 result 含 asset_id
+- 创建 asset 时带上 `source_input_turn_id = turn.id`
 
 ### 7.3 Design Agent
 
@@ -457,7 +483,7 @@ async def design_skill(description: str) -> SkillDraft:
 
 `core/session_service.py` 自定义 `PostgresSessionService(BaseSessionService)`:
 - ADK 调 `get_session` / `append_event` 时读写 `session` + `message` 表
-- 注入 context 时,用决定 #3 的策略:近 N=20 条消息 + system prompt(含 long transcript IDs)
+- 注入 context 时,用决定 #3 的策略:近 N=20 条消息 + system prompt(含 long input_turn IDs)
 
 ---
 
@@ -475,10 +501,9 @@ frontend-next/
 │   ├── shell/                top bar, fab, tab bar
 │   ├── pages/
 │   │   ├── ChatPage.tsx          AI 对话(决定 #6 SSE)
-│   │   ├── TimelinePage.tsx      时间流
-│   │   ├── CalendarPage.tsx      日历(新)
-│   │   ├── LibraryPage.tsx       资产库(原 Workspace/Library 合并)
-│   │   └── AssetDetailPage.tsx   资产详情
+│   │   ├── CalendarPage.tsx      日历(5 状态:Schedule / Month / Year / DayDetail / EventEditor;Schedule 吸收时间流功能)
+│   │   ├── LibraryPage.tsx       资产库(类型 grid + 文件视图)
+│   │   └── AssetDetailPage.tsx   资产详情(含 SessionTurnCard 显示来源)
 │   ├── chat/
 │   │   ├── MessageList.tsx
 │   │   ├── MessageBubble.tsx
@@ -496,7 +521,7 @@ frontend-next/
 │   ├── useSkillRegistry.ts       skill 注册表加载 + SWR 缓存
 │   ├── useAssets.ts              资产查询
 │   ├── useSessions.ts
-│   ├── useTranscript.ts
+│   ├── useInputTurn.ts
 │   └── usePresentationMode.ts    localStorage 模式开关(决定 #7)
 │
 ├── lib/
@@ -510,10 +535,11 @@ frontend-next/
     └── PresentationModeContext.tsx
 ```
 
+> 注:不再有独立 `TimelinePage`/`DayViewPage` —— 设计 §4.4 把时间流功能吸收进 CalendarPage 的 Schedule 视图(分歧 1 待最终决议;若接受设计版,以本节为准)。
+
 旧组件 Phase D 删除:
-- `pages/StreamPage.tsx` → 重写为 `TimelinePage`
-- `pages/WorkspacePage.tsx`、`pages/LibraryPage.tsx` → 合并重写
-- `pages/FlashSessionPage.tsx`、`pages/FlashOverallPage.tsx` → 删,功能并入 ChatPage / TimelinePage
+- `pages/StreamPage.tsx`、`pages/WorkspacePage.tsx`、`pages/LibraryPage.tsx`(旧) → 重写
+- `pages/FlashSessionPage.tsx`、`pages/FlashOverallPage.tsx` → 删
 - `pages/DayViewPage.tsx`、`pages/PlaceholderPage.tsx` → 删
 - 旧 `pages/AgentChatPage.tsx`、`AssetDetailPage.tsx` → 重写
 
@@ -546,75 +572,13 @@ type AccentColor = 'blue' | 'amber' | 'green' | 'red' | 'purple' | 'gray' | 'neu
 
 ### 9.2 5 个初始 skill 的预置 render_spec
 
-**todo**:
-```json
-{
-  "card_layout": "horizontal",
-  "icon": "✅",
-  "accent_color": "blue",
-  "primary_field": "content",
-  "secondary_field": "due_date",
-  "secondary_format": "relative_date",
-  "actions": ["check", "edit"],
-  "timeline_position": {"time_field": "due_date", "fallback": "created_at"},
-  "calendar_render": {"date_field": "due_date"}
-}
-```
+详见 `backend/db/seed.py`(代码已落地)。摘要:
 
-**event**:
-```json
-{
-  "card_layout": "horizontal",
-  "icon": "📅",
-  "accent_color": "purple",
-  "primary_field": "title",
-  "secondary_field": "start_at",
-  "secondary_format": "absolute_date",
-  "meta_fields": [{"field": "duration_min", "format": "duration"}, {"field": "location"}],
-  "actions": ["edit", "open"],
-  "calendar_render": {"date_field": "start_at", "time_field": "start_at"}
-}
-```
-
-**idea**:
-```json
-{
-  "card_layout": "stacked",
-  "icon": "💡",
-  "accent_color": "amber",
-  "primary_field": "title",
-  "secondary_field": "content",
-  "secondary_format": "truncate_40",
-  "actions": ["edit", "open"]
-}
-```
-
-**expense**:
-```json
-{
-  "card_layout": "horizontal",
-  "icon": "💰",
-  "accent_color": "green",
-  "primary_field": "amount",
-  "primary_format": "currency",
-  "secondary_field": "description",
-  "meta_fields": [{"field": "category", "format": "badge"}, {"field": "date", "format": "absolute_date"}],
-  "actions": ["edit"]
-}
-```
-
-**contact**:
-```json
-{
-  "card_layout": "horizontal",
-  "icon": "👤",
-  "accent_color": "neutral",
-  "primary_field": "name",
-  "secondary_field": "company",
-  "meta_fields": [{"field": "title"}, {"field": "phone"}],
-  "actions": ["edit", "open"]
-}
-```
+- **todo**:horizontal · ✅ · blue · primary=content · secondary=due_date(relative_date)· actions=check/edit
+- **event**:horizontal · 📅 · purple · primary=title · secondary=start_at(absolute_date)· meta=duration/location · calendar_render
+- **idea**:stacked · 💡 · amber · primary=title · secondary=content(truncate_40)
+- **expense**:horizontal · 💰 · green · primary=amount(currency)· secondary=description · meta=category(badge)/date
+- **contact**:horizontal · 👤 · neutral · primary=name · secondary=company · meta=title/phone
 
 ### 9.3 统一渲染器
 
@@ -644,8 +608,8 @@ type AccentColor = 'blue' | 'amber' | 'green' | 'red' | 'purple' | 'gray' | 'neu
 
 ### 10.1 Phase C(后端)的实施顺序
 
-1. **数据层先行**:写新 Alembic migration(0003_phase_b_schema)按 §三 重塑表;`seed.py` 写入 5 个 UserSkill 的 spec
-2. **MCP server 实写**:`mcp/server.py` 暴露所有工具(决定 #2);`mcp/tools.py` 调整签名以适配新 schema(`user_skill_name` 替代 `asset_type`)
+1. **数据层先行**:写新 Alembic migration(`0001_initial`)按 §三 重塑表;`seed.py` 写入 6 个 UserSkill 的 spec **(Step 1 已完成,v1.1 集成后再校验)**
+2. **MCP server 实写**:`mcp/server.py` 暴露所有工具(决定 #2);`mcp/tools.py` 调整签名以适配新 schema(`user_skill_name` 替代 `asset_type`,`source_input_turn_id` 替代 `source_transcript_id`)
 3. **core 层**:`auth.py`(决定 #1)、`session_service.py`(决定 #4)、`streaming.py`(决定 #6)、`llm.py`
 4. **agents 层**:`assistant.py`、`flash_pipeline.py`(重写)、`design_agent.py`、`skill_factory.py`
 5. **API 层**:`chat.py`、`flash.py`、`skills.py`、其它 CRUD
@@ -654,10 +618,10 @@ type AccentColor = 'blue' | 'amber' | 'green' | 'red' | 'purple' | 'gray' | 'neu
 
 ### 10.2 Phase D(前端)的实施顺序
 
-1. **基础设施**:`lib/sse.ts`、`useChat.ts`、`useSkillRegistry.ts`、`render-spec.ts`、`usePresentationMode.ts`
+1. **基础设施**:`lib/sse.ts`、`useChat.ts`、`useSkillRegistry.ts`、`render-spec.ts`、`usePresentationMode.ts`、design tokens 接入(`design-tokens.css` + `.theme-atmosphere` 类)
 2. **SkillCard 系统**:`SkillCard.tsx` + `GenericField.tsx` —— 渲染核心
 3. **ChatPage**:统一对话,SSE 流式 + 沉淀交互
-4. **TimelinePage / CalendarPage / LibraryPage / AssetDetailPage** —— 用 SkillCard 统一渲染
+4. **CalendarPage / LibraryPage / AssetDetailPage** —— 用 SkillCard 统一渲染;Calendar 含 5 状态(Schedule/Month/Year/DayDetail/EventEditor)
 5. **AddSkillWizard**:add-skill 工作流 + design agent 接入
 6. **应用 PresentationMode**:home 根据模式跳转
 7. **删除旧组件**(§八列出)
@@ -678,9 +642,10 @@ python -m db.seed
 
 完成 Phase B = 本文档定稿 + 已得到用户同意。验收标准:
 - ✅ 八项核心决定都有明确选择
-- ✅ 数据模型可直接生成 Alembic migration
+- ✅ 数据模型可直接生成 Alembic migration(Step 1 已落地)
 - ✅ API 契约可直接写 OpenAPI / 前端 SDK
 - ✅ 后端 / 前端模块树可直接对应文件夹结构
 - ✅ Phase C、Phase D 的实施顺序明确
+- ✅ 分歧 2(Session+InputTurn 数据模型)已集成
 
 Phase C / Phase D 各自启动时,会基于本文档展开各自的 spec(细化到任务 / 测试 / 校验标准)。
