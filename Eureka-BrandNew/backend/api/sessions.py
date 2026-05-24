@@ -1,141 +1,230 @@
 """
-GET  /api/sessions         — list sessions (optionally filtered by date)
-POST /api/sessions         — create a session manually
-GET  /api/sessions/{id}    — session detail with asset summary
+Session listing / detail / message log — Phase B Step 5 rewrite.
+
+GET  /api/sessions                       — list sessions (filter by date / type)
+POST /api/sessions                       — create a session manually (rare; usually auto-created)
+GET  /api/sessions/{id}                  — session detail + asset summary
+GET  /api/sessions/{id}/messages         — message log (chat history)
+GET  /api/sessions/{id}/input-turns      — input_turns for this session (NEW in Step 5)
+
+Default session_type for manual create is now 'manual' (per Phase B v1.3).
 """
+import uuid
 from datetime import date
-from fastapi import APIRouter, Query, HTTPException
-from pydantic import BaseModel
 from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select, func
 
-from db.models import Session as DBSession, Asset, Message
+from core.auth import get_current_user_id
 from db.database import AsyncSessionLocal
-import uuid
+from db.models import Session as DBSession, Asset, Message, InputTurn
 
 router = APIRouter()
 
 
 class CreateSessionRequest(BaseModel):
-    session_type: str = "daily"
+    session_type: str = "manual"   # flash | chat | meeting | manual
     title: str = ""
-    date: Optional[str] = None
+    date: Optional[str] = None     # YYYY-MM-DD
 
+
+# ── GET /api/sessions ──────────────────────────────────────────────────────────
 
 @router.get("/sessions")
 async def list_sessions(
-    date_str: Optional[str] = Query(None, alias="date", description="YYYY-MM-DD"),
-    session_type: Optional[str] = Query(None),
-    limit: int = Query(30, le=100),
+    date_str: Optional[str]      = Query(None, alias="date", description="YYYY-MM-DD"),
+    session_type: Optional[str]  = Query(None, description="flash | chat | meeting | manual"),
+    limit: int                   = Query(30, le=100),
+    user_id: str                 = Depends(get_current_user_id),
 ):
     async with AsyncSessionLocal() as db:
-        stmt = select(DBSession).where(DBSession.user_id == "default")
+        stmt = select(DBSession).where(DBSession.user_id == user_id)
         if date_str:
             try:
-                d = date.fromisoformat(date_str)
-                stmt = stmt.where(DBSession.date == d)
+                stmt = stmt.where(DBSession.date == date.fromisoformat(date_str))
             except ValueError:
                 pass
         if session_type:
             stmt = stmt.where(DBSession.session_type == session_type)
         stmt = stmt.order_by(DBSession.created_at.desc()).limit(limit)
-        result = await db.execute(stmt)
-        sessions = result.scalars().all()
+        sessions = (await db.execute(stmt)).scalars().all()
 
     return {
         "ok": True,
         "sessions": [
             {
-                "id": str(s.id),
+                "id":           str(s.id),
                 "session_type": s.session_type,
-                "title": s.title,
-                "date": s.date.isoformat() if s.date else None,
-                "created_at": s.created_at.isoformat(),
+                "title":        s.title,
+                "date":         s.date.isoformat() if s.date else None,
+                "created_at":   s.created_at.isoformat(),
             }
             for s in sessions
         ],
     }
 
 
+# ── POST /api/sessions (manual create — rare) ─────────────────────────────────
+
 @router.post("/sessions")
-async def create_session(req: CreateSessionRequest):
+async def create_session(
+    req: CreateSessionRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    if req.session_type not in {"flash", "chat", "meeting", "manual"}:
+        raise HTTPException(status_code=400, detail=f"invalid session_type: {req.session_type}")
+
+    sess_date = None
+    if req.date:
+        try:
+            sess_date = date.fromisoformat(req.date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="invalid date format (use YYYY-MM-DD)")
+
     async with AsyncSessionLocal() as db:
         sess = DBSession(
-            user_id="default",
+            user_id=user_id,
             session_type=req.session_type,
             title=req.title or None,
-            date=date.fromisoformat(req.date) if req.date else date.today(),
+            date=sess_date,
         )
         db.add(sess)
         await db.commit()
+        await db.refresh(sess)
+
     return {"ok": True, "session_id": str(sess.id)}
 
 
+# ── GET /api/sessions/{id} ────────────────────────────────────────────────────
+
 @router.get("/sessions/{session_id}")
-async def get_session(session_id: str):
+async def get_session(
+    session_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    try:
+        sid = uuid.UUID(session_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid session id")
+
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(DBSession).where(
-                DBSession.id == uuid.UUID(session_id),
-                DBSession.user_id == "default",
-            )
-        )
-        sess = result.scalar_one_or_none()
+        sess = (await db.execute(
+            select(DBSession).where(DBSession.id == sid, DBSession.user_id == user_id)
+        )).scalar_one_or_none()
         if not sess:
-            raise HTTPException(status_code=404, detail="Session not found")
+            raise HTTPException(status_code=404, detail="session not found")
 
-        # Count assets
-        count_result = await db.execute(
-            select(func.count(Asset.id)).where(Asset.session_id == sess.id)
-        )
-        asset_count = count_result.scalar() or 0
+        asset_count = (await db.execute(
+            select(func.count(Asset.id)).where(Asset.session_id == sid)
+        )).scalar() or 0
 
-        # Fetch assets
-        assets_result = await db.execute(
-            select(Asset).where(Asset.session_id == sess.id)
-            .order_by(Asset.created_at.asc())
-        )
-        assets = assets_result.scalars().all()
+        turn_count = (await db.execute(
+            select(func.count(InputTurn.id)).where(InputTurn.session_id == sid)
+        )).scalar() or 0
+
+        assets = (await db.execute(
+            select(Asset).where(Asset.session_id == sid).order_by(Asset.created_at.asc())
+        )).scalars().all()
 
     return {
         "ok": True,
         "session": {
-            "id": str(sess.id),
+            "id":           str(sess.id),
             "session_type": sess.session_type,
-            "title": sess.title,
-            "date": sess.date.isoformat() if sess.date else None,
-            "created_at": sess.created_at.isoformat(),
-            "asset_count": asset_count,
+            "title":        sess.title,
+            "date":         sess.date.isoformat() if sess.date else None,
+            "created_at":   sess.created_at.isoformat(),
+            "asset_count":  asset_count,
+            "turn_count":   turn_count,
             "assets": [
-                {"id": str(a.id), "payload": a.payload, "created_at": a.created_at.isoformat()}
+                {
+                    "id":         str(a.id),
+                    "payload":    a.payload,
+                    "created_at": a.created_at.isoformat(),
+                }
                 for a in assets
             ],
-        }
+        },
     }
 
 
+# ── GET /api/sessions/{id}/messages ───────────────────────────────────────────
+
 @router.get("/sessions/{session_id}/messages")
-async def get_session_messages(session_id: str):
-    """Return messages for a session, oldest first."""
+async def get_session_messages(
+    session_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Return messages for a session, oldest first. Includes tool_call / tool_result."""
+    try:
+        sid = uuid.UUID(session_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid session id")
+
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
+        messages = (await db.execute(
             select(Message)
-            .where(Message.session_id == uuid.UUID(session_id))
+            .where(Message.session_id == sid, Message.user_id == user_id)
             .order_by(Message.created_at.asc())
-        )
-        messages = result.scalars().all()
+        )).scalars().all()
 
     return {
         "ok": True,
         "messages": [
             {
-                "id": str(m.id),
-                "role": m.role,
-                "text": m.text,
-                "cards": m.cards or [],
-                "elapsed_ms": m.elapsed_ms,
-                "created_at": m.created_at.isoformat(),
+                "id":          str(m.id),
+                "role":        m.role,
+                "text":        m.text,
+                "tool_call":   m.tool_call,
+                "tool_result": m.tool_result,
+                "cards":       m.cards or [],
+                "elapsed_ms":  m.elapsed_ms,
+                "created_at":  m.created_at.isoformat(),
             }
             for m in messages
-        ]
+        ],
+    }
+
+
+# ── GET /api/sessions/{id}/input-turns ────────────────────────────────────────
+
+@router.get("/sessions/{session_id}/input-turns")
+async def get_session_input_turns(
+    session_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Return all input_turns for a session, ordered by index (so they replay
+    in capture order). Used by:
+    - Flash session UI: list today's flashes
+    - SessionTurnCard (design §7.2): show siblings of an asset's source turn
+    """
+    try:
+        sid = uuid.UUID(session_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid session id")
+
+    async with AsyncSessionLocal() as db:
+        turns = (await db.execute(
+            select(InputTurn)
+            .where(InputTurn.session_id == sid, InputTurn.user_id == user_id)
+            .order_by(InputTurn.index.asc())
+        )).scalars().all()
+
+    return {
+        "ok": True,
+        "input_turns": [
+            {
+                "id":                  str(t.id),
+                "index":               t.index,
+                "source":              t.source,
+                "text":                t.text,
+                "file_id":             str(t.file_id) if t.file_id else None,
+                "source_file_offset":  t.source_file_offset,
+                "created_at":          t.created_at.isoformat(),
+            }
+            for t in turns
+        ],
     }

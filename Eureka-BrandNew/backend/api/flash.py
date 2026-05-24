@@ -1,250 +1,173 @@
 """
-POST /api/flash
-Accepts a flash note text input, runs it through the multi-step flash pipeline,
-and returns session_id + summary + cards for the UI.
+POST /api/flash — Voice flash ingest → Flash Pipeline (Phase B Step 5).
 
-Pipeline:
-  1. Dispatcher  → identifies intents (todo / expense / contact / idea / note / qa)
-  2. Sub-agents  → run in parallel per intent, create assets or answer questions
-  3. Session writer → composes final {summary, cards, has_pending}
+Per-request lifecycle:
+1. Resolve / create today's flash session (get-or-create by user + date)
+   — Phase B v1.3 折中:flash session 按天聚合,每次闪念是 session 内一个 input_turn
+2. Create input_turn(source='voice', or 'typed' if explicitly typed in
+   the flash UI) — provenance for derived assets
+3. Run Flash Pipeline (3-step Python orchestration) — fans out to
+   parallel skill agents; each create_asset writes source_input_turn_id
+4. Return derived assets + summary + cards as sync JSON
+5. Persist a single agent Message to messages table so the chat-like
+   surface in Phase D can replay the flash result
 
-Voice flashes (is_voice=True) return immediately after the flash card is created;
-the pipeline runs in a daemon thread with its own event loop so the uvicorn
-event loop is never blocked and the HTTP response is delivered right away.
+Sync (not SSE) for demo simplicity — Phase D shows progress via UI animation
+(60ms stagger per card per design §3.5). Easy to upgrade to SSE later if
+real-time intermediate events become a product requirement.
 """
-import asyncio
 import datetime
-import json
+import time
 import uuid
-from datetime import date
-from fastapi import APIRouter
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from agents.flash_pipeline import run_flash_pipeline
-from mcp.tools import create_asset, update_asset
-from db.models import Session as DBSession, Asset as DBAsset
+from core.auth import get_current_user_id
+from core.session_service import (
+    create_input_turn_for_message,
+    persist_chat_turn,
+)
 from db.database import AsyncSessionLocal
-from sqlalchemy import select, func
+from db.models import Session as DBSession
 
 router = APIRouter()
 
 
+# ── Request / response ─────────────────────────────────────────────────────────
+
 class FlashRequest(BaseModel):
     text: str
-    session_id: str = ""
-    is_followup: bool = False
-    is_voice: bool = False
+    session_id: str = ""     # empty = get-or-create today's flash session
+    source: str = "voice"    # voice | typed (per Phase B v1.3 modality)
+    file_id: str = ""        # optional, when real audio upload exists (future)
 
 
 class FlashResponse(BaseModel):
-    ok: bool
-    session_id: str
-    summary: str = ""
-    cards: list = []
-    has_pending: bool = False
-    elapsed_ms: int = 0
-    error: str = ""
+    ok:            bool
+    session_id:    str
+    input_turn_id: str
+    summary:       str = ""
+    cards:         list = []
+    derived_assets: list = []
+    has_pending:   bool = False
+    elapsed_ms:    int = 0
+    error:         str = ""
 
 
-async def _get_or_create_daily_session(user_id: str) -> str:
-    """Return today's daily session ID, creating one if needed."""
-    today = date.today()
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(DBSession).where(
-                DBSession.user_id == user_id,
-                DBSession.session_type == "daily",
-                DBSession.date == today,
-            )
-        )
-        sess = result.scalar_one_or_none()
-        if not sess:
-            sess = DBSession(
-                user_id=user_id,
-                session_type="daily",
-                title=f"今日闪念 · {today.strftime('%Y-%m-%d')}",
-                date=today,
-            )
-            db.add(sess)
-            await db.commit()
-        return str(sess.id)
+# ── Today's flash-session resolver ────────────────────────────────────────────
 
-
-async def _run_pipeline_background(
-    text: str,
-    db_session_id: str,
-    flash_input_id: str,
-    flash_asset_id: str,
-    today_str: str,
-    job_start: datetime.datetime,
-) -> None:
-    """Pipeline execution for voice flashes — called inside a daemon thread's event loop."""
-    try:
-        result = await run_flash_pipeline(
-            user_text=text,
-            session_id=db_session_id,
-            input_id=flash_input_id,
-            today_str=today_str,
-        )
-    except Exception:
-        return
-
-    # Tag any derived assets that are missing input_id; correct summary from DB
-    try:
-        async with AsyncSessionLocal() as db:
-            rows = await db.execute(
-                select(DBAsset).where(
-                    DBAsset.session_id == uuid.UUID(db_session_id),
-                    DBAsset.created_at >= job_start,
-                )
-            )
-            assets_created = rows.scalars().all()
-            changed = False
-            non_flash = []
-            for asset in assets_created:
-                if asset.payload.get("asset_type") != "flash":
-                    non_flash.append(asset)
-                    if not asset.payload.get("input_id"):
-                        asset.payload = {**asset.payload, "input_id": flash_input_id}
-                        changed = True
-            if changed:
-                await db.commit()
-
-        pipeline_summary = result.get("summary", "")
-        if non_flash and (not pipeline_summary or "未识别" in pipeline_summary):
-            n = len(non_flash)
-            pipeline_summary = f"已记录 {n} 项内容。" if n > 1 else "已记录 1 项内容。"
-        result["summary"] = pipeline_summary
-    except Exception:
-        pass
-
-    # Write agent summary back into the flash card
-    summary = result.get("summary", "")
-    if flash_asset_id and summary:
-        try:
-            await update_asset(
-                flash_asset_id,
-                json.dumps({"agent_summary": summary}, ensure_ascii=False),
-            )
-        except Exception:
-            pass
-
-
-def _spawn_pipeline_thread(
-    text: str,
-    db_session_id: str,
-    flash_input_id: str,
-    flash_asset_id: str,
-    today_str: str,
-    job_start: datetime.datetime,
-) -> None:
-    """Schedule the flash pipeline as a fire-and-forget task in the running event loop.
-
-    asyncio.ensure_future runs the coroutine in the SAME event loop as the DB pool,
-    which avoids asyncpg "Future attached to a different loop" errors. The HTTP
-    response is already returned by the time this task starts executing, so the
-    30-second LLM wait does not delay the caller.
+async def _get_or_create_flash_session_today(db, user_id: str) -> DBSession:
     """
-    asyncio.ensure_future(_run_pipeline_background(
-        text, db_session_id, flash_input_id, flash_asset_id, today_str, job_start,
-    ))
+    Flash sessions aggregate by natural day. Same user + same date → reuse;
+    otherwise create. Title is set to 「M月D日 闪念」 on creation.
+    """
+    today = datetime.date.today()
+    result = await db.execute(
+        select(DBSession).where(
+            DBSession.user_id == user_id,
+            DBSession.session_type == "flash",
+            DBSession.date == today,
+        )
+    )
+    sess = result.scalar_one_or_none()
+    if sess:
+        return sess
 
+    sess = DBSession(
+        user_id=user_id,
+        session_type="flash",
+        title=f"{today.month}月{today.day}日 闪念",
+        date=today,
+    )
+    db.add(sess)
+    await db.commit()
+    await db.refresh(sess)
+    return sess
+
+
+# ── Endpoint ───────────────────────────────────────────────────────────────────
 
 @router.post("/flash", response_model=FlashResponse)
-async def flash_endpoint(req: FlashRequest):
-    user_id = "default"
+async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
+    t0 = time.monotonic()
+    today_str = datetime.date.today().strftime("%Y年%m月%d日")
 
-    # Resolve or create today's daily session
-    db_session_id = req.session_id or await _get_or_create_daily_session(user_id)
+    # Phase 1 — resolve session + create input_turn
+    try:
+        async with AsyncSessionLocal() as db:
+            if req.session_id:
+                # Caller specified a session (e.g. retry / explicit). Trust it.
+                result = await db.execute(
+                    select(DBSession).where(
+                        DBSession.id == uuid.UUID(req.session_id),
+                        DBSession.user_id == user_id,
+                    )
+                )
+                session = result.scalar_one_or_none()
+                if not session:
+                    raise HTTPException(status_code=404, detail="session not found")
+            else:
+                session = await _get_or_create_flash_session_today(db, user_id)
 
-    # Generate a stable input_id that ties the raw flash card to its derived assets
-    flash_input_id = str(uuid.uuid4())
+            session_id = str(session.id)
 
-    # ── Create raw flash card immediately ─────────────────────────────────────
-    raw_payload = json.dumps({
-        "content": req.text,
-        "is_flash": True,
-        "input_id": flash_input_id,
-        "is_followup": req.is_followup,
-        "is_voice": req.is_voice,
-    }, ensure_ascii=False)
-    flash_asset_result = await create_asset(
-        asset_type="flash",
-        payload=raw_payload,
-        session_id=db_session_id,
-        user_id=user_id,
-    )
-    flash_asset_id = flash_asset_result.get("asset_id", "")
+            # Always 'voice' for flash unless explicitly overridden to 'typed'.
+            # 'imported' would come from a future bulk import flow.
+            input_source = req.source if req.source in {"voice", "typed", "imported"} else "voice"
+            turn = await create_input_turn_for_message(
+                db, session_id, user_id, req.text, source=input_source,
+            )
+            input_turn_id = str(turn.id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        return FlashResponse(ok=False, session_id="", input_turn_id="", error=str(e)[:200])
 
-    today_str = date.today().strftime("%Y年%m月%d日")
-    job_start = datetime.datetime.now(datetime.timezone.utc)
-
-    # ── Voice flash: fire-and-forget in a daemon thread, return immediately ──
-    if req.is_voice:
-        _spawn_pipeline_thread(
-            req.text, db_session_id, flash_input_id, flash_asset_id, today_str, job_start,
-        )
-        return FlashResponse(ok=True, session_id=db_session_id, summary="语音已保存，正在处理…")
-
-    # ── Text flash: run pipeline synchronously ────────────────────────────────
+    # Phase 2 — run Flash Pipeline (dispatcher → parallel sub-skills → aggregate)
     try:
         result = await run_flash_pipeline(
             user_text=req.text,
-            session_id=db_session_id,
-            input_id=flash_input_id,
+            session_id=session_id,
+            input_turn_id=input_turn_id,
             today_str=today_str,
+            user_id=user_id,
         )
     except Exception as e:
-        return FlashResponse(ok=False, session_id=db_session_id, error=str(e))
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        return FlashResponse(
+            ok=False, session_id=session_id, input_turn_id=input_turn_id,
+            error=str(e)[:200], elapsed_ms=elapsed_ms,
+        )
 
-    # ── Retroactively tag derived assets and correct summary from DB ──────────
+    # Phase 3 — persist an agent Message so the chat surface can replay
+    summary = result.get("summary", "")
+    cards   = result.get("cards", [])
+    elapsed_ms = int((time.monotonic() - t0) * 1000)
+
     try:
         async with AsyncSessionLocal() as db:
-            rows = await db.execute(
-                select(DBAsset).where(
-                    DBAsset.session_id == uuid.UUID(db_session_id),
-                    DBAsset.created_at >= job_start,
-                )
+            await persist_chat_turn(
+                db, session_id, user_id,
+                user_text=req.text,
+                agent_text=summary,
+                cards=cards,
+                elapsed_ms=elapsed_ms,
             )
-            assets_created = rows.scalars().all()
-            changed = False
-            non_flash = []
-            for asset in assets_created:
-                if asset.payload.get("asset_type") != "flash":
-                    non_flash.append(asset)
-                    if not asset.payload.get("input_id"):
-                        asset.payload = {**asset.payload, "input_id": flash_input_id}
-                        changed = True
-            if changed:
-                await db.commit()
-
-        # If pipeline summary says nothing was found but assets actually exist in DB,
-        # correct the summary (Gemini sometimes outputs Chinese text instead of JSON).
-        pipeline_summary = result.get("summary", "")
-        if non_flash and (not pipeline_summary or "未识别" in pipeline_summary):
-            n = len(non_flash)
-            pipeline_summary = f"已记录 {n} 项内容。" if n > 1 else "已记录 1 项内容。"
-        summary = pipeline_summary
     except Exception:
-        summary = result.get("summary", "")
-
-    # ── Store agent summary back into the flash card ──────────────────────────
-    if flash_asset_id and summary:
-        try:
-            await update_asset(
-                flash_asset_id,
-                json.dumps({"agent_summary": summary}, ensure_ascii=False),
-            )
-        except Exception:
-            pass
-
-    elapsed_ms = int((datetime.datetime.now(datetime.timezone.utc) - job_start).total_seconds() * 1000)
+        # Persistence failure is non-fatal for the immediate response —
+        # the derived assets are already in the DB via run_flash_pipeline.
+        pass
 
     return FlashResponse(
         ok=result.get("ok", True),
-        session_id=result.get("session_id", db_session_id),
+        session_id=session_id,
+        input_turn_id=input_turn_id,
         summary=summary,
-        cards=result.get("cards", []),
+        cards=cards,
+        derived_assets=result.get("derived_assets", []),
         has_pending=result.get("has_pending", False),
         elapsed_ms=elapsed_ms,
     )
