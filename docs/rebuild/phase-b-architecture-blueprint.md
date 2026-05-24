@@ -1,9 +1,11 @@
 # Phase B — Eureka 架构蓝图
 
-> 版本：v1.1 | 2026-05-24
-> 状态：定稿(分歧 2 已并入)
+> 版本：v1.2 | 2026-05-24
+> 状态：定稿(三个设计分歧全部并入)
 > 用途：Eureka 从零重建的架构基线。定义数据模型、模块边界、Agent 编排、API 契约、前端组件地图。Phase C(后端重建)、Phase D(前端重建)按此为准。
-> v1.0 → v1.1 改动:接受 design `Session + InputTurn` 数据模型(分歧 2)。`transcripts` 重命名为 `input_turns`,Session.session_type 改为 `flash | chat | meeting | manual`,Asset.source_transcript_id → source_input_turn_id;flash session 仍按天聚合,每次闪念是 session 内一个 input_turn。
+> 演进:
+> - v1.0 → v1.1:接受 design `Session + InputTurn` 数据模型(分歧 2)
+> - v1.1 → v1.2:接受 design Timeline 被 Calendar Schedule 吸收(分歧 1);接受 File 在资产库的 FileList 入口(分歧 3)
 
 ---
 
@@ -502,8 +504,10 @@ frontend-next/
 │   ├── pages/
 │   │   ├── ChatPage.tsx          AI 对话(决定 #6 SSE)
 │   │   ├── CalendarPage.tsx      日历(5 状态:Schedule / Month / Year / DayDetail / EventEditor;Schedule 吸收时间流功能)
-│   │   ├── LibraryPage.tsx       资产库(类型 grid + 文件视图)
+│   │   ├── LibraryPage.tsx       资产库(6 类型 grid:5 skill + 文件)
 │   │   └── AssetDetailPage.tsx   资产详情(含 SessionTurnCard 显示来源)
+│   ├── files/
+│   │   └── FileList.tsx          专门的文件列表组件(不走 SkillCard,设计 §6.3)
 │   ├── chat/
 │   │   ├── MessageList.tsx
 │   │   ├── MessageBubble.tsx
@@ -535,7 +539,8 @@ frontend-next/
     └── PresentationModeContext.tsx
 ```
 
-> 注:不再有独立 `TimelinePage`/`DayViewPage` —— 设计 §4.4 把时间流功能吸收进 CalendarPage 的 Schedule 视图(分歧 1 待最终决议;若接受设计版,以本节为准)。
+> 不再有独立 `TimelinePage`/`DayViewPage` —— 设计 §4.4 把时间流功能吸收进 CalendarPage 的 Schedule 视图(分歧 1 已采纳)。
+> 文件单独走 `FileList` 组件,不走 SkillCard —— 设计 §6.3 自觉的「一处例外」(分歧 3 已采纳)。
 
 旧组件 Phase D 删除:
 - `pages/StreamPage.tsx`、`pages/WorkspacePage.tsx`、`pages/LibraryPage.tsx`(旧) → 重写
@@ -646,6 +651,6 @@ python -m db.seed
 - ✅ API 契约可直接写 OpenAPI / 前端 SDK
 - ✅ 后端 / 前端模块树可直接对应文件夹结构
 - ✅ Phase C、Phase D 的实施顺序明确
-- ✅ 分歧 2(Session+InputTurn 数据模型)已集成
+- ✅ 三个设计分歧全部集成:Session+InputTurn(2)、Schedule 吸收时间流(1)、FileList 入口(3)
 
 Phase C / Phase D 各自启动时,会基于本文档展开各自的 spec(细化到任务 / 测试 / 校验标准)。
