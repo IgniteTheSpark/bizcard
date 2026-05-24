@@ -22,9 +22,19 @@ _ASYNCPG_URL = _strip_query_params(
     DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://").replace("postgres://", "postgresql+asyncpg://"),
     {"sslmode", "channel_binding"},
 )
-_ssl_ctx = ssl.create_default_context()
-_ssl_ctx.check_hostname = False
-_ssl_ctx.verify_mode = ssl.CERT_NONE
+
+# Enable SSL only for non-local hosts (cloud Postgres). The local docker
+# pgvector image rejects SSL upgrade, so passing an ssl context locally
+# breaks all queries with "rejected SSL upgrade".
+_parsed = urlparse(_ASYNCPG_URL)
+_is_local = (_parsed.hostname or "") in {"localhost", "127.0.0.1", "db"}
+if _is_local:
+    _connect_args: dict = {}
+else:
+    _ssl_ctx = ssl.create_default_context()
+    _ssl_ctx.check_hostname = False
+    _ssl_ctx.verify_mode = ssl.CERT_NONE
+    _connect_args = {"ssl": _ssl_ctx}
 
 async_engine = create_async_engine(
     _ASYNCPG_URL,
@@ -32,7 +42,7 @@ async_engine = create_async_engine(
     pool_pre_ping=True,
     pool_size=20,
     max_overflow=20,
-    connect_args={"ssl": _ssl_ctx},
+    connect_args=_connect_args,
 )
 AsyncSessionLocal = async_sessionmaker(async_engine, expire_on_commit=False)
 

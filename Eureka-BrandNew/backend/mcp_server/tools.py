@@ -1,7 +1,7 @@
 """
 Tool implementations backed by PostgreSQL — Phase B Step 2.
 
-Called by mcp/server.py (the FastMCP server agents connect to via stdio).
+Called by mcp_server/server.py (the FastMCP server agents connect to via stdio).
 Can also be imported directly during transitional steps; production callers
 should go through MCP.
 

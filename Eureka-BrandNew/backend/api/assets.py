@@ -29,8 +29,8 @@ from core.auth import get_current_user_id
 from db.database import AsyncSessionLocal
 from db.models import Asset, AssetField, UserSkill, GlobalSkill
 from db.queries import query_assets_structured
-from mcp.tools import create_asset as mcp_create_asset
-from mcp.tools import delete_asset as mcp_delete_asset
+from mcp_server.tools import create_asset as mcp_create_asset
+from mcp_server.tools import delete_asset as mcp_delete_asset
 
 router = APIRouter()
 

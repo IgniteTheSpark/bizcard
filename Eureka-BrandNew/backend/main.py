@@ -1,22 +1,26 @@
 """
-Eureka FastAPI app — Phase B Step 5 (v1.3).
+Eureka FastAPI app — Phase B Step 5 + 7 (v1.3).
 
 Wires up 8 routers + lifecycle hooks:
 - core.llm.configure_llm_env() at startup (sets OPENROUTER_API_KEY env)
 - agents.mcp_toolset.close_mcp_toolset() at shutdown (closes stdio subprocess)
 
-NOTE on nest_asyncio:
-Kept for now. Step 7 diagnoses the root cause (likely LiteLLM internal
-sync→async pattern or Google genai SDK call site) and removes this hack.
+nest_asyncio removed (Phase B Step 7):
+Old code called nest_asyncio.apply() at module top to allow nested asyncio
+loops — needed because some flows did `asyncio.run()` inside an already-running
+loop. The new architecture is async-native end-to-end:
+- All API handlers are `async def`
+- ADK Runner.run_async is used (the proper streaming async path)
+- DB access uses asyncpg AsyncSession everywhere
+- MCP toolset runs as a stdio subprocess (no in-process sync→async boundary)
+There is no remaining call site that requires loop re-entry.
 
 Dropped from previous version:
 - api/query.py     → merged into api/chat.py (unified Assistant via SSE)
 - api/flash_audio  → audio upload path deferred per Phase A
 - StaticFiles mount for uploads/  → no audio files in demo
+- nest_asyncio.apply()  → no longer needed (see above)
 """
-import nest_asyncio  # TODO Step 7: diagnose root cause + remove
-nest_asyncio.apply()
-
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

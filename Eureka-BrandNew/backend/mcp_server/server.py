@@ -10,15 +10,15 @@ Exposes 10 tools to ADK agents via the stdio MCP protocol:
     input_turn_id is known up front and passed via source_input_turn_id.
 
 Run standalone:
-    python -m mcp.server
+    python -m mcp_server.server
 
 Used by ADK agents as a subprocess MCP server (decision #2):
-    MCPToolset(StdioServerParameters(command="python", args=["-m", "mcp.server"]))
+    MCPToolset(StdioServerParameters(command="python", args=["-m", "mcp_server.server"]))
 """
 import json
 from fastmcp import FastMCP
 
-from mcp.tools import (
+from mcp_server.tools import (
     create_asset, query_asset, update_asset, delete_asset,
     create_contact, query_contact, update_contact, delete_contact,
     query_input_turn, get_input_turn,

@@ -18,7 +18,6 @@ mcp>=1.5.0
 fastmcp>=2.3.0
 
 # Utilities
-nest_asyncio>=1.6.0
 python-dotenv>=1.0.0
 pydantic>=2.10.0
 pydantic-settings>=2.7.0

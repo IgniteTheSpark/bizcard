@@ -1,7 +1,7 @@
 """
 MCPToolset singleton — Phase B Step 4 (decision Q1 #1).
 
-One MCPToolset connects to one mcp/server.py stdio subprocess. All agents
+One MCPToolset connects to one mcp_server/server.py stdio subprocess. All agents
 share the same instance to avoid the ~200ms per-call subprocess spawn cost
 that would make conversations feel sluggish.
 
@@ -29,7 +29,7 @@ def get_mcp_toolset() -> MCPToolset:
         _toolset = MCPToolset(
             connection_params=StdioServerParameters(
                 command=sys.executable,
-                args=["-m", "mcp.server"],
+                args=["-m", "mcp_server.server"],
                 # Propagate DB / LLM env vars to subprocess
                 env=os.environ.copy(),
             )
