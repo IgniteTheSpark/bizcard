@@ -91,11 +91,21 @@ class InputTurn(Base):
     """
     One unit of input within a Session. Replaces the old Transcript concept.
 
-    - flash session:   each captured voice/typed flash → one input_turn (with file_id if voice)
-    - chat session:    each user message → one input_turn (no file_id)
-    - meeting session: a long transcript is sliced into per-speaker input_turns
-                       (each carries source_file_id + source_file_offset)
-    - manual session:  no input_turns (asset created directly)
+    Two dimensions are INDEPENDENT (Phase B v1.3):
+    - session.session_type: flash | chat | meeting | manual  (the CONTAINER)
+    - input_turn.source:    voice | typed | imported          (the MODALITY)
+
+    A flash session may have a voice turn followed by a typed turn (user
+    saying "把刚才那个待办改成 4 点" after a voice capture). A chat session
+    may have a voice turn (user voices a message). Routing decisions in the
+    API layer use `source` (modality), not `session_type`.
+
+    Routing per turn:
+    - source=voice  + session=flash   → Flash Pipeline (multi-intent fan-out)
+    - source=voice  + session=meeting → Meeting Pipeline (future)
+    - source=voice  + session=chat    → Assistant (transcript treated as user text)
+    - source=typed  + any session     → Assistant (intent → CRUD/query/converse)
+    - source=imported                 → handled by importer (not in demo)
     """
     __tablename__ = "input_turns"
 
@@ -107,7 +117,7 @@ class InputTurn(Base):
     source_file_offset = Column(Integer)                              # ms in audio (meeting segment)
     text               = Column(Text, nullable=False)
     segments           = Column(JSONB)                                # optional speaker / per-token detail
-    source             = Column(String(20), nullable=False)           # flash | chat | meeting
+    source             = Column(String(20), nullable=False)           # voice | typed | imported (modality, NOT session_type)
     asr_provider       = Column(String(50))
     language           = Column(String(10))
     created_at         = Column(TIMESTAMPTZ, server_default=func.now())

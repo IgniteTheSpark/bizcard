@@ -1,11 +1,12 @@
 # Phase B — Eureka 架构蓝图
 
-> 版本：v1.2 | 2026-05-24
-> 状态：定稿(三个设计分歧全部并入)
+> 版本：v1.3 | 2026-05-24
+> 状态：定稿
 > 用途：Eureka 从零重建的架构基线。定义数据模型、模块边界、Agent 编排、API 契约、前端组件地图。Phase C(后端重建)、Phase D(前端重建)按此为准。
 > 演进:
 > - v1.0 → v1.1:接受 design `Session + InputTurn` 数据模型(分歧 2)
 > - v1.1 → v1.2:接受 design Timeline 被 Calendar Schedule 吸收(分歧 1);接受 File 在资产库的 FileList 入口(分歧 3)
+> - v1.2 → v1.3:`input_turn.source` 语义从「session_type 同义」改为「输入模态」(voice / typed / imported),与 session_type 正交;支持混合模态会话(flash session 内可有 typed turn 做 CRUD 跟进 —— 例:语音建待办后打字「改成 4 点」);跨 turn 引用通过 messages 表里的 tool_call 历史解决
 
 ---
 
@@ -93,7 +94,7 @@ file_id             uuid fk file(id)        ← 可空;chat 无 file,flash/meeti
 source_file_offset  integer                 ← ms in audio(meeting 切片用)
 text                text not null
 segments            jsonb                   ← 可选 speaker / per-token 细节
-source              varchar(20) not null    ← flash | chat | meeting
+source              varchar(20) not null    ← voice | typed | imported(模态,跟 session_type 正交)
 asr_provider        varchar(50)
 language            varchar(10)
 created_at          timestamptz
@@ -101,9 +102,11 @@ UNIQUE(session_id, index)
 INDEX(user_id, session_id, index)
 INDEX(user_id, source, created_at)
 ```
-> 一个 flash session(按天聚合)有 N 个 source=flash 的 input_turn,每个对应一次闪念,自带 file_id。
-> 一个 chat session 有 N 个 source=chat 的 input_turn,每个对应一条 user message,无 file_id。
-> 一个 meeting session 有 N 个 source=meeting 的 input_turn(按 speaker 切),共享同一个 file_id 但有不同的 source_file_offset。
+> `input_turn.source` 是**模态**(voice / typed / imported),跟 session_type **正交**。典型组合:
+> - flash session 主要含 source=voice 的 input_turn(每次闪念一次)自带 file_id;**也可能含 source=typed**(用户对刚捕捉的资产做 CRUD 跟进,例:语音建完待办又打字「改成 4 点」)
+> - chat session 主要含 source=typed,无 file_id;**也可能含 source=voice**(用户在对话中语音输入)
+> - meeting session 含 source=voice 的 input_turn(按 speaker 切,共享 file_id 不同 source_file_offset);**也可能含 source=typed**(用户对会议内容提问)
+> - manual session 无 input_turn(用户直接创建资产)
 
 **session** —— App 层组织
 ```
@@ -208,6 +211,16 @@ UNIQUE(user_id, skill_id)
 - **Asset.source_input_turn_id 可空**:仅 manual session 中用户直接创建的资产无 input_turn 来源;chat 中由 agent 创建的资产**也有** input_turn(指向触发它的用户消息)—— 这是相对 v1.0 修正的 provenance 漏洞。
 - **InputTurn 一对多 Asset**:一次输入可能派生多个 asset(一次闪念说出 todo + expense + contact;一句 chat 提问让 agent 建多个待办)。
 - **InputTurn ↔ Session 多对一**:一个 flash session(按天)有多次闪念 input_turns;一个 chat session 有多次 user-message input_turns;一个 meeting session 有多个 speaker-切片 input_turns;manual session 无 input_turn。
+- **混合模态在同一 session 内被允许**:flash session 既可以有 source=voice 又可以有 source=typed 的 input_turns。后续 CRUD 跟进(「把刚才那个改成 4 点」)由 Assistant 处理,通过加载本 session 最近 N=20 条 messages 看到 prior tool_call+tool_result,识别「刚刚那个」=哪个 asset_id。
+- **3.4 处理路径路由**(纯按 input_turn.source 决定,跟 session_type 正交,但 session_type 影响 voice 的具体处理):
+
+| input_turn.source | session_type | 处理路径 |
+|---|---|---|
+| `voice` | `flash` | **Flash Pipeline**(dispatcher → 并行 skill agents) |
+| `voice` | `meeting` | Meeting Pipeline(未来) |
+| `voice` | `chat` | **Assistant**(转录文本当 user message 处理) |
+| `typed` | 任意 | **Assistant**(意图识别 → CRUD/query/converse) |
+| `imported` | 任意 | importer(本轮不实现) |
 - **Message 服务于对话流**:统一助手的对话历史 + Flash Pipeline 完成后的 agent_summary 都写进 message,前端用统一接口拉取。
 
 ---
@@ -279,7 +292,7 @@ backend/
 
 服务端处理:
 1. 拿到或创建 chat session
-2. 为本轮 user_text **创建一个 input_turn**(source=chat, index = session 内下一个)
+2. 为本轮 user_text **创建一个 input_turn**(source=typed, index = session 内下一个)
 3. 把 input_turn_id 传给 assistant;任何 agent 创建的 asset 都挂这个 input_turn_id
 
 响应:`text/event-stream`,逐条 SSE event:
@@ -316,13 +329,13 @@ data: {"elapsed_ms": 2341, "message_id": "uuid"}
 {
   "text": "转录或文字内容",
   "session_id": "optional, default = today's flash session(按天聚合)",
-  "source": "flash"
+  "source": "voice"
 }
 ```
 
 服务端处理:
 1. 拿到或创建当天 flash session(`session_type=flash`, `date=today`)
-2. 创建一个 input_turn(source=flash, index = session 内下一个, file_id 若有)
+2. 创建一个 input_turn(source=voice, index = session 内下一个, file_id 若有)
 3. 运行 Flash Pipeline,所有派生 asset 挂这个 input_turn_id
 
 响应:`text/event-stream`(同 SSE)或同步 JSON。最终产物:

@@ -1,5 +1,13 @@
 # Eureka · Design System
 
+> ⚠️ **ADDENDUM (Phase B v1.3, 2026-05-24)**:§7.1 `source` 字段语义已更新。
+> 原文写 `source = flash | chat | meeting`(等同 session_type);新模型把
+> `source` 重定义为**输入模态** `voice | typed | imported`,跟 session_type
+> 正交。这让混合模态会话成为可能(flash session 内可以有 typed turn 做
+> CRUD 跟进,例:语音建完待办后打字「改成 4 点」)。SessionTurnCard、
+> Schedule 视图等视觉语言不受影响。
+> 详见 [phase-b-architecture-blueprint.md §三.4](phase-b-architecture-blueprint.md)。
+
 > Version 0.2 — 2026-05-24
 > Selected direction: **B · Atmosphere**
 > Configuration: [`tokens/eureka-tokens-b.json`](tokens/eureka-tokens-b.json) · [`tokens/tokens.css`](tokens/tokens.css) · [`index.html`](index.html) (design canvas)

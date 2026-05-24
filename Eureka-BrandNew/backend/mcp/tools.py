@@ -289,8 +289,8 @@ async def query_input_turn(
     user_id: str = "default",
 ) -> dict:
     """
-    Full-text search input_turns by keyword and/or source.
-    source: flash | chat | meeting (empty = all sources)
+    Full-text search input_turns by keyword and/or source (modality).
+    source: voice | typed | imported (empty = all modalities)
 
     Returns text snippets (truncated to 200 chars). Use get_input_turn for full text.
     """

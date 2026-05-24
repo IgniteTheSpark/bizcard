@@ -96,7 +96,7 @@ def upgrade() -> None:
         sa.Column("source_file_offset", sa.Integer()),                                     # ms in audio
         sa.Column("text",               sa.Text(), nullable=False),
         sa.Column("segments",           JSONB()),
-        sa.Column("source",             sa.String(20), nullable=False),                    # flash | chat | meeting
+        sa.Column("source",             sa.String(20), nullable=False),                    # voice | typed | imported (modality, NOT session_type)
         sa.Column("asr_provider",       sa.String(50)),
         sa.Column("language",           sa.String(10)),
         sa.Column("created_at",         TIMESTAMPTZ, server_default=sa.func.now()),

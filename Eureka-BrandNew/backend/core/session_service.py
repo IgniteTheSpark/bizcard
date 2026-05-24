@@ -82,15 +82,20 @@ async def create_input_turn_for_message(
     session_id: str,
     user_id: str,
     text: str,
-    source: str = "chat",
+    source: str = "typed",
 ) -> InputTurn:
     """
     Create an input_turn row for this user message — the source of provenance
     for any asset the agent creates in this turn.
 
-    Auto-assigns `index` as the next position within the session. For chat,
-    source='chat' and no file_id; flash and meeting paths use this helper
-    with their own source/file_id arguments via the API layer.
+    Auto-assigns `index` as the next position within the session.
+
+    source values are MODALITY (Phase B v1.3), independent of session_type:
+      voice | typed | imported
+
+    Default 'typed' fits the typed-message path; voice paths pass source='voice'
+    explicitly and usually a file_id too. Mixed modalities within one session
+    are supported — a flash session can have both voice and typed input_turns.
     """
     # Determine next index within session
     result = await db.execute(

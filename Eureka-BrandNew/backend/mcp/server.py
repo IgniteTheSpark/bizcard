@@ -130,9 +130,9 @@ async def tool_query_input_turn(
     limit: int = 50,
 ) -> str:
     """
-    Full-text search input_turns by keyword and/or source.
+    Full-text search input_turns by keyword and/or source (modality).
 
-    source: flash | chat | meeting (empty = all)
+    source: voice | typed | imported (empty = all)
     Returns text snippets truncated to 200 chars. Use tool_get_input_turn
     with the returned input_turn_id to fetch full text when needed.
     """
