@@ -12,6 +12,7 @@ from sqlalchemy import select, and_
 from .models import Asset, AssetField, UserSkill, GlobalSkill
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
 import uuid
 
 
@@ -84,10 +85,10 @@ async def index_asset_fields(
 async def query_assets_structured(
     db: AsyncSession,
     user_id: str,
-    user_skill_name: str | None = None,
-    filters: list[dict] | None = None,
+    user_skill_name: Optional[str] = None,
+    filters: Optional[list] = None,
     limit: int = 50,
-) -> list[dict]:
+) -> list:
     """
     Filter assets by indexed fields. Returns newest-first.
 
