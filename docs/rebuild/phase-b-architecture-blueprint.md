@@ -59,6 +59,28 @@ event-skill (Flash Pipeline) 现在调 `create_event` MCP 工具(不再 `create_
 
 **Attendee 抽取策略**(v1.4 polish):event-skill 在创建 event 后,会从 source_text 抽取所有「可能的参与方」(具体人名、称呼带头衔、泛称如「客户/团队」、组织名)用 `tool_add_event_attendee(name_raw=X)` 占位,**不查不创建联系人**。前端把 attendee chip 渲染成可点击,用户点击进联系人匹配/创建。理由:不出错的兜底策略好过自动的不准确出错的策略。未来升级智能匹配时,只改 SKILL.md 那一段抽取规则即可。
 
+### 三.5 timeline 锚点(effective_at)—— 跨 kind 统一规则
+
+CalendarPage 的 Schedule 视图下「全部」tab 把所有 kind 混排,需要每种 entity 都有一个**在时间线上的「有效时刻」**。我们引入派生字段 `effective_at`(不存 DB,按规则计算),跟 `created_at` 正交:
+
+| Kind | effective_at = |
+|---|---|
+| `event` | `start_at` |
+| `asset / todo` | `payload.due_date`,无则 `created_at` |
+| `asset / expense` | `payload.date`,无则 `created_at` |
+| `asset / idea / notes / misc / contact` | `created_at` |
+| `input_turn`(闪念录音 / chat message / 会议 transcript 段) | `created_at`(对同步 ASR = 录音瞬间;异步 ASR = 完成瞬间) |
+| `file`(上传) | `created_at`(上传瞬间) |
+
+**核心语义**:`created_at` 是审计字段(行什么时候写入 DB),`effective_at` 是 UX 字段(用户视角下这件事什么时候发生 / 生效 / 该出现)。**timezone 一律保留原值透传,前端按浏览器 TZ 渲染**。
+
+**实施**:`backend/core/timeline.py` 是规则实现;`GET /api/timeline?from=&to=&kinds=&skills=` 是 endpoint(Schedule view 「全部」 tab 的数据源)。**timeline 不是独立页面**,只是 CalendarPage Schedule 视图下一个 tab 的数据源。具体类型 tab(event / todo / ...)用各自的专用 endpoint 拿更丰富的 per-kind 数据。
+
+边界细节:
+- 「同一 effective_at」的 tie-break: `created_at` 升序(确定性)
+- 过期 todo:仍按原 `due_date` 出现在原位置,前端用 red accent + 「已逾期 N 天」chip 标记,不「拖到今天」破坏时间线
+- 未来 todo / event:正常出现在未来日期(用户往未来滚就能看到)
+
 ### v1.4 新增资产类型
 
 `notes`(📝 长文档,会议纪要/报告/briefing)+ `misc`(🗂 兜底,「沉淀为资产」picker 默认目标)。Phase A 把 note 合进 idea 是当时的判断错位,v1.4 拆回来。
@@ -428,6 +450,7 @@ data: {"draft_id": "uuid"}    # 用户审核后 POST /api/skills/{draft_id}/conf
 - `GET /api/files` —— 资产库的文件视图入口
 - **`CRUD /api/events`(v1.4)** —— 含 attendees / file linking 子路径
 - POST /api/chat 接收 **`event_id`** 字段(v1.4):非空时 chat session 锚定到 event,Assistant 系统提示自动注入 event 上下文,可调 get_event/update_event 等
+- **`GET /api/timeline?from&to&kinds&skills`(v1.4.x)** —— CalendarPage Schedule view「全部」tab 的数据源;按 effective_at(见 §三.5)合并 events + assets + input_turns + files;**不是独立页面**
 
 不再有 `/api/query`(并入 `/api/chat`);不再有 `/api/flash/audio`(暂缓)。
 

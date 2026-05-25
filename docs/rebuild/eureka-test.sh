@@ -197,6 +197,26 @@ eu_skills() {
     curl -s "$EUREKA_API/api/skills" | python3 -m json.tool
 }
 
+# 时间线(Schedule 「全部」tab 的数据源)
+eu_timeline() {
+    local args=""
+    [ -n "$1" ] && args="?$1"
+    curl -s "$EUREKA_API/api/timeline$args" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(f'ok={d[\"ok\"]} count={d[\"count\"]}')
+print(f'{\"kind\":12s} {\"effective_at\":28s} {\"title\":40s} extras')
+print('-'*120)
+for it in d['items'][:30]:
+    extras = ''
+    if it['kind'] == 'asset': extras = f'skill={it.get(\"skill_name\")}'
+    elif it['kind'] == 'event': extras = f'loc={it.get(\"location\",\"-\")}'
+    elif it['kind'] == 'input_turn': extras = f'src={it.get(\"source\")}'
+    title = (it['title'] or '').replace(chr(10),' ')[:38]
+    print(f'{it[\"kind\"]:12s} {it[\"effective_at\"]:28s} {title:40s} {extras}')
+"
+}
+
 eu_contacts() {
     curl -s "$EUREKA_API/api/contacts" | python3 -m json.tool
 }

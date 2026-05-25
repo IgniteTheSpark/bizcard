@@ -39,6 +39,7 @@ from api.assets import router as assets_router
 from api.sessions import router as sessions_router
 from api.contacts import router as contacts_router
 from api.events import router as events_router       # v1.4
+from api.timeline import router as timeline_router    # v1.4.x
 
 
 @asynccontextmanager
@@ -66,6 +67,7 @@ app.include_router(assets_router,      prefix="/api", tags=["assets"])
 app.include_router(sessions_router,    prefix="/api", tags=["sessions"])
 app.include_router(contacts_router,    prefix="/api", tags=["contacts"])
 app.include_router(events_router,      prefix="/api", tags=["events"])       # v1.4
+app.include_router(timeline_router,    prefix="/api", tags=["timeline"])     # v1.4.x
 
 
 @app.get("/health")
