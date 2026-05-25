@@ -23,6 +23,8 @@ SKILL_FOLDER_MAP = {
     "todo":    "flash-todo-skill",
     "event":   "flash-event-skill",
     "idea":    "flash-idea-skill",
+    "notes":   "flash-notes-skill",     # v1.4
+    "misc":    "flash-misc-skill",      # v1.4
     "expense": "flash-expense-skill",
     "contact": "flash-contact-skill",
     "qa":      "flash-qa-skill",

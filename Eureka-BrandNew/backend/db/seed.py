@@ -22,8 +22,10 @@ engine = create_engine(DATABASE_URL)
 
 GLOBAL_SKILLS = [
     {"name": "todo",    "description": "待办"},
-    {"name": "event",   "description": "日程 / 事件"},
-    {"name": "idea",    "description": "想法 / 笔记"},
+    {"name": "event",   "description": "日程 / 事件(v1.4: 一级实体,events 表,非 SkillCard)"},
+    {"name": "idea",    "description": "想法 / 灵感"},
+    {"name": "notes",   "description": "笔记 / 长文档(v1.4: 会议纪要、报告、briefing)"},
+    {"name": "misc",    "description": "兜底,无明确分类(v1.4)"},
     {"name": "contact", "description": "名片 / 联系人"},
     {"name": "expense", "description": "记账"},
     {"name": "qa",      "description": "问答(系统能力,无资产产出)"},
@@ -58,36 +60,11 @@ USER_SKILL_CONFIGS = [
             "calendar_render":   {"date_field": "due_date"},
         },
     },
-    {
-        "name": "event",
-        "display_name": "事件",
-        "payload_schema": {
-            "title":        {"type": "string",   "required": True},
-            "start_at":     {"type": "datetime", "required": True},
-            "end_at":       {"type": "datetime"},
-            "duration_min": {"type": "number"},
-            "location":     {"type": "string"},
-            "attendees":    {"type": "array", "items": "string"},
-        },
-        "queryable_fields": [
-            {"field": "start_at", "index_type": "date"},
-            {"field": "location", "index_type": "text"},
-        ],
-        "render_spec": {
-            "card_layout":      "horizontal",
-            "icon":             "📅",
-            "accent_color":     "purple",
-            "primary_field":    "title",
-            "secondary_field":  "start_at",
-            "secondary_format": "absolute_date",
-            "meta_fields": [
-                {"field": "duration_min", "format": "duration"},
-                {"field": "location"},
-            ],
-            "actions":         ["edit", "open"],
-            "calendar_render": {"date_field": "start_at", "time_field": "start_at"},
-        },
-    },
+    # v1.4: event removed from USER_SKILL_CONFIGS — promoted to first-class
+    # entity (events table). Event still appears in GLOBAL_SKILLS (dispatcher
+    # recognizes "event" intent), and the event-skill agent calls the new
+    # create_event MCP tool. Frontend renders events via dedicated EventCard /
+    # CalendarPage tiles, NOT SkillCard render_spec.
     {
         "name": "idea",
         "display_name": "想法",
@@ -161,6 +138,47 @@ USER_SKILL_CONFIGS = [
                 {"field": "date",     "format": "absolute_date"},
             ],
             "actions": ["edit"],
+        },
+    },
+    {
+        "name": "notes",
+        "display_name": "笔记",
+        # v1.4 — long-form recorded content: meeting summaries, briefings,
+        # reference docs. Distinct from idea (creative spark, short).
+        "payload_schema": {
+            "title":   {"type": "string"},
+            "content": {"type": "string", "required": True},
+            "tags":    {"type": "array", "items": "string"},
+        },
+        "queryable_fields": [],
+        "render_spec": {
+            "card_layout":      "stacked",
+            "icon":             "📝",
+            "accent_color":     "gray",
+            "primary_field":    "title",
+            "secondary_field":  "content",
+            "secondary_format": "truncate_40",
+            "actions":          ["edit", "open"],
+        },
+    },
+    {
+        "name": "misc",
+        "display_name": "其它",
+        # v1.4 — fallback for content that doesn't clearly fit other skills.
+        # Also the default target of the "沉淀为资产" picker when the user is
+        # not sure where else to put an AI output.
+        "payload_schema": {
+            "content": {"type": "string", "required": True},
+            "tags":    {"type": "array", "items": "string"},
+        },
+        "queryable_fields": [],
+        "render_spec": {
+            "card_layout":      "inline",
+            "icon":             "🗂",
+            "accent_color":     "gray",
+            "primary_field":    "content",
+            "secondary_format": "truncate_40",
+            "actions":          ["edit", "delete"],
         },
     },
     {

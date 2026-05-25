@@ -64,11 +64,20 @@ create_asset 必传 user_skill_name(skill 的 machine name,例 'todo' 'event')
 """
 
 
-def make_assistant_agent(session_id: str, input_turn_id: str) -> LlmAgent:
+def make_assistant_agent(
+    session_id: str,
+    input_turn_id: str,
+    event_id: str = "",
+) -> LlmAgent:
     """
     Build a fresh Assistant LlmAgent with this turn's session_id and
     input_turn_id woven into the system prompt. The agent uses these
     when calling create_asset(source_input_turn_id=...).
+
+    v1.4: if event_id is set (chat-from-event flow), inject a hint so the
+    agent treats this chat as anchored to that event — it can call
+    tool_get_event(event_id) to fetch full context, tool_update_event /
+    tool_add_event_attendee / tool_link_event_file to act on it.
 
     Stateless — instantiate per request. Tools (the shared MCPToolset)
     are cheap to attach since the underlying subprocess is a singleton.
@@ -80,6 +89,15 @@ def make_assistant_agent(session_id: str, input_turn_id: str) -> LlmAgent:
         + f"- input_turn_id: {input_turn_id}\n"
         + "  → 创建资产时把这个值作为 source_input_turn_id 参数传给 create_asset\n"
     )
+    if event_id:
+        instruction += (
+            f"- event_id: {event_id}\n"
+            "  → 本轮 chat **锚定到这个 event**。用户可能问「这个会议的参与人有谁」、\n"
+            "    「帮我准备会前调研」、「改一下会议时间」等。需要 event 详细信息时\n"
+            "    调 tool_get_event(event_id) 拿(title / start_at / location /\n"
+            "    attendees / files);需要操作时用 tool_update_event /\n"
+            "    tool_add_event_attendee / tool_link_event_file 等。\n"
+        )
     return LlmAgent(
         name="assistant",
         model=ASSISTANT_MODEL,

@@ -40,13 +40,15 @@ async def get_or_create_chat_session(
     user_id: str,
     session_id: Optional[str] = None,
     title_hint: Optional[str] = None,
+    event_id: Optional[str] = None,
 ) -> DBSession:
     """
     Resolve or create a chat session row.
 
     - If session_id is provided: load it (raises ValueError if not found).
-    - If empty: create a new sessions row with session_type='chat'. The title
-      is derived from title_hint (first user message, truncated to 24 chars).
+    - If empty: create a new sessions row with session_type='chat'.
+      - title is derived from title_hint (first user message, truncated to 24 chars).
+      - if event_id provided (v1.4 chat-from-event flow), anchor session to it.
     """
     if session_id:
         result = await db.execute(
@@ -68,6 +70,7 @@ async def get_or_create_chat_session(
         user_id=user_id,
         session_type="chat",
         title=title,
+        event_id=uuid.UUID(event_id) if event_id else None,
     )
     db.add(sess)
     await db.commit()

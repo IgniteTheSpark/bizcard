@@ -1,23 +1,28 @@
 """
-SQLAlchemy models — Phase B target schema (with design integration).
+SQLAlchemy models — Phase B v1.4 schema.
 
-9 tables:
+12 tables:
   global_skills, user_skills, sessions, files, input_turns,
-  assets, asset_fields, contacts, messages.
+  assets, asset_fields, contacts, messages,
+  events, event_attendees, event_files   ← NEW in v1.4
 
-Key changes from previous version:
-- File and InputTurn are new (InputTurn is the unit of provenance,
-  formerly conceptualized as Transcript; renamed after design integration)
-- Asset has source_input_turn_id FK to input_turns; user_skill_id is NOT NULL
+v1.4 changes (Event as first-class entity, like contacts):
+- Event no longer goes through assets table — it has its own structurally-
+  rich storage (start_at, end_at, location, recurrence, attendees, files)
+- Sessions can be anchored to an event via Session.event_id (chat-about-event
+  workflow: "帮我准备这个会议的人员调研")
+- event-skill (Flash Pipeline) now calls create_event MCP tool instead of
+  create_asset; events surface in Calendar via dedicated EventCard, not SkillCard
+
+v1.3 baseline (kept):
+- File and InputTurn are first-class (InputTurn replaces old Transcript concept)
+- Asset has source_input_turn_id FK; user_skill_id NOT NULL
 - Asset payload no longer carries asset_type (derived via user_skill_id → global_skills.name)
 - Message gains tool_call, tool_result columns
-- UserSkill gains display_name, render_spec (both nullable — system skills like qa
-  have null payload_schema/render_spec)
+- UserSkill gains display_name, render_spec (nullable for system skills like qa)
 - Session.session_type values: flash | chat | meeting | manual
-  (replaces daily | meeting | agent_chat); flash session aggregates by day,
-  each in-day input becomes one input_turn row inside it
-- file_id is on InputTurn only, NOT on Session — a session can have many
-  input_turns each with its own file (flash, multi-clip meeting, etc.)
+- input_turn.source values: voice | typed | imported (modality, NOT session_type)
+- file_id on InputTurn only, NOT on Session
 """
 from sqlalchemy import (
     Column, String, Integer, Numeric, Text, Date, ARRAY,
@@ -66,11 +71,13 @@ class Session(Base):
     session_type = Column(String(20), nullable=False)   # flash | chat | meeting | manual
     title        = Column(String(255))
     date         = Column(Date)                          # natural-day grouping for flash; null for others
+    event_id     = Column(UUID(as_uuid=True), ForeignKey("events.id"))   # v1.4: chat session anchored to an event (nullable)
     created_at   = Column(TIMESTAMPTZ, server_default=func.now())
 
     __table_args__ = (
         Index("idx_sessions_user_date", "user_id", "date"),
         Index("idx_sessions_user_type",  "user_id", "session_type", "created_at"),
+        Index("idx_sessions_event",      "user_id", "event_id"),
     )
 
 
@@ -180,6 +187,80 @@ class Contact(Base):
 
     __table_args__ = (
         Index("idx_contacts_name", "user_id", "name"),
+    )
+
+
+class Event(Base):
+    """
+    First-class scheduled event (v1.4). Distinct from todo (which has deadline):
+    event has a start_at and usually end_at — a time block on the calendar.
+
+    Created via:
+    - Voice flash → Flash Pipeline → event-skill → create_event MCP tool
+    - Manual: POST /api/events
+    - Future: 3rd-party sync (Google Calendar, Outlook) populates sync_source +
+      sync_external_id; updates from upstream find the row by (sync_source, sync_external_id)
+
+    Owns relations:
+    - event_attendees: people invited (link to contacts when matched)
+    - event_files: pre-meeting docs, recordings, notes
+    - sessions(event_id=event.id): chat sessions about this event
+    """
+    __tablename__ = "events"
+
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id          = Column(String(50), nullable=False, server_default="default")
+    title            = Column(String(255), nullable=False)
+    start_at         = Column(TIMESTAMPTZ, nullable=False)
+    end_at           = Column(TIMESTAMPTZ)
+    all_day          = Column(Integer, server_default="0")   # 0/1 (Postgres has no bool default-friendly idiom we already use here)
+    location         = Column(String(255))
+    description      = Column(Text)
+    recurrence_rule  = Column(String(255))                    # iCal RRULE; null = non-recurring
+    status           = Column(String(20), server_default="scheduled")   # scheduled | cancelled | done
+    sync_source      = Column(String(20))                     # manual | google | outlook | ... ; null = manual
+    sync_external_id = Column(String(255))                    # upstream id for de-dup on sync
+    source_input_turn_id = Column(UUID(as_uuid=True), ForeignKey("input_turns.id"))   # provenance when voice-created
+    created_at       = Column(TIMESTAMPTZ, server_default=func.now())
+    updated_at       = Column(TIMESTAMPTZ, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_events_user_start",         "user_id", "start_at"),
+        Index("idx_events_user_status",        "user_id", "status", "start_at"),
+        UniqueConstraint("user_id", "sync_source", "sync_external_id", name="uq_events_sync"),
+    )
+
+
+class EventAttendee(Base):
+    """Join: event ↔ contact (or unresolved name when no contact match)."""
+    __tablename__ = "event_attendees"
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id   = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
+    contact_id = Column(UUID(as_uuid=True), ForeignKey("contacts.id"))   # nullable: name without contact match
+    name_raw   = Column(String(255))                                      # fallback display when contact_id null
+    role       = Column(String(20), server_default="attendee")            # organizer | attendee | optional
+    created_at = Column(TIMESTAMPTZ, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_event_attendees_event",   "event_id"),
+        Index("idx_event_attendees_contact", "contact_id"),
+    )
+
+
+class EventFile(Base):
+    """Join: event ↔ file (pre-meeting docs, recordings, notes attached to an event)."""
+    __tablename__ = "event_files"
+
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id    = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
+    file_id     = Column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=False)
+    kind        = Column(String(20), server_default="attachment")   # prep | recording | notes | attachment
+    attached_at = Column(TIMESTAMPTZ, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_event_files_event", "event_id"),
+        UniqueConstraint("event_id", "file_id", name="uq_event_files"),
     )
 
 

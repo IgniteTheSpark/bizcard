@@ -38,6 +38,7 @@ from api.files import router as files_router
 from api.assets import router as assets_router
 from api.sessions import router as sessions_router
 from api.contacts import router as contacts_router
+from api.events import router as events_router       # v1.4
 
 
 @asynccontextmanager
@@ -47,7 +48,7 @@ async def lifespan(app: FastAPI):
     await close_mcp_toolset()
 
 
-app = FastAPI(title="Eureka API", version="1.3.0", lifespan=lifespan)
+app = FastAPI(title="Eureka API", version="1.4.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,8 +65,9 @@ app.include_router(files_router,       prefix="/api", tags=["files"])
 app.include_router(assets_router,      prefix="/api", tags=["assets"])
 app.include_router(sessions_router,    prefix="/api", tags=["sessions"])
 app.include_router(contacts_router,    prefix="/api", tags=["contacts"])
+app.include_router(events_router,      prefix="/api", tags=["events"])       # v1.4
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "phase-b-v1.3"}
+    return {"status": "ok", "version": "phase-b-v1.4"}

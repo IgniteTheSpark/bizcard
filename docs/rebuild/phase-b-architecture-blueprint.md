@@ -1,12 +1,13 @@
 # Phase B — Eureka 架构蓝图
 
-> 版本：v1.3 | 2026-05-24
-> 状态：定稿
+> 版本：v1.4 | 2026-05-25
+> 状态：定稿(集成测试通过,LLM 真调验证 4 个核心场景)
 > 用途：Eureka 从零重建的架构基线。定义数据模型、模块边界、Agent 编排、API 契约、前端组件地图。Phase C(后端重建)、Phase D(前端重建)按此为准。
 > 演进:
 > - v1.0 → v1.1:接受 design `Session + InputTurn` 数据模型(分歧 2)
 > - v1.1 → v1.2:接受 design Timeline 被 Calendar Schedule 吸收(分歧 1);接受 File 在资产库的 FileList 入口(分歧 3)
 > - v1.2 → v1.3:`input_turn.source` 语义从「session_type 同义」改为「输入模态」(voice / typed / imported),与 session_type 正交;支持混合模态会话(flash session 内可有 typed turn 做 CRUD 跟进 —— 例:语音建待办后打字「改成 4 点」);跨 turn 引用通过 messages 表里的 tool_call 历史解决
+> - **v1.3 → v1.4:Event 升级为一级实体(parallel to contacts/files);新增 notes / misc 资产类型;Sessions 可锚定 event(chat-from-event 工作流)**
 
 ---
 
@@ -39,7 +40,26 @@ Phase A 的四条架构原则贯穿全文:
 
 ## 三、数据模型
 
-PostgreSQL 16 + pgvector。9 张表。
+PostgreSQL 16 + pgvector。**12 张表(v1.4 新增 events / event_attendees / event_files)**。
+
+### v1.4 新增(Event 一级实体)
+
+```
+events(id, user_id, title, start_at, end_at, all_day, location, description,
+       recurrence_rule, status, sync_source, sync_external_id,
+       source_input_turn_id FK input_turns, created_at, updated_at)
+event_attendees(event_id FK, contact_id FK NULL, name_raw, role, ...)
+event_files(event_id FK, file_id FK, kind, attached_at)
+sessions += event_id FK events(id) NULL   ← chat session 锚定到 event
+```
+
+事件不走 assets 表 —— 它有结构性关系(参与人 link contacts、文件 link files、可来自第三方同步)。事件 UI 走专门的 EventCard / CalendarPage,**不走 SkillCard render_spec**。
+
+event-skill (Flash Pipeline) 现在调 `create_event` MCP 工具(不再 `create_asset`);events 通过 GET /api/events 暴露给 CalendarPage 渲染。
+
+### v1.4 新增资产类型
+
+`notes`(📝 长文档,会议纪要/报告/briefing)+ `misc`(🗂 兜底,「沉淀为资产」picker 默认目标)。Phase A 把 note 合进 idea 是当时的判断错位,v1.4 拆回来。
 
 ### 3.1 总览(ER)
 
@@ -404,6 +424,8 @@ data: {"draft_id": "uuid"}    # 用户审核后 POST /api/skills/{draft_id}/conf
 - `GET /api/input-turns/{id}` —— 拉取完整 input_turn text(给 MCP 工具用,也可直接调)
 - `CRUD /api/contacts`
 - `GET /api/files` —— 资产库的文件视图入口
+- **`CRUD /api/events`(v1.4)** —— 含 attendees / file linking 子路径
+- POST /api/chat 接收 **`event_id`** 字段(v1.4):非空时 chat session 锚定到 event,Assistant 系统提示自动注入 event 上下文,可调 get_event/update_event 等
 
 不再有 `/api/query`(并入 `/api/chat`);不再有 `/api/flash/audio`(暂缓)。
 
@@ -411,7 +433,7 @@ data: {"draft_id": "uuid"}    # 用户审核后 POST /api/skills/{draft_id}/conf
 
 ## 六、MCP server 工具集
 
-`backend/mcp/server.py` 暴露(FastMCP):
+`backend/mcp_server/server.py` 暴露 **17 个**工具(v1.4 +7 event tools):
 
 | 工具 | 用途 |
 |---|---|
@@ -425,6 +447,13 @@ data: {"draft_id": "uuid"}    # 用户审核后 POST /api/skills/{draft_id}/conf
 | `delete_contact(contact_id)` | 删除名片 |
 | `query_input_turn(contains, source?)` | 全文关键词搜索 input_turns |
 | `get_input_turn(input_turn_id)` | 拉取完整 input_turn(长 transcript 懒加载) |
+| `create_event(title, start_at, end_at?, location?, ...)` | **v1.4** 新建日程事件 |
+| `query_event(contains?, from_date?, to_date?, status?)` | **v1.4** 查询事件(含参与人/文件 inline) |
+| `get_event(event_id)` | **v1.4** 拿单个 event 详情 |
+| `update_event(event_id, patch)` | **v1.4** 改 event 字段 |
+| `delete_event(event_id)` | **v1.4** 删除(级联 attendees + files) |
+| `add_event_attendee(event_id, name? / contact_id?, role?)` | **v1.4** 加参与人 |
+| `link_event_file(event_id, file_id, kind?)` | **v1.4** 绑定文件(prep/recording/notes/...) |
 
 所有工具签名稳定 —— 跟 Phase A skill prompt 兼容,只是从「直接 import 函数」改为「ADK 通过 stdio 调」。
 

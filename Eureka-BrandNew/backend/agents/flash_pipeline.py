@@ -103,20 +103,11 @@ async def _run_intent(
     user_id: str,
 ) -> dict:
     """Dispatch one intent to its skill agent. Returns the skill's result dict."""
-    itype = intent.get("type", "note")
+    itype = intent.get("type", "misc")
 
-    # 'note' has no dedicated skill — route to idea
+    # v1.4: 'note' (singular, old) → 'notes' (new long-form skill)
     if itype == "note":
-        itype = "idea"
-
-    # 'misc' is recognized but not actioned
-    if itype == "misc":
-        return {
-            "ok": False,
-            "skill": "misc-skill",
-            "source_text": intent.get("source_text", ""),
-            "error": "misc intent not routed",
-        }
+        itype = "notes"
 
     source = intent.get("source_text", user_text)
     agent = make_skill_agent(itype)
@@ -155,6 +146,8 @@ _SKILL_LABELS = {
     "event-skill":   "事件",
     "contact-skill": "联系人",
     "idea-skill":    "想法",
+    "notes-skill":   "笔记",     # v1.4
+    "misc-skill":    "其它",     # v1.4
     "expense-skill": "消费",
     "qa-skill":      "问答",
 }
@@ -184,10 +177,33 @@ def _make_card(r: dict) -> dict:
         }
 
     if skill == "event-skill":
+        # v1.4: event-skill returns event_id (not asset_id) — events are first-class
+        # in events table, not assets. Card references event_id; frontend uses
+        # dedicated EventCard / CalendarPage, NOT SkillCard.
+        event_id = r.get("event_id")
         return {
             "card_type": "event",
-            "title":     payload.get("title") or "事件",
-            "subtitle":  _fmt_dt(payload.get("start_at", "")),
+            "title":     r.get("title") or payload.get("title") or "事件",
+            "subtitle":  _fmt_dt(r.get("start_at") or payload.get("start_at", "")),
+            "event_id":  event_id,
+            "asset_id":  None,
+        }
+
+    if skill == "notes-skill":
+        content = payload.get("content", "")
+        return {
+            "card_type": "notes",
+            "title":     payload.get("title") or "笔记",
+            "subtitle":  content[:40] + ("…" if len(content) > 40 else ""),
+            "asset_id":  asset_id,
+        }
+
+    if skill == "misc-skill":
+        content = payload.get("content", "")
+        return {
+            "card_type": "misc",
+            "title":     content[:30] + ("…" if len(content) > 30 else "") or "其它",
+            "subtitle":  "",
             "asset_id":  asset_id,
         }
 
@@ -286,6 +302,10 @@ def _aggregate(results: list, session_id: str, input_turn_id: str) -> dict:
         "derived_assets":  [
             {"asset_id": c["asset_id"], "card": c}
             for c in cards if c.get("asset_id")
+        ],
+        "derived_events":  [   # v1.4: events are not assets — separate list
+            {"event_id": c["event_id"], "card": c}
+            for c in cards if c.get("event_id")
         ],
         "has_pending":     any(r.get("status") == "pending_confirmation" for r in results),
     }

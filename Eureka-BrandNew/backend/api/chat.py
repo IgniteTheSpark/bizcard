@@ -53,6 +53,7 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     user_text: str
     session_id: str = ""   # empty = create new chat session
+    event_id:   str = ""   # v1.4: anchor this chat to an event (event detail page → ask agent)
 
 
 # ── History formatting ────────────────────────────────────────────────────────
@@ -99,12 +100,13 @@ async def _stream_assistant(
     session_id: str,
     input_turn_id: str,
     user_id: str,
+    event_id: str = "",
 ) -> AsyncIterator[tuple[str, dict]]:
     """
     Run the Assistant agent and yield (event_type, payload) tuples that the
     SSE wrapper can format. Also accumulates state for post-run persistence.
     """
-    agent = make_assistant_agent(session_id, input_turn_id)
+    agent = make_assistant_agent(session_id, input_turn_id, event_id=event_id)
 
     # Fresh ADK in-memory session per request — persistence is our concern
     adk_sid = str(uuid.uuid4())
@@ -161,7 +163,10 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
         # Phase 1 — session / input_turn setup
         async with AsyncSessionLocal() as db:
             session = await get_or_create_chat_session(
-                db, user_id, req.session_id or None, title_hint=req.user_text,
+                db, user_id,
+                session_id=req.session_id or None,
+                title_hint=req.user_text,
+                event_id=req.event_id or None,   # v1.4: anchor to event if provided
             )
             session_id = str(session.id)
             input_turn = await create_input_turn_for_message(
@@ -184,6 +189,7 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
         try:
             async for evt_type, payload in _stream_assistant(
                 req.user_text, history_text, session_id, input_turn_id, user_id,
+                event_id=req.event_id or "",
             ):
                 yield sse_event(evt_type, payload)
                 if evt_type == "token":
