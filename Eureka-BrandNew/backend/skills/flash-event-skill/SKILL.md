@@ -68,10 +68,38 @@ For `create` / `update`:
 
 ### Create
 
+**Step 3a — 建 event 本体**
+
 Call `tool_create_event`:
 - `title`, `start_at` (required)
 - `end_at`, `location`, `description`, `all_day` (optional)
 - `source_input_turn_id`: pass through from input
+
+记下返回的 `event_id`,Step 3b 要用。
+
+**Step 3b — 把 source_text 里所有「可能是参与人」的字符串占位为 attendee**
+
+从 source_text 里抽出所有可能指代「参与方」的名词或称呼,**不区分是真人名、职称、泛称还是团队** —— 全部用 `name_raw` 形式存进 attendee,不要尝试匹配 contact,**不要传 contact_id**。
+
+对每个抽出来的名字调一次:
+```
+tool_add_event_attendee(event_id=<上一步的 event_id>, name="<原文里的称呼>", role="attendee")
+```
+
+**抽取规则**(宁可少抽,不要错抽更不要瞎编):
+- 「和 X 的会议」「跟 X 开会」「X 和我」「找 X」「跟 X 聊」 → 抽 `X`
+- 称呼带姓 + 头衔(冯总、王总监、刘老师、张工)→ 抽完整称呼
+- 泛称(客户、团队、对方、那边、合作方、供应商)→ 也抽,作为占位
+- 实体组织名(Acme、XX 公司)→ 也抽
+- 「自己」「我」「我们组」→ **不抽**(说话人本身隐含,不需要)
+- 没有任何人/参与方提及 → **不调 add_event_attendee**(0 个 attendee 是允许的)
+
+**为什么这样设计**(给未来的你/agent 看):
+- 现阶段**不做智能匹配**(不查 contacts 表、不创建联系人) —— 保守策略:不出错胜过出错
+- 所有 attendee 都以 `name_raw` 形式占位,前端把它们渲染成可点击 chip
+- 用户点击后跳到联系人匹配/创建界面,自己决定怎么落实
+- 同名/重复:重复 add 没关系,以后清理是 UI / Assistant 的事
+- 未来升级智能匹配时,只需把上面的「不查不创建」规则替换成「查 contact_id 命中则用,不命中保留 name_raw」
 
 ### Update
 
@@ -88,12 +116,24 @@ Call `tool_create_event`:
 
 ## Step 4 — Return JSON
 
-For successful create / update:
+For successful create:
 ```json
 {
   "ok": true,
-  "operation": "create | update",
-  "event_id": "<from create_event / update_event result>",
+  "operation": "create",
+  "event_id": "<from create_event>",
+  "title": "...",
+  "start_at": "...",
+  "attendees_added": ["冯总", "客户"]    // 新加的 name_raw 列表,可以是 []
+}
+```
+
+For successful update:
+```json
+{
+  "ok": true,
+  "operation": "update",
+  "event_id": "<from update_event>",
   "title": "...",
   "start_at": "..."
 }
@@ -114,21 +154,42 @@ For errors:
 ## Examples
 
 **输入:** `明天下午两点到三点跟客户开会,地点在会议室B` (今天是 2026-05-25)
-→ `tool_create_event(title="跟客户开会", start_at="2026-05-26T14:00:00+08:00", end_at="2026-05-26T15:00:00+08:00", location="会议室B", source_input_turn_id=<turn>)`
+1. `tool_create_event(title="跟客户开会", start_at="2026-05-26T14:00:00+08:00", end_at="2026-05-26T15:00:00+08:00", location="会议室B", source_input_turn_id=<turn>)` → event_id="e-xxx"
+2. `tool_add_event_attendee(event_id="e-xxx", name="客户")`
+→ 返回:`{"ok": true, "operation": "create", "event_id": "e-xxx", "title": "...", "start_at": "...", "attendees_added": ["客户"]}`
+
+**输入:** `明天下午六点有个和冯总的会议`
+1. `tool_create_event(title="和冯总的会议", start_at="2026-05-26T18:00:00+08:00", source_input_turn_id=<turn>)` → event_id="e-yyy"
+2. `tool_add_event_attendee(event_id="e-yyy", name="冯总")`
+→ `{"ok": true, ..., "attendees_added": ["冯总"]}`
+
+**输入:** `周五晚上7点跟Kevin、刘洋老师还有客户那边一起吃饭`
+1. `tool_create_event(title="晚餐", start_at="2026-05-30T19:00:00+08:00", ...)` → event_id
+2. `tool_add_event_attendee(event_id, name="Kevin")`
+3. `tool_add_event_attendee(event_id, name="刘洋老师")`
+4. `tool_add_event_attendee(event_id, name="客户那边")`
+→ `attendees_added: ["Kevin", "刘洋老师", "客户那边"]`
+
+**输入:** `明天早上 9 点站会`
+1. `tool_create_event(title="站会", start_at="2026-05-26T09:00:00+08:00", ...)` → event_id
+→ 没人/参与方提及 → 不调 add_event_attendee
+→ `attendees_added: []`
 
 **输入:** `把明天的客户会改成上午10点`
-→ `tool_query_event(contains="客户")` → event_id="e-xxx"
-→ `tool_update_event(event_id="e-xxx", patch="{\"start_at\": \"2026-05-26T10:00:00+08:00\"}")`
+→ `tool_query_event(contains="客户")` → event_id
+→ `tool_update_event(event_id, patch="{\"start_at\": \"2026-05-26T10:00:00+08:00\"}")`
+(update 操作不再加 attendee)
 
 **输入:** `取消明天的客户会`
-→ `tool_query_event(...)` → event_id
-→ `tool_delete_event(event_id)`
+→ `tool_query_event(...)` → event_id → `tool_delete_event(event_id)`
 
 ---
 
 ## Notes
 
-- 不要捏造没说的字段(地点没说就不要瞎填)
+- 不要捏造没说的字段(地点没说就不要瞎填 location)
 - 时区默认 +08:00
 - 一个 source_text 只处理一个 event 操作;dispatcher 已经把多意图拆开了
-- attendees(参与人)在 v1.4 是单独的 add_event_attendee 工具,本 skill **不自动加 attendees** —— 如果用户说「跟刘洋开会」,只创建 event,attendees 由用户在 event 详情页手动添加或由 Assistant 后续处理
+- **attendees 在 create 时**自动占位为 `name_raw`(不查 contacts、不创建 contact)
+- update / delete 操作不动 attendees
+- 重复 attendee(同一个名字出现多次)不去重 —— 由 UI / 后续清理处理

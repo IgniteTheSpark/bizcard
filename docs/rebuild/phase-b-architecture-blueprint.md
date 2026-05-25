@@ -57,6 +57,8 @@ sessions += event_id FK events(id) NULL   ← chat session 锚定到 event
 
 event-skill (Flash Pipeline) 现在调 `create_event` MCP 工具(不再 `create_asset`);events 通过 GET /api/events 暴露给 CalendarPage 渲染。
 
+**Attendee 抽取策略**(v1.4 polish):event-skill 在创建 event 后,会从 source_text 抽取所有「可能的参与方」(具体人名、称呼带头衔、泛称如「客户/团队」、组织名)用 `tool_add_event_attendee(name_raw=X)` 占位,**不查不创建联系人**。前端把 attendee chip 渲染成可点击,用户点击进联系人匹配/创建。理由:不出错的兜底策略好过自动的不准确出错的策略。未来升级智能匹配时,只改 SKILL.md 那一段抽取规则即可。
+
 ### v1.4 新增资产类型
 
 `notes`(📝 长文档,会议纪要/报告/briefing)+ `misc`(🗂 兜底,「沉淀为资产」picker 默认目标)。Phase A 把 note 合进 idea 是当时的判断错位,v1.4 拆回来。
