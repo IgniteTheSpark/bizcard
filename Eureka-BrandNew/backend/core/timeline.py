@@ -228,8 +228,16 @@ async def assemble_timeline(
             items.append(_event_item(ev))
 
     # ── input_turns ──
+    # Filter rule: typed inputs are "AI conversation history", not "life
+    # events" → exclude from timeline. The DERIVED assets (todo / event /
+    # ...) still appear, they're the real records. Voice and (future)
+    # imported turns stay on timeline because they represent captured
+    # moments in the user's life.
     if "input_turn" in kinds:
-        stmt = select(InputTurn).where(InputTurn.user_id == user_id)
+        stmt = select(InputTurn).where(
+            InputTurn.user_id == user_id,
+            InputTurn.source != "typed",
+        )
         turns = (await db.execute(stmt)).scalars().all()
         for t in turns:
             items.append(_input_turn_item(t))
