@@ -30,11 +30,27 @@ source_input_turn_id: "<input_turn identifier — pass to create_event for prove
 
 ---
 
+## Step 0 — 时段完整性硬检查(v1.4.x)
+
+⚠️ **进入这里之前,dispatcher 应该已经确认 source_text 含完整时段**(start + end,或 start + duration,或 all_day)。如果你在 source_text 里看不到完整时段:
+
+例:「明天 6 点跟冯总开会」(只有 start,无 end / duration / all_day) → 这是 dispatcher 误路由
+
+直接返回错误让 Pipeline 知道这条应该归 todo:
+
+```json
+{"ok": false, "operation": "create", "error": "no time range — should be todo (single time point routes to todo-skill)"}
+```
+
+**不要**自己补默认 end_at / duration / all_day,**不要**自己降级建 todo。直接拒绝。
+
+---
+
 ## Step 1 — Determine the operation
 
 | Operation | Signal words / patterns |
 |-----------|------------------------|
-| `create`  | 创建、安排、约、加一个、明天/X日(+ 时间)、X点到Y点、开会 |
+| `create`  | 创建、安排、约、加一个、明天/X日(+ **时段**)、X点到Y点、X 点到 Y 点开会 |
 | `update`  | 改成、修改、调整、把…改到、推到、提前到 |
 | `delete`  | 取消、删除、不去了、移除 |
 

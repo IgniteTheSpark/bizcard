@@ -385,8 +385,13 @@ async def create_event(
     user_id: str = "default",
 ) -> dict:
     """
-    Create an event. start_at required (ISO8601 with TZ).
-    end_at optional — if omitted, event is treated as a single-time-point reminder.
+    Create an event. Requires title + start_at (ISO8601 with TZ).
+
+    v1.4.x hard validation: event MUST have a renderable time span — at least
+    one of {end_at, all_day=1}. A bare start_at without end / all_day means
+    this should have been a todo (per dispatcher's strict rule). Reject loudly
+    so we surface dispatcher mis-routes instead of silently creating residual
+    events that can't render as calendar blocks.
     """
     from datetime import datetime
     if not title:
@@ -401,6 +406,14 @@ async def create_event(
             end_dt = datetime.fromisoformat(end_at.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
             return _err(f"invalid end_at ISO8601: {end_at}")
+
+    # ── Hard validation: time span required ──
+    if not end_dt and not bool(all_day):
+        return _err(
+            "event missing time span: needs end_at OR all_day=1. "
+            "If only a single time point, this should be a todo (with due_date), "
+            "not an event."
+        )
 
     async with AsyncSessionLocal() as db:
         event = Event(

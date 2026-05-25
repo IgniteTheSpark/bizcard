@@ -133,8 +133,24 @@ eu_flash() {
     if [ -z "$text" ]; then _eu_red "用法: eu_flash \"<你说的话>\""; return 1; fi
     local body
     body=$(python3 -c "import json; print(json.dumps({'text': '''$text''', 'source': 'voice'}))")
-    curl -s -X POST "$EUREKA_API/api/flash" \
-        -H "Content-Type: application/json" -d "$body" | python3 -m json.tool
+    local resp
+    resp=$(curl -s -X POST "$EUREKA_API/api/flash" \
+        -H "Content-Type: application/json" -d "$body")
+    echo "$resp" | python3 -m json.tool
+    # 缓存 session_id,让 eu_more 能续聊(v1.3 混合模态:同 session 内 typed 走 Assistant)
+    local sid
+    sid=$(echo "$resp" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('session_id', ''))
+except Exception:
+    pass
+")
+    if [ -n "$sid" ]; then
+        echo "$sid" > "$EUREKA_SESSION_FILE"
+        _eu_dim "→ session $sid 已缓存(eu_more 可续聊)"
+    fi
 }
 
 

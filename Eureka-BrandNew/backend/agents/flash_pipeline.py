@@ -122,6 +122,18 @@ async def _run_intent(
     result = _parse_json(raw) or {"ok": False, "raw": raw[:200]}
     result["skill"] = f"{itype}-skill"
     result["source_text"] = source
+
+    # v1.4.x: dispatcher mis-routed an event without end_at to event-skill;
+    # event tool's hard validation rejected. Auto-rerun as todo so the user
+    # gets a usable todo card instead of an error card.
+    if (itype == "event" and not result.get("ok")
+        and "should be todo" in str(result.get("error", "")).lower()):
+        fallback_intent = {"type": "todo", "source_text": source}
+        return await _run_intent(
+            fallback_intent, user_text, session_id, source_input_turn_id,
+            today_str, user_id,
+        )
+
     return result
 
 
