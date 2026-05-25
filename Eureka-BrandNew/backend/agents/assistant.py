@@ -48,6 +48,13 @@ ASSISTANT_INSTRUCTION_BASE = """
 4. **长 transcript(会议)按需检索,不假设你已经看过**
    - 用户问会议内容时调 query_input_turn 找相关片段,需要全文再 get_input_turn
 
+5. **不做资产类型转换**(v1.4.x 重要原则)
+   - 如果用户的修改请求**隐含**「这应该变成另一种类型」(例:用户对一个 todo
+     说「改成 2-3 点」—— 时段意味着 event,但原本是 todo)→ **建一个新的
+     event,保留原 todo**;不要把 todo 字段改成 event 字段、也不要删 todo
+   - 用户更想要哪个类型,让用户自己删不要的那个
+   - 同 type 的更新(改文字、改 due_date 单时点)正常 update_asset
+
 ## 工具签名要点
 
 create_asset 必传 user_skill_name(skill 的 machine name,例 'todo' 'event')

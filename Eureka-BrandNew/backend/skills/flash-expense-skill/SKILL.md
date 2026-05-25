@@ -61,7 +61,7 @@ Only assign a category you're confident about. Default to `"其他"` if unclear.
 
 **merchant** — vendor name if explicitly stated, else `""`.
 
-**date** — when the spending happened:
+**date** — when the spending happened (日期粒度):
 - "今天" / no time reference → today's date
 - "昨天" → yesterday's date
 - Specific date → that date
@@ -69,11 +69,23 @@ Only assign a category you're confident about. Default to `"其他"` if unclear.
 
 Today's date for relative resolution: use the current date from your context.
 
+**at** (v1.4.x, optional) — 完整时间戳,**当用户提到时段或具体时刻时填**。用于 timeline 上把多次同日消费按时刻排序,不再全堆在午夜。
+
+| 用户的话 | at 取值(假设 today=2026-05-25,timezone +08:00) |
+|---|---|
+| 「早上 8 点 80 块星巴克」 | `2026-05-25T08:00:00+08:00`(具体时刻) |
+| 「早上喝星巴克 80」 | `2026-05-25T08:00:00+08:00`(早上 canonical → 8:00) |
+| 「中午午饭 60」 | `2026-05-25T12:00:00+08:00`(中午 → 12:00) |
+| 「下午奶茶 25」 | `2026-05-25T15:00:00+08:00`(下午 → 15:00) |
+| 「晚上吃饭 200」 | `2026-05-25T19:00:00+08:00`(晚上 → 19:00) |
+| 「深夜烧烤 80」 | `2026-05-25T23:00:00+08:00`(深夜 → 23:00) |
+| 没提时段或时刻 | **省略 at 字段**(让 timeline 用 date 兜底) |
+
 **description** — brief note from `source_text`. Keep it short. Don't invent details.
 
 Call `tool_create_asset`:
 - `user_skill_name`: `"expense"`
-- `payload`: `{"amount": <number>, "currency": "CNY", "category": "...", "merchant": "...", "date": "YYYY-MM-DD", "description": "..."}`
+- `payload`: `{"amount": <number>, "currency": "CNY", "category": "...", "merchant": "...", "date": "YYYY-MM-DD", "at": "ISO8601 if applicable", "description": "..."}`
 - `session_id`, `source_input_turn_id`: pass through
 
 ---
