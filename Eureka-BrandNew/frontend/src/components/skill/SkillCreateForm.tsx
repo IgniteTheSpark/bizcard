@@ -95,22 +95,28 @@ export function SkillCreateForm({ skill, onClose, onCreated }: SkillCreateFormPr
 
     setSubmitting(true);
     try {
-      const resp = await apiFetch<{ ok: boolean; asset_id?: string; error?: string }>(
-        "/api/assets",
-        {
-          method: "POST",
-          // Backend CreateAssetRequest expects str (default "") not null — omit
-          // session_id / source_input_turn_id; manual create has no provenance.
-          body: {
-            user_skill_name: skill.name,
-            payload,
-          },
-        },
-      );
+      // Per Phase B v1.4: first-class entities live in their own tables.
+      // The contact-skill asset shape is a TIMELINE REFERENCE wrapping a
+      // contact_id from the contacts table. Manual create here should go
+      // straight to contacts; agents (flash/chat) that create via voice
+      // can still produce the reference asset via tool_create_contact.
+      const route = skill.name === "contact" ? "/api/contacts" : "/api/assets";
+      const body  = skill.name === "contact"
+        ? payload
+        : { user_skill_name: skill.name, payload };
+
+      const resp = await apiFetch<{
+        ok: boolean; asset_id?: string; contact_id?: string; error?: string;
+      }>(route, { method: "POST", body });
+
       if (!resp.ok) throw new Error(resp.error ?? "创建失败");
-      // Invalidate every cached /api/assets variant so all lists refresh
-      await mutate((key) => typeof key === "string" && key.startsWith("/api/assets"));
-      onCreated?.(resp.asset_id ?? "");
+
+      // Invalidate every relevant cache so lists refresh
+      await mutate((key) => typeof key === "string" && (
+        key.startsWith("/api/assets") ||
+        key.startsWith("/api/contacts")
+      ));
+      onCreated?.(resp.asset_id ?? resp.contact_id ?? "");
       onClose();
     } catch (e: unknown) {
       setError((e as Error).message ?? "创建失败");

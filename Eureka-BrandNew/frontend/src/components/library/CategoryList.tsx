@@ -47,12 +47,18 @@ export function CategoryList() {
   for (const s of skills) {
     if (s.name === "qa" || s.name === "external_ref") continue;
     if (!s.render_spec) continue; // system skills
+    // Contact's "真身" lives in the contacts table — the asset-skill is just
+    // a timeline reference shape (per Phase B v1.4 §三). Show real contacts
+    // here, not the reference assets.
+    const count = s.name === "contact"
+      ? (contacts.data?.contacts?.length ?? 0)
+      : (assetCounts.get(s.name) ?? 0);
     rows.push({
       to: `/library/${s.name}`,
       icon: s.render_spec.icon ?? "•",
       accent: (s.render_spec.accent_color ?? "gray") as AccentColor,
       label: s.display_name || s.name,
-      count: assetCounts.get(s.name) ?? 0,
+      count,
       sub: subLabelForSkill(s.name),
     });
   }
@@ -78,9 +84,8 @@ export function CategoryList() {
     count: files.data?.files?.length ?? 0,
     sub: "录音 / 上传",
   });
-  // (contacts SWR still loads in case the contact CategoryDetail wants it,
-  // but it's not surfaced as a separate row to avoid duplicating 名片)
-  void contacts;
+  // (contacts SWR result used above for 名片's real count — keep the fetch
+  // running even when no per-row needs it explicitly)
 
   return (
     <div className="px-eu-md pt-eu-md flex flex-col gap-eu-sm">

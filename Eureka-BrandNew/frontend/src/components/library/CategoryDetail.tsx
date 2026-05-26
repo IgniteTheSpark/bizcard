@@ -32,12 +32,13 @@ export function CategoryDetail() {
 
   const skill = bySkill.get(skillName);
 
-  // Determine data source for this skill
+  // Determine data source for this skill.
+  // contact: 真身 lives in /api/contacts (per Phase B v1.4); asset-skill is
+  // only a timeline reference. Always read from contacts table for the
+  // library view.
   const isEvent   = skillName === "event";
   const isFile    = skillName === "file";
-  const isContact = skillName === "contact" && !skill;
-  // (regular skill 'contact' is asset-backed; first-class 'contact' table is
-  // accessed when no skill registered — defensive)
+  const isContact = skillName === "contact";
 
   const assetsHook = useAssets({
     skillName: !isEvent && !isFile && !isContact ? skillName : undefined,
