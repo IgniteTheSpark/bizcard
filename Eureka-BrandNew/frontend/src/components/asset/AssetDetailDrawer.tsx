@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { ExternalLink, MessageCircle, X } from "lucide-react";
 
 import { GenericField } from "@/components/skill/GenericField";
+import { useModalMount } from "@/context/ModalContext";
 import type { CardData, FieldFormat } from "@/lib/render-spec";
 
 /**
@@ -22,6 +23,7 @@ interface AssetDetailDrawerProps {
 }
 
 export function AssetDetailDrawer({ card, payload, onClose }: AssetDetailDrawerProps) {
+  useModalMount();
   // Esc to close
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

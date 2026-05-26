@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
+import { useModalMount } from "@/context/ModalContext";
+import { SkillCreateForm } from "@/components/skill/SkillCreateForm";
 import type { AccentColor } from "@/lib/render-spec";
+import type { Skill } from "@/lib/types";
 
 /**
  * CreateAssetMenu — bottom-sheet menu shown when user taps the + button on
@@ -23,9 +27,26 @@ interface CreateAssetMenuProps {
 }
 
 export function CreateAssetMenu({ open, onClose }: CreateAssetMenuProps) {
+  if (!open) return null;
+  return <CreateAssetMenuBody onClose={onClose} />;
+}
+
+function CreateAssetMenuBody({ onClose }: { onClose: () => void }) {
+  useModalMount();
   const navigate = useNavigate();
   const { skills } = useSkillRegistry();
-  if (!open) return null;
+  // When user picks a skill, swap the menu for that skill's create form.
+  // (We don't unmount this component — the form sits as a sibling overlay.)
+  const [activeSkill, setActiveSkill] = useState<Skill | null>(null);
+
+  if (activeSkill) {
+    return (
+      <SkillCreateForm
+        skill={activeSkill}
+        onClose={() => { setActiveSkill(null); onClose(); }}
+      />
+    );
+  }
 
   const creatable = skills.filter(
     (s) => s.render_spec && s.name !== "qa" && s.name !== "external_ref",
@@ -33,7 +54,9 @@ export function CreateAssetMenu({ open, onClose }: CreateAssetMenuProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-eu-bg/70 backdrop-blur-sm flex items-end md:items-center justify-center"
+      // Heavy backdrop so the FloatingDock (Agent pill, calendar badge etc.)
+      // doesn't bleed through and clash with the menu content above.
+      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md flex items-end md:items-center justify-center"
       onClick={onClose}
     >
       <div
@@ -89,7 +112,7 @@ export function CreateAssetMenu({ open, onClose }: CreateAssetMenuProps) {
               icon={s.render_spec!.icon ?? "•"}
               label={s.display_name}
               accent={(s.render_spec!.accent_color ?? "gray") as AccentColor}
-              onClick={() => { onClose(); navigate(`/library/${s.name}`); }}
+              onClick={() => setActiveSkill(s)}
             />
           ))}
         </div>

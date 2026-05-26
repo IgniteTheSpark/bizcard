@@ -5,11 +5,13 @@ import { ChatPage } from "@/pages/ChatPage";
 import { CalendarPage } from "@/pages/CalendarPage";
 import { LibraryPage } from "@/pages/LibraryPage";
 import { NotificationPage } from "@/pages/NotificationPage";
+import { ModalProvider } from "@/context/ModalContext";
 import { PresentationModeProvider } from "@/context/PresentationModeContext";
 
 export default function App() {
   return (
     <PresentationModeProvider>
+      <ModalProvider>
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/chat" replace />} />
@@ -21,6 +23,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/chat" replace />} />
         </Route>
       </Routes>
+      </ModalProvider>
     </PresentationModeProvider>
   );
 }

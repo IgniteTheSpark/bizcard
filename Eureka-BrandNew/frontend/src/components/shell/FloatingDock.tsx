@@ -3,6 +3,7 @@ import { Calendar, Grid3x3, Mic, Plus, Send, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
+import { useIsAnyModalOpen, useModalMount } from "@/context/ModalContext";
 
 /**
  * FloatingDock — global floating action capsule, replaces the old bottom
@@ -26,12 +27,16 @@ export function FloatingDock() {
   const [flashOpen, setFlashOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const today = new Date().getDate();
+  // Hide the dock whenever any modal is mounted — backdrop-blur + saturated
+  // dock items would otherwise bleed through any z-50 backdrop overlay.
+  const hidden = useIsAnyModalOpen();
 
   return (
     <>
       {/* Capsule — fixed bottom, centered, with safe-area + margin from edge */}
       <nav
         aria-label="主要操作"
+        aria-hidden={hidden}
         className={[
           "fixed bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]",
           "left-1/2 -translate-x-1/2 z-30",
@@ -39,6 +44,8 @@ export function FloatingDock() {
           "h-14 px-2 rounded-eu-full",
           "bg-eu-surface-raised/85 backdrop-blur-md",
           "border border-eu-border shadow-eu-lg",
+          "transition-all duration-eu-fast ease-eu-out",
+          hidden ? "opacity-0 pointer-events-none translate-y-3" : "",
         ].join(" ")}
       >
         <DockIcon ariaLabel="今天" onClick={() => navigate("/calendar")}>
@@ -143,6 +150,7 @@ function Divider() {
 /* ── Flash sheet (was FlashFab) ────────────────────────────────────────── */
 
 function FlashSheet({ onClose }: { onClose: () => void }) {
+  useModalMount();
   const [text, setText] = useState("");
 
   function submit() {
@@ -154,7 +162,8 @@ function FlashSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-eu-bg/80 backdrop-blur-sm"
+      // Heavy backdrop so FloatingDock items don't bleed into the sheet.
+      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md"
       onClick={onClose}
     >
       <div
