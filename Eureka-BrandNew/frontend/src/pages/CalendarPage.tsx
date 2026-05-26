@@ -1,15 +1,269 @@
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, List, LayoutGrid, Plus } from "lucide-react";
+
+import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
+import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
+import { EventEditor } from "@/components/calendar/EventEditor";
+import { MonthGrid } from "@/components/calendar/MonthGrid";
+import { ScheduleView } from "@/components/calendar/ScheduleView";
+import { useEvents, findEvent } from "@/hooks/useEvents";
+import { useSkillRegistry } from "@/hooks/useSkillRegistry";
+import { swrFetcher } from "@/lib/api";
+import { buildCard } from "@/lib/render-spec";
+import useSWR from "swr";
+import type { AssetsResponse, TimelineItem } from "@/lib/types";
+
 /**
- * CalendarPage — M0 stub. M3 builds out:
- *  - ScheduleView (consumes /api/timeline)
- *  - MonthGrid + DayDetailSheet
- *  - EventEditor (modal)
+ * CalendarPage — M3.
+ *
+ * Layout:
+ *   ┌──────────────────────────────────────────────┐
+ *   │ « 2026年5月 » │ [Schedule | Month] │ + 新建   │ ← CalendarHeader
+ *   ├──────────────────────────────────────────────┤
+ *   │                                              │
+ *   │   <ScheduleView/> or <MonthGrid/>            │
+ *   │                                              │
+ *   └──────────────────────────────────────────────┘
+ *
+ * Interactions:
+ *   - Schedule row tap → event → EventEditor (edit); asset → AssetDetailDrawer
+ *   - Month day tap   → DayDetailSheet (which can route to either above)
+ *   - + 新建事件       → EventEditor (create, defaults to now)
+ *
+ * MonthGrid uses a navigable cursor (prev/next month); ScheduleView always
+ * shows everything sorted desc (no cursor).
  */
+
+type View = "schedule" | "month";
+
 export function CalendarPage() {
+  const [view, setView]                 = useState<View>("schedule");
+  const [cursor, setCursor]             = useState<Date>(() => new Date());
+  const [dayDetailKey, setDayDetailKey] = useState<string | null>(null);
+  const [editingId, setEditingId]       = useState<string | null>(null);
+  const [createDefault, setCreateDefault] = useState<Date | undefined>(undefined);
+  const [creating, setCreating]         = useState(false);
+  const [openAssetId, setOpenAssetId]   = useState<string | null>(null);
+
+  const { events } = useEvents();
+  const editingEvent = findEvent(events, editingId);
+
+  function handleItemTap(item: TimelineItem) {
+    if (item.kind === "event") {
+      setEditingId(item.event_id ?? item.id);
+    } else {
+      setOpenAssetId(item.id);
+    }
+    // Tap on a row from DayDetailSheet should also close that sheet so the
+    // editor/drawer takes over the screen cleanly.
+    setDayDetailKey(null);
+  }
+
+  function handleNewEvent() {
+    setCreateDefault(undefined);
+    setCreating(true);
+  }
+
+  function handleCreateFromDay(dayKey: string) {
+    setDayDetailKey(null);
+    // Build a sensible default time on that day: 09:00 local.
+    const [y, m, d] = dayKey.split("-").map(Number);
+    const def = new Date(y, m - 1, d, 9, 0, 0, 0);
+    setCreateDefault(def);
+    setCreating(true);
+  }
+
+  function shiftMonth(delta: number) {
+    setCursor((c) => {
+      const next = new Date(c);
+      next.setMonth(next.getMonth() + delta);
+      return next;
+    });
+  }
+
   return (
-    <div className="p-eu-lg">
-      <p className="text-eu-text-mid text-eu-sm">
-        Calendar page — coming in M3 (Schedule / Month / DayDetail / EventEditor).
-      </p>
+    <div className="flex flex-col h-full">
+      <CalendarHeader
+        view={view}
+        onSetView={setView}
+        cursor={cursor}
+        onShiftMonth={shiftMonth}
+        onToday={() => setCursor(new Date())}
+        onNewEvent={handleNewEvent}
+      />
+
+      <div className="flex-1 overflow-y-auto">
+        {view === "schedule"
+          ? <ScheduleView onItemTap={handleItemTap} />
+          : <MonthGrid cursor={cursor} onDayTap={(k) => setDayDetailKey(k)} />}
+      </div>
+
+      {/* ── overlays ─────────────────────────────────────────────────── */}
+
+      {dayDetailKey && (
+        <DayDetailSheet
+          dayKey={dayDetailKey}
+          onClose={() => setDayDetailKey(null)}
+          onItemTap={handleItemTap}
+          onCreateEvent={handleCreateFromDay}
+        />
+      )}
+
+      {creating && (
+        <EventEditor
+          defaultStart={createDefault}
+          onClose={() => { setCreating(false); setCreateDefault(undefined); }}
+        />
+      )}
+
+      {editingEvent && (
+        <EventEditor
+          existing={editingEvent}
+          onClose={() => setEditingId(null)}
+        />
+      )}
+
+      {openAssetId && (
+        <AssetDetailModal
+          assetId={openAssetId}
+          onClose={() => setOpenAssetId(null)}
+        />
+      )}
     </div>
+  );
+}
+
+/* ── CalendarHeader ────────────────────────────────────────────────────── */
+
+function CalendarHeader({
+  view, onSetView, cursor, onShiftMonth, onToday, onNewEvent,
+}: {
+  view: View;
+  onSetView: (v: View) => void;
+  cursor: Date;
+  onShiftMonth: (delta: number) => void;
+  onToday: () => void;
+  onNewEvent: () => void;
+}) {
+  const label = view === "month"
+    ? `${cursor.getFullYear()}年${cursor.getMonth() + 1}月`
+    : "日程";
+
+  return (
+    <header className="flex items-center gap-eu-sm px-eu-md py-eu-sm border-b border-eu-rule">
+      {view === "month" && (
+        <>
+          <IconBtn ariaLabel="上个月" onClick={() => onShiftMonth(-1)}>
+            <ChevronLeft size={16} strokeWidth={1.75} />
+          </IconBtn>
+          <button
+            type="button"
+            onClick={onToday}
+            className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo hover:text-eu-text-hi font-mono"
+          >
+            今天
+          </button>
+          <IconBtn ariaLabel="下个月" onClick={() => onShiftMonth(1)}>
+            <ChevronRight size={16} strokeWidth={1.75} />
+          </IconBtn>
+        </>
+      )}
+      <h1 className="font-display text-eu-lg text-eu-text-hi tracking-tight">
+        {label}
+      </h1>
+
+      <div className="ml-auto flex items-center gap-eu-sm">
+        <div className="inline-flex rounded-eu-md border border-eu-border p-0.5">
+          <ToggleBtn active={view === "schedule"} onClick={() => onSetView("schedule")}>
+            <List size={14} strokeWidth={1.75} />
+            日程
+          </ToggleBtn>
+          <ToggleBtn active={view === "month"} onClick={() => onSetView("month")}>
+            <LayoutGrid size={14} strokeWidth={1.75} />
+            月
+          </ToggleBtn>
+        </div>
+        <button
+          type="button"
+          onClick={onNewEvent}
+          className={[
+            "inline-flex items-center gap-1 px-eu-sm py-eu-xs rounded-eu-md text-eu-sm font-medium",
+            "bg-eu-brand text-white hover:bg-eu-brand-hi",
+            "transition-colors duration-eu-fast",
+          ].join(" ")}
+        >
+          <Plus size={14} strokeWidth={2} />
+          新建事件
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function IconBtn({
+  ariaLabel, onClick, children,
+}: { ariaLabel: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onClick={onClick}
+      className="h-7 w-7 rounded-eu-md inline-flex items-center justify-center text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
+    >
+      {children}
+    </button>
+  );
+}
+
+function ToggleBtn({
+  active, onClick, children,
+}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "inline-flex items-center gap-1 px-eu-sm py-1 rounded-eu-sm text-eu-xs font-mono",
+        "transition-colors duration-eu-fast",
+        active
+          ? "bg-eu-surface-hover text-eu-text-hi"
+          : "text-eu-text-mid hover:text-eu-text-hi",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * AssetDetailModal — convenience wrapper that loads an asset by id and renders
+ * AssetDetailDrawer when ready. CalendarPage opens this when the user taps a
+ * non-event timeline item (todo / idea / etc.).
+ *
+ * Uses the same /api/assets list endpoint as ContextChipRail does — for the
+ * MVP scale of <500 assets this is cheap and avoids a per-id round-trip.
+ */
+function AssetDetailModal({ assetId, onClose }: { assetId: string; onClose: () => void }) {
+  const { bySkill } = useSkillRegistry();
+  const { data } = useSWR<AssetsResponse>("/api/assets?limit=500", swrFetcher);
+  const asset = data?.assets.find((a) => a.id === assetId);
+  if (!asset) return null;
+
+  const skill = bySkill.get(asset.user_skill_name);
+  const card = buildCard({
+    payload: asset.payload,
+    spec: skill?.render_spec ?? null,
+    assetId: asset.id,
+    cardType: asset.user_skill_name,
+    displayName: skill?.display_name ?? asset.user_skill_name,
+  });
+
+  return (
+    <AssetDetailDrawer
+      card={card}
+      payload={asset.payload}
+      sourceSessionId={asset.session_id}
+      onClose={onClose}
+    />
   );
 }

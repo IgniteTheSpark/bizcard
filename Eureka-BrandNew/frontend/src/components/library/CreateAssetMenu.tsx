@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { useModalMount } from "@/context/ModalContext";
 import { SkillCreateForm } from "@/components/skill/SkillCreateForm";
+import { EventEditor } from "@/components/calendar/EventEditor";
 import type { AccentColor } from "@/lib/render-spec";
 import type { Skill } from "@/lib/types";
 
@@ -40,6 +41,17 @@ function CreateAssetMenuBody({ onClose }: { onClose: () => void }) {
   const [activeSkill, setActiveSkill] = useState<Skill | null>(null);
 
   if (activeSkill) {
+    // Events are a first-class entity (FK columns, attendees, etc.) — they
+    // get a dedicated EventEditor with start/end pickers + all-day toggle,
+    // not the generic schema-driven form. Everything else still uses
+    // SkillCreateForm.
+    if (activeSkill.name === "event") {
+      return (
+        <EventEditor
+          onClose={() => { setActiveSkill(null); onClose(); }}
+        />
+      );
+    }
     return (
       <SkillCreateForm
         skill={activeSkill}

@@ -69,6 +69,43 @@ export interface EventsResponse {
   events: Event[];
 }
 
+/* ── /api/timeline ──────────────────────────────────────────────────────── */
+
+/**
+ * TimelineItem — uniform record across asset / event so the timeline view can
+ * group + sort by effective_at. Backend returns both kinds in one array
+ * (sorted descending by effective_at).
+ *
+ * `kind: "event"` items carry event-specific fields (end_at, location, all_day,
+ * event_id). `kind: "asset"` items carry asset fields (skill_name, payload,
+ * session_id). Use kind to discriminate.
+ */
+export interface TimelineItem {
+  kind: "event" | "asset";
+  id: string;
+  effective_at: string;
+  created_at: string;
+  title: string;
+  subtitle?: string;
+  source_input_turn_id: string | null;
+
+  // event-only
+  event_id?: string;
+  end_at?: string | null;
+  location?: string | null;
+  all_day?: boolean;
+
+  // asset-only
+  skill_name?: string;
+  session_id?: string | null;
+  payload?: Record<string, unknown>;
+}
+
+export interface TimelineResponse {
+  ok: boolean;
+  items: TimelineItem[];
+}
+
 /* ── /api/files ─────────────────────────────────────────────────────────── */
 
 export interface FileRow {
