@@ -56,17 +56,90 @@ export interface RenderSpec {
 }
 
 /**
- * Card shape produced from a (payload, render_spec) pair — what SkillCard
- * consumes. M1 implements the builder; M0 just exports the type so other
- * scaffold imports compile.
+ * Card data produced from a (payload, render_spec) pair — what SkillCard
+ * consumes. The interpreter (`buildCard` below) normalizes the heterogeneous
+ * skill data into this single shape; SkillCard then renders it according to
+ * `layout`.
  */
-export interface SkillCardProps {
-  cardType: string; // skill machine name (todo / idea / notes / …)
+export interface CardData {
+  cardType: string;        // skill machine name (todo / idea / notes / …)
+  layout: CardLayout;
+  icon: string;
+  accentColor: AccentColor;
   title: string;
-  subtitle?: string;
-  icon?: string;
-  accentColor?: AccentColor;
-  metaFields?: Array<{ field: string; value: string; format?: FieldFormat }>;
-  actions?: CardAction[];
-  assetId?: string | null;
+  subtitle: string;
+  metaFields: Array<{ field: string; value: string; format?: FieldFormat }>;
+  actions: CardAction[];
+  assetId: string | null;
+}
+
+/* ── Interpreter ──────────────────────────────────────────────────────────
+ *
+ * buildCard(payload, spec, fallback) — converts an asset's payload + its
+ * UserSkill.render_spec into normalized CardData for the SkillCard renderer.
+ *
+ * `fallback` lets the caller pass the skill's display_name + machine_name
+ * for sensible defaults when primary_field resolves to empty.
+ *
+ * Mirrors backend's _build_card_from_render_spec in agents/flash_pipeline.py.
+ * Stays sync (no DB); takes the resolved spec in.
+ */
+
+import { applyFormat } from "./format";
+
+export interface BuildCardInput {
+  payload: Record<string, unknown>;
+  spec: RenderSpec | null;
+  assetId: string | null;
+  cardType: string;        // usually = skill machine name
+  displayName: string;     // for title fallback when payload[primary_field] is empty
+}
+
+const DEFAULT_LAYOUT: CardLayout = "horizontal";
+const DEFAULT_ACCENT: AccentColor = "gray";
+const DEFAULT_ICON = "•";
+
+export function buildCard(input: BuildCardInput): CardData {
+  const { payload, spec, assetId, cardType, displayName } = input;
+
+  // Defensive: render_spec can be null (qa-skill, system skills) or partial.
+  if (!spec) {
+    return {
+      cardType,
+      layout: DEFAULT_LAYOUT,
+      icon: DEFAULT_ICON,
+      accentColor: DEFAULT_ACCENT,
+      title: displayName || cardType,
+      subtitle: "",
+      metaFields: [],
+      actions: [],
+      assetId,
+    };
+  }
+
+  const primaryRaw = spec.primary_field ? payload[spec.primary_field] : undefined;
+  const secondaryRaw = spec.secondary_field ? payload[spec.secondary_field] : undefined;
+
+  const title = applyFormat(primaryRaw, spec.primary_format) || displayName || cardType;
+  const subtitle = applyFormat(secondaryRaw, spec.secondary_format);
+
+  const metaFields = (spec.meta_fields ?? [])
+    .map((mf) => {
+      const raw = payload[mf.field];
+      const value = applyFormat(raw, mf.format);
+      return value ? { field: mf.field, value, format: mf.format } : null;
+    })
+    .filter((m): m is NonNullable<typeof m> => m !== null);
+
+  return {
+    cardType,
+    layout: spec.card_layout ?? DEFAULT_LAYOUT,
+    icon: spec.icon ?? DEFAULT_ICON,
+    accentColor: spec.accent_color ?? DEFAULT_ACCENT,
+    title,
+    subtitle,
+    metaFields,
+    actions: spec.actions ?? [],
+    assetId,
+  };
 }

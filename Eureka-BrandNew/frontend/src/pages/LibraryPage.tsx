@@ -1,17 +1,23 @@
+import { Route, Routes } from "react-router-dom";
+
+import { CategoryList } from "@/components/library/CategoryList";
+import { CategoryDetail } from "@/components/library/CategoryDetail";
+
 /**
- * LibraryPage — M0 stub. M1 builds out:
- *  - CategoryList (8 types, count, +button)
- *  - CategoryDetail (per-type asset list using SkillCard)
- *  - AssetDetailDrawer (read-only)
- *  - CreateAssetMenu
- * M5 adds AddSkillWizard entry.
+ * LibraryPage — root container for the "资产库" surface.
+ *
+ * Two states:
+ *   - /library              → CategoryList (primary, iOS-Files style)
+ *   - /library/:skillName   → CategoryDetail (drill-down for one type)
+ *
+ * Nested routes are declared here so React Router DOM scopes them under
+ * /library; the App.tsx router uses /library/* to delegate.
  */
 export function LibraryPage() {
   return (
-    <div className="p-eu-lg">
-      <p className="text-eu-text-mid text-eu-sm">
-        Library page — coming in M1 (8 category rows + drill-down + AssetDetailDrawer).
-      </p>
-    </div>
+    <Routes>
+      <Route index element={<CategoryList />} />
+      <Route path=":skillName" element={<CategoryDetail />} />
+    </Routes>
   );
 }

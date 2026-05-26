@@ -15,7 +15,7 @@ export default function App() {
           <Route index element={<Navigate to="/chat" replace />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/library" element={<LibraryPage />} />
+          <Route path="/library/*" element={<LibraryPage />} />
           <Route path="/notifications" element={<NotificationPage />} />
           {/* Catch-all → chat for now; will become 404 page later */}
           <Route path="*" element={<Navigate to="/chat" replace />} />

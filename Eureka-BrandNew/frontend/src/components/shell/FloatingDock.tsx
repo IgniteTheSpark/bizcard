@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Calendar, Grid3x3, Mic, Plus, Send, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
+
 /**
  * FloatingDock — global floating action capsule, replaces the old bottom
  * TabBar. Always present (across all pages), floats above content with margin
@@ -99,9 +101,7 @@ export function FloatingDock() {
       {flashOpen && (
         <FlashSheet onClose={() => setFlashOpen(false)} />
       )}
-      {createOpen && (
-        <CreateMenuPlaceholder onClose={() => setCreateOpen(false)} />
-      )}
+      <CreateAssetMenu open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
   );
 }
@@ -223,37 +223,3 @@ function FlashSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* ── Quick-create menu placeholder ─────────────────────────────────────── */
-// M1 builds the real CreateAssetMenu (drop-down to choose skill type → form).
-// For M0/dock-amendment we just open a placeholder so the (+) click feels alive.
-
-function CreateMenuPlaceholder({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-eu-bg/80 backdrop-blur-sm flex items-end md:items-center justify-center"
-      onClick={onClose}
-    >
-      <div
-        className={[
-          "w-full md:w-[360px] max-w-md mx-eu-md",
-          "bg-eu-surface-raised border border-eu-border rounded-eu-xl",
-          "p-eu-lg pb-safe shadow-eu-lg",
-          "flex flex-col gap-eu-sm",
-        ].join(" ")}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="font-display text-eu-lg text-eu-text-hi">快速创建</h2>
-        <p className="text-eu-sm text-eu-text-mid">
-          M1 接入 — 这里会列出 todo / event / idea / notes / contact … 等创建入口。
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="self-end px-eu-md py-eu-sm text-eu-sm text-eu-text-mid hover:text-eu-text-hi"
-        >
-          关闭
-        </button>
-      </div>
-    </div>
-  );
-}
