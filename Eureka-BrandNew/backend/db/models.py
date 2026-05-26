@@ -71,10 +71,15 @@ class Session(Base):
     session_type = Column(String(20), nullable=False)   # flash | chat | meeting | manual
     title        = Column(String(255))
     date         = Column(Date)                          # natural-day grouping for flash; null for others
-    event_id     = Column(UUID(as_uuid=True), ForeignKey("events.id"))   # v1.4: chat session anchored to an event (nullable)
-    # M2.2: assets the user attached as contextual input to this session.
-    # The Assistant prompt loads + injects these so the agent can combine
-    # ideas / derive new todos / etc. Mutable during chat.
+    # ── Subject FKs (M2.3) — each asset/entity has ONE home discussion
+    # session. get-or-create on「在 chat 里讨论」. Exactly one of these is
+    # set per chat-discussion session (manual/flash sessions have none set).
+    event_id          = Column(UUID(as_uuid=True), ForeignKey("events.id"))    # v1.4
+    contact_id        = Column(UUID(as_uuid=True), ForeignKey("contacts.id"))  # M2.3
+    file_id           = Column(UUID(as_uuid=True), ForeignKey("files.id"))     # M2.3
+    subject_asset_id  = Column(UUID(as_uuid=True), ForeignKey("assets.id"))    # M2.3
+    # ── Additive context (M2.2) — assets pulled into discussion via
+    # 「+ 添加资产」, mutable list. Distinct from subject FK above.
     context_asset_ids = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
     created_at   = Column(TIMESTAMPTZ, server_default=func.now())
 

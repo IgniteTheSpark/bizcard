@@ -1,9 +1,11 @@
 import { useState } from "react";
-import useSWR from "swr";
-import { Sparkles } from "lucide-react";
+import useSWR, { useSWRConfig } from "swr";
+import { Plus, Sparkles, X as XIcon } from "lucide-react";
 
 import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
+import { AssetPickerSheet } from "@/components/chat/AssetPickerSheet";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
+import { patchSessionContext } from "@/hooks/useSessions";
 import { swrFetcher } from "@/lib/api";
 import { buildCard } from "@/lib/render-spec";
 import type { AssetsResponse } from "@/lib/types";
@@ -25,12 +27,41 @@ import type { CardData } from "@/lib/render-spec";
  */
 
 interface ContextChipRailProps {
+  /** The current session's context_asset_ids */
   assetIds: string[];
+  /** Session whose context we're editing — null disables add/remove buttons */
+  sessionId: string | null;
 }
 
-export function ContextChipRail({ assetIds }: ContextChipRailProps) {
+export function ContextChipRail({ assetIds, sessionId }: ContextChipRailProps) {
   const { bySkill } = useSkillRegistry();
+  const { mutate } = useSWRConfig();
   const [openId, setOpenId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function handleAdd(ids: string[]) {
+    if (!sessionId) return;
+    setBusy(true);
+    try {
+      await patchSessionContext(sessionId, { add: ids });
+      await mutate(`/api/sessions/${sessionId}`);
+    } finally {
+      setBusy(false);
+      setPickerOpen(false);
+    }
+  }
+
+  async function handleRemove(id: string) {
+    if (!sessionId || busy) return;
+    setBusy(true);
+    try {
+      await patchSessionContext(sessionId, { remove: [id] });
+      await mutate(`/api/sessions/${sessionId}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Fetch all assets once (capped at 500 backend-side); filter to the
   // requested ids. For small N this is fine and avoids per-id round-trips
@@ -44,7 +75,10 @@ export function ContextChipRail({ assetIds }: ContextChipRailProps) {
     .map((id) => allAssets.find((a) => a.id === id))
     .filter((a): a is NonNullable<typeof a> => a != null);
 
-  if (assetIds.length === 0) return null;
+  // Render even when assetIds is empty so the「+ 添加资产」 button stays
+  // accessible (subject-only sessions still want to grow context).
+  const showRail = assetIds.length > 0 || sessionId != null;
+  if (!showRail) return null;
 
   const openEntry = openId ? matched.find((a) => a.id === openId) : null;
   const openCard: CardData | null = openEntry
@@ -84,24 +118,57 @@ export function ContextChipRail({ assetIds }: ContextChipRailProps) {
             a.user_skill_name
           );
           return (
-            <button
+            <div
               key={a.id}
-              type="button"
-              onClick={() => setOpenId(a.id)}
               className={[
-                "shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded-eu-full",
+                "shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-eu-full",
                 ACCENT_CHIP[accent],
                 "border text-eu-sm",
-                "hover:brightness-110 active:scale-95",
+                "hover:brightness-110",
                 "transition-all duration-eu-fast",
-                "max-w-[20ch]",
+                "max-w-[22ch]",
               ].join(" ")}
             >
-              <span className="font-mono shrink-0">{icon}</span>
-              <span className="truncate">{String(title)}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setOpenId(a.id)}
+                className="inline-flex items-center gap-1.5 min-w-0 active:scale-95"
+              >
+                <span className="font-mono shrink-0">{icon}</span>
+                <span className="truncate">{String(title)}</span>
+              </button>
+              {sessionId && (
+                <button
+                  type="button"
+                  aria-label="移除"
+                  onClick={() => handleRemove(a.id)}
+                  disabled={busy}
+                  className="shrink-0 ml-0.5 -mr-0.5 p-0.5 rounded-full hover:bg-white/10 disabled:opacity-50"
+                >
+                  <XIcon size={11} strokeWidth={2} />
+                </button>
+              )}
+            </div>
           );
         })}
+
+        {sessionId && (
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            disabled={busy}
+            className={[
+              "shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-eu-full",
+              "border border-dashed border-eu-border text-eu-text-mid text-eu-sm",
+              "hover:bg-eu-surface-hover hover:text-eu-text-hi hover:border-eu-border-strong",
+              "active:scale-95 disabled:opacity-50",
+              "transition-all duration-eu-fast",
+            ].join(" ")}
+          >
+            <Plus size={12} strokeWidth={2} />
+            添加资产
+          </button>
+        )}
       </div>
 
       {openCard && openEntry && (
@@ -110,6 +177,14 @@ export function ContextChipRail({ assetIds }: ContextChipRailProps) {
           payload={openEntry.payload}
           sourceSessionId={openEntry.session_id}
           onClose={() => setOpenId(null)}
+        />
+      )}
+
+      {pickerOpen && (
+        <AssetPickerSheet
+          onConfirm={handleAdd}
+          onClose={() => setPickerOpen(false)}
+          excludeIds={assetIds}
         />
       )}
     </>

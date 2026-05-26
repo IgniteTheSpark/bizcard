@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models import (
     Message, Session as DBSession, InputTurn,
     Asset, UserSkill, GlobalSkill, Event,
+    Contact, File,
 )
 
 
@@ -303,6 +304,89 @@ async def load_session_context_hint(
     if not lines:
         return ""
     return "\n".join(lines)
+
+
+async def load_session_subject_hint(
+    db: AsyncSession,
+    session_id: str,
+    user_id: str,
+) -> str:
+    """
+    Build a「本 session 主语」 block for the Assistant prompt (M2.3).
+
+    Subjects are immutable home FKs:
+      sessions.contact_id       → 1 contact
+      sessions.event_id         → 1 event
+      sessions.file_id          → 1 file
+      sessions.subject_asset_id → 1 asset (sub-asset type)
+
+    The subject is the **focal point** of the conversation — the Agent
+    should treat user questions as primarily about this entity by default,
+    with context_asset_ids as ad-hoc additions.
+
+    Returns "" when no subject (manual / flash / new chat sessions).
+    """
+    sess = (await db.execute(
+        select(DBSession).where(
+            DBSession.id == uuid.UUID(session_id),
+            DBSession.user_id == user_id,
+        )
+    )).scalar_one_or_none()
+    if not sess:
+        return ""
+
+    if sess.contact_id:
+        c = (await db.execute(
+            select(Contact).where(Contact.id == sess.contact_id)
+        )).scalar_one_or_none()
+        if c:
+            bits = [f"姓名:{c.name}"]
+            if c.company: bits.append(f"公司:{c.company}")
+            if c.title:   bits.append(f"职位:{c.title}")
+            if c.phone:   bits.append(f"电话:{c.phone}")
+            if c.email:   bits.append(f"邮箱:{c.email}")
+            return f"- contact (contact_id={c.id}): {' / '.join(bits)}"
+
+    if sess.event_id:
+        e = (await db.execute(
+            select(Event).where(Event.id == sess.event_id)
+        )).scalar_one_or_none()
+        if e:
+            when = e.start_at.isoformat() if e.start_at else "?"
+            return (
+                f"- event (event_id={e.id}): 「{e.title}」 "
+                f"start={when} location={e.location or '-'}"
+            )
+
+    if sess.file_id:
+        f = (await db.execute(
+            select(File).where(File.id == sess.file_id)
+        )).scalar_one_or_none()
+        if f:
+            return f"- file (file_id={f.id}): type={f.file_type} source={f.source_tag}"
+
+    if sess.subject_asset_id:
+        result = (await db.execute(
+            select(Asset, GlobalSkill.name.label("skill_name"))
+            .join(UserSkill, Asset.user_skill_id == UserSkill.id)
+            .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
+            .where(Asset.id == sess.subject_asset_id)
+        )).first()
+        if result:
+            asset, skill_name = result
+            p = asset.payload or {}
+            title = p.get("content") or p.get("title") or p.get("name") or f"[{skill_name}]"
+            extras = []
+            if skill_name == "todo" and p.get("due_date"):
+                extras.append(f"due {p['due_date']}")
+            if skill_name == "todo" and p.get("status"):
+                extras.append(f"status={p['status']}")
+            if p.get("description"):
+                extras.append(f'desc="{str(p["description"])[:60]}"')
+            suffix = (" " + " ".join(extras)) if extras else ""
+            return f"- {skill_name} (asset_id={asset.id}): 「{str(title)[:60]}」{suffix}"
+
+    return ""
 
 
 async def persist_chat_turn(

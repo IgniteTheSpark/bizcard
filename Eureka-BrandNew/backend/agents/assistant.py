@@ -99,6 +99,7 @@ def make_assistant_agent(
     today_str: str = "",
     session_assets_hint: str = "",
     session_context_hint: str = "",
+    session_subject_hint: str = "",
 ) -> LlmAgent:
     """
     Build a fresh Assistant LlmAgent with this turn's session_id and
@@ -151,16 +152,27 @@ def make_assistant_agent(
             "  即使用户提到了「刚刚那个」也只是用作背景指代,不要去 update 它\n"
         )
 
+    if session_subject_hint:
+        instruction += (
+            "\n## 本 session 主语(home subject,**永久焦点**)\n"
+            + session_subject_hint
+            + "\n→ 整个 session **就是关于这一个**资产/实体的对话\n"
+            "→ 用户的问题默认以这个主语为中心,即使没明说\n"
+            "  例:contact 主语=Kevin,用户说「他最近在忙什么」→「他」=Kevin\n"
+            "  例:asset 主语=todo X,用户说「拆成几步」→ 拆 todo X\n"
+            "→ 默认不需要 query_* 来找它,subject 信息已经在上面给出\n"
+        )
+
     if session_context_hint:
         instruction += (
-            "\n## 本 session 携带的上下文资产(用户显式带入,**主语**!)\n"
+            "\n## 本 session 附加上下文资产(用户在 chat 里临时拉进来的辅料)\n"
             + session_context_hint
-            + "\n→ 这些是用户**主动选来要让你处理**的资产(从 Library 点「在 chat 里讨论」带进来)\n"
-            "→ 用户的问题大概率是**围绕这些资产**展开:组合 / 总结 / 派生 / 改写 / 分析\n"
-            "→ 当你 update 或派生新资产时,asset_id 优先从这里挑,无需 query_asset\n"
-            "→ 即使用户没明说,默认假设他们想做的事跟这些资产有关\n"
-            "  例:context 是 3 个 idea,用户说「串成一个产品方案」→ 把这 3 个 idea 内容\n"
-            "      拼起来 + 你的提炼,作为 CHAT-ANSWER 回复(或在用户授权后用 create_asset(notes))\n"
+            + "\n→ 这些是用户**额外**带入的资产,跟主语**配合使用**\n"
+            "→ 典型用法:把主语和这些附加资产**结合**起来分析 / 派生 / 比较\n"
+            "  例:主语=Kevin (contact),附加=「产品应该年轻化」(idea)\n"
+            "       用户问「他适合做这个吗」 → 综合 Kevin 的职位/背景 + idea 的内容判断\n"
+            "  例:附加=3 个 idea,用户问「串成产品方案」→ 把 3 个 idea 内容拼合 + 你的提炼\n"
+            "→ update / 派生新资产时,asset_id 优先从这里挑,无需 query_asset\n"
         )
 
     if event_id:

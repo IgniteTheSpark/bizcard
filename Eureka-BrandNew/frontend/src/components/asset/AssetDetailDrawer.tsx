@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import { GenericField } from "@/components/skill/GenericField";
 import { useModalMount } from "@/context/ModalContext";
-import { createChatSessionWithContext } from "@/hooks/useSessions";
+import { getOrCreateSubjectSession, type SubjectType } from "@/hooks/useSessions";
 import type { CardData, FieldFormat } from "@/lib/render-spec";
 
 /**
@@ -43,23 +43,34 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  /** 在 chat 里讨论 — creates new chat session with this asset as context. */
+  /**
+   * 在 chat 里讨论 — M2.3 home-session pattern.
+   *
+   * Each asset / first-class entity has ONE chat session anchored to it. We
+   * map card.cardType to the right subject_type:
+   *   contact → "contact" (uses contacts.id)
+   *   event   → "event"   (uses events.id)
+   *   file    → "file"    (uses files.id)
+   *   any other (todo / idea / notes / misc / expense) → "asset"
+   *
+   * Repeated clicks return the same session — no fragmentation.
+   */
   async function openDiscuss() {
     if (!card.assetId || discussLoading) return;
     setDiscussLoading(true);
     try {
-      const sid = await createChatSessionWithContext(
-        [card.assetId],
-        `讨论 ${card.title.slice(0, 24)}`,
-      );
-      // ChatPage reads active session from this localStorage key
-      window.localStorage.setItem("eureka:active_chat_session", sid);
+      const subjectType: SubjectType =
+          card.cardType === "contact" ? "contact"
+        : card.cardType === "event"   ? "event"
+        : card.cardType === "file"    ? "file"
+        : "asset";
+      const { session_id } = await getOrCreateSubjectSession(subjectType, card.assetId);
+      window.localStorage.setItem("eureka:active_chat_session", session_id);
       onClose();
       navigate("/chat");
     } catch (e) {
-      // Surface inline alert on failure — drawer stays open so user can retry
       // eslint-disable-next-line no-alert
-      alert("创建对话失败:" + ((e as Error).message ?? "未知错误"));
+      alert("打开对话失败:" + ((e as Error).message ?? "未知错误"));
     } finally {
       setDiscussLoading(false);
     }

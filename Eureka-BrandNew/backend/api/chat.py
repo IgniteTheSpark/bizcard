@@ -42,6 +42,7 @@ from core.session_service import (
     load_recent_messages,
     load_session_assets_hint,
     load_session_context_hint,
+    load_session_subject_hint,
     persist_chat_turn,
 )
 
@@ -112,6 +113,7 @@ async def _stream_assistant(
     today_str: str = "",
     session_assets_hint: str = "",
     session_context_hint: str = "",
+    session_subject_hint: str = "",
 ) -> AsyncIterator[tuple[str, dict]]:
     """
     Run the Assistant agent and yield (event_type, payload) tuples that the
@@ -124,6 +126,7 @@ async def _stream_assistant(
         today_str=today_str,
         session_assets_hint=session_assets_hint,
         session_context_hint=session_context_hint,
+        session_subject_hint=session_subject_hint,
     )
 
     # Fresh ADK in-memory session per request — persistence is our concern
@@ -207,6 +210,12 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
             session_context_hint = await load_session_context_hint(
                 db, session_id, user_id,
             )
+            # M2.3: subject hint = the entity/asset this session is anchored to
+            # (sessions.contact_id / event_id / file_id / subject_asset_id).
+            # Distinct from context (additive) and assets_hint (in-session created).
+            session_subject_hint = await load_session_subject_hint(
+                db, session_id, user_id,
+            )
 
         # Date the agent will use to resolve "明天" / "下周" / ... — local TZ
         today_str = datetime.now(_LOCAL_TZ).date().isoformat()
@@ -229,6 +238,7 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
                 today_str=today_str,
                 session_assets_hint=session_assets_hint,
                 session_context_hint=session_context_hint,
+                session_subject_hint=session_subject_hint,
             ):
                 yield sse_event(evt_type, payload)
                 if evt_type == "token":

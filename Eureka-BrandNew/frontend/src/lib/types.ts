@@ -125,6 +125,11 @@ export interface SessionDetail {
   date: string | null;
   created_at: string;
   context_asset_ids: string[];
+  // M2.3 subject FKs — exactly one is non-null for home discussion sessions
+  event_id:         string | null;
+  contact_id:       string | null;
+  file_id:          string | null;
+  subject_asset_id: string | null;
   asset_count: number;
   turn_count: number;
   assets: Array<{ id: string; payload: Record<string, unknown>; created_at: string }>;

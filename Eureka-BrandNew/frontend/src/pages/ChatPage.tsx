@@ -5,6 +5,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { ContextChipRail } from "@/components/chat/ContextChipRail";
 import { MessageList } from "@/components/chat/MessageList";
 import { SessionSidebar } from "@/components/chat/SessionSidebar";
+import { SubjectBanner } from "@/components/chat/SubjectBanner";
 import { useChat, type ChatMessage, type ChatPart } from "@/hooks/useChat";
 import { useSessionDetail, useSessionMessages } from "@/hooks/useSessions";
 import type { Message as DbMessage } from "@/lib/types";
@@ -120,8 +121,20 @@ export function ChatPage() {
           <div className="text-eu-xs text-eu-text-lo px-eu-md py-eu-sm font-mono">加载历史…</div>
         )}
 
-        {sessionDetail && sessionDetail.context_asset_ids.length > 0 && (
-          <ContextChipRail assetIds={sessionDetail.context_asset_ids} />
+        {sessionDetail && (
+          <SubjectBanner
+            contactId={sessionDetail.contact_id}
+            eventId={sessionDetail.event_id}
+            fileId={sessionDetail.file_id}
+            subjectAssetId={sessionDetail.subject_asset_id}
+          />
+        )}
+
+        {activeSessionId && (
+          <ContextChipRail
+            assetIds={sessionDetail?.context_asset_ids ?? []}
+            sessionId={activeSessionId}
+          />
         )}
 
         <MessageList
