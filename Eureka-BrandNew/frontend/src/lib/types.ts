@@ -39,8 +39,11 @@ export interface AssetsResponse {
 
 /* ── /api/events ─────────────────────────────────────────────────────────── */
 
+// Note: /api/events response uses `event_id` (NOT `id`) — matches the MCP
+// server's list_events tool output. Don't rename to `id`; the backend is the
+// single source of truth and we follow.
 export interface Event {
-  id: string;
+  event_id: string;
   title: string;
   start_at: string;
   end_at: string | null;
@@ -51,7 +54,14 @@ export interface Event {
   status: string;
   source_input_turn_id: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+  attendees?: Array<{
+    attendee_id: string;
+    contact_id: string | null;
+    name: string;
+    role: string;
+  }>;
+  files?: unknown[];
 }
 
 export interface EventsResponse {

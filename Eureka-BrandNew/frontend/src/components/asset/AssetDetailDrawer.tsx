@@ -107,8 +107,11 @@ export function AssetDetailDrawer({ card, payload, onClose }: AssetDetailDrawerP
         <div className="px-eu-lg border-t border-eu-rule pt-eu-md flex flex-col gap-eu-md">
           {/* Payload fields */}
           {Object.entries(payload).map(([key, value]) => {
-            // Skip noisy fields
-            if (SKIP_KEYS.has(key)) return null;
+            if (shouldSkipField(key, value)) return null;
+            // Arrays get a custom string-list renderer (attendees etc.)
+            if (Array.isArray(value)) {
+              return <ArrayField key={key} label={key} items={value} />;
+            }
             return (
               <GenericField
                 key={key}
@@ -127,13 +130,71 @@ export function AssetDetailDrawer({ card, payload, onClose }: AssetDetailDrawerP
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
+// Fields that are internal plumbing — never useful to show
 const SKIP_KEYS = new Set([
   "task_id",            // internal — not user-facing
   "external_id",        // shown via the link button
   "external_url",       // shown via the link button
   "external_system",    // shown via the link button styling
   "external_type",      // not interesting on the detail page
+  "event_id",           // shown in header context
+  "asset_id",           // duplicate of context
+  "contact_id",         // ditto
+  "file_id",            // ditto
+  "source_input_turn_id", // M4 surfaces as SessionTurnCard
+  "session_id",         // M4 surfaces via "在 chat 里讨论" routing
+  "sync_source",        // implementation detail
+  "sync_external_id",   // implementation detail
+  "recurrence_rule",    // shown elsewhere when UI for it exists (post-MVP)
+  "updated_at",         // not interesting except for audit
+  "user_skill_id",      // implementation detail
+  "logId",              // some MCP responses include this trace id
+  "trace_id",           // same
 ]);
+
+/** Heuristic: should this field be hidden from the drawer? */
+function shouldSkipField(key: string, value: unknown): boolean {
+  if (SKIP_KEYS.has(key)) return true;
+  // Empty containers contribute no information
+  if (value == null) return true;
+  if (Array.isArray(value) && value.length === 0) return true;
+  if (typeof value === "object" && !Array.isArray(value) && Object.keys(value as object).length === 0) return true;
+  return false;
+}
+
+/** Render array fields specially — strings as a chip list, objects as
+ *  "name (role)" or just JSON-stringified primitives. */
+function ArrayField({ label, items }: { label: string; items: unknown[] }) {
+  // Pull a sensible label out of each item
+  const display = items.map((it) => {
+    if (it == null) return "—";
+    if (typeof it === "string" || typeof it === "number") return String(it);
+    if (typeof it === "object") {
+      const o = it as Record<string, unknown>;
+      const name = o.name ?? o.title ?? o.display_name;
+      const role = o.role;
+      if (name && role) return `${name} (${role})`;
+      if (name) return String(name);
+      return JSON.stringify(o).slice(0, 80);
+    }
+    return String(it);
+  });
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono">{label}</div>
+      <div className="flex flex-wrap gap-1.5">
+        {display.map((d, i) => (
+          <span
+            key={`${label}-${i}`}
+            className="px-2 py-0.5 rounded-eu-sm bg-eu-surface border border-eu-border text-eu-sm text-eu-text"
+          >
+            {d}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const MULTILINE_KEYS = new Set([
   "content", "description", "summary", "notes", "markdown", "body", "asr_text",

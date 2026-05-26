@@ -145,10 +145,17 @@ function CardShell({
   const a = ACCENT[accent];
   const interactive = onClick != null;
   const Tag = interactive ? "button" : "div";
+  // Stop propagation so that opening a modal (e.g. AssetDetailDrawer) on click
+  // doesn't immediately close it via the modal's backdrop click handler — the
+  // same native click would otherwise bubble through and hit the backdrop
+  // React just rendered into the DOM.
+  const handleClick = onClick
+    ? (e: React.MouseEvent) => { e.stopPropagation(); onClick(); }
+    : undefined;
   return (
     <Tag
       type={interactive ? "button" : undefined}
-      onClick={onClick}
+      onClick={handleClick}
       className={[
         "group flex items-center gap-eu-md",
         "px-eu-md py-eu-md rounded-eu-md",

@@ -54,8 +54,9 @@ export function CategoryDetail() {
   let cards: { id: string; data: ReturnType<typeof buildCard>; payload: Record<string, unknown> }[] = [];
 
   if (isEvent) {
+    // Backend /api/events response uses `event_id` (not `id`) for the UUID.
     cards = (eventsSWR.data?.events ?? []).map((ev) => ({
-      id: ev.id,
+      id: ev.event_id,
       payload: ev as unknown as Record<string, unknown>,
       data: buildCard({
         payload: ev as unknown as Record<string, unknown>,
@@ -68,7 +69,7 @@ export function CategoryDetail() {
           secondary_format: "relative_date",
           meta_fields: [{ field: "location" }],
         },
-        assetId: ev.id,
+        assetId: ev.event_id,
         cardType: "event",
         displayName: "事件",
       }),
