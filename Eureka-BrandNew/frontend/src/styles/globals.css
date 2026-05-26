@@ -1,0 +1,46 @@
+/* Eureka frontend — global stylesheet
+ *
+ * Order matters:
+ *   1. tokens.css           — design tokens (--eu-* CSS vars) by theme class
+ *   2. Tailwind directives  — utility layer + preflight reset
+ *   3. Component overrides  — anything global that's hard to express as utility
+ */
+@import "./tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base resets / global behaviors ──────────────────────────────────────── */
+@layer base {
+  html, body, #root {
+    min-height: 100dvh;
+  }
+  html.theme-atmosphere body {
+    background: var(--eu-bg);
+    color: var(--eu-text);
+    font-family: var(--eu-font-sans);
+    font-size: var(--eu-fs-base);
+    line-height: var(--eu-lh-body);
+    letter-spacing: var(--eu-ls-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--eu-brand-faint);
+    color: var(--eu-text-hi);
+  }
+  /* Tap-target softening on mobile */
+  button, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+/* ── Safe-area utilities (iOS notch / bottom home indicator) ─────────────── */
+@layer utilities {
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pl-safe { padding-left: env(safe-area-inset-left); }
+  .pr-safe { padding-right: env(safe-area-inset-right); }
+}
