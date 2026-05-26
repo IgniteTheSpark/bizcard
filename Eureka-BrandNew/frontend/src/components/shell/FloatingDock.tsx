@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Calendar, Grid3x3, Mic, Plus, Send, Sparkles, X } from "lucide-react";
+import { Calendar, Grid3x3, Loader2, Mic, Plus, Send, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
+import { AssetCardInChat } from "@/components/chat/AssetCardInChat";
+import { useFlashCapture } from "@/hooks/useFlashCapture";
 import { useIsAnyModalOpen, useModalMount } from "@/context/ModalContext";
 
 /**
@@ -152,26 +154,39 @@ function Divider() {
 function FlashSheet({ onClose }: { onClose: () => void }) {
   useModalMount();
   const [text, setText] = useState("");
+  const { capture, submitting, lastResult, error, reset } = useFlashCapture();
 
-  function submit() {
-    // M2 wires this to useFlashCapture → /api/flash
-    console.log("[FlashSheet] M0 placeholder submit:", text);
+  async function submit() {
+    if (!text.trim() || submitting) return;
+    const result = await capture(text);
+    if (result?.ok && !result.error) {
+      setText("");
+      // Keep sheet open so user sees the reply + cards. Close on tap-out or
+      // explicit close. (If they want to flash again, just type.)
+    }
+  }
+
+  function handleClose() {
+    reset();
     setText("");
     onClose();
   }
+
+  const hasResult = lastResult && (lastResult.reply || lastResult.cards.length > 0 || lastResult.summary);
 
   return (
     <div
       // Heavy backdrop so FloatingDock items don't bleed into the sheet.
       className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         className={[
           "fixed inset-x-0 bottom-0 md:inset-auto",
-          "md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[480px]",
+          "md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[520px]",
           "bg-eu-surface-raised border-t border-eu-border md:border md:rounded-eu-xl",
           "p-eu-lg pb-safe flex flex-col gap-eu-md shadow-eu-lg",
+          "max-h-[88vh] overflow-y-auto",
         ].join(" ")}
         onClick={(e) => e.stopPropagation()}
       >
@@ -180,7 +195,7 @@ function FlashSheet({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             aria-label="关闭"
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1 rounded-eu-sm hover:bg-eu-surface-hover text-eu-text-mid"
           >
             <X size={18} strokeWidth={1.75} />
@@ -194,40 +209,97 @@ function FlashSheet({ onClose }: { onClose: () => void }) {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
           }}
           placeholder="说点什么…(⌘/Ctrl+Enter 提交)"
-          rows={4}
+          rows={3}
+          disabled={submitting}
           className={[
             "w-full resize-none",
             "bg-eu-surface border border-eu-border rounded-eu-md",
             "p-eu-md text-eu-base text-eu-text",
             "placeholder:text-eu-text-muted",
             "focus:outline-none focus:border-eu-brand",
+            "disabled:opacity-50",
             "transition-colors duration-eu-fast",
           ].join(" ")}
         />
-        <div className="flex justify-end gap-eu-sm">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-eu-md py-eu-sm text-eu-sm text-eu-text-mid hover:text-eu-text-hi"
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={!text.trim()}
-            className={[
-              "px-eu-md py-eu-sm rounded-eu-md text-eu-sm font-medium",
-              "bg-eu-brand text-white",
-              "hover:bg-eu-brand-hi disabled:opacity-50 disabled:cursor-not-allowed",
-              "transition-colors duration-eu-fast flex items-center gap-1.5",
-            ].join(" ")}
-          >
-            <Send size={14} strokeWidth={2} />
-            提交
-          </button>
+
+        <div className="flex justify-between items-center gap-eu-sm">
+          <div className="text-eu-xs text-eu-text-lo font-mono">
+            {submitting
+              ? "AI 处理中…(约 15-30 秒)"
+              : hasResult ? "继续打字开新一条" : "⌘/Ctrl+Enter 也行"}
+          </div>
+          <div className="flex gap-eu-sm">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-eu-md py-eu-sm text-eu-sm text-eu-text-mid hover:text-eu-text-hi"
+            >
+              关闭
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!text.trim() || submitting}
+              className={[
+                "px-eu-md py-eu-sm rounded-eu-md text-eu-sm font-medium",
+                "bg-eu-brand text-white",
+                "hover:bg-eu-brand-hi disabled:opacity-50 disabled:cursor-not-allowed",
+                "transition-colors duration-eu-fast flex items-center gap-1.5",
+              ].join(" ")}
+            >
+              {submitting
+                ? <Loader2 size={14} strokeWidth={2} className="animate-spin" />
+                : <Send size={14} strokeWidth={2} />}
+              {submitting ? "处理中" : "提交"}
+            </button>
+          </div>
         </div>
+
+        {error && !lastResult && (
+          <div className="text-eu-sm text-eu-accent-red-fg bg-eu-accent-red-bg border border-eu-accent-red-edge rounded-eu-md px-eu-md py-eu-sm">
+            {error}
+          </div>
+        )}
+
+        {lastResult && (
+          <FlashResultPanel result={lastResult} />
+        )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * FlashResultPanel — shows the backend's reply / summary / cards after a
+ * successful flash submit.
+ */
+function FlashResultPanel({ result }: { result: ReturnType<typeof useFlashCapture>["lastResult"] }) {
+  if (!result) return null;
+  return (
+    <div className="border-t border-eu-rule pt-eu-md flex flex-col gap-eu-sm">
+      {result.reply && (
+        <div className="text-eu-base text-eu-text whitespace-pre-wrap leading-relaxed">
+          {result.reply}
+        </div>
+      )}
+      {result.summary && !result.reply && (
+        <div className="text-eu-sm text-eu-text-mid">{result.summary}</div>
+      )}
+      {result.cards.length > 0 && (
+        <div className="flex flex-col gap-eu-sm">
+          {result.cards.map((c, i) => (
+            <AssetCardInChat
+              key={i}
+              data={c as unknown as Record<string, unknown>}
+            />
+          ))}
+        </div>
+      )}
+      {result.error && (
+        <div className="text-eu-xs text-eu-accent-red-fg font-mono">
+          ⚠ {result.error}
+        </div>
+      )}
     </div>
   );
 }

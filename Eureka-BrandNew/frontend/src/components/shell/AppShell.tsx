@@ -21,10 +21,13 @@ import { FloatingDock } from "./FloatingDock";
  */
 export function AppShell() {
   return (
-    <div className="min-h-dvh flex flex-col bg-eu-bg text-eu-text">
+    // h-dvh (not min-h-dvh) so flex-1 children get a determinate height to
+    // fill — pages that use h-full inside (e.g. ChatPage with sidebar +
+    // input column) need this to lay out their own bottom bar correctly.
+    <div className="h-dvh flex flex-col bg-eu-bg text-eu-text overflow-hidden">
       <TopBar />
       {/* pb-28 reserves room for the floating dock + safe area */}
-      <main className="flex-1 overflow-y-auto pb-28">
+      <main className="flex-1 overflow-y-auto pb-28 min-h-0">
         <Outlet />
       </main>
       <FloatingDock />
