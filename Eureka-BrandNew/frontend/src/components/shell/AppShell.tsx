@@ -1,37 +1,33 @@
 import { Outlet } from "react-router-dom";
 
 import { TopBar } from "./TopBar";
-import { TabBar } from "./TabBar";
-import { FlashFab } from "./FlashFab";
+import { FloatingDock } from "./FloatingDock";
 
 /**
  * AppShell — top-level layout wrapper.
  *
- * Mobile-first three-row layout:
+ * Two-row layout (mobile-first; desktop same shape, wider content):
  *   ┌──────────────────────────┐
  *   │ TopBar (sticky)           │ — logo + page title + 3 icons
  *   ├──────────────────────────┤
- *   │ <Outlet />                │ — current page, scrolls
- *   │   (pages handle their own │
- *   │    scrolling)             │
- *   ├──────────────────────────┤
- *   │ TabBar (sticky)           │ — 3 tabs + middle Flash FAB
+ *   │ <Outlet />                │ — current page, scrolls, has bottom
+ *   │   (pages own their scroll)│   padding so dock doesn't overlap content
  *   └──────────────────────────┘
+ *           [ FloatingDock ]    — floats over content, doesn't take layout space
  *
- * Desktop (md:+) uses the same layout but with wider max-width and the
- * TopBar/TabBar visually centered. SessionSidebar (M2) will slot into ChatPage
- * itself, not at the shell level — keeps shell skill-agnostic.
+ * Per spec amendment (2026-05-26): the original bottom TabBar + middle FAB is
+ * replaced by a single FloatingDock capsule that holds: 今天 / 资产库 / + /
+ * 闪念 / Agent. SessionSidebar (M2) slots into ChatPage itself, not the shell.
  */
 export function AppShell() {
   return (
     <div className="min-h-dvh flex flex-col bg-eu-bg text-eu-text">
       <TopBar />
-      <main className="flex-1 overflow-y-auto pb-safe">
+      {/* pb-28 reserves room for the floating dock + safe area */}
+      <main className="flex-1 overflow-y-auto pb-28">
         <Outlet />
       </main>
-      <TabBar />
-      {/* FAB is absolutely positioned so it floats above the TabBar's middle cutout */}
-      <FlashFab />
+      <FloatingDock />
     </div>
   );
 }

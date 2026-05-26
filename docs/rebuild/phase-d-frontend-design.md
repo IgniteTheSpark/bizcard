@@ -132,13 +132,22 @@ src/
 
 ### 0. AppShell
 
-✅ TopBar(logo + 标题 + 3 icon:Device / Profile / Notification)
+✅ TopBar(logo + 标题 + 3 icon:Device / Notification / Profile)
 ✅ ProfileMenu 内含 PresentationMode 切换(Asset mode ⇄ Calendar mode)
-✅ 底部 TabBar(Chat / Calendar / Library)+ 中间凸起 FAB
-✅ FAB → 全屏 sheet,输入 + 提交,流回 reply / cards / toast
+✅ **FloatingDock(悬浮 capsule,替代原 TabBar + FAB)**:
+  - 今天(日历 icon 带当天日期)→ `/calendar`
+  - 资产库(grid icon)→ `/library`
+  - ── divider ──
+  - 快创(+)→ CreateAssetMenu popover(M1 接入)
+  - 闪念(mic)→ 全屏 sheet 输入 → /api/flash
+  - ── divider ──
+  - Agent(✨ 紫渐变 pill)→ `/chat`
+  - **不带「当前页」高亮**(TopBar 已显示页名,dock 是纯快捷栏)
 ✅ React Router:`/chat` `/calendar` `/library` `/notifications`
 ❌ Settings 页(deferred,留 placeholder)
 ❌ DeviceMenu 真实连接逻辑(MVP 「未连接」placeholder)
+
+> **v1.0 → v1.1 amendment(2026-05-26)**:原 spec 写的是「底部 TabBar(3 tab)+ 中间凸起 FAB」。M0 落地时发现 TabBar 形态视觉不够轻盈,且 grid 实现导致 tab 分布不均匀。用户决定改为**全局悬浮 dock**(5 元素 capsule),替换 TabBar + FAB,所有页面共享同一个 dock。Chat / Calendar / Library 不再是 tab,Chat 进入通过 Agent pill。
 
 ### 1. ChatPage
 
