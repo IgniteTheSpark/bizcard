@@ -49,6 +49,11 @@ class FlashResponse(BaseModel):
     ok:            bool
     session_id:    str
     input_turn_id: str
+    # `reply` — conversational free-text answer (from qa-skill outputs).
+    # Treated like a chat bubble in the session stream; NOT a card.
+    # Cards are reserved for persistent asset / event references that have
+    # an actionable handle (asset_id / event_id) the user can tap or edit.
+    reply:         str = ""
     summary:       str = ""
     cards:         list = []
     derived_assets: list = []
@@ -143,16 +148,22 @@ async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
         )
 
     # Phase 3 — persist an agent Message so the chat surface can replay
+    reply   = result.get("reply", "")
     summary = result.get("summary", "")
     cards   = result.get("cards", [])
     elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+    # The persisted agent_text is what shows up in chat-history replay; prefer
+    # the conversational reply, fall back to summary when only assets were
+    # produced.
+    agent_text_for_history = reply or summary
 
     try:
         async with AsyncSessionLocal() as db:
             await persist_chat_turn(
                 db, session_id, user_id,
                 user_text=req.text,
-                agent_text=summary,
+                agent_text=agent_text_for_history,
                 cards=cards,
                 elapsed_ms=elapsed_ms,
             )
@@ -165,6 +176,7 @@ async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
         ok=result.get("ok", True),
         session_id=session_id,
         input_turn_id=input_turn_id,
+        reply=reply,
         summary=summary,
         cards=cards,
         derived_assets=result.get("derived_assets", []),

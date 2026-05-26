@@ -28,6 +28,10 @@ class CreateSessionRequest(BaseModel):
     session_type: str = "manual"   # flash | chat | meeting | manual
     title: str = ""
     date: Optional[str] = None     # YYYY-MM-DD
+    # M2.2: assets to attach as contextual input. Typically populated when
+    # the user clicks 「在 chat 里讨论」 on an asset in Library / chat history.
+    # The Assistant prompt loads + injects these as 「本 session 上下文资产」.
+    context_asset_ids: Optional[list[str]] = None
 
 
 # ── GET /api/sessions ──────────────────────────────────────────────────────────
@@ -83,18 +87,32 @@ async def create_session(
         except ValueError:
             raise HTTPException(status_code=400, detail="invalid date format (use YYYY-MM-DD)")
 
+    # Parse + validate context_asset_ids → UUIDs
+    ctx_ids: list = []
+    if req.context_asset_ids:
+        for s in req.context_asset_ids:
+            try:
+                ctx_ids.append(uuid.UUID(s))
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"invalid asset id: {s}")
+
     async with AsyncSessionLocal() as db:
         sess = DBSession(
             user_id=user_id,
             session_type=req.session_type,
             title=req.title or None,
             date=sess_date,
+            context_asset_ids=ctx_ids,
         )
         db.add(sess)
         await db.commit()
         await db.refresh(sess)
 
-    return {"ok": True, "session_id": str(sess.id)}
+    return {
+        "ok": True,
+        "session_id": str(sess.id),
+        "context_asset_ids": [str(i) for i in (sess.context_asset_ids or [])],
+    }
 
 
 # ── GET /api/sessions/{id} ────────────────────────────────────────────────────
@@ -136,6 +154,7 @@ async def get_session(
             "title":        sess.title,
             "date":         sess.date.isoformat() if sess.date else None,
             "created_at":   sess.created_at.isoformat(),
+            "context_asset_ids": [str(i) for i in (sess.context_asset_ids or [])],
             "asset_count":  asset_count,
             "turn_count":   turn_count,
             "assets": [

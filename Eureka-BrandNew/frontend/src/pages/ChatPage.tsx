@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { History } from "lucide-react";
 
 import { ChatInput } from "@/components/chat/ChatInput";
+import { ContextChipRail } from "@/components/chat/ContextChipRail";
 import { MessageList } from "@/components/chat/MessageList";
 import { SessionSidebar } from "@/components/chat/SessionSidebar";
 import { useChat, type ChatMessage, type ChatPart } from "@/hooks/useChat";
-import { useSessionMessages } from "@/hooks/useSessions";
+import { useSessionDetail, useSessionMessages } from "@/hooks/useSessions";
 import type { Message as DbMessage } from "@/lib/types";
 
 const ACTIVE_SESSION_KEY = "eureka:active_chat_session";
@@ -46,8 +47,9 @@ export function ChatPage() {
     else window.localStorage.removeItem(ACTIVE_SESSION_KEY);
   }, [activeSessionId]);
 
-  // Load history for the active session
+  // Load history + session detail (for context_asset_ids) for the active session
   const { messages: dbMessages, isLoading: historyLoading } = useSessionMessages(activeSessionId);
+  const { session: sessionDetail } = useSessionDetail(activeSessionId);
 
   // Convert DB messages → ChatMessage format (consistent with live stream)
   const initialMessages = useMemo<ChatMessage[]>(() => dbMessages.map(dbToChatMessage), [dbMessages]);
@@ -116,6 +118,10 @@ export function ChatPage() {
 
         {historyLoading && activeSessionId && (
           <div className="text-eu-xs text-eu-text-lo px-eu-md py-eu-sm font-mono">加载历史…</div>
+        )}
+
+        {sessionDetail && sessionDetail.context_asset_ids.length > 0 && (
+          <ContextChipRail assetIds={sessionDetail.context_asset_ids} />
         )}
 
         <MessageList

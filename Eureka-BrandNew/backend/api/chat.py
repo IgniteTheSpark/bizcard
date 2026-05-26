@@ -20,6 +20,7 @@ The "刚刚那个" cross-turn CRUD reference (Phase B v1.3) works because:
 import json
 import time
 import uuid
+from datetime import datetime, timezone, timedelta
 from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends
@@ -39,8 +40,15 @@ from core.session_service import (
     get_or_create_chat_session,
     create_input_turn_for_message,
     load_recent_messages,
+    load_session_assets_hint,
+    load_session_context_hint,
     persist_chat_turn,
 )
+
+# Asia/Shanghai is the canonical user timezone for v1.4 demo data.
+# Inject "today" into Assistant prompt so relative dates ("明天" / "下周")
+# resolve from the actual current date, not the model's training cutoff.
+_LOCAL_TZ = timezone(timedelta(hours=8))
 from core.streaming import sse_event, with_heartbeats
 from db.database import AsyncSessionLocal
 from db.models import Message
@@ -101,12 +109,22 @@ async def _stream_assistant(
     input_turn_id: str,
     user_id: str,
     event_id: str = "",
+    today_str: str = "",
+    session_assets_hint: str = "",
+    session_context_hint: str = "",
 ) -> AsyncIterator[tuple[str, dict]]:
     """
     Run the Assistant agent and yield (event_type, payload) tuples that the
     SSE wrapper can format. Also accumulates state for post-run persistence.
     """
-    agent = make_assistant_agent(session_id, input_turn_id, event_id=event_id)
+    agent = make_assistant_agent(
+        session_id,
+        input_turn_id,
+        event_id=event_id,
+        today_str=today_str,
+        session_assets_hint=session_assets_hint,
+        session_context_hint=session_context_hint,
+    )
 
     # Fresh ADK in-memory session per request — persistence is our concern
     adk_sid = str(uuid.uuid4())
@@ -174,6 +192,24 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
             )
             input_turn_id = str(input_turn.id)
             recent = await load_recent_messages(db, session_id)
+            # Pull assets / events already created in this session (typically
+            # by an earlier Flash Pipeline run) — these are the「刚刚那个 X」
+            # candidates the chat agent needs to find before deciding update
+            # vs create. Without this, Flash-created assets are invisible to
+            # the chat agent (Flash doesn't write to the messages table).
+            session_assets_hint = await load_session_assets_hint(
+                db, session_id, user_id,
+            )
+            # M2.2: explicit user-attached context assets (from「在 chat 里
+            # 讨论」). Different from assets_hint (which is "things created
+            # in this session"); context is "what the user wants the agent
+            # to focus on right now."
+            session_context_hint = await load_session_context_hint(
+                db, session_id, user_id,
+            )
+
+        # Date the agent will use to resolve "明天" / "下周" / ... — local TZ
+        today_str = datetime.now(_LOCAL_TZ).date().isoformat()
 
         yield sse_event("meta", {
             "session_id": session_id,
@@ -190,6 +226,9 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
             async for evt_type, payload in _stream_assistant(
                 req.user_text, history_text, session_id, input_turn_id, user_id,
                 event_id=req.event_id or "",
+                today_str=today_str,
+                session_assets_hint=session_assets_hint,
+                session_context_hint=session_context_hint,
             ):
                 yield sse_event(evt_type, payload)
                 if evt_type == "token":

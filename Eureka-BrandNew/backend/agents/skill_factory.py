@@ -1,11 +1,17 @@
 """
-Sub-skill agent factory — Phase B Step 4.
+Sub-skill agent factory — Phase B v1.4.x.
 
 Builds ADK LlmAgents from the skills/ directory + shared MCPToolset.
 
-Adding a new skill = (1) drop skills/<folder>/SKILL.md + (2) register in
-SKILL_FOLDER_MAP below + (3) add a UserSkill row via seed or the add-skill
-flow. No factory code changes for typical additions.
+Adding a new skill:
+1. Drop `skills/flash-<name>-skill/SKILL.md` — it's auto-discovered at boot
+2. Add UserSkill row (via db/seed.py or design-agent flow) so the asset has
+   payload_schema + render_spec
+3. Add a row to flash-dispatcher/SKILL.md's intent table so the dispatcher
+   knows the type exists
+
+No factory code changes needed — `SKILL_FOLDER_MAP` is computed from the
+filesystem at import time.
 """
 from pathlib import Path
 
@@ -17,18 +23,42 @@ from core.llm import FLASH_SKILL_MODEL, FLASH_DISPATCHER_MODEL
 
 SKILLS_DIR = Path(__file__).parent.parent / "skills"
 
+# Folders we never want to dispatch to even if they live in skills/.
+# `flash-dispatcher` is the dispatcher itself, not a sub-skill.
+_NON_SKILL_FOLDERS = {"flash-dispatcher"}
 
-# Logical skill name → directory under skills/
-SKILL_FOLDER_MAP = {
-    "todo":    "flash-todo-skill",
-    "event":   "flash-event-skill",
-    "idea":    "flash-idea-skill",
-    "notes":   "flash-notes-skill",     # v1.4
-    "misc":    "flash-misc-skill",      # v1.4
-    "expense": "flash-expense-skill",
-    "contact": "flash-contact-skill",
-    "qa":      "flash-qa-skill",
-}
+
+def _discover_skill_folders() -> dict[str, str]:
+    """
+    Scan skills/ for folders matching `flash-<machine_name>-skill/` that
+    contain a SKILL.md, return {machine_name → folder_name}.
+
+    Naming convention: `flash-<machine_name>-skill`
+      - `flash-todo-skill`    → machine_name="todo"
+      - `flash-expense-skill` → machine_name="expense"
+
+    Folders not matching this pattern (e.g. flash-dispatcher) are skipped.
+    """
+    out: dict[str, str] = {}
+    if not SKILLS_DIR.exists():
+        return out
+    for folder in SKILLS_DIR.iterdir():
+        if not folder.is_dir():
+            continue
+        if folder.name in _NON_SKILL_FOLDERS:
+            continue
+        if not (folder / "SKILL.md").exists():
+            continue
+        name = folder.name
+        if not (name.startswith("flash-") and name.endswith("-skill")):
+            continue
+        machine_name = name[len("flash-"):-len("-skill")]
+        out[machine_name] = name
+    return out
+
+
+# Snapshot at import time. Restart backend to pick up newly-added skill folders.
+SKILL_FOLDER_MAP: dict[str, str] = _discover_skill_folders()
 
 
 def _load_prompt(folder: str) -> str:
@@ -46,7 +76,11 @@ def make_skill_agent(skill_name: str) -> LlmAgent:
     """
     folder = SKILL_FOLDER_MAP.get(skill_name)
     if not folder:
-        raise ValueError(f"unknown skill: {skill_name}")
+        raise ValueError(
+            f"unknown skill: {skill_name!r}. "
+            f"Discovered: {sorted(SKILL_FOLDER_MAP)}. "
+            f"To add: drop skills/flash-{skill_name}-skill/SKILL.md and restart."
+        )
     prompt = _load_prompt(folder)
     return LlmAgent(
         name=f"{skill_name}_skill",

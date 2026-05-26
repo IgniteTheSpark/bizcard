@@ -52,7 +52,12 @@ export function CategoryDetail() {
   const titleText = skill?.display_name ?? FALLBACK_LABEL[skillName] ?? skillName;
 
   // Build CardData list per source
-  let cards: { id: string; data: ReturnType<typeof buildCard>; payload: Record<string, unknown> }[] = [];
+  let cards: {
+    id: string;
+    data: ReturnType<typeof buildCard>;
+    payload: Record<string, unknown>;
+    sourceSessionId?: string | null;
+  }[] = [];
 
   if (isEvent) {
     // Backend /api/events response uses `event_id` (not `id`) for the UUID.
@@ -120,6 +125,7 @@ export function CategoryDetail() {
     cards = assetsHook.assets.map((a) => ({
       id: a.id,
       payload: a.payload,
+      sourceSessionId: a.session_id,
       data: buildCard({
         payload: a.payload,
         spec: skill?.render_spec ?? null,
@@ -133,10 +139,11 @@ export function CategoryDetail() {
   const loading = assetsHook.isLoading || eventsSWR.isLoading || filesSWR.isLoading || contactsSWR.isLoading;
   const empty = !loading && cards.length === 0;
 
-  const selectedPayload =
-    selectedId != null ? cards.find((c) => c.id === selectedId)?.payload ?? null : null;
-  const selectedCard =
-    selectedId != null ? cards.find((c) => c.id === selectedId)?.data ?? null : null;
+  const selectedEntry =
+    selectedId != null ? cards.find((c) => c.id === selectedId) ?? null : null;
+  const selectedPayload = selectedEntry?.payload ?? null;
+  const selectedCard    = selectedEntry?.data ?? null;
+  const selectedSource  = selectedEntry?.sourceSessionId ?? null;
 
   return (
     <div className="px-eu-md pt-eu-md">
@@ -180,6 +187,7 @@ export function CategoryDetail() {
         <AssetDetailDrawer
           card={selectedCard}
           payload={selectedPayload}
+          sourceSessionId={selectedSource}
           onClose={() => setSelectedId(null)}
         />
       )}

@@ -29,6 +29,7 @@ GLOBAL_SKILLS = [
     {"name": "contact", "description": "名片 / 联系人"},
     {"name": "expense", "description": "记账"},
     {"name": "qa",      "description": "问答(系统能力,无资产产出)"},
+    {"name": "external_ref", "description": "外部系统引用(Notion / Google Calendar / Dingtalk 等 MCP 创建的页面/事件/消息的指针)"},
 ]
 
 
@@ -191,6 +192,40 @@ USER_SKILL_CONFIGS = [
         "payload_schema":   None,
         "render_spec":      None,
         "queryable_fields": None,
+    },
+    {
+        # v1.4.x: external_ref — pointer to a page/event/message that lives in
+        # a third-party system (Notion / Google Calendar / Dingtalk / Linear /
+        # ...), created via task-skill → MCP. Eureka stores the reference, not
+        # the content; tapping the card opens the external URL.
+        "name":         "external_ref",
+        "display_name": "外部引用",
+        "payload_schema": {
+            "external_system": {"type": "string", "required": True},   # notion | google_calendar | dingtalk | ...
+            "external_id":     {"type": "string"},                     # filled when task completes
+            "external_url":    {"type": "string"},
+            "external_type":   {"type": "string"},                     # page | event | message | issue | ...
+            "title":           {"type": "string"},
+            "summary":         {"type": "string"},
+            "status":          {"type": "string", "enum": ["pending", "running", "done", "failed"], "default": "pending"},
+            "task_id":         {"type": "uuid"},
+            "error":           {"type": "string"},
+            "metadata":        {"type": "object"},
+        },
+        "queryable_fields": [
+            {"field": "external_system", "index_type": "enum"},
+            {"field": "status",          "index_type": "enum"},
+        ],
+        "render_spec": {
+            "card_layout":     "horizontal",
+            "icon":            "🔗",
+            "accent_color":    "purple",
+            "primary_field":   "title",
+            "secondary_field": "external_system",
+            "meta_fields":     [{"field": "status", "format": "badge"}],
+            "actions":         ["open_external", "delete"],
+            "timeline_position": {"time_field": "created_at"},
+        },
     },
 ]
 

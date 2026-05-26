@@ -1,29 +1,39 @@
-import { useEffect } from "react";
-import { ExternalLink, MessageCircle, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ExternalLink, History, MessageCircle, X, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { GenericField } from "@/components/skill/GenericField";
 import { useModalMount } from "@/context/ModalContext";
+import { createChatSessionWithContext } from "@/hooks/useSessions";
 import type { CardData, FieldFormat } from "@/lib/render-spec";
 
 /**
- * AssetDetailDrawer — M1 read-only edition.
+ * AssetDetailDrawer — read-only detail + actions (M2.2).
  *
- * Mobile: bottom sheet, slides up to ~80vh, can drag down to dismiss
- * (M1 placeholder: just an Esc/backdrop close).
- * Desktop: right-side drawer 480px wide.
+ * Mobile: bottom sheet (~85vh max). Desktop: right-side drawer 480px wide.
  *
- * M4 will add edit / delete, SessionTurnCard (来源 session),
- * 「在 chat 里继续讨论」按钮 with per-entity session routing.
+ * Actions (M2.2):
+ *   - 「在 chat 里讨论」 → creates a NEW chat session with this asset attached
+ *     as context_asset_ids[0], navigates to /chat. Agent will see it in the
+ *     prompt as「本 session 携带的上下文资产」.
+ *   - 「跳到创建该 asset 的 session」 → navigates to /chat with the asset's
+ *     existing session_id (if any), letting the user see the conversation
+ *     that produced this asset.
  */
 
 interface AssetDetailDrawerProps {
   card: CardData;
   payload: Record<string, unknown>;
   onClose: () => void;
+  /** Asset's session_id (creator session) — for the source-trace button */
+  sourceSessionId?: string | null;
 }
 
-export function AssetDetailDrawer({ card, payload, onClose }: AssetDetailDrawerProps) {
+export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: AssetDetailDrawerProps) {
   useModalMount();
+  const navigate = useNavigate();
+  const [discussLoading, setDiscussLoading] = useState(false);
+
   // Esc to close
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -32,6 +42,36 @@ export function AssetDetailDrawer({ card, payload, onClose }: AssetDetailDrawerP
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  /** 在 chat 里讨论 — creates new chat session with this asset as context. */
+  async function openDiscuss() {
+    if (!card.assetId || discussLoading) return;
+    setDiscussLoading(true);
+    try {
+      const sid = await createChatSessionWithContext(
+        [card.assetId],
+        `讨论 ${card.title.slice(0, 24)}`,
+      );
+      // ChatPage reads active session from this localStorage key
+      window.localStorage.setItem("eureka:active_chat_session", sid);
+      onClose();
+      navigate("/chat");
+    } catch (e) {
+      // Surface inline alert on failure — drawer stays open so user can retry
+      // eslint-disable-next-line no-alert
+      alert("创建对话失败:" + ((e as Error).message ?? "未知错误"));
+    } finally {
+      setDiscussLoading(false);
+    }
+  }
+
+  /** 跳到创建该 asset 的 session — opens chat with the existing creator session. */
+  function openSourceSession() {
+    if (!sourceSessionId) return;
+    window.localStorage.setItem("eureka:active_chat_session", sourceSessionId);
+    onClose();
+    navigate("/chat");
+  }
 
   return (
     <div
@@ -85,9 +125,24 @@ export function AssetDetailDrawer({ card, payload, onClose }: AssetDetailDrawerP
           </button>
         </header>
 
-        {/* Action row (M4 wires real handlers) */}
+        {/* Action row */}
         <div className="px-eu-lg flex flex-wrap gap-eu-sm">
-          <ActionButton icon={<MessageCircle size={14} strokeWidth={1.75} />} label="在 chat 里讨论" disabled />
+          <ActionButton
+            icon={discussLoading
+              ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+              : <MessageCircle size={14} strokeWidth={1.75} />}
+            label={discussLoading ? "创建中…" : "在 chat 里讨论"}
+            onClick={openDiscuss}
+            disabled={!card.assetId || discussLoading}
+            variant="primary"
+          />
+          {sourceSessionId && (
+            <ActionButton
+              icon={<History size={14} strokeWidth={1.75} />}
+              label="跳到创建对话"
+              onClick={openSourceSession}
+            />
+          )}
           {externalUrl(payload) && (
             <a
               href={externalUrl(payload) ?? "#"}
@@ -217,19 +272,27 @@ function externalUrl(payload: Record<string, unknown>): string | null {
 }
 
 function ActionButton({
-  icon, label, disabled,
-}: { icon: React.ReactNode; label: string; disabled?: boolean }) {
+  icon, label, onClick, disabled, variant = "default",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  variant?: "default" | "primary";
+}) {
+  const primary = variant === "primary";
   return (
     <button
       type="button"
+      onClick={onClick}
       disabled={disabled}
-      title={disabled ? "M4 接入" : undefined}
       className={[
         "px-eu-md py-1.5 rounded-eu-md text-eu-sm inline-flex items-center gap-1.5",
-        "bg-eu-surface border border-eu-border text-eu-text-mid",
-        "hover:bg-eu-surface-hover hover:text-eu-text-hi",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         "transition-all duration-eu-fast",
+        primary
+          ? "bg-eu-brand text-white hover:bg-eu-brand-hi"
+          : "bg-eu-surface border border-eu-border text-eu-text-mid hover:bg-eu-surface-hover hover:text-eu-text-hi",
       ].join(" ")}
     >
       {icon}

@@ -72,6 +72,10 @@ class Session(Base):
     title        = Column(String(255))
     date         = Column(Date)                          # natural-day grouping for flash; null for others
     event_id     = Column(UUID(as_uuid=True), ForeignKey("events.id"))   # v1.4: chat session anchored to an event (nullable)
+    # M2.2: assets the user attached as contextual input to this session.
+    # The Assistant prompt loads + injects these so the agent can combine
+    # ideas / derive new todos / etc. Mutable during chat.
+    context_asset_ids = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
     created_at   = Column(TIMESTAMPTZ, server_default=func.now())
 
     __table_args__ = (
@@ -280,4 +284,39 @@ class Message(Base):
 
     __table_args__ = (
         Index("idx_messages_session", "session_id", "created_at"),
+    )
+
+
+class Task(Base):
+    """
+    Async task — wraps a third-party MCP call (Notion / Google Calendar /
+    Dingtalk / etc.). Two-phase lifecycle:
+      1. Sync head: row created with status=pending + placeholder external_ref
+         asset; both returned to caller immediately.
+      2. Async tail: asyncio.create_task picks up, runs the MCP via an
+         ephemeral LlmAgent with that MCP's toolset attached, updates row +
+         placeholder asset on success/failure.
+
+    `result_asset_id` points to the external_ref asset that will eventually
+    hold the {external_system, external_id, external_url, ...} payload after
+    the MCP returns.
+    """
+    __tablename__ = "tasks"
+
+    id                   = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id              = Column(String(50), nullable=False, server_default="default")
+    user_text            = Column(Text, nullable=False)                       # original ask
+    mcp_target           = Column(String(50))                                 # filled by agent after tool selection (notion/google_calendar/...)
+    status               = Column(String(20), nullable=False, server_default="pending")  # pending | running | done | failed
+    error_message        = Column(Text)
+    result_asset_id      = Column(UUID(as_uuid=True), ForeignKey("assets.id"))
+    session_id           = Column(UUID(as_uuid=True), ForeignKey("sessions.id"))
+    source_input_turn_id = Column(UUID(as_uuid=True), ForeignKey("input_turns.id"))
+    started_at           = Column(TIMESTAMPTZ)
+    completed_at         = Column(TIMESTAMPTZ)
+    created_at           = Column(TIMESTAMPTZ, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_tasks_user_status", "user_id", "status", "created_at"),
+        Index("idx_tasks_session",     "session_id", "created_at"),
     )

@@ -114,6 +114,31 @@ export interface Session {
   title: string | null;
   date: string | null;
   created_at: string;
+  /** M2.2: asset ids the user explicitly attached as session context */
+  context_asset_ids?: string[];
+}
+
+export interface SessionDetail {
+  id: string;
+  session_type: "flash" | "chat" | "meeting" | "manual";
+  title: string | null;
+  date: string | null;
+  created_at: string;
+  context_asset_ids: string[];
+  asset_count: number;
+  turn_count: number;
+  assets: Array<{ id: string; payload: Record<string, unknown>; created_at: string }>;
+}
+
+export interface SessionDetailResponse {
+  ok: boolean;
+  session: SessionDetail;
+}
+
+export interface CreateSessionResponse {
+  ok: boolean;
+  session_id: string;
+  context_asset_ids?: string[];
 }
 
 export interface SessionsResponse {
