@@ -1,13 +1,18 @@
 """
-Session listing / detail / message log — Phase B Step 5 rewrite.
+Session listing / detail / message log — Phase D M3.5 unification.
 
-GET  /api/sessions                       — list sessions (filter by date / type)
-POST /api/sessions                       — create a session manually (rare; usually auto-created)
-GET  /api/sessions/{id}                  — session detail + asset summary
-GET  /api/sessions/{id}/messages         — message log (chat history)
-GET  /api/sessions/{id}/input-turns      — input_turns for this session (NEW in Step 5)
+GET   /api/sessions                       — list sessions (filter by date / type)
+POST  /api/sessions                       — unified create:
+                                            • {subject_type, subject_id} → get-or-create home session
+                                            • {context_asset_ids:[...]} → fresh chat with assets attached
+                                            • {} → fresh blank session
+GET   /api/sessions/{id}                  — session detail + asset summary
+GET   /api/sessions/{id}/messages         — message log (chat history)
+GET   /api/sessions/{id}/input-turns      — input_turns for this session
+PATCH /api/sessions/{id}/context          — add/remove context_asset_ids
 
-Default session_type for manual create is now 'manual' (per Phase B v1.3).
+M3.5: POST /api/sessions/for-subject was deleted — its semantics are now
+the `subject_type` + `subject_id` fields on the unified POST.
 """
 import uuid
 from datetime import date
@@ -28,13 +33,36 @@ router = APIRouter()
 
 
 class CreateSessionRequest(BaseModel):
-    session_type: str = "manual"   # flash | chat | meeting | manual
+    """Unified session-create payload (M3.5).
+
+    Three modes, all driven by the same endpoint:
+
+    1. Home session (get-or-create by subject):
+       {subject_type: "contact"|"event"|"file"|"asset", subject_id: "..."}
+       Returns the existing session for this (user, subject) pair if one
+       exists, else creates a new chat session anchored to the subject FK.
+
+    2. Fresh chat with attached context:
+       {context_asset_ids: ["asset1", "asset2"]}
+       Creates a new no-subject chat session with the assets pre-attached.
+
+    3. Blank session:
+       {} (or session_type only) — creates an empty session.
+
+    `subject_type` / `subject_id` are mutually exclusive with multi-asset
+    bulk-attach via context_asset_ids — but you CAN combine subject +
+    initial context_asset_ids (subject is the focal point, context the
+    side material).
+    """
+    session_type: str = "chat"     # flash | chat | meeting | manual  (default chat — most common)
     title: str = ""
     date: Optional[str] = None     # YYYY-MM-DD
-    # M2.2: assets to attach as contextual input. Typically populated when
-    # the user clicks 「在 chat 里讨论」 on an asset in Library / chat history.
-    # The Assistant prompt loads + injects these as 「本 session 上下文资产」.
     context_asset_ids: Optional[list[str]] = None
+    # M3.5: subject FK shortcut. If both subject_type AND subject_id are set,
+    # the endpoint does a get-or-create on that subject — the same behavior
+    # the old /sessions/for-subject endpoint had.
+    subject_type: Optional[str] = None   # "contact" | "event" | "file" | "asset"
+    subject_id:   Optional[str] = None
 
 
 # ── GET /api/sessions ──────────────────────────────────────────────────────────
@@ -80,6 +108,7 @@ async def create_session(
     req: CreateSessionRequest,
     user_id: str = Depends(get_current_user_id),
 ):
+    """Unified session create. See CreateSessionRequest docstring for modes."""
     if req.session_type not in {"flash", "chat", "meeting", "manual"}:
         raise HTTPException(status_code=400, detail=f"invalid session_type: {req.session_type}")
 
@@ -89,6 +118,26 @@ async def create_session(
             sess_date = date.fromisoformat(req.date)
         except ValueError:
             raise HTTPException(status_code=400, detail="invalid date format (use YYYY-MM-DD)")
+
+    # Validate subject pair early so we don't half-process the rest.
+    subject_fk: Optional[str] = None
+    subject_uuid: Optional[uuid.UUID] = None
+    if req.subject_type or req.subject_id:
+        if not (req.subject_type and req.subject_id):
+            raise HTTPException(
+                status_code=400,
+                detail="subject_type and subject_id must be provided together",
+            )
+        subject_fk = SUBJECT_FK_COLUMN.get(req.subject_type)
+        if not subject_fk:
+            raise HTTPException(
+                status_code=400,
+                detail=f"invalid subject_type: {req.subject_type}",
+            )
+        try:
+            subject_uuid = uuid.UUID(req.subject_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="invalid subject_id")
 
     # Parse + validate context_asset_ids → UUIDs
     ctx_ids: list = []
@@ -100,6 +149,56 @@ async def create_session(
                 raise HTTPException(status_code=400, detail=f"invalid asset id: {s}")
 
     async with AsyncSessionLocal() as db:
+        # ── Mode 1: subject given → get-or-create on the FK ────────────────
+        if subject_fk and subject_uuid:
+            existing = (await db.execute(
+                select(DBSession).where(
+                    DBSession.user_id == user_id,
+                    getattr(DBSession, subject_fk) == subject_uuid,
+                )
+            )).scalar_one_or_none()
+            if existing:
+                # If the caller also passed context_asset_ids, merge them in
+                # (dedup against existing).
+                if ctx_ids:
+                    existing_ids = set(existing.context_asset_ids or [])
+                    for cid in ctx_ids:
+                        existing_ids.add(cid)
+                    existing.context_asset_ids = list(existing_ids)
+                    await db.commit()
+                    await db.refresh(existing)
+                return {
+                    "ok": True,
+                    "session_id": str(existing.id),
+                    "created":    False,
+                    "subject_type": req.subject_type,
+                    "subject_id":   req.subject_id,
+                    "context_asset_ids": [str(i) for i in (existing.context_asset_ids or [])],
+                }
+
+            # No existing — auto-title from subject + create.
+            title = req.title or await _derive_subject_title(db, req.subject_type, subject_uuid)
+            sess = DBSession(
+                user_id=user_id,
+                session_type=req.session_type,
+                title=title,
+                date=sess_date,
+                context_asset_ids=ctx_ids,
+                **{subject_fk: subject_uuid},
+            )
+            db.add(sess)
+            await db.commit()
+            await db.refresh(sess)
+            return {
+                "ok": True,
+                "session_id": str(sess.id),
+                "created":    True,
+                "subject_type": req.subject_type,
+                "subject_id":   req.subject_id,
+                "context_asset_ids": [str(i) for i in (sess.context_asset_ids or [])],
+            }
+
+        # ── Mode 2/3: no subject → fresh session (optionally with context) ──
         sess = DBSession(
             user_id=user_id,
             session_type=req.session_type,
@@ -114,6 +213,7 @@ async def create_session(
     return {
         "ok": True,
         "session_id": str(sess.id),
+        "created":    True,
         "context_asset_ids": [str(i) for i in (sess.context_asset_ids or [])],
     }
 
@@ -257,23 +357,12 @@ async def get_session_input_turns(
     }
 
 
-# ── POST /api/sessions/for-subject  ─────────────────────────────────────────
-# Get-or-create the home discussion session for a given asset / entity.
-# Called by the frontend's「在 chat 里讨论」 button.
-#
-# Subject types and their FK columns:
+# ── Subject helpers (used by unified POST /api/sessions) ───────────────────
+# Subject FK columns map (M2.3 → consolidated into POST /sessions in M3.5):
 #   contact → sessions.contact_id
 #   event   → sessions.event_id
 #   file    → sessions.file_id
 #   asset   → sessions.subject_asset_id  (any asset-skill row)
-#
-# Title auto-derived from the subject's name/title field. Each user gets at
-# most ONE chat session per subject — repeated clicks reuse the existing one.
-
-class SessionForSubjectRequest(BaseModel):
-    subject_type: str           # "contact" | "event" | "file" | "asset"
-    subject_id:   str
-
 
 SUBJECT_FK_COLUMN = {
     "contact": "contact_id",
@@ -281,60 +370,6 @@ SUBJECT_FK_COLUMN = {
     "file":    "file_id",
     "asset":   "subject_asset_id",
 }
-
-
-@router.post("/sessions/for-subject")
-async def get_or_create_subject_session(
-    req: SessionForSubjectRequest,
-    user_id: str = Depends(get_current_user_id),
-):
-    fk = SUBJECT_FK_COLUMN.get(req.subject_type)
-    if not fk:
-        raise HTTPException(
-            status_code=400,
-            detail=f"invalid subject_type: {req.subject_type}",
-        )
-    try:
-        sid = uuid.UUID(req.subject_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="invalid subject_id")
-
-    async with AsyncSessionLocal() as db:
-        # Look for existing home session
-        stmt = select(DBSession).where(
-            DBSession.user_id == user_id,
-            getattr(DBSession, fk) == sid,
-        )
-        existing = (await db.execute(stmt)).scalar_one_or_none()
-        if existing:
-            return {
-                "ok": True,
-                "session_id": str(existing.id),
-                "subject_type": req.subject_type,
-                "subject_id": req.subject_id,
-                "created": False,
-            }
-
-        # None found → create new home session with a derived title
-        title = await _derive_subject_title(db, req.subject_type, sid)
-        sess_kwargs: dict = {
-            "user_id":      user_id,
-            "session_type": "chat",
-            "title":        title,
-            fk:             sid,
-        }
-        sess = DBSession(**sess_kwargs)
-        db.add(sess)
-        await db.commit()
-        await db.refresh(sess)
-
-        return {
-            "ok": True,
-            "session_id": str(sess.id),
-            "subject_type": req.subject_type,
-            "subject_id": req.subject_id,
-            "created": True,
-        }
 
 
 async def _derive_subject_title(db, subject_type: str, subject_id) -> str:

@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import { TopBar } from "./TopBar";
 import { FloatingDock } from "./FloatingDock";
@@ -15,22 +15,33 @@ import { FloatingDock } from "./FloatingDock";
  *   └──────────────────────────┘
  *           [ FloatingDock ]    — floats over content, doesn't take layout space
  *
+ * Route-aware dock (M3.5): on /chat the FloatingDock is hidden because the
+ * page has its own input + back nav; we also drop the bottom padding so
+ * ChatInput can truly stick to the screen bottom.
+ *
  * Per spec amendment (2026-05-26): the original bottom TabBar + middle FAB is
  * replaced by a single FloatingDock capsule that holds: 今天 / 资产库 / + /
  * 闪念 / Agent. SessionSidebar (M2) slots into ChatPage itself, not the shell.
  */
 export function AppShell() {
+  const location = useLocation();
+  // /chat owns its own bottom bar (ChatInput sticky + back nav). Hide dock
+  // there and let main fill all the way to the safe-area bottom so the
+  // input can sit flush.
+  const onChat = location.pathname.startsWith("/chat");
+
   return (
     // h-dvh (not min-h-dvh) so flex-1 children get a determinate height to
     // fill — pages that use h-full inside (e.g. ChatPage with sidebar +
     // input column) need this to lay out their own bottom bar correctly.
     <div className="h-dvh flex flex-col bg-eu-bg text-eu-text overflow-hidden">
       <TopBar />
-      {/* pb-28 reserves room for the floating dock + safe area */}
-      <main className="flex-1 overflow-y-auto pb-28 min-h-0">
+      {/* pb-28 reserves room for the floating dock + safe area;
+          0 on /chat where the dock is hidden and ChatInput owns the bottom. */}
+      <main className={`flex-1 overflow-y-auto min-h-0 ${onChat ? "pb-0" : "pb-28"}`}>
         <Outlet />
       </main>
-      <FloatingDock />
+      {!onChat && <FloatingDock />}
     </div>
   );
 }

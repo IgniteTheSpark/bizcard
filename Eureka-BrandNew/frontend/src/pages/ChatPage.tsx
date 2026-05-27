@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { History } from "lucide-react";
+import { ArrowLeft, History, Home, Plus } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ContextChipRail } from "@/components/chat/ContextChipRail";
@@ -11,6 +12,12 @@ import { useSessionDetail, useSessionMessages } from "@/hooks/useSessions";
 import type { Message as DbMessage } from "@/lib/types";
 
 const ACTIVE_SESSION_KEY = "eureka:active_chat_session";
+
+/** Router state shape that other pages pass when navigating to /chat. */
+interface ChatRouteState {
+  from?:      string;   // pathname to return to via back button
+  fromLabel?: string;   // short label for the back button, e.g. "Kevin"
+}
 
 /**
  * ChatPage — M2 implementation.
@@ -36,6 +43,8 @@ const ACTIVE_SESSION_KEY = "eureka:active_chat_session";
  *   - Switching session → reset messages, useSessionMessages re-fetches
  */
 export function ChatPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return window.localStorage.getItem(ACTIVE_SESSION_KEY) || null;
@@ -89,10 +98,37 @@ export function ChatPage() {
     alert("「沉淀为资产」M5 接 design-agent 后会展开;\n目前先用 dock 的 + 按钮手动创建。");
   }, []);
 
+  // ── Back-button "上级" resolution (M3.5) ───────────────────────────────
+  // Priority:
+  //   1. router state.from passed by the page that navigated us here
+  //      (e.g. AssetDetailDrawer's 在 chat 里讨论 button)
+  //   2. fallback to /library so back never strands the user
+  // The label rendered next to the arrow comes from state.fromLabel when
+  // provided, else a path-derived default.
+  const routerState = (location.state ?? {}) as ChatRouteState;
+  const backTarget = routerState.from ?? "/library";
+  const backLabel  = routerState.fromLabel
+    ?? defaultLabelForPath(routerState.from)
+    ?? "资产库";
+
+  function handleBack() {
+    navigate(backTarget);
+  }
+
+  function handleHome() {
+    navigate("/library");
+  }
+
+  function handleNewSession() {
+    // Drop any active session so the next user message starts a fresh chat;
+    // /api/chat will create a new session_id on first turn.
+    setActiveSessionId(null);
+    chat.reset([]);
+  }
+
   return (
-    // h-full = fit within AppShell's <main>, which already reserves pb-28
-    // for the floating dock. Using 100dvh here would push the ChatInput
-    // under the dock.
+    // h-full = fit within AppShell's <main>. M3.5: dock hidden on /chat
+    // so we get the full height for sidebar + chat column.
     <div className="flex h-full">
       <SessionSidebar
         activeId={activeSessionId}
@@ -102,53 +138,108 @@ export function ChatPage() {
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile-only toolbar: history toggle */}
-        <div className="md:hidden flex items-center justify-between px-eu-md py-1.5 border-b border-eu-rule">
+        {/* ── Top nav: back + breadcrumb + home + history + 新对话 ─── */}
+        <div className="flex items-center gap-eu-sm px-eu-md py-eu-sm border-b border-eu-rule bg-eu-bg/70 backdrop-blur shrink-0">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="inline-flex items-center gap-1 text-eu-sm text-eu-text-mid hover:text-eu-text-hi rounded-eu-md px-1.5 py-1 hover:bg-eu-surface-hover active:scale-95"
+            aria-label={`返回 ${backLabel}`}
+          >
+            <ArrowLeft size={14} strokeWidth={2} />
+            <span className="max-w-[14ch] truncate">{backLabel}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleHome}
+            className="p-1.5 rounded-eu-md text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
+            aria-label="首页"
+            title="首页"
+          >
+            <Home size={14} strokeWidth={1.75} />
+          </button>
+
+          <div className="flex-1 min-w-0 text-center text-eu-xs text-eu-text-lo font-mono truncate">
+            {sessionDetail?.title ?? (activeSessionId ? `session ${activeSessionId.slice(0, 8)}` : "新对话")}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleNewSession}
+            className="inline-flex items-center gap-1 text-eu-sm text-eu-text-mid hover:text-eu-text-hi rounded-eu-md px-1.5 py-1 hover:bg-eu-surface-hover active:scale-95"
+            title="新对话"
+          >
+            <Plus size={14} strokeWidth={2} />
+            <span className="hidden md:inline">新对话</span>
+          </button>
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="flex items-center gap-1.5 text-eu-sm text-eu-text-mid hover:text-eu-text-hi"
+            className="md:hidden inline-flex items-center gap-1 text-eu-sm text-eu-text-mid hover:text-eu-text-hi rounded-eu-md px-1.5 py-1 hover:bg-eu-surface-hover active:scale-95"
+            aria-label="对话历史"
+            title="对话历史"
           >
             <History size={14} strokeWidth={1.75} />
-            历史
           </button>
-          <div className="text-eu-xs text-eu-text-lo font-mono truncate max-w-[60%]">
-            {activeSessionId ? `session ${activeSessionId.slice(0, 8)}` : "新对话"}
-          </div>
         </div>
 
         {historyLoading && activeSessionId && (
-          <div className="text-eu-xs text-eu-text-lo px-eu-md py-eu-sm font-mono">加载历史…</div>
+          <div className="text-eu-xs text-eu-text-lo px-eu-md py-eu-sm font-mono shrink-0">加载历史…</div>
         )}
 
         {sessionDetail && (
-          <SubjectBanner
-            contactId={sessionDetail.contact_id}
-            eventId={sessionDetail.event_id}
-            fileId={sessionDetail.file_id}
-            subjectAssetId={sessionDetail.subject_asset_id}
-          />
+          <div className="shrink-0">
+            <SubjectBanner
+              contactId={sessionDetail.contact_id}
+              eventId={sessionDetail.event_id}
+              fileId={sessionDetail.file_id}
+              subjectAssetId={sessionDetail.subject_asset_id}
+            />
+          </div>
         )}
 
+        {/* ContextChipRail always renders when we have a session (M3.5) —
+            even a no-subject "general chat" should be able to add context. */}
         {activeSessionId && (
-          <ContextChipRail
-            assetIds={sessionDetail?.context_asset_ids ?? []}
-            sessionId={activeSessionId}
-          />
+          <div className="shrink-0">
+            <ContextChipRail
+              assetIds={sessionDetail?.context_asset_ids ?? []}
+              sessionId={activeSessionId}
+            />
+          </div>
         )}
 
+        {/* Messages — MessageList owns its own scroll (flex-1 overflow-y-auto
+            internally), so siblings with shrink-0 stay pinned. */}
         <MessageList
           messages={chat.messages}
           onPrecipitate={handlePrecipitate}
         />
 
-        <ChatInput
-          onSend={chat.send}
-          streaming={chat.streaming}
-        />
+        {/* Sticky bottom — AppShell's pb-0 on /chat lets this sit flush. */}
+        <div className="shrink-0">
+          <ChatInput
+            onSend={chat.send}
+            streaming={chat.streaming}
+          />
+        </div>
       </div>
     </div>
   );
+}
+
+/**
+ * Derive a sensible "back to X" label from the pathname the user came from.
+ * Used when AssetDetailDrawer / other navigators only pass `from` and not
+ * an explicit `fromLabel`.
+ */
+function defaultLabelForPath(path?: string): string | null {
+  if (!path) return null;
+  if (path.startsWith("/library"))      return "资产库";
+  if (path.startsWith("/calendar"))     return "日历";
+  if (path.startsWith("/notifications")) return "通知";
+  if (path === "/" || path === "")      return "首页";
+  return "上一页";
 }
 
 /**

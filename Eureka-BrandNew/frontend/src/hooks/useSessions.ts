@@ -2,7 +2,7 @@ import useSWR from "swr";
 
 import { apiFetch, swrFetcher } from "@/lib/api";
 import type {
-  CreateSessionResponse, MessagesResponse, SessionDetailResponse, SessionsResponse,
+  MessagesResponse, SessionDetailResponse, SessionsResponse,
 } from "@/lib/types";
 
 /**
@@ -59,59 +59,64 @@ export function useSessionDetail(sessionId: string | null | undefined) {
 }
 
 /**
- * createChatSessionWithContext — convenience for the「在 chat 里讨论」flow.
- * Creates a chat session with the given assets attached as context, returns
- * the new session_id. Caller is responsible for navigating to /chat after.
- *
- * Note: as of M2.3, the「在 chat 里讨论」 button uses getOrCreateSubjectSession
- * instead. This helper is kept for the multi-select / 一起讨论 flow which
- * doesn't have a single subject.
- */
-export async function createChatSessionWithContext(
-  assetIds: string[],
-  title?: string,
-): Promise<string> {
-  const resp = await apiFetch<CreateSessionResponse>("/api/sessions", {
-    method: "POST",
-    body: {
-      session_type: "chat",
-      title: title ?? "",
-      context_asset_ids: assetIds,
-    },
-  });
-  if (!resp.ok || !resp.session_id) {
-    throw new Error("failed to create session with context");
-  }
-  return resp.session_id;
-}
-
-/**
- * getOrCreateSubjectSession — M2.3 home-session pattern.
- *
- * Each asset / first-class entity has at most ONE chat session anchored
- * to it via sessions.{contact_id|event_id|file_id|subject_asset_id}. Calling
- * this with the same (type, id) returns the existing session id instead of
- * creating a new one.
- *
- * Used by AssetDetailDrawer's「在 chat 里讨论」 — user can revisit the same
- * Kevin / event / todo discussion as one continuous thread.
+ * Subject types supported by the unified POST /api/sessions endpoint.
+ * Each maps to a FK column on sessions (contact_id / event_id / file_id /
+ * subject_asset_id).
  */
 export type SubjectType = "contact" | "event" | "file" | "asset";
 
-export async function getOrCreateSubjectSession(
-  subjectType: SubjectType,
-  subjectId: string,
-): Promise<{ session_id: string; created: boolean }> {
-  const resp = await apiFetch<{
-    ok: boolean; session_id: string; created: boolean; error?: string;
-  }>("/api/sessions/for-subject", {
-    method: "POST",
-    body: { subject_type: subjectType, subject_id: subjectId },
-  });
-  if (!resp.ok || !resp.session_id) {
-    throw new Error(resp.error ?? "failed to open subject session");
+/**
+ * openSession — M3.5 unified session-open helper.
+ *
+ * Backed by the single POST /api/sessions endpoint. Three modes:
+ *
+ *   openSession({ subject: { type, id } })            ← home session per
+ *                                                       subject (get-or-create)
+ *   openSession({ contextAssetIds: [a1, a2] })         ← fresh chat with
+ *                                                       initial context
+ *   openSession({})                                    ← blank chat
+ *
+ * Subject mode is used by AssetDetailDrawer's「在 chat 里讨论」 — user can
+ * revisit the same Kevin / event / todo discussion as one continuous thread.
+ *
+ * Replaces the M2.2 `createChatSessionWithContext` and the M2.3
+ * `getOrCreateSubjectSession` helpers (both removed).
+ */
+export interface OpenSessionInput {
+  subject?:          { type: SubjectType; id: string };
+  contextAssetIds?:  string[];
+  sessionType?:      "flash" | "chat" | "meeting" | "manual";
+  title?:            string;
+}
+
+export interface OpenSessionResult {
+  sessionId: string;
+  created:   boolean;             // false → returned an existing home session
+  contextAssetIds: string[];
+}
+
+export async function openSession(input: OpenSessionInput): Promise<OpenSessionResult> {
+  const body: Record<string, unknown> = {
+    session_type: input.sessionType ?? "chat",
+  };
+  if (input.title)            body.title = input.title;
+  if (input.contextAssetIds)  body.context_asset_ids = input.contextAssetIds;
+  if (input.subject) {
+    body.subject_type = input.subject.type;
+    body.subject_id   = input.subject.id;
   }
-  return { session_id: resp.session_id, created: resp.created };
+  const resp = await apiFetch<{
+    ok: boolean; session_id: string; created?: boolean;
+    context_asset_ids?: string[]; error?: string;
+  }>("/api/sessions", { method: "POST", body });
+  if (!resp.ok || !resp.session_id) {
+    throw new Error(resp.error ?? "failed to open session");
+  }
+  return {
+    sessionId: resp.session_id,
+    created:   resp.created ?? true,
+    contextAssetIds: resp.context_asset_ids ?? [],
+  };
 }
 
 /**

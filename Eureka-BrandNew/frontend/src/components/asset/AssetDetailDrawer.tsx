@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, History, MessageCircle, X, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { GenericField } from "@/components/skill/GenericField";
 import { useModalMount } from "@/context/ModalContext";
-import { getOrCreateSubjectSession, type SubjectType } from "@/hooks/useSessions";
+import { openSession, type SubjectType } from "@/hooks/useSessions";
 import type { CardData, FieldFormat } from "@/lib/render-spec";
 
 /**
@@ -32,6 +32,7 @@ interface AssetDetailDrawerProps {
 export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: AssetDetailDrawerProps) {
   useModalMount();
   const navigate = useNavigate();
+  const location = useLocation();
   const [discussLoading, setDiscussLoading] = useState(false);
 
   // Esc to close
@@ -64,10 +65,17 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
         : card.cardType === "event"   ? "event"
         : card.cardType === "file"    ? "file"
         : "asset";
-      const { session_id } = await getOrCreateSubjectSession(subjectType, card.assetId);
-      window.localStorage.setItem("eureka:active_chat_session", session_id);
+      const { sessionId } = await openSession({
+        subject: { type: subjectType, id: card.assetId },
+      });
+      window.localStorage.setItem("eureka:active_chat_session", sessionId);
       onClose();
-      navigate("/chat");
+      // Pass `from` so ChatPage's back button can return here cleanly. We
+      // also send a short label derived from the subject so the back button
+      // renders 「← Kevin」 instead of just 「← 资产库」.
+      navigate("/chat", {
+        state: { from: location.pathname, fromLabel: card.title || "上一页" },
+      });
     } catch (e) {
       // eslint-disable-next-line no-alert
       alert("打开对话失败:" + ((e as Error).message ?? "未知错误"));
@@ -81,7 +89,9 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
     if (!sourceSessionId) return;
     window.localStorage.setItem("eureka:active_chat_session", sourceSessionId);
     onClose();
-    navigate("/chat");
+    navigate("/chat", {
+      state: { from: location.pathname, fromLabel: card.title || "上一页" },
+    });
   }
 
   return (
