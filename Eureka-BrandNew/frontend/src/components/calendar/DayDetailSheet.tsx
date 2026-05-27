@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
+import { ArrowLeft, Plus } from "lucide-react";
 
 import { EventCard } from "@/components/calendar/EventCard";
 import { useModalMount } from "@/context/ModalContext";
@@ -6,50 +7,52 @@ import { useTimeline } from "@/hooks/useTimeline";
 import type { TimelineItem } from "@/lib/types";
 
 /**
- * DayDetailSheet — full-screen colored Day Detail (M3-redo).
+ * DayDetailSheet — hour-grid day view (TP2-J refactor).
  *
- * Implements `rebuild/design-canvas/var-b-calendar.jsx#CalDay`:
+ * Replaces the M3-redo grouped-list (事件 / 待办 / 今日捕捉 / 来源 玻璃卡)
+ * with a Timepage-style hour grid: 24 hour rows, each event absolute-
+ * positioned over the slots it covers, all-day events as a chip row above
+ * the grid. Eureka-specific captures (idea / expense / contact / notes
+ * — assets without a time anchor) live in a small section BELOW the grid
+ * so they aren't lost.
  *
- *   ╔══════════════════════════════════════╗  ← full-screen with gradient bg
- *   ║                                      ║    derived from the day's
- *   ║   ‹  周一                         +  ║    DOMINANT accent (purple for
- *   ║      MAY 26                          ║    event-heavy, blue for todo-
- *   ║                                      ║    heavy, mixed for both)
- *   ║   ──── 事件 ────                     ║
- *   ║   ┌──────────────────────────────┐   ║  ← glass card (translucent
- *   ║   │ 10:00 — 11:00          EVENT │   ║    white + backdrop blur),
- *   ║   │ 产品评审 · Eureka v2         │   ║    caps mono group header,
- *   ║   │ 会议室 B · 60 min            │   ║    per-card caps mono kind label
- *   ║   └──────────────────────────────┘   ║
- *   ║   ──── 待办 ────                     ║
- *   ║   ┌──────────────────────────────┐   ║
- *   ║   │ 14:00 截止              TODO │   ║
- *   ║   │ 财务对账                     │   ║
- *   ║   │   ♪ 闪念 · 14:32 →           │   ║  ← source chip (when item has
- *   ║   └──────────────────────────────┘   ║    source_input_turn_id)
- *   ║   ──── 今日捕捉 ────                 ║
- *   ║   ┌──────────────────────────────┐   ║
- *   ║   │  ◇  IDEA                     │   ║  ← mini-icon block + caps label
- *   ║   │  SkillCard 的「沉淀」动画... │   ║
- *   ║   └──────────────────────────────┘   ║
- *   ╚══════════════════════════════════════╝
+ *   ┌──────────────────────────────────────┐
+ *   │ 星期一 · 8 天 之前 · 5月18日          │  top header
+ *   ├──────────────────────────────────────┤
+ *   │ 全天 [Memorial Day]  [Public Holiday] │  all-day chip row
+ *   ├─────┬────────────────────────────────┤
+ *   │ 上午 │                                │  hour grid:
+ *   │ 8时 │                                │  - left rail = "上午/下午 N 时"
+ *   │ 9时 │ ┌───────────────────────────┐ │  - right column = event blocks
+ *   │     │ │ 10:00 — 11:00              │ │    absolute-positioned by
+ *   │ 10时 │ │ 产品评审 · Eureka v2      │ │    start/end_at, color = purple
+ *   │ 11时 │ └───────────────────────────┘ │    (event accent)
+ *   │ 下午 │                                │  - "now" red line on today
+ *   │ 12时 │                                │
+ *   │ ...  │                                │
+ *   ├─────┴────────────────────────────────┤
+ *   │ 今日捕捉                              │  Eureka-only section below
+ *   │ [◇ IDEA  …]  [¥ EXPENSE  …]          │  (skill cards for time-less
+ *   │                                        │   assets created that day)
+ *   ├──────────────────────────────────────┤
+ *   │ [←]                            [+]   │  bottom toolbar (K)
+ *   └──────────────────────────────────────┘
  *
- * Groups (per design-system §5.5):
- *   - 事件       — items where kind === 'event'
- *   - 待办       — assets where skill_name === 'todo'
- *   - 今日捕捉   — anything time-less that just exists today
- *                 (idea / expense / contact / notes / misc)
- *   - 来源       — files associated with the day (future: from /api/files)
- *
- * No old "+ 在这天新建事件" CTA — that's the top-right "+" instead, matching
- * canvas.
+ * Hour-row height fixed at 56px for legibility; an event spanning 10:00 →
+ * 11:00 covers exactly one row, 10:30 → 11:00 covers half, etc. Events
+ * that start before 8 AM or end after 10 PM clip to grid edges with a ▲/▼
+ * visual hint (TODO).
  */
 
+const GRID_START_HOUR = 0;   // start the grid at midnight so cross-day fits
+const GRID_END_HOUR   = 24;  // exclusive — last row shown is 23 时
+const HOUR_HEIGHT     = 56;
+
 interface DayDetailSheetProps {
-  dayKey: string;                              // YYYY-MM-DD local
+  dayKey: string;
   onClose: () => void;
-  onItemTap: (item: TimelineItem) => void;     // routes to editor or drawer
-  onCreateEvent: (dayKey: string) => void;     // top-right + button
+  onItemTap: (item: TimelineItem) => void;
+  onCreateEvent: (dayKey: string) => void;
 }
 
 export function DayDetailSheet({
@@ -59,11 +62,28 @@ export function DayDetailSheet({
   const { byDay } = useTimeline();
   const items = byDay.get(dayKey) ?? [];
 
-  // Pick the gradient based on the day's dominant content.
-  const gradient = pickGradient(items);
+  // Bucket into all-day events / timed events (event w/ start_at) / captured
+  // (anything else — idea / expense / contact / notes / todo without time).
+  const { allDay, timed, captured } = useMemo(() => bucket(items), [items]);
 
-  // Bucket into the 4 design-system groups.
-  const groups = useMemo(() => bucket(items), [items]);
+  // Auto-scroll anchor: prefer "couple hours before earliest event" so we
+  // don't hide events above the fold. Fallback: a few hours before now
+  // (today) / 7 AM (other days). Never push past the earliest event.
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!gridRef.current) return;
+    const today = new Date();
+    const isToday = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}` === dayKey;
+    const firstEventHour = timed.length > 0
+      ? new Date(timed[0].effective_at).getHours()
+      : null;
+    const fallback = isToday ? Math.max(7, today.getHours() - 2) : 7;
+    const anchorHour = firstEventHour != null
+      ? Math.max(0, Math.min(fallback, firstEventHour - 1))
+      : fallback;
+    gridRef.current.scrollTop = (anchorHour - GRID_START_HOUR) * HOUR_HEIGHT;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayKey, timed.length]);
 
   return (
     <div
@@ -73,406 +93,478 @@ export function DayDetailSheet({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="fixed flex flex-col overflow-hidden text-white"
+        className="fixed flex flex-col overflow-hidden"
         style={{
-          // Full-screen sheet
           inset: 0,
-          background: gradient,
+          background: "linear-gradient(180deg, #1f3a7a 0%, #131f48 100%)",
+          color: "#ffffff",
           fontFamily: '"Manrope","Noto Sans SC", system-ui, sans-serif',
         }}
       >
-        {/* ── Ambient glows (decorative) ─────────────────────────────── */}
-        <div
-          className="pointer-events-none absolute"
-          style={{
-            top: -60, right: -60, width: 280, height: 280, borderRadius: 999,
-            background: "radial-gradient(circle, rgba(196,168,255,0.35), transparent 70%)",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute"
-          style={{
-            bottom: -100, left: -80, width: 320, height: 320, borderRadius: 999,
-            background: "radial-gradient(circle, rgba(111,158,255,0.20), transparent 70%)",
-          }}
-        />
-
-        {/* ── Top bar: ‹  date block  + ──────────────────────────────── */}
+        {/* ── Header: weekday · distance · M月D日 ─────────────────── */}
         <header
-          className="relative flex items-center justify-between"
-          style={{ padding: "20px 20px 0" }}
+          className="shrink-0"
+          style={{ padding: "20px 20px 12px" }}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="返回"
+          <div
+            className="font-display"
             style={{
-              width: 36, height: 36, borderRadius: 999,
-              background: "rgba(255,255,255,0.08)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#fff", fontSize: 16, cursor: "pointer",
+              fontSize: 22, fontWeight: 700, letterSpacing: "0.04em",
+              color: "#ffffff",
+              textShadow: "0 0 24px rgba(255,255,255,0.30)",
             }}
           >
-            ‹
-          </button>
-          <div className="text-center">
-            <div
-              className="font-display"
-              style={{
-                fontSize: 22, fontWeight: 700, letterSpacing: "0.20em",
-                color: "#ffffff",
-                textShadow: "0 0 24px rgba(255,255,255,0.30)",
-              }}
-            >
-              {weekdayLabel(dayKey)}
-            </div>
-            <div
-              className="font-mono mt-1"
-              style={{
-                fontSize: 11, color: "rgba(255,255,255,0.65)",
-                letterSpacing: "0.18em",
-              }}
-            >
-              {monthDayCaps(dayKey)}
-            </div>
+            {weekdayLabel(dayKey)}
           </div>
-          <button
-            type="button"
-            onClick={() => onCreateEvent(dayKey)}
-            aria-label="新建事件"
+          <div
+            className="font-mono mt-1"
             style={{
-              width: 36, height: 36, borderRadius: 999,
-              background: "rgba(255,255,255,0.08)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#fff", fontSize: 18, cursor: "pointer",
+              fontSize: 11, color: "rgba(255,255,255,0.70)",
+              letterSpacing: "0.18em",
             }}
           >
-            +
-          </button>
+            {distanceLabel(dayKey)} · {monthDayCaps(dayKey)}
+          </div>
         </header>
 
-        {/* ── Scrollable groups ─────────────────────────────────────── */}
+        {/* ── All-day chip row (only when present) ─────────────────── */}
+        {allDay.length > 0 && (
+          <div
+            className="shrink-0 flex items-center gap-2"
+            style={{
+              padding: "8px 20px 14px",
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <span
+              className="font-mono shrink-0"
+              style={{
+                fontSize: 10, letterSpacing: "0.22em",
+                color: "rgba(255,255,255,0.50)", fontWeight: 600,
+              }}
+            >
+              全天
+            </span>
+            <div className="flex-1 flex flex-wrap gap-1.5">
+              {allDay.map((it) => (
+                <AllDayChip
+                  key={`${it.kind}-${it.id}`}
+                  item={it}
+                  onClick={() => onItemTap(it)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Hour grid (scrollable) ─────────────────────────────── */}
         <div
+          ref={gridRef}
           className="flex-1 overflow-y-auto eu-noscroll relative"
-          style={{ padding: "24px 20px 32px", display: "flex", flexDirection: "column", gap: 16 }}
         >
-          {groups.event.length > 0 && (
-            <Group label="事件" items={groups.event} onItemTap={onItemTap} kindLabel="EVENT" />
+          <div
+            className="relative"
+            style={{
+              height: (GRID_END_HOUR - GRID_START_HOUR) * HOUR_HEIGHT,
+            }}
+          >
+            {/* Hour rows */}
+            {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }).map((_, i) => {
+              const hour = GRID_START_HOUR + i;
+              return (
+                <div
+                  key={hour}
+                  className="absolute left-0 right-0 flex items-start"
+                  style={{
+                    top: i * HOUR_HEIGHT,
+                    height: HOUR_HEIGHT,
+                    borderTop: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  }}
+                >
+                  <span
+                    className="font-mono shrink-0 text-right"
+                    style={{
+                      width: 64, paddingRight: 10, paddingTop: 4,
+                      fontSize: 10.5, color: "rgba(255,255,255,0.55)",
+                      letterSpacing: "0.06em",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {hourLabel(hour)}
+                  </span>
+                </div>
+              );
+            })}
+
+            {/* Timed events — absolute-positioned over the grid */}
+            {timed.map((it) => {
+              const block = computeBlock(it);
+              if (!block) return null;
+              return (
+                <button
+                  key={`${it.kind}-${it.id}`}
+                  type="button"
+                  onClick={() => onItemTap(it)}
+                  className="absolute text-left active:scale-[0.99] overflow-hidden"
+                  style={{
+                    top: block.top, height: block.height,
+                    left: 70, right: 14,
+                    background: "linear-gradient(135deg, rgba(196,168,255,0.55) 0%, rgba(156,128,240,0.40) 100%)",
+                    borderLeft: "3px solid #c4a8ff",
+                    borderRadius: 10,
+                    padding: "6px 12px",
+                    cursor: "pointer",
+                    transition: "all 200ms cubic-bezier(.2,.7,.3,1)",
+                  }}
+                >
+                  <div
+                    className="font-mono"
+                    style={{
+                      fontSize: 10.5, color: "rgba(255,255,255,0.85)",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {formatRange(it)}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13.5, fontWeight: 600, color: "#ffffff",
+                      letterSpacing: "-0.005em",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}
+                  >
+                    {it.title}
+                  </div>
+                  {it.location && block.height > 56 && (
+                    <div
+                      style={{
+                        fontSize: 11, color: "rgba(255,255,255,0.72)",
+                        marginTop: 2,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}
+                    >
+                      {it.location}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+
+            {/* "now" line — only on today */}
+            <NowLine dayKey={dayKey} />
+          </div>
+
+          {/* Captured (idea / expense / contact / notes / typed-todo) below grid */}
+          {captured.length > 0 && (
+            <div
+              className="relative"
+              style={{
+                padding: "20px 20px 24px",
+                borderTop: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(0,0,0,0.15)",
+              }}
+            >
+              <div
+                className="font-mono mb-3"
+                style={{
+                  fontSize: 10.5, letterSpacing: "0.22em",
+                  color: "rgba(255,255,255,0.50)", fontWeight: 600,
+                }}
+              >
+                今日捕捉
+              </div>
+              <div className="flex flex-col gap-2">
+                {captured.map((it) => (
+                  <CapturedCard
+                    key={`${it.kind}-${it.id}`}
+                    item={it}
+                    onClick={() => onItemTap(it)}
+                  />
+                ))}
+              </div>
+            </div>
           )}
-          {groups.todo.length > 0 && (
-            <Group label="待办" items={groups.todo} onItemTap={onItemTap} kindLabel="TODO" />
-          )}
-          {groups.captured.length > 0 && (
-            <Group label="今日捕捉" items={groups.captured} onItemTap={onItemTap} kindLabel={null} />
-          )}
+
           {items.length === 0 && (
             <div
+              className="absolute inset-x-0 text-center"
               style={{
+                top: HOUR_HEIGHT * 8 + 80,
                 color: "rgba(255,255,255,0.55)", fontSize: 14,
-                fontStyle: "italic", textAlign: "center", marginTop: 48,
+                fontStyle: "italic",
               }}
             >
               这一天什么都没有
             </div>
           )}
         </div>
+
+        {/* ── Bottom toolbar: ← back / + add (K) ────────────────── */}
+        <footer
+          className="shrink-0 flex items-center justify-between"
+          style={{
+            padding: "10px 16px 14px",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            background: "rgba(0,0,0,0.20)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="返回"
+            style={{
+              width: 40, height: 40, borderRadius: 999,
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.14)",
+              color: "#fff", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <ArrowLeft size={16} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onCreateEvent(dayKey)}
+            aria-label="添加事件"
+            style={{
+              width: 40, height: 40, borderRadius: 999,
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.14)",
+              color: "#fff", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <Plus size={18} strokeWidth={2} />
+          </button>
+        </footer>
       </div>
     </div>
   );
 }
 
-/* ── Group rendering ──────────────────────────────────────────────────── */
+/* ── Bucket logic ─────────────────────────────────────────────────── */
 
-function Group({
-  label, items, onItemTap, kindLabel,
-}: {
-  label: string;
-  items: TimelineItem[];
-  onItemTap: (it: TimelineItem) => void;
-  kindLabel: string | null;
-}) {
-  return (
-    <section className="flex flex-col gap-3">
-      <SectionLabel>{label}</SectionLabel>
-      {items.map((it) => {
-        // M4-bugfix-2: events render via the unified EventCard so the
-        // visual matches Library and Chat. Todo / captured stay on the
-        // bespoke DayCard for now (their unification waits on an asset
-        // counterpart; this PR only unifies events).
-        if (it.kind === "event") {
-          return (
-            <EventCard
-              key={`${it.kind}-${it.id}`}
-              event={{
-                event_id: it.event_id ?? it.id,
-                title:    it.title,
-                start_at: it.effective_at,
-                end_at:   it.end_at,
-                all_day:  it.all_day,
-                location: it.location,
-              }}
-              onClick={() => onItemTap(it)}
-            />
-          );
-        }
-        return (
-          <DayCard
-            key={`${it.kind}-${it.id}`}
-            item={it}
-            onClick={() => onItemTap(it)}
-            forcedKindLabel={kindLabel}
-          />
-        );
-      })}
-    </section>
-  );
+function bucket(items: TimelineItem[]) {
+  const allDay:   TimelineItem[] = [];
+  const timed:    TimelineItem[] = [];
+  const captured: TimelineItem[] = [];
+  for (const it of items) {
+    if (it.kind === "event") {
+      if (it.all_day) allDay.push(it);
+      else            timed.push(it);
+    } else if (it.skill_name === "todo") {
+      // typed todo: if it has a time-of-day on effective_at use timed
+      // (deadline rendered as a thin marker), else captured. Heuristic:
+      // we don't have a separate "has time" flag, but typed dispatch
+      // produces todos with 09:00 default for no-time, which is OK to
+      // show on the grid.
+      timed.push(it);
+    } else {
+      captured.push(it);
+    }
+  }
+  // Sort timed by start so they don't overlap visually when stacked.
+  timed.sort((a, b) => a.effective_at.localeCompare(b.effective_at));
+  return { allDay, timed, captured };
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="font-mono"
-      style={{
-        fontSize: 10.5, letterSpacing: "0.22em",
-        color: "rgba(255,255,255,0.50)", fontWeight: 600,
-        textTransform: "uppercase",
-      }}
-    >
-      {children}
-    </div>
-  );
+/* ── Hour-grid block math ─────────────────────────────────────────── */
+
+interface Block { top: number; height: number; }
+function computeBlock(it: TimelineItem): Block | null {
+  const start = new Date(it.effective_at);
+  const startMin = start.getHours() * 60 + start.getMinutes();
+  let endMin: number;
+  if (it.end_at) {
+    const end = new Date(it.end_at);
+    endMin = end.getHours() * 60 + end.getMinutes();
+    if (endMin <= startMin) endMin = startMin + 30; // safety
+  } else {
+    endMin = startMin + 30; // todo / single-point: 30-min visual block
+  }
+  const minPerPx = 60 / HOUR_HEIGHT;
+  const clampedStart = Math.max(GRID_START_HOUR * 60, startMin);
+  const clampedEnd   = Math.min(GRID_END_HOUR * 60,   endMin);
+  if (clampedEnd <= clampedStart) return null;
+  return {
+    top:    (clampedStart - GRID_START_HOUR * 60) / minPerPx,
+    height: (clampedEnd - clampedStart) / minPerPx,
+  };
 }
 
-function DayCard({
-  item, onClick, forcedKindLabel,
-}: {
-  item: TimelineItem;
-  onClick: () => void;
-  forcedKindLabel: string | null;
-}) {
-  const isEvent = item.kind === "event";
-  const skill = item.skill_name;
-  const kindLabel = forcedKindLabel ?? (
-    isEvent ? "EVENT"
-    : skill === "todo"    ? "TODO"
-    : skill === "idea"    ? "IDEA"
-    : skill === "expense" ? "EXPENSE"
-    : skill === "contact" ? "CONTACT"
-    : skill === "notes"   ? "NOTE"
-    : (skill ?? "").toUpperCase() || "ITEM"
-  );
+/* ── Sub-renders ──────────────────────────────────────────────────── */
 
-  // Captured items get a mini icon block; event/todo get a stronger row.
-  const isCaptured = !isEvent && skill && !["todo"].includes(skill);
-
+function AllDayChip({ item, onClick }: { item: TimelineItem; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="text-left"
+      className="inline-flex items-center gap-1.5"
       style={{
-        padding: "14px 16px", borderRadius: 14,
-        background: "rgba(255,255,255,0.10)",
-        border: "1px solid rgba(255,255,255,0.18)",
-        backdropFilter: "blur(10px)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.20)",
-        color: "#fff", cursor: "pointer",
+        padding: "5px 10px", borderRadius: 999,
+        background: "rgba(196,168,255,0.20)",
+        border: "1px solid rgba(196,168,255,0.40)",
+        color: "#ffffff", fontSize: 12,
+        cursor: "pointer", maxWidth: 220,
       }}
+      title={item.title}
     >
-      {/* Header row: time / kind label OR mini-icon + caps */}
-      {isCaptured ? (
-        <div className="flex items-center gap-2.5" style={{ marginBottom: 6 }}>
-          <CaptureIcon skill={skill ?? ""} />
-          <span
-            className="font-mono"
-            style={{
-              fontSize: 10, color: "rgba(255,255,255,0.50)",
-              letterSpacing: "0.16em",
-            }}
-          >
-            {kindLabel}
-          </span>
-          {skill === "expense" && (
-            <span
-              className="ml-auto font-mono"
-              style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}
-            >
-              {extractAmount(item)}
-            </span>
-          )}
-        </div>
-      ) : (
-        <div className="flex items-baseline justify-between" style={{ marginBottom: 6 }}>
-          <span
-            className="font-mono"
-            style={{
-              fontSize: 11, color: "rgba(255,255,255,0.68)",
-              letterSpacing: "0.14em",
-            }}
-          >
-            {timeOrDeadline(item)}
-          </span>
-          <span
-            className="font-mono"
-            style={{
-              fontSize: 10, color: "rgba(255,255,255,0.45)",
-              letterSpacing: "0.16em",
-            }}
-          >
-            {kindLabel}
-          </span>
-        </div>
-      )}
-
-      {/* Title */}
-      <div
+      <span style={{
+        width: 5, height: 5, borderRadius: 999, background: "#c4a8ff",
+        boxShadow: "0 0 5px rgba(196,168,255,0.6)",
+      }} />
+      <span
         style={{
-          fontSize: isEvent ? 17 : 16,
-          fontWeight: isEvent ? 600 : 500,
-          color: "#ffffff", letterSpacing: "-0.005em",
-          marginBottom: item.subtitle || item.location ? 4 : 0,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}
       >
         {item.title}
-      </div>
-
-      {/* Subtitle (for events: location + duration; for assets: subtitle) */}
-      {(item.subtitle || item.location) && (
-        <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.72)" }}>
-          {isEvent && item.location ? formatEventMeta(item) : item.subtitle}
-        </div>
-      )}
-
-      {/* Source chip — when there's a source_input_turn_id (came from flash) */}
-      {item.source_input_turn_id && (
-        <div className="mt-2">
-          <SourceChip />
-        </div>
-      )}
+      </span>
     </button>
   );
 }
 
-function CaptureIcon({ skill }: { skill: string }) {
-  const map: Record<string, { glyph: string; fg: string; bg: string; border: string }> = {
-    idea:    { glyph: "◇", fg: "#f5c977", bg: "rgba(245,201,119,0.16)", border: "rgba(245,201,119,0.30)" },
-    expense: { glyph: "¥", fg: "#86e0a5", bg: "rgba(134,224,165,0.16)", border: "rgba(134,224,165,0.30)" },
-    contact: { glyph: "·", fg: "#d4dbe6", bg: "rgba(212,219,230,0.10)", border: "rgba(212,219,230,0.22)" },
-    notes:   { glyph: "≡", fg: "#a4c2ff", bg: "rgba(111,158,255,0.14)", border: "rgba(111,158,255,0.26)" },
-  };
-  const s = map[skill] ?? { glyph: "·", fg: "#9aa6b8", bg: "rgba(154,166,184,0.10)", border: "rgba(154,166,184,0.22)" };
+function CapturedCard({ item, onClick }: { item: TimelineItem; onClick: () => void }) {
+  // Captured cards re-use the unified EventCard shape for events; otherwise
+  // a compact line. Simple variant inline here.
+  if (item.kind === "event") {
+    return (
+      <EventCard
+        event={{
+          event_id: item.event_id ?? item.id,
+          title: item.title,
+          start_at: item.effective_at,
+          end_at:   item.end_at,
+          all_day:  item.all_day,
+          location: item.location,
+        }}
+        onClick={onClick}
+      />
+    );
+  }
+  const skill = item.skill_name ?? "asset";
+  const accent =
+    skill === "idea"    ? { fg: "#f5c977", bg: "rgba(245,201,119,0.10)", edge: "rgba(245,201,119,0.24)", glyph: "◇", caps: "IDEA" }
+  : skill === "expense" ? { fg: "#86e0a5", bg: "rgba(134,224,165,0.10)", edge: "rgba(134,224,165,0.24)", glyph: "¥", caps: "EXPENSE" }
+  : skill === "contact" ? { fg: "#d4dbe6", bg: "rgba(212,219,230,0.05)", edge: "rgba(212,219,230,0.16)", glyph: "·", caps: "CONTACT" }
+  : skill === "notes"   ? { fg: "#a4c2ff", bg: "rgba(111,158,255,0.10)", edge: "rgba(111,158,255,0.22)", glyph: "≡", caps: "NOTE" }
+  :                       { fg: "#9aa6b8", bg: "rgba(154,166,184,0.08)", edge: "rgba(154,166,184,0.22)", glyph: "•", caps: skill.toUpperCase() };
   return (
-    <span
-      className="font-mono inline-flex items-center justify-center"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center text-left"
       style={{
-        width: 22, height: 22, borderRadius: 6,
-        background: s.bg, border: `1px solid ${s.border}`,
-        color: s.fg, fontSize: 12,
+        gap: 10, padding: "10px 12px", borderRadius: 12,
+        background: accent.bg, border: `1px solid ${accent.edge}`,
+        color: "#fff", cursor: "pointer",
       }}
     >
-      {s.glyph}
-    </span>
+      <span
+        className="font-mono shrink-0"
+        style={{
+          width: 22, height: 22, borderRadius: 6,
+          background: "rgba(0,0,0,0.20)",
+          border: `1px solid ${accent.edge}`,
+          color: accent.fg, fontSize: 12,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        {accent.glyph}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div
+          className="font-mono"
+          style={{ fontSize: 9.5, letterSpacing: "0.18em", color: accent.fg, fontWeight: 600 }}
+        >
+          {accent.caps}
+        </div>
+        <div
+          style={{
+            fontSize: 13.5, color: "#fff", fontWeight: 500, marginTop: 1,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+        >
+          {item.title}
+        </div>
+      </div>
+    </button>
   );
 }
 
-function SourceChip({ label = "闪念" }: { label?: string }) {
+function NowLine({ dayKey }: { dayKey: string }) {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  if (dayKey !== todayKey) return null;
+  const nowMin = today.getHours() * 60 + today.getMinutes();
+  const top = ((nowMin - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
   return (
     <div
-      className="inline-flex items-center font-mono"
-      style={{
-        gap: 5,
-        padding: "3px 8px 3px 7px",
-        borderRadius: 999,
-        background: "rgba(0,0,0,0.22)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        color: "rgba(255,255,255,0.62)",
-        fontSize: 10, letterSpacing: "0.06em",
-      }}
+      className="absolute left-0 right-0 pointer-events-none"
+      style={{ top, height: 2 }}
     >
-      <span style={{ color: "rgba(164,194,255,0.85)" }}>♪</span>
-      <span>{label}</span>
-      <span style={{ color: "rgba(255,255,255,0.45)" }}>→</span>
+      <div
+        style={{
+          height: 2, background: "#ec6a83",
+          boxShadow: "0 0 8px rgba(236,106,131,0.7)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute", left: 56, top: -4,
+          width: 10, height: 10, borderRadius: 999,
+          background: "#ec6a83",
+          boxShadow: "0 0 8px rgba(236,106,131,0.8)",
+        }}
+      />
     </div>
   );
 }
 
-/* ── Bucketing ────────────────────────────────────────────────────────── */
+/* ── Formatters ───────────────────────────────────────────────────── */
 
-function bucket(items: TimelineItem[]) {
-  const event:    TimelineItem[] = [];
-  const todo:     TimelineItem[] = [];
-  const captured: TimelineItem[] = [];
-  for (const it of items) {
-    if (it.kind === "event")               event.push(it);
-    else if (it.skill_name === "todo")      todo.push(it);
-    else                                    captured.push(it);
-  }
-  return { event, todo, captured };
+function hourLabel(hour: number): string {
+  if (hour === 0)  return "午夜";
+  if (hour === 12) return "中午 12时";
+  if (hour < 12)   return `上午 ${hour}时`;
+  return `下午 ${hour - 12}时`;
 }
 
-/* ── Background-gradient picker (mirrors canvas hardcoded gradient) ───── */
-
-function pickGradient(items: TimelineItem[]): string {
-  const hasEvent = items.some((i) => i.kind === "event");
-  const hasTodo  = items.some((i) => i.kind === "asset" && i.skill_name === "todo");
-  const hasIdea  = items.some((i) => i.kind === "asset" && i.skill_name === "idea");
-  if (hasEvent && hasTodo) return "linear-gradient(180deg, #3d2f7a 0%, #2a2655 100%)";
-  if (hasEvent)            return "linear-gradient(180deg, #3d2f7a 0%, #2a1f5a 100%)";
-  if (hasTodo)             return "linear-gradient(180deg, #1f3a7a 0%, #131f48 100%)";
-  if (hasIdea)             return "linear-gradient(180deg, #3a2f1a 0%, #1f1a10 100%)";
-  return "linear-gradient(180deg, #1a1d28 0%, #0e1018 100%)";
-}
-
-/* ── Item formatters ───────────────────────────────────────────────────── */
-
-function timeOrDeadline(it: TimelineItem): string {
-  if (it.kind === "event") {
-    if (it.all_day) return "全天";
-    const start = formatHourMinute(it.effective_at);
-    if (it.end_at) {
-      const end = formatHourMinute(it.end_at);
-      return `${start} — ${end}`;
-    }
-    return start;
-  }
-  // todo etc.
-  if (it.skill_name === "todo") {
-    return `${formatHourMinute(it.effective_at)} 截止`;
-  }
-  return formatHourMinute(it.effective_at);
-}
-
-function formatHourMinute(iso: string): string {
-  const d = new Date(iso);
+function formatRange(it: TimelineItem): string {
+  const s = new Date(it.effective_at);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function formatEventMeta(it: TimelineItem): string {
-  const parts: string[] = [];
-  if (it.location) parts.push(it.location);
-  if (it.end_at) {
-    const startMs = +new Date(it.effective_at);
-    const endMs   = +new Date(it.end_at);
-    const mins    = Math.max(0, Math.round((endMs - startMs) / 60000));
-    if (mins > 0) parts.push(`${mins} min`);
-  }
-  return parts.join(" · ");
-}
-
-function extractAmount(it: TimelineItem): string {
-  const amount = (it.payload as { amount?: number } | undefined)?.amount;
-  if (typeof amount === "number") return `¥ ${amount}`;
-  return "";
+  const startStr = `${pad(s.getHours())}:${pad(s.getMinutes())}`;
+  if (!it.end_at) return startStr;
+  const e = new Date(it.end_at);
+  return `${startStr} — ${pad(e.getHours())}:${pad(e.getMinutes())}`;
 }
 
 function weekdayLabel(dayKey: string): string {
   const [y, m, d] = dayKey.split("-").map(Number);
-  return ["周日","周一","周二","周三","周四","周五","周六"][new Date(y, m - 1, d).getDay()];
+  return ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"][new Date(y, m - 1, d).getDay()];
 }
 
 function monthDayCaps(dayKey: string): string {
   const [, m, d] = dayKey.split("-").map(Number);
-  const monthsEn = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-  return `${monthsEn[m - 1]} ${d}`;
+  return `${m}月${d}日`;
+}
+
+/** Same distance-from-today helper as ScheduleView. */
+function distanceLabel(dayKey: string): string {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const [ya, ma, da] = dayKey.split("-").map(Number);
+  const [yb, mb, db] = todayKey.split("-").map(Number);
+  const days = Math.round(
+    (Date.UTC(ya, ma - 1, da) - Date.UTC(yb, mb - 1, db)) / 86_400_000,
+  );
+  if (days === 0)  return "今天";
+  if (days === 1)  return "明天";
+  if (days === -1) return "昨天";
+  const abs = Math.abs(days);
+  const suffix = days > 0 ? "后" : "前";
+  if (abs < 7)   return `${abs} 天${suffix}`;
+  if (abs < 28)  return `${Math.round(abs / 7)} 周${suffix}`;
+  if (abs < 365) return `${Math.round(abs / 30)} 月${suffix}`;
+  return `${Math.round(abs / 365)} 年${suffix}`;
 }

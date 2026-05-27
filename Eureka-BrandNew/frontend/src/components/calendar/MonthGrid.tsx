@@ -155,7 +155,10 @@ export function MonthGrid({
             glow = "0 0 20px rgba(255,255,255,0.65)";
           }
           if (isSelected && !isToday) {
-            border = "#ffffff"; bg = "rgba(156,128,240,0.20)"; fg = "#ffffff";
+            // H (TP2): match Timepage — selected day uses brand-blue ring
+            // outline instead of white. Today still takes precedence with
+            // its filled white circle.
+            border = "#6f9eff"; bg = "transparent"; fg = "#a4c2ff";
           }
 
           return (
@@ -399,9 +402,38 @@ function formatTime(it: TimelineItem): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/**
+ * I (TP2): Replaces "M月 D 日 · 周X" with "周X · N 天 之前/后" so the
+ * selected-day summary tells the user where they are in time (matching
+ * Timepage's "8 天 之前" style + the Schedule's distance overlay).
+ * Today renders as just "今天".
+ */
 function formatFullDate(dayKey: string): string {
   const [y, m, d] = dayKey.split("-").map(Number);
   const date = new Date(y, m - 1, d);
   const weekday = ["周日","周一","周二","周三","周四","周五","周六"][date.getDay()];
-  return `${m}月 ${d} 日 · ${weekday}`;
+  const dist = distanceLabel(dayKey);
+  return `${weekday} · ${dist} · ${m}月${d}日`;
+}
+
+/** Same logic as ScheduleView.distanceLabel but inlined here to avoid the
+ *  cross-import cycle. 0=今天 / ±1=明天/昨天 / ±2-6=N 天 / ±7-27=N 周 /
+ *  ±28-364=N 月 / ±365+=N 年. */
+function distanceLabel(dayKey: string): string {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const [ya, ma, da] = dayKey.split("-").map(Number);
+  const [yb, mb, db] = todayKey.split("-").map(Number);
+  const days = Math.round(
+    (Date.UTC(ya, ma - 1, da) - Date.UTC(yb, mb - 1, db)) / 86_400_000,
+  );
+  if (days === 0)  return "今天";
+  if (days === 1)  return "明天";
+  if (days === -1) return "昨天";
+  const abs = Math.abs(days);
+  const suffix = days > 0 ? "后" : "前";
+  if (abs < 7)   return `${abs} 天${suffix}`;
+  if (abs < 28)  return `${Math.round(abs / 7)} 周${suffix}`;
+  if (abs < 365) return `${Math.round(abs / 30)} 月${suffix}`;
+  return `${Math.round(abs / 365)} 年${suffix}`;
 }
