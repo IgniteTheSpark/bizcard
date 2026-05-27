@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { useModalMount } from "@/context/ModalContext";
 import { SkillCreateForm } from "@/components/skill/SkillCreateForm";
-import { EventEditor } from "@/components/calendar/EventEditor";
+import { EventForm } from "@/components/calendar/EventForm";
 import type { AccentColor } from "@/lib/render-spec";
 import type { Skill } from "@/lib/types";
 
@@ -39,19 +39,17 @@ function CreateAssetMenuBody({ onClose }: { onClose: () => void }) {
   // When user picks a skill, swap the menu for that skill's create form.
   // (We don't unmount this component — the form sits as a sibling overlay.)
   const [activeSkill, setActiveSkill] = useState<Skill | null>(null);
+  // Event is a first-class entity not a skill — separate state branch so
+  // the EventForm can be triggered from the same tile grid.
+  const [eventOpen,   setEventOpen]   = useState(false);
+
+  if (eventOpen) {
+    return (
+      <EventForm onClose={() => { setEventOpen(false); onClose(); }} />
+    );
+  }
 
   if (activeSkill) {
-    // Events are a first-class entity (FK columns, attendees, etc.) — they
-    // get a dedicated EventEditor with start/end pickers + all-day toggle,
-    // not the generic schema-driven form. Everything else still uses
-    // SkillCreateForm.
-    if (activeSkill.name === "event") {
-      return (
-        <EventEditor
-          onClose={() => { setActiveSkill(null); onClose(); }}
-        />
-      );
-    }
     return (
       <SkillCreateForm
         skill={activeSkill}
@@ -118,6 +116,15 @@ function CreateAssetMenuBody({ onClose }: { onClose: () => void }) {
           直接创建
         </div>
         <div className="px-eu-md pb-eu-md grid grid-cols-2 gap-eu-sm">
+          {/* M4-bugfix-3: 事件 is first-class (not a skill) but the user
+              expects to create one from this same grid. Hardcoded tile
+              opens EventForm directly. */}
+          <SkillTile
+            icon="📅"
+            label="事件"
+            accent="purple"
+            onClick={() => setEventOpen(true)}
+          />
           {creatable.map((s) => (
             <SkillTile
               key={s.name}

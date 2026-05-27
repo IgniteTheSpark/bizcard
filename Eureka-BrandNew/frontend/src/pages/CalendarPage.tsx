@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, List, LayoutGrid } from "lucide-react";
 
 import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
 import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
-import { EventEditor } from "@/components/calendar/EventEditor";
+import { EventForm } from "@/components/calendar/EventForm";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { ScheduleView } from "@/components/calendar/ScheduleView";
 import { useEvents, findEvent } from "@/hooks/useEvents";
@@ -26,11 +26,11 @@ import type { AssetsResponse, TimelineItem } from "@/lib/types";
  *   └──────────────────────────────────────────────┘
  *
  * Interactions:
- *   - Schedule row tap → event → EventEditor (edit); asset → AssetDetailDrawer
+ *   - Schedule row tap → event → EventForm (edit); asset → AssetDetailDrawer
  *   - Month day tap   → DayDetailSheet (which can route to either above)
- *   - 新建事件         → FloatingDock + → CreateAssetMenu → 事件 tile → EventEditor
+ *   - 新建事件         → FloatingDock + → CreateAssetMenu → 事件 tile → EventForm
  *                         (M4-polish: removed the redundant top-bar + button;
- *                          the global dock + already routes to EventEditor)
+ *                          the global dock + already routes to EventForm)
  *
  * MonthGrid uses a navigable cursor (prev/next month); ScheduleView always
  * shows everything sorted desc (no cursor).
@@ -119,14 +119,14 @@ export function CalendarPage() {
       )}
 
       {creating && (
-        <EventEditor
+        <EventForm
           defaultStart={createDefault}
           onClose={() => { setCreating(false); setCreateDefault(undefined); }}
         />
       )}
 
       {editingEvent && (
-        <EventEditor
+        <EventForm
           existing={editingEvent}
           onClose={() => setEditingId(null)}
         />
@@ -182,7 +182,7 @@ function CalendarHeader({
 
       {/* M4-polish: only view toggle remains here. + 新建事件 absorbed by
           the global FloatingDock + button (CreateAssetMenu → 事件 tile
-          opens EventEditor). */}
+          opens EventForm). */}
       <div className="ml-auto inline-flex rounded-eu-md border border-eu-border p-0.5">
         <ToggleBtn active={view === "schedule"} onClick={() => onSetView("schedule")}>
           <List size={14} strokeWidth={1.75} />
