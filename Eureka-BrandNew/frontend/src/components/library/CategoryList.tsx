@@ -1,7 +1,8 @@
 import { Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import useSWR from "swr";
 
+import { EventCard } from "@/components/calendar/EventCard";
 import { swrFetcher } from "@/lib/api";
 import type {
   Asset, AssetsResponse, ContactsResponse, Event,
@@ -305,9 +306,23 @@ interface RecentItem {
   title:    string;
   sub:      string;
   hasSource: boolean;
+  /** When the source is an event, keep the raw row so we can render via
+   *  the unified EventCard instead of the bespoke RecentCard. */
+  event?:   Event;
 }
 
 function RecentCard({ item }: { item: RecentItem }) {
+  const navigate = useNavigate();
+  // M4-bugfix-2: route events through the unified EventCard so chat /
+  // library / calendar all show identical event surfaces.
+  if (item.event) {
+    return (
+      <EventCard
+        event={item.event}
+        onClick={() => navigate(item.to)}
+      />
+    );
+  }
   const ac = LIB_ACCENT[item.accent];
   return (
     <Link
@@ -492,6 +507,7 @@ function buildRecent(
       title:    e.title,
       sub:      formatStart(e.start_at, e.all_day),
       hasSource: !!e.source_input_turn_id,
+      event:    e,   // for unified EventCard rendering
     });
   }
   for (const f of d.files) {

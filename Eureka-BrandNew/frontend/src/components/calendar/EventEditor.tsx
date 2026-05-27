@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageCircle } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useModalMount } from "@/context/ModalContext";
 import { useEventMutations, useEvents, type EventInput } from "@/hooks/useEvents";
+import { openSession } from "@/hooks/useSessions";
 import type { Event } from "@/lib/types";
 
 /**
@@ -63,8 +65,11 @@ export function EventEditor(props: EventEditorProps) {
 
 function EventEditorBody({ existing, defaultStart, onClose, onSaved }: EventEditorProps) {
   const isEdit = !!existing;
+  const navigate = useNavigate();
+  const location_ = useLocation();
   const { create, update, remove } = useEventMutations();
   const { events } = useEvents();
+  const [discussLoading, setDiscussLoading] = useState(false);
 
   // ── initial state ───────────────────────────────────────────────────
   const initStartDate = existing
@@ -125,6 +130,32 @@ function EventEditorBody({ existing, defaultStart, onClose, onSaved }: EventEdit
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
+    }
+  }
+
+  /**
+   * 在 chat 里讨论 — M4-bugfix-2.
+   * Events are first-class entities so they get a home session via
+   * sessions.event_id (M2.3). openSession({subject: ...}) is get-or-create,
+   * so repeated clicks reuse the same Kevin / 这场会议 thread instead of
+   * creating fragments. Mirrors AssetDetailDrawer's openDiscuss.
+   */
+  async function openDiscuss() {
+    if (!existing || discussLoading) return;
+    setDiscussLoading(true);
+    try {
+      const { sessionId } = await openSession({
+        subject: { type: "event", id: existing.event_id },
+      });
+      window.localStorage.setItem("eureka:active_chat_session", sessionId);
+      onClose();
+      navigate("/chat", {
+        state: { from: location_.pathname, fromLabel: existing.title || "事件" },
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDiscussLoading(false);
     }
   }
 
@@ -435,7 +466,24 @@ function EventEditorBody({ existing, defaultStart, onClose, onSaved }: EventEdit
           <ToolButton glyph="✕" onClick={onClose} />
           <ToolButton glyph="≡" disabled title="备注(待实现)" />
           <ToolButton glyph="◎" disabled title="位置(用上方输入)" />
-          <ToolButton glyph="◯" disabled title="联系人(待实现)" />
+          {/* M4-bugfix-2: 在 chat 里讨论 — events are first-class so they
+              get a home session via sessions.event_id (M2.3). Only shown
+              when editing an existing event (a not-yet-saved event has no
+              event_id to anchor on). */}
+          {isEdit ? (
+            <ToolButton
+              onClick={openDiscuss}
+              disabled={discussLoading}
+              title="在 chat 里讨论"
+              glyph={null}
+            >
+              {discussLoading
+                ? <Loader2 size={14} strokeWidth={2} className="animate-spin" />
+                : <MessageCircle size={16} strokeWidth={1.75} />}
+            </ToolButton>
+          ) : (
+            <ToolButton glyph="◯" disabled title="联系人(待实现)" />
+          )}
           {/* SAVE — highlighted brand */}
           <ToolButton
             glyph={busy ? null : "⌗ → ✓"}

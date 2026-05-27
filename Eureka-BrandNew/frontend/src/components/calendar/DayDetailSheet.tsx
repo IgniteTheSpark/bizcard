@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { EventCard } from "@/components/calendar/EventCard";
 import { useModalMount } from "@/context/ModalContext";
 import { useTimeline } from "@/hooks/useTimeline";
 import type { TimelineItem } from "@/lib/types";
@@ -193,14 +194,36 @@ function Group({
   return (
     <section className="flex flex-col gap-3">
       <SectionLabel>{label}</SectionLabel>
-      {items.map((it) => (
-        <DayCard
-          key={`${it.kind}-${it.id}`}
-          item={it}
-          onClick={() => onItemTap(it)}
-          forcedKindLabel={kindLabel}
-        />
-      ))}
+      {items.map((it) => {
+        // M4-bugfix-2: events render via the unified EventCard so the
+        // visual matches Library and Chat. Todo / captured stay on the
+        // bespoke DayCard for now (their unification waits on an asset
+        // counterpart; this PR only unifies events).
+        if (it.kind === "event") {
+          return (
+            <EventCard
+              key={`${it.kind}-${it.id}`}
+              event={{
+                event_id: it.event_id ?? it.id,
+                title:    it.title,
+                start_at: it.effective_at,
+                end_at:   it.end_at,
+                all_day:  it.all_day,
+                location: it.location,
+              }}
+              onClick={() => onItemTap(it)}
+            />
+          );
+        }
+        return (
+          <DayCard
+            key={`${it.kind}-${it.id}`}
+            item={it}
+            onClick={() => onItemTap(it)}
+            forcedKindLabel={kindLabel}
+          />
+        );
+      })}
     </section>
   );
 }

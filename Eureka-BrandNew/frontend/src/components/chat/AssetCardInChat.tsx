@@ -1,3 +1,4 @@
+import { EventCard } from "@/components/calendar/EventCard";
 import { SkillCard } from "@/components/skill/SkillCard";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { buildCard } from "@/lib/render-spec";
@@ -35,6 +36,26 @@ export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
   const eventId   = pickString(data, ["event_id"]);
   const taskId    = pickString(data, ["task_id"]);
 
+  // M4-bugfix-2: events route through the unified EventCard so chat /
+  // library / day-detail show identical surfaces. The tool_create_event
+  // response carries title / start_at / end_at / all_day / location at
+  // the top level.
+  if (skillName === "event" && (eventId || data.title)) {
+    return (
+      <EventCard
+        event={{
+          event_id: eventId ?? undefined,
+          title:    String(data.title ?? ""),
+          start_at: String(data.start_at ?? ""),
+          end_at:   typeof data.end_at === "string" ? data.end_at : null,
+          all_day:  Boolean(data.all_day),
+          location: typeof data.location === "string" ? data.location : null,
+        }}
+        onClick={onOpen ? () => onOpen(buildEventCardData(data), payload) : undefined}
+      />
+    );
+  }
+
   const skill = skillName ? bySkill.get(skillName) : undefined;
 
   // Pick a render spec — prefer the registered one, else synthesize for
@@ -58,6 +79,21 @@ export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
       onClick={onOpen ? () => onOpen(cardData, payload) : undefined}
     />
   );
+}
+
+/** Build a minimal CardData for the onOpen callback when the event branch
+ *  is taken — keeps the existing onOpen signature happy. */
+function buildEventCardData(data: Record<string, unknown>): CardData {
+  return buildCard({
+    payload: data,
+    spec: {
+      card_layout: "horizontal", icon: "📅", accent_color: "purple",
+      primary_field: "title", secondary_field: "start_at",
+    },
+    assetId:    String(data.event_id ?? data.id ?? ""),
+    cardType:   "event",
+    displayName: String(data.title ?? "事件"),
+  });
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
