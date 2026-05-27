@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Grid3x3, Loader2, Mic, Plus, Send, Sparkles, X } from "lucide-react";
+import { CalendarDays, Grid3x3, Loader2, Mic, Plus, Send, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
@@ -28,7 +28,6 @@ export function FloatingDock() {
   const navigate = useNavigate();
   const [flashOpen, setFlashOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const today = new Date().getDate();
   // Hide the dock whenever any modal is mounted — backdrop-blur + saturated
   // dock items would otherwise bleed through any z-50 backdrop overlay.
   const hidden = useIsAnyModalOpen();
@@ -50,25 +49,11 @@ export function FloatingDock() {
           hidden ? "opacity-0 pointer-events-none translate-y-3" : "",
         ].join(" ")}
       >
-        <DockIcon ariaLabel="今天" onClick={() => navigate("/calendar")}>
-          {/* Calendar icon with today's date as a small overlay tag —
-              styled like an iOS app icon's day-of-month badge. */}
-          <span className="relative inline-flex items-center justify-center">
-            <Calendar size={20} strokeWidth={1.6} className="text-eu-accent-red-fg" />
-            <span
-              className={[
-                "absolute -bottom-0.5 -right-1.5",
-                "min-w-[14px] h-[14px] px-0.5",
-                "rounded-eu-sm",
-                "bg-eu-accent-red-solid text-white",
-                "text-[9px] font-semibold leading-none",
-                "flex items-center justify-center",
-                "border border-eu-surface-raised",
-              ].join(" ")}
-            >
-              {today}
-            </span>
-          </span>
+        <DockIcon ariaLabel="日历" onClick={() => navigate("/calendar")}>
+          {/* M4-polish: plain CalendarDays icon (no red 27 badge). The
+              red dot overlay read as "new event / notification" rather
+              than "today is 27"; iconography alone is clearer. */}
+          <CalendarDays size={20} strokeWidth={1.6} />
         </DockIcon>
 
         <DockIcon ariaLabel="资产库" onClick={() => navigate("/library")}>

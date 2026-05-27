@@ -104,7 +104,10 @@ export function ContextChipRail({ assetIds, sessionId }: ContextChipRailProps) {
           <Sparkles size={11} strokeWidth={1.75} />
           上下文
         </div>
-        {matched.length === 0 && (
+        {/* Only show "加载中…" while the SWR fetch is in-flight AND we expected
+            data (i.e. there are asset ids attached). With zero ids the SWR
+            key is null → no fetch → no spurious loading state. */}
+        {assetIds.length > 0 && assetsSWR.isLoading && matched.length === 0 && (
           <div className="text-eu-xs text-eu-text-lo font-mono">加载中…</div>
         )}
         {matched.map((a) => {

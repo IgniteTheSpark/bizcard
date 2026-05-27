@@ -186,17 +186,24 @@ function Cursor() {
  * Unwrap FastMCP-style nested response shapes. Backend tool_create_asset
  * returns either {ok, asset_id, payload, ...} (our internal tools) or
  * {content: [{text: '<JSON>'}], structuredContent: {...}} (FastMCP wrap).
+ *
+ * Always tags the unwrapped dict with a `card_type` derived from which id
+ * field is present (event_id → "event", task_id → "task"). asset responses
+ * already carry user_skill_name from create_asset so they don't need a tag.
+ * Without this tag the downstream AssetCardInChat falls through to a
+ * generic 「资产」 card — which is the bug the user saw on tool_create_event
+ * results before this layer existed.
  */
 function extractCardFromToolResult(response: Record<string, unknown>): Record<string, unknown> | null {
   if (!response) return null;
-  // Direct shape
-  if (response.asset_id || response.event_id || response.task_id) return response;
+  const tagged = tagByIdField(response);
+  if (tagged) return tagged;
 
   // FastMCP structuredContent
   const sc = response.structuredContent;
   if (sc && typeof sc === "object" && !Array.isArray(sc)) {
-    const inner = sc as Record<string, unknown>;
-    if (inner.asset_id || inner.event_id || inner.task_id) return inner;
+    const t = tagByIdField(sc as Record<string, unknown>);
+    if (t) return t;
   }
 
   // FastMCP content[0].text JSON
@@ -206,9 +213,21 @@ function extractCardFromToolResult(response: Record<string, unknown>): Record<st
     if (typeof text === "string") {
       try {
         const parsed = JSON.parse(text);
-        if (parsed && (parsed.asset_id || parsed.event_id || parsed.task_id)) return parsed;
+        if (parsed && typeof parsed === "object") {
+          const t = tagByIdField(parsed as Record<string, unknown>);
+          if (t) return t;
+        }
       } catch { /* fall through */ }
     }
   }
+  return null;
+}
+
+/** Stamp the response with the right card_type so AssetCardInChat can pick
+ *  the matching render_spec (synthesizeSpec(card_type) keys off this). */
+function tagByIdField(d: Record<string, unknown>): Record<string, unknown> | null {
+  if (d.asset_id) return d;                      // user_skill_name already present
+  if (d.event_id) return { ...d, card_type: "event" };
+  if (d.task_id)  return { ...d, card_type: "task" };
   return null;
 }
