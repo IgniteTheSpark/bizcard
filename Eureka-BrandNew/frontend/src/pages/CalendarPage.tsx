@@ -6,7 +6,7 @@ import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
 import { EventForm } from "@/components/calendar/EventForm";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { ScheduleView } from "@/components/calendar/ScheduleView";
-import { useEvents, findEvent } from "@/hooks/useEvents";
+import { useEvents } from "@/hooks/useEvents";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { swrFetcher } from "@/lib/api";
 import { buildCard } from "@/lib/render-spec";
@@ -43,20 +43,19 @@ export function CalendarPage() {
   const [cursor, setCursor]             = useState<Date>(() => new Date());
   const [selectedDay, setSelectedDay]   = useState<string | null>(null); // for MonthGrid
   const [dayDetailKey, setDayDetailKey] = useState<string | null>(null);
-  const [editingId, setEditingId]       = useState<string | null>(null);
-  // creating/createDefault now only used by handleCreateFromDay (DayDetail
-  // → + add, MonthGrid → + 添加事件). The global "new event" entry is the
-  // FloatingDock + button. Calendar's top bar no longer has its own +.
+  // RV5: tap event → AssetDetailDrawer (view first), drawer's 编辑 button
+  // (RV3) opens EventForm. Same flow as assets — no special-case "tap
+  // event = jump to editor".
+  const [openEventId, setOpenEventId]   = useState<string | null>(null);
+  // creating/createDefault still used by NEW event flow (DayDetail
+  // 「+ add」, MonthGrid 「+ 添加事件」, Dock + 「事件」 tile).
   const [createDefault, setCreateDefault] = useState<Date | undefined>(undefined);
   const [creating, setCreating]         = useState(false);
   const [openAssetId, setOpenAssetId]   = useState<string | null>(null);
 
-  const { events } = useEvents();
-  const editingEvent = findEvent(events, editingId);
-
   function handleItemTap(item: TimelineItem) {
     if (item.kind === "event") {
-      setEditingId(item.event_id ?? item.id);
+      setOpenEventId(item.event_id ?? item.id);
     } else {
       setOpenAssetId(item.id);
     }
@@ -125,10 +124,10 @@ export function CalendarPage() {
         />
       )}
 
-      {editingEvent && (
-        <EventForm
-          existing={editingEvent}
-          onClose={() => setEditingId(null)}
+      {openEventId && (
+        <EventDetailModal
+          eventId={openEventId}
+          onClose={() => setOpenEventId(null)}
         />
       )}
 
@@ -260,6 +259,49 @@ function AssetDetailModal({ assetId, onClose }: { assetId: string; onClose: () =
       card={card}
       payload={asset.payload}
       sourceSessionId={asset.session_id}
+      onClose={onClose}
+    />
+  );
+}
+
+/**
+ * EventDetailModal — RV5 wrapper that opens AssetDetailDrawer for an
+ * event row. Tap event in Schedule / DayDetail / Month-summary now lands
+ * here first (view), and the drawer's 编辑 button hands off to EventForm
+ * — same flow as assets. No more "tap event = jump to editor" special
+ * case.
+ */
+function EventDetailModal({ eventId, onClose }: { eventId: string; onClose: () => void }) {
+  const { events } = useEvents();
+  const event = events.find((e) => e.event_id === eventId);
+  if (!event) return null;
+
+  // Build a CardData with cardType="event" so AssetDetailDrawer's edit
+  // branch knows to route to EventForm (not SkillCreateForm).
+  const card = buildCard({
+    payload: event as unknown as Record<string, unknown>,
+    spec: {
+      card_layout:    "horizontal",
+      icon:           "📅",
+      accent_color:   "purple",
+      primary_field:  "title",
+      secondary_field: "start_at",
+    },
+    assetId:     event.event_id,
+    cardType:    "event",
+    displayName: event.title,
+  });
+
+  // Make a payload object so GenericField can render the readable fields
+  // (title / start_at / end_at / location / description). SKIP_KEYS hides
+  // the noisy internals (status, all_day, ok, event_id, etc.).
+  const payload = event as unknown as Record<string, unknown>;
+
+  return (
+    <AssetDetailDrawer
+      card={card}
+      payload={payload}
+      sourceSessionId={null}
       onClose={onClose}
     />
   );

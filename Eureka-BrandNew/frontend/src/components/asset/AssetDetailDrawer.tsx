@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, History, MessageCircle, X, Loader2 } from "lucide-react";
+import { useSWRConfig } from "swr";
+import { ExternalLink, History, MessageCircle, Pencil, Trash2, X, Loader2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { EventForm } from "@/components/calendar/EventForm";
 import { GenericField } from "@/components/skill/GenericField";
+import { SkillCreateForm } from "@/components/skill/SkillCreateForm";
 import { useModalMount } from "@/context/ModalContext";
+import { useEvents } from "@/hooks/useEvents";
+import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { openSession, type SubjectType } from "@/hooks/useSessions";
+import { apiFetch } from "@/lib/api";
 import type { CardData, FieldFormat } from "@/lib/render-spec";
+import type { Asset } from "@/lib/types";
 
 /**
  * AssetDetailDrawer — read-only detail + actions (M2.2).
@@ -33,7 +40,18 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
   useModalMount();
   const navigate = useNavigate();
   const location = useLocation();
+  const { mutate } = useSWRConfig();
+  const { bySkill } = useSkillRegistry();
+  const { events } = useEvents();
   const [discussLoading, setDiscussLoading] = useState(false);
+
+  // RV3: edit + delete state.
+  // - editing: which inner form is open (event / asset / null)
+  // - confirmDel: double-click delete pattern (same as EventForm)
+  // - busy: prevents re-clicks during the delete API call
+  const [editing,    setEditing]    = useState<"event" | "asset" | null>(null);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [busy,       setBusy]       = useState(false);
 
   // Esc to close
   useEffect(() => {
@@ -43,6 +61,59 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Look up the matching skill + event row (for the edit branch).
+  const isEvent  = card.cardType === "event";
+  const isContact = card.cardType === "contact";
+  const skill    = bySkill.get(card.cardType);
+  const eventRow = isEvent
+    ? events.find((e) => e.event_id === card.assetId)
+    : undefined;
+  // Edit/delete only make sense when we have an id AND know how to act
+  // on it. Contact-edit is not built (would need a Contact-form) so it's
+  // disabled for now.
+  const editable   = !!card.assetId && (isEvent ? !!eventRow : (!!skill && !isContact));
+  const deletable  = !!card.assetId && !isContact;
+
+  async function handleDelete() {
+    if (!card.assetId || busy) return;
+    setBusy(true);
+    try {
+      const url = isEvent
+        ? `/api/events/${card.assetId}`
+        : `/api/assets/${card.assetId}`;
+      const resp = await apiFetch<{ ok: boolean; error?: string }>(
+        url, { method: "DELETE" },
+      );
+      if (!resp.ok) throw new Error(resp.error ?? "删除失败");
+      await mutate((key) => typeof key === "string" && (
+        key.startsWith("/api/assets") ||
+        key.startsWith("/api/events")  ||
+        key.startsWith("/api/timeline")
+      ));
+      onClose();
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert((e as Error).message ?? "删除失败");
+      setBusy(false);
+      setConfirmDel(false);
+    }
+  }
+
+  function handleEdit() {
+    setEditing(isEvent ? "event" : "asset");
+  }
+
+  // Build the Asset-shaped object the SkillCreateForm needs for prefill.
+  // We have payload + assetId + cardType so this is straightforward.
+  const assetForEdit: Asset | null = card.assetId && !isEvent ? {
+    id: card.assetId,
+    user_skill_name: card.cardType,
+    payload: payload,
+    session_id: sourceSessionId ?? null,
+    source_input_turn_id: null,
+    created_at: "",
+  } : null;
 
   /**
    * 在 chat 里讨论 — M2.3 home-session pattern.
@@ -92,6 +163,24 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
     navigate("/chat", {
       state: { from: location.pathname, fromLabel: card.title || "上一页" },
     });
+  }
+
+  // RV3: when an edit form is open, hand off to it entirely (the form is
+  // a fullscreen modal on its own). Closing it just clears the editing
+  // state — the parent drawer stays mounted underneath so the user lands
+  // back on the detail view, where SWR cache invalidation already
+  // refreshed the displayed payload.
+  if (editing === "event" && eventRow) {
+    return <EventForm existing={eventRow} onClose={() => setEditing(null)} />;
+  }
+  if (editing === "asset" && assetForEdit && skill) {
+    return (
+      <SkillCreateForm
+        skill={skill}
+        existing={assetForEdit}
+        onClose={() => setEditing(null)}
+      />
+    );
   }
 
   return (
@@ -157,6 +246,33 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
             disabled={!card.assetId || discussLoading}
             variant="primary"
           />
+          {editable && (
+            <ActionButton
+              icon={<Pencil size={14} strokeWidth={1.75} />}
+              label="编辑"
+              onClick={handleEdit}
+            />
+          )}
+          {deletable && (
+            <button
+              type="button"
+              onClick={() => (confirmDel ? handleDelete() : setConfirmDel(true))}
+              disabled={busy}
+              className={[
+                "px-eu-md py-1.5 rounded-eu-md text-eu-sm inline-flex items-center gap-1.5",
+                "transition-all duration-eu-fast",
+                confirmDel
+                  ? "bg-eu-accent-red-bg text-eu-accent-red-fg border border-eu-accent-red-edge"
+                  : "text-eu-accent-red-fg hover:bg-eu-accent-red-bg border border-transparent",
+                "disabled:opacity-50",
+              ].join(" ")}
+            >
+              {busy
+                ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                : <Trash2 size={14} strokeWidth={1.75} />}
+              {confirmDel ? "确认删除" : "删除"}
+            </button>
+          )}
           {sourceSessionId && (
             <ActionButton
               icon={<History size={14} strokeWidth={1.75} />}
@@ -210,24 +326,33 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
 
 // Fields that are internal plumbing — never useful to show
 const SKIP_KEYS = new Set([
-  "task_id",            // internal — not user-facing
-  "external_id",        // shown via the link button
-  "external_url",       // shown via the link button
-  "external_system",    // shown via the link button styling
-  "external_type",      // not interesting on the detail page
-  "event_id",           // shown in header context
-  "asset_id",           // duplicate of context
-  "contact_id",         // ditto
-  "file_id",            // ditto
+  "ok",                  // RV3: tool_result envelope flag, never user-facing
+  "card_type",           // RV3: synthesized by extractCardFromToolResult
+  "kind",                // timeline kind discriminator
+  "skill_name",          // duplicate of cardType caps
+  "user_skill_name",     // ditto
+  "user_id",             // implementation detail
+  "all_day",             // RV3: shown via the time-range formatting in the header
+  "status",              // mostly always "scheduled" — noise
+  "task_id",             // internal — not user-facing
+  "external_id",         // shown via the link button
+  "external_url",        // shown via the link button
+  "external_system",     // shown via the link button styling
+  "external_type",       // not interesting on the detail page
+  "event_id",            // shown in header context
+  "asset_id",            // duplicate of context
+  "id",                  // ditto (event row uses `id` too sometimes)
+  "contact_id",          // ditto
+  "file_id",             // ditto
   "source_input_turn_id", // M4 surfaces as SessionTurnCard
-  "session_id",         // M4 surfaces via "在 chat 里讨论" routing
-  "sync_source",        // implementation detail
-  "sync_external_id",   // implementation detail
-  "recurrence_rule",    // shown elsewhere when UI for it exists (post-MVP)
-  "updated_at",         // not interesting except for audit
-  "user_skill_id",      // implementation detail
-  "logId",              // some MCP responses include this trace id
-  "trace_id",           // same
+  "session_id",          // M4 surfaces via "在 chat 里讨论" routing
+  "sync_source",         // implementation detail
+  "sync_external_id",    // implementation detail
+  "recurrence_rule",     // shown elsewhere when UI for it exists (post-MVP)
+  "updated_at",          // not interesting except for audit
+  "user_skill_id",       // implementation detail
+  "logId",               // some MCP responses include this trace id
+  "trace_id",            // same
 ]);
 
 /** Heuristic: should this field be hidden from the drawer? */

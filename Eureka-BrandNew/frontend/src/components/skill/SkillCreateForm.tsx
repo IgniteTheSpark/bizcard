@@ -3,7 +3,7 @@ import { useSWRConfig } from "swr";
 import { Loader2, Save, X } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
-import type { Skill } from "@/lib/types";
+import type { Asset, Skill } from "@/lib/types";
 import { useModalMount } from "@/context/ModalContext";
 
 /**
@@ -30,8 +30,11 @@ import { useModalMount } from "@/context/ModalContext";
 interface SkillCreateFormProps {
   skill: Skill;
   onClose: () => void;
-  /** Called after a successful create with the new asset's id. */
+  /** Called after a successful create/update with the asset's id. */
   onCreated?: (assetId: string) => void;
+  /** RV4: when provided, the form opens in edit mode — prefills from the
+   *  asset's payload and submits PUT /api/assets/:id instead of POST. */
+  existing?: Asset;
 }
 
 interface FieldSpec {
@@ -49,11 +52,12 @@ const LONG_TEXT_FIELDS = new Set([
   "content", "description", "summary", "notes", "markdown", "body",
 ]);
 
-export function SkillCreateForm({ skill, onClose, onCreated }: SkillCreateFormProps) {
+export function SkillCreateForm({ skill, onClose, onCreated, existing }: SkillCreateFormProps) {
   useModalMount();
   const { mutate } = useSWRConfig();
+  const isEdit = !!existing;
   const [values, setValues] = useState<Record<string, unknown>>(() =>
-    initialValues(skill),
+    isEdit ? prefillFromAsset(skill, existing!) : initialValues(skill),
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,11 +99,26 @@ export function SkillCreateForm({ skill, onClose, onCreated }: SkillCreateFormPr
 
     setSubmitting(true);
     try {
-      // Per Phase B v1.4: first-class entities live in their own tables.
-      // The contact-skill asset shape is a TIMELINE REFERENCE wrapping a
-      // contact_id from the contacts table. Manual create here should go
-      // straight to contacts; agents (flash/chat) that create via voice
-      // can still produce the reference asset via tool_create_contact.
+      // RV4: edit mode → PUT /api/assets/:id (always assets — contact edit
+      // doesn't have a wrapper-asset to PATCH; that would be a follow-up).
+      if (isEdit && existing) {
+        const resp = await apiFetch<{ ok: boolean; error?: string }>(
+          `/api/assets/${existing.id}`,
+          { method: "PUT", body: { payload } },
+        );
+        if (!resp.ok) throw new Error(resp.error ?? "保存失败");
+        await mutate((key) => typeof key === "string" && key.startsWith("/api/assets"));
+        onCreated?.(existing.id);
+        onClose();
+        return;
+      }
+
+      // Create path. Per Phase B v1.4: first-class entities live in their
+      // own tables. The contact-skill asset shape is a TIMELINE REFERENCE
+      // wrapping a contact_id from the contacts table. Manual create here
+      // should go straight to contacts; agents (flash/chat) that create
+      // via voice can still produce the reference asset via
+      // tool_create_contact.
       const route = skill.name === "contact" ? "/api/contacts" : "/api/assets";
       const body  = skill.name === "contact"
         ? payload
@@ -119,7 +138,7 @@ export function SkillCreateForm({ skill, onClose, onCreated }: SkillCreateFormPr
       onCreated?.(resp.asset_id ?? resp.contact_id ?? "");
       onClose();
     } catch (e: unknown) {
-      setError((e as Error).message ?? "创建失败");
+      setError((e as Error).message ?? (isEdit ? "保存失败" : "创建失败"));
       setSubmitting(false);
     }
   }
@@ -144,7 +163,7 @@ export function SkillCreateForm({ skill, onClose, onCreated }: SkillCreateFormPr
           <div className="flex items-center gap-eu-sm">
             <span className="text-eu-xl font-mono">{skill.render_spec?.icon ?? "•"}</span>
             <h2 className="font-display text-eu-lg text-eu-text-hi tracking-tight">
-              新建 {skill.display_name}
+              {isEdit ? "编辑" : "新建"} {skill.display_name}
             </h2>
           </div>
           <button
@@ -379,6 +398,40 @@ function initialValues(skill: Skill): Record<string, unknown> {
     if (def.default !== undefined) out[name] = def.default;
   }
   return out;
+}
+
+/**
+ * RV4: prefill form values from an existing Asset's payload. Datetime
+ * fields need conversion ISO8601 → "YYYY-MM-DDTHH:MM" since that's what
+ * the <input type="datetime-local"> control expects (local time, no TZ).
+ */
+function prefillFromAsset(skill: Skill, asset: Asset): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!skill.payload_schema) return { ...asset.payload };
+  for (const [name, defRaw] of Object.entries(skill.payload_schema)) {
+    if (typeof defRaw !== "object" || defRaw == null) continue;
+    const def = defRaw as Record<string, unknown>;
+    const type = String(def.type ?? "string");
+    const v = (asset.payload as Record<string, unknown>)[name];
+    if (v == null) continue;
+    if (type === "datetime" && typeof v === "string") {
+      out[name] = isoToDatetimeLocal(v);
+    } else if (type === "date" && typeof v === "string") {
+      // ISO date or full ISO datetime — keep only YYYY-MM-DD
+      out[name] = v.slice(0, 10);
+    } else {
+      out[name] = v;
+    }
+  }
+  return out;
+}
+
+/** ISO8601 ("…T10:00:00+08:00") → "YYYY-MM-DDTHH:MM" in local TZ. */
+function isoToDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /** Convert datetime-local "YYYY-MM-DDTHH:MM" to ISO8601 with local TZ offset. */
