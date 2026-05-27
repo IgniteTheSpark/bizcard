@@ -4,37 +4,42 @@ import { useTimeline, toLocalDayKey } from "@/hooks/useTimeline";
 import type { TimelineItem } from "@/lib/types";
 
 /**
- * ScheduleView — colored day-tile vertical timeline (M3-redo).
+ * ScheduleView — Timepage-style scroll timeline (M4-timepage refactor).
  *
- * Implements `rebuild/design-canvas/var-b-calendar.jsx#CalSchedule` literally:
+ * Five behavior shifts from the M3-redo canvas-literal version, learned
+ * directly from a Timepage screen recording the user shared:
  *
- *   ┌──────────────────────────────────────────┐
- *   │ 5月  2026                       ⌕  ⋮     │  month + tools
- *   ├──────────────────────────────────────────┤
- *   │ [● 全部 52][● 事件 8][● 待办 14]...      │  type-filter chips (replaces
- *   ├──────────┬───────────────────────────────┤  the standalone 时间流 page)
- *   │   THU    │  ┌─────────────────────────┐  │
- *   │    22    │  │ 14:00 ● 设计评审       │  │  ← colored day tile;
- *   │          │  └─────────────────────────┘  │    background COMPUTED from
- *   │   FRI    │  ┌─────────────────────────┐  │    that day's dominant accent
- *   │    23    │  │ 11:00 ● 一对一 · Lin   │  │    (purple=event, blue=todo,
- *   │          │  │ all-day ● 体检报告寄到 │  │    mixed=purple+blue, amber=
- *   │          │  └─────────────────────────┘  │    idea, dark=empty)
- *   │   SAT    │  ┌──────────── TODAY ──────┐  │
- *   │   24*    │  │ 12:30 ● 团队午餐       │  │  ← today: brand vertical
- *   │          │  │ 15:00 ● 准备 demo 脚本 │  │    rail accent + glow on
- *   │          │  └─────────────────────────┘  │    date number
- *   │   SUN    │  ┌──────── TOMORROW ───────┐  │
- *   │   25     │  │   空闲                   │  │  ← empty day: 50px tile +
- *   │          │  └─────────────────────────┘  │    italic 空闲
- *   └──────────┴───────────────────────────────┘
+ * A. Floating「N 天/周/月/年 前/后」overlay during scroll
+ *    - Big black text centered on the current viewport-center day
+ *    - fade-in while scrolling, fade-out 250ms after scroll stops
+ *    - tells the user "where am I" without reading rail numbers
  *
- * Numbers (time / counts / weekday caps) all run JetBrains Mono with
+ * B. Rail year+month vertical label, current-month highlighted
+ *    - Each month's first row gets a "2026 年 X 月" vertical-rl label
+ *    - Brand blue + glow when matching today's month, dim white otherwise
+ *    - gives the rail an anchor instead of just floating dates
+ *
+ * C. All day tiles same tint (Timepage uses one blue across everything)
+ *    - Old code computed dominant accent (purple/blue/mixed/amber/dark)
+ *      which made scrolling visually noisy
+ *    - Now: one brand blue tint everywhere; per-item accent shows via the
+ *      dot + text color inside the tile (events purple dot, todos blue, …)
+ *
+ * D. Empty days = same tint, no "空闲" italic
+ *    - Empty tile is just blue space (continuity, "time flowing")
+ *    - The 「仅有事 / 全部」 toggle still controls whether empty rows
+ *      collapse into gap-summary chips; this only changes how each
+ *      individual empty tile renders when it IS shown
+ *
+ * E. 「跳回今天」 floating button
+ *    - 56×56 dock-style button bottom-center, only when today is offscreen
+ *    - tap → smooth-scroll today's tile to the viewport center
+ *
+ * Numbers (time / weekday caps / counts) run JetBrains Mono with
  * 0.16-0.22em letter-spacing per design-system §3.3.
  *
- * Bucketing window: from earliest item back to ~14 days before today, then
- * forward to ~21 days after — enough for the user to see both context and
- * upcoming agenda. Empty days inside that window still render as 空闲 tiles.
+ * Bucketing window: from earliest item back ~14 days before today, then
+ * forward ~21 days. Adjustable by `showEmpty` toggle.
  */
 
 interface ScheduleViewProps {
@@ -126,14 +131,53 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
   // window's start. data-day-key marker is on each row.
   const tilesRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    const el = tilesRef.current?.querySelector<HTMLElement>(`[data-day-key="${todayKey}"]`);
-    if (el && el.parentElement) {
-      // Center today in the visible scroll area
-      el.scrollIntoView({ block: "center", behavior: "auto" });
-    }
+    scrollToToday(tilesRef.current, todayKey, "auto");
     // Run only on first mount + when visibleRows length changes (not item taps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleRows.length]);
+
+  // A — floating "N 天/周/月/年 前/后" overlay during scroll.
+  // E — "跳回今天" button visibility (today off-screen → show).
+  // Both driven by the same rAF-throttled scroll handler.
+  const [overlay,      setOverlay]      = useState<{ text: string; visible: boolean } | null>(null);
+  const [todayInView,  setTodayInView]  = useState(true);
+  const scrollEndTimer  = useRef<number | null>(null);
+  const rafQueued       = useRef(false);
+  useEffect(() => {
+    const container = tilesRef.current;
+    if (!container) return;
+
+    const compute = () => {
+      rafQueued.current = false;
+      const dayKey = dayKeyAtViewportCenter(container);
+      if (!dayKey) return;
+      const dist = distanceLabel(dayKey, todayKey);
+      setOverlay({ text: dist, visible: true });
+      setTodayInView(isTodayInViewport(container, todayKey));
+      // Reset the "scroll stopped" timer — fade overlay 250ms after last scroll
+      if (scrollEndTimer.current) window.clearTimeout(scrollEndTimer.current);
+      scrollEndTimer.current = window.setTimeout(() => {
+        setOverlay((o) => o ? { ...o, visible: false } : null);
+      }, 250);
+    };
+    const onScroll = () => {
+      if (rafQueued.current) return;
+      rafQueued.current = true;
+      window.requestAnimationFrame(compute);
+    };
+
+    container.addEventListener("scroll", onScroll, { passive: true });
+    // Initial check so the button state is right at mount
+    setTodayInView(isTodayInViewport(container, todayKey));
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+      if (scrollEndTimer.current) window.clearTimeout(scrollEndTimer.current);
+    };
+  }, [todayKey, visibleRows.length]);
+
+  function handleJumpToday() {
+    scrollToToday(tilesRef.current, todayKey, "smooth");
+  }
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#06070d" }}>
@@ -230,14 +274,61 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
         <div className="px-eu-md py-eu-md text-eu-sm text-eu-text-lo font-mono">加载…</div>
       )}
 
-      {/* ── Rail + tile stream — single scroll container so rail stays
-          vertically aligned with tiles (each row is its own 64px+1fr grid) ── */}
+      {/* ── Rail + tile stream wrapper — relative so A overlay + E button
+          can be absolute-positioned inside the scroll viewport ───────── */}
+      <div className="relative flex-1 min-h-0">
+      {/* A: floating distance overlay — big black text, centered on the
+          current viewport-center day. fades in during scroll, out after
+          250ms idle. Non-interactive (pointer-events:none) so scroll
+          doesn't stutter under the cursor. */}
+      {overlay && (
+        <div
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+          style={{
+            opacity: overlay.visible ? 0.85 : 0,
+            transition: "opacity 200ms cubic-bezier(.2,.7,.3,1)",
+          }}
+        >
+          <div
+            className="font-display select-none text-center"
+            style={{
+              fontSize: 72, fontWeight: 700, lineHeight: 1.05,
+              color: "#0b0b14", letterSpacing: "-0.02em",
+              textShadow: "0 2px 16px rgba(0,0,0,0.20)",
+            }}
+          >
+            {overlay.text}
+          </div>
+        </div>
+      )}
+      {/* E: 「跳回今天」 button — shows only when today is off-screen */}
+      {!todayInView && (
+        <button
+          type="button"
+          onClick={handleJumpToday}
+          aria-label="跳回今天"
+          className="absolute z-20 active:scale-95"
+          style={{
+            bottom: 16, left: "50%", transform: "translateX(-50%)",
+            width: 44, height: 44, borderRadius: 999,
+            background: "rgba(11,18,32,0.85)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(255,255,255,0.10)",
+            color: "rgba(255,255,255,0.85)",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+            fontSize: 18, cursor: "pointer",
+            transition: "all 200ms cubic-bezier(.2,.7,.3,1)",
+          }}
+        >
+          ⌄
+        </button>
+      )}
       <div
         ref={tilesRef}
-        className="flex-1 overflow-y-auto eu-noscroll"
+        className="absolute inset-0 overflow-y-auto eu-noscroll"
         style={{ paddingTop: 6, paddingBottom: 16 }}
       >
-        {visibleRows.map((row) => {
+        {visibleRows.map((row, idx) => {
           if (row.kind === "gap") {
             return (
               <GapRow
@@ -250,7 +341,6 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
 
           const dayKey = row.dayKey;
           const dayItems = byDay.get(dayKey) ?? [];
-          const tone = dayTone(dayItems);
           const empty = dayItems.length === 0;
           const tileHeight = tileHeightFor(dayItems.length);
           const isToday = dayKey === todayKey;
@@ -259,10 +349,20 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
           : dayKey === tomorrowKey ? "TOMORROW"
           : null;
 
+          // B — render the "2026 年 X 月" vertical rail label on the first
+          // day-row of every month boundary in the visible list. Compares
+          // against the previous visible day-row's month (gap rows don't
+          // count; they advance time but don't render a rail cell).
+          const monthKey = dayKey.slice(0, 7); // YYYY-MM
+          const prevDayKey = lookupPrevDayKey(visibleRows, idx);
+          const monthBoundary = !prevDayKey || prevDayKey.slice(0, 7) !== monthKey;
+          const isCurrentMonth = monthKey === todayKey.slice(0, 7);
+
           return (
             <div
               key={dayKey}
               data-day-key={dayKey}
+              data-month-key={monthKey}
               className="grid"
               style={{
                 gridTemplateColumns: "64px 1fr",
@@ -288,6 +388,24 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
                     }}
                   />
                 )}
+                {/* B: vertical year-month label on first day of each month */}
+                {monthBoundary && (
+                  <span
+                    className="font-mono absolute select-none"
+                    style={{
+                      writingMode: "vertical-rl",
+                      transform: "rotate(180deg)",
+                      top: 4, left: 4, bottom: 0,
+                      fontSize: 10.5, letterSpacing: "0.20em",
+                      color: isCurrentMonth ? "#a4c2ff" : "rgba(255,255,255,0.32)",
+                      textShadow: isCurrentMonth ? "0 0 8px rgba(111,158,255,0.45)" : "none",
+                      fontWeight: isCurrentMonth ? 600 : 500,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {formatYearMonth(dayKey)}
+                  </span>
+                )}
                 <span
                   className="font-mono"
                   style={{
@@ -312,17 +430,17 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
                 </span>
               </div>
 
-              {/* Tile cell */}
+              {/* Tile cell — C: uniform tint, D: empty = blue space only */}
               <button
                 type="button"
                 onClick={() => onDayTap?.(dayKey)}
                 className="relative overflow-hidden text-left flex flex-col ml-1.5"
                 style={{
                   minHeight: tileHeight,
-                  background: tone.bg,
+                  background: UNIFORM_TONE.bg,
                   borderRadius: 14,
-                  padding: empty ? "12px 16px" : "14px 18px",
-                  justifyContent: empty ? "center" : "flex-start",
+                  padding: "14px 18px",
+                  justifyContent: "flex-start",
                   gap: 8,
                   cursor: "pointer",
                   border: "none",
@@ -340,24 +458,19 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
                     {label}
                   </span>
                 )}
-                {empty ? (
-                  <span style={{ color: tone.meta, fontSize: 12, fontStyle: "italic", opacity: 0.7 }}>
-                    空闲
-                  </span>
-                ) : (
-                  dayItems.map((it) => (
-                    <ItemRow
-                      key={`${it.kind}-${it.id}`}
-                      item={it}
-                      tone={tone}
-                      onClick={(e) => { e.stopPropagation(); onItemTap(it); }}
-                    />
-                  ))
-                )}
+                {!empty && dayItems.map((it) => (
+                  <ItemRow
+                    key={`${it.kind}-${it.id}`}
+                    item={it}
+                    tone={UNIFORM_TONE}
+                    onClick={(e) => { e.stopPropagation(); onItemTap(it); }}
+                  />
+                ))}
               </button>
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
@@ -407,7 +520,7 @@ function ItemRow({
   item, tone, onClick,
 }: {
   item: TimelineItem;
-  tone: ReturnType<typeof dayTone>;
+  tone: DayTone;
   onClick: (e: React.MouseEvent) => void;
 }) {
   const time = formatTime(item);
@@ -466,48 +579,31 @@ function IconChip({ glyph }: { glyph: string }) {
   );
 }
 
-/* ── dayTone — colored-tile recipe (mirrors canvas dayTone) ────────────── */
+/* ── tile tint (C: single brand blue everywhere) ──────────────────────── */
 
+/**
+ * Per the Timepage recording (frame analysis), every day tile uses the
+ * SAME blue tint regardless of contents. Old code computed a per-day
+ * dominant-accent gradient (purple if events, blue if todos, amber if
+ * ideas, dark if empty) which made scrolling visually noisy. The single
+ * tint reads as "one continuous river of days" and lets per-item accent
+ * dots inside the tile carry the type signal.
+ */
+const TILE_BG     = "linear-gradient(135deg, rgba(111,158,255,0.20) 0%, rgba(82,128,200,0.10) 100%), #121a32";
+const TILE_TEXT   = "#ffffff";
+const TILE_META   = "rgba(255,255,255,0.65)";
+const TILE_DOT_FALLBACK = "rgba(255,255,255,0.55)";
+
+/** Backwards-compatible shape kept for the row renderer. */
 interface DayTone {
-  bg: string;        // CSS background (gradient + base color)
-  text: string;      // primary text color (item titles)
-  meta: string;      // mono time + chrome
-  dot: string;       // accent dot color (per item rows fall back to per-item)
+  bg: string;
+  text: string;
+  meta: string;
+  dot: string;
 }
-
-function dayTone(items: TimelineItem[]): DayTone {
-  const kinds = new Set(items.map(subKindOf));
-  const hasEvent = kinds.has("event");
-  const hasTodoOrExpense = kinds.has("todo") || kinds.has("expense");
-  const hasIdea = kinds.has("idea");
-
-  if (hasEvent && hasTodoOrExpense) {
-    return {
-      bg: "linear-gradient(135deg, rgba(156,128,240,0.40) 0%, rgba(111,158,255,0.20) 100%), #16183a",
-      text: "#ffffff", meta: "rgba(255,255,255,0.72)", dot: "#c4a8ff",
-    };
-  }
-  if (hasEvent) {
-    return {
-      bg: "linear-gradient(135deg, rgba(156,128,240,0.42) 0%, rgba(120,98,200,0.22) 100%), #18143a",
-      text: "#ffffff", meta: "rgba(255,255,255,0.74)", dot: "#c4a8ff",
-    };
-  }
-  if (hasTodoOrExpense) {
-    return {
-      bg: "linear-gradient(135deg, rgba(111,158,255,0.34) 0%, rgba(82,128,200,0.18) 100%), #131a35",
-      text: "#ffffff", meta: "rgba(255,255,255,0.72)", dot: "#8ab4ff",
-    };
-  }
-  if (hasIdea) {
-    return {
-      bg: "linear-gradient(135deg, rgba(245,201,119,0.24) 0%, rgba(180,140,80,0.12) 100%), #1f1c14",
-      text: "#fff5e0", meta: "rgba(255,245,224,0.72)", dot: "#f5c977",
-    };
-  }
-  // Empty
-  return { bg: "#0e1426", text: "#5b6478", meta: "rgba(255,255,255,0.35)", dot: "transparent" };
-}
+const UNIFORM_TONE: DayTone = {
+  bg: TILE_BG, text: TILE_TEXT, meta: TILE_META, dot: TILE_DOT_FALLBACK,
+};
 
 function dotForItem(it: TimelineItem): string {
   const k = subKindOf(it);
@@ -659,6 +755,90 @@ function currentMonthLabel(): string {
 
 function addDays(d: Date, delta: number): Date {
   const out = new Date(d); out.setDate(out.getDate() + delta); return out;
+}
+
+/* ── Timepage-mode helpers (A overlay / B vertical label / E jump) ──── */
+
+/** Year + 月 label, e.g. "2026 年 5 月". Vertical writing-mode renders it
+ *  along the rail. */
+function formatYearMonth(dayKey: string): string {
+  const [y, m] = dayKey.split("-").map(Number);
+  return `${y} 年 ${m} 月`;
+}
+
+/** Find the prior visible day-row's dayKey in the rendered rows so we can
+ *  detect month boundaries. Walks back skipping gap rows. */
+function lookupPrevDayKey(rows: RailRow[], idx: number): string | null {
+  for (let i = idx - 1; i >= 0; i--) {
+    const r = rows[i];
+    if (r.kind === "day") return r.dayKey;
+  }
+  return null;
+}
+
+/** Scroll today's tile to the viewport center. No-op if today isn't
+ *  in the rendered window. */
+function scrollToToday(container: HTMLDivElement | null, todayKey: string, behavior: ScrollBehavior) {
+  if (!container) return;
+  const el = container.querySelector<HTMLElement>(`[data-day-key="${todayKey}"]`);
+  if (el) el.scrollIntoView({ block: "center", behavior });
+}
+
+/** Return the data-day-key of the row whose vertical midpoint sits closest
+ *  to the container's vertical midpoint. Used for the A overlay. */
+function dayKeyAtViewportCenter(container: HTMLDivElement): string | null {
+  const rect = container.getBoundingClientRect();
+  const centerY = rect.top + rect.height / 2;
+  const rows = container.querySelectorAll<HTMLElement>("[data-day-key]");
+  let bestKey: string | null = null;
+  let bestDist = Infinity;
+  for (const r of rows) {
+    const rr = r.getBoundingClientRect();
+    const mid = rr.top + rr.height / 2;
+    const d = Math.abs(mid - centerY);
+    if (d < bestDist) { bestDist = d; bestKey = r.getAttribute("data-day-key"); }
+  }
+  return bestKey;
+}
+
+/** Is today's tile at least partially inside the viewport? Used to gate
+ *  the E jump-to-today button visibility. */
+function isTodayInViewport(container: HTMLDivElement, todayKey: string): boolean {
+  const el = container.querySelector<HTMLElement>(`[data-day-key="${todayKey}"]`);
+  if (!el) return true; // not rendered → don't show the button, nothing to jump to
+  const cont = container.getBoundingClientRect();
+  const tile = el.getBoundingClientRect();
+  return tile.bottom > cont.top && tile.top < cont.bottom;
+}
+
+/**
+ * distanceLabel — Timepage-style "距离 today 多远" text.
+ *
+ *   0       → 「今天」
+ *   ±1      → 「明天」/「昨天」
+ *   ±2-±6   → 「N 天后/前」
+ *   ±7-±27  → 「N 周后/前」   (rounded)
+ *   ±28+    → 「N 月后/前」   (rounded; >= 1 month)
+ *   ±365+   → 「N 年后/前」   (rounded)
+ */
+function distanceLabel(dayKey: string, todayKey: string): string {
+  const days = daysBetween(dayKey, todayKey);
+  if (days === 0)  return "今天";
+  if (days === 1)  return "明天";
+  if (days === -1) return "昨天";
+  const abs = Math.abs(days);
+  const suffix = days > 0 ? "后" : "前";
+  if (abs < 7)   return `${abs} 天${suffix}`;
+  if (abs < 28)  return `${Math.round(abs / 7)} 周${suffix}`;
+  if (abs < 365) return `${Math.round(abs / 30)} 月${suffix}`;
+  return `${Math.round(abs / 365)} 年${suffix}`;
+}
+
+function daysBetween(a: string, b: string): number {
+  const [ya, ma, da] = a.split("-").map(Number);
+  const [yb, mb, db] = b.split("-").map(Number);
+  const ms = Date.UTC(ya, ma - 1, da) - Date.UTC(yb, mb - 1, db);
+  return Math.round(ms / 86_400_000);
 }
 
 /* ── re-export — DayDetailSheet still uses TimelineRow shape for now ──── */
