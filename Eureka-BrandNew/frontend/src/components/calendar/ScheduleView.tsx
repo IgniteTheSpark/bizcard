@@ -49,8 +49,6 @@ interface ScheduleViewProps {
   onDayTap?: (dayKey: string) => void;
 }
 
-type FilterKey = "all" | "event" | "todo" | "idea" | "expense" | "contact";
-
 /**
  * Show-empty toggle persisted in localStorage so the user's preference
  * survives reloads (the alternative — re-flooding the rail with grey
@@ -58,18 +56,14 @@ type FilterKey = "all" | "event" | "todo" | "idea" | "expense" | "contact";
  */
 const EMPTY_PREF_KEY = "eureka:schedule_show_empty";
 
-const FILTERS: Array<{ key: FilterKey; label: string; dot?: string }> = [
-  { key: "all",      label: "全部" },
-  { key: "event",    label: "事件",   dot: "#c4a8ff" },  // accent.purple lighter (per canvas)
-  { key: "todo",     label: "待办",   dot: "#8ab4ff" },  // accent.blue lighter
-  { key: "idea",     label: "想法",   dot: "#f5c977" },  // accent.amber lighter
-  { key: "expense",  label: "记账",   dot: "#86e0a5" },  // accent.green lighter
-  { key: "contact",  label: "名片",   dot: "#d4dbe6" },  // accent.neutral
-];
+// RV2: removed type-filter chips. The horizontal chip row (全部 / 事件 /
+// 待办 / 想法 / 记账 / 名片) was redundant — most users always stayed on
+// "全部" and the chips ate ~50px of header space every render. The per-
+// type display preference will move to a Settings page in M5; in the
+// meantime Schedule shows everything.
 
 export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
   const { items, isLoading } = useTimeline();
-  const [filter, setFilter] = useState<FilterKey>("all");
   const [showEmpty, setShowEmpty] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(EMPTY_PREF_KEY) === "1";
@@ -79,31 +73,12 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
     window.localStorage.setItem(EMPTY_PREF_KEY, showEmpty ? "1" : "0");
   }, [showEmpty]);
 
-  // ── Compute per-filter counts (for the chip labels) ──────────────────────
-  const counts = useMemo(() => {
-    const c: Record<FilterKey, number> = {
-      all: 0, event: 0, todo: 0, idea: 0, expense: 0, contact: 0,
-    };
-    for (const it of items) {
-      c.all += 1;
-      const k = subKindOf(it);
-      if (k && k in c) (c as Record<string, number>)[k] += 1;
-    }
-    return c;
-  }, [items]);
-
-  // ── Apply filter ─────────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    if (filter === "all") return items;
-    return items.filter((it) => subKindOf(it) === filter);
-  }, [items, filter]);
-
   // ── Build day buckets across the visible window ──────────────────────────
   // Window: -14d ... earliest item ... +21d from today.
   const fullDayWindow = useMemo(() => buildDayWindow(items), [items]);
   const byDay = useMemo(() => {
     const m = new Map<string, TimelineItem[]>();
-    for (const it of filtered) {
+    for (const it of items) {
       const k = toLocalDayKey(it.effective_at);
       const arr = m.get(k) ?? [];
       arr.push(it);
@@ -113,7 +88,7 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
       arr.sort((a, b) => a.effective_at.localeCompare(b.effective_at));
     }
     return m;
-  }, [filtered]);
+  }, [items]);
 
   const todayKey    = toLocalDayKey(new Date().toISOString());
   const tomorrowKey = toLocalDayKey(addDays(new Date(), 1).toISOString());
@@ -226,49 +201,10 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
         </div>
       </header>
 
-      {/* ── Type-filter chips (absorbs 时间流 — design-system §5.2) ─────── */}
-      <div
-        className="flex gap-1.5 px-eu-md pb-3 overflow-x-auto"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-      >
-        {FILTERS.map((f) => {
-          const active = filter === f.key;
-          return (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilter(f.key)}
-              className="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap"
-              style={{
-                padding: "5px 10px",
-                borderRadius: 999,
-                background: active ? "rgba(111,158,255,0.14)" : "rgba(255,255,255,0.03)",
-                color: active ? "#a4c2ff" : "rgba(255,255,255,0.62)",
-                border: `1px solid ${active ? "rgba(111,158,255,0.32)" : "transparent"}`,
-                fontSize: 11.5, fontWeight: 500,
-                cursor: "pointer",
-                fontFamily: "Manrope, sans-serif",
-              }}
-            >
-              {f.dot && (
-                <span
-                  style={{
-                    width: 5, height: 5, borderRadius: 999,
-                    background: f.dot, boxShadow: `0 0 5px ${f.dot}`,
-                  }}
-                />
-              )}
-              {f.label}
-              <span
-                className="font-mono"
-                style={{ fontSize: 10, opacity: 0.62 }}
-              >
-                {counts[f.key]}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* RV2: filter chips removed — defaults to showing all types. Per-
+          type display preferences will move to a Settings page in M5.
+          A thin separator keeps the header / content visually divided. */}
+      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }} />
 
       {isLoading && (
         <div className="px-eu-md py-eu-md text-eu-sm text-eu-text-lo font-mono">加载…</div>
@@ -627,7 +563,7 @@ const ACCENT_DOT: Record<string, string> = {
  * name dictates which bucket. Anything else returns null and falls into
  * the "all" bucket only.
  */
-function subKindOf(it: TimelineItem): FilterKey | null {
+function subKindOf(it: TimelineItem): "event" | "todo" | "idea" | "expense" | "contact" | null {
   if (it.kind === "event") return "event";
   switch (it.skill_name) {
     case "todo":    return "todo";

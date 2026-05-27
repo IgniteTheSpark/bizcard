@@ -3,10 +3,9 @@ import { ArrowLeft, History } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { ChatInput } from "@/components/chat/ChatInput";
-import { ContextChipRail } from "@/components/chat/ContextChipRail";
 import { MessageList } from "@/components/chat/MessageList";
 import { SessionSidebar } from "@/components/chat/SessionSidebar";
-import { SubjectBanner } from "@/components/chat/SubjectBanner";
+import { SessionTopicBar } from "@/components/chat/SessionTopicBar";
 import { useChat, type ChatMessage, type ChatPart } from "@/hooks/useChat";
 import { useSessionDetail, useSessionMessages } from "@/hooks/useSessions";
 import type { Message as DbMessage } from "@/lib/types";
@@ -162,23 +161,16 @@ export function ChatPage() {
           <div className="text-eu-xs text-eu-text-lo px-eu-md py-eu-sm font-mono shrink-0">加载历史…</div>
         )}
 
-        {sessionDetail && (
-          <div className="shrink-0">
-            <SubjectBanner
-              contactId={sessionDetail.contact_id}
-              eventId={sessionDetail.event_id}
-              fileId={sessionDetail.file_id}
-              subjectAssetId={sessionDetail.subject_asset_id}
-            />
-          </div>
-        )}
-
-        {/* ContextChipRail always renders when we have a session (M3.5) —
-            even a no-subject "general chat" should be able to add context. */}
+        {/* RV1: SessionTopicBar = merged subject + context one-liner.
+            Replaces SubjectBanner (top row) + ContextChipRail (next row). */}
         {activeSessionId && (
           <div className="shrink-0">
-            <ContextChipRail
-              assetIds={sessionDetail?.context_asset_ids ?? []}
+            <SessionTopicBar
+              contactId={sessionDetail?.contact_id ?? null}
+              eventId={sessionDetail?.event_id ?? null}
+              fileId={sessionDetail?.file_id ?? null}
+              subjectAssetId={sessionDetail?.subject_asset_id ?? null}
+              contextAssetIds={sessionDetail?.context_asset_ids ?? []}
               sessionId={activeSessionId}
             />
           </div>
