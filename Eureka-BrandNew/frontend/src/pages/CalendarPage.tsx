@@ -39,6 +39,7 @@ type View = "schedule" | "month";
 export function CalendarPage() {
   const [view, setView]                 = useState<View>("schedule");
   const [cursor, setCursor]             = useState<Date>(() => new Date());
+  const [selectedDay, setSelectedDay]   = useState<string | null>(null); // for MonthGrid
   const [dayDetailKey, setDayDetailKey] = useState<string | null>(null);
   const [editingId, setEditingId]       = useState<string | null>(null);
   const [createDefault, setCreateDefault] = useState<Date | undefined>(undefined);
@@ -94,8 +95,17 @@ export function CalendarPage() {
 
       <div className="flex-1 overflow-y-auto">
         {view === "schedule"
-          ? <ScheduleView onItemTap={handleItemTap} />
-          : <MonthGrid cursor={cursor} onDayTap={(k) => setDayDetailKey(k)} />}
+          ? <ScheduleView
+              onItemTap={handleItemTap}
+              onDayTap={(k) => setDayDetailKey(k)}
+            />
+          : <MonthGrid
+              cursor={cursor}
+              selectedKey={selectedDay}
+              onSelectDay={setSelectedDay}
+              onCreateEvent={handleCreateFromDay}
+              onItemTap={handleItemTap}
+            />}
       </div>
 
       {/* ── overlays ─────────────────────────────────────────────────── */}
