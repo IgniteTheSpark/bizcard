@@ -46,6 +46,13 @@ interface ScheduleViewProps {
 
 type FilterKey = "all" | "event" | "todo" | "idea" | "expense" | "contact";
 
+/**
+ * Show-empty toggle persisted in localStorage so the user's preference
+ * survives reloads (the alternative — re-flooding the rail with grey
+ * tiles on every visit — feels broken when data is sparse).
+ */
+const EMPTY_PREF_KEY = "eureka:schedule_show_empty";
+
 const FILTERS: Array<{ key: FilterKey; label: string; dot?: string }> = [
   { key: "all",      label: "全部" },
   { key: "event",    label: "事件",   dot: "#c4a8ff" },  // accent.purple lighter (per canvas)
@@ -58,6 +65,14 @@ const FILTERS: Array<{ key: FilterKey; label: string; dot?: string }> = [
 export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
   const { items, isLoading } = useTimeline();
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [showEmpty, setShowEmpty] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(EMPTY_PREF_KEY) === "1";
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(EMPTY_PREF_KEY, showEmpty ? "1" : "0");
+  }, [showEmpty]);
 
   // ── Compute per-filter counts (for the chip labels) ──────────────────────
   const counts = useMemo(() => {
@@ -80,7 +95,7 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
 
   // ── Build day buckets across the visible window ──────────────────────────
   // Window: -14d ... earliest item ... +21d from today.
-  const dayWindow = useMemo(() => buildDayWindow(items), [items]);
+  const fullDayWindow = useMemo(() => buildDayWindow(items), [items]);
   const byDay = useMemo(() => {
     const m = new Map<string, TimelineItem[]>();
     for (const it of filtered) {
@@ -98,6 +113,15 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
   const todayKey    = toLocalDayKey(new Date().toISOString());
   const tomorrowKey = toLocalDayKey(addDays(new Date(), 1).toISOString());
 
+  // Compact mode (default): show only days with content + today + tomorrow.
+  // When a stretch of empty days exists between two visible days, we render
+  // ONE collapsible separator "N 天空闲" instead of N grey tiles.
+  // Full mode: render every day in the window (the original canvas behavior).
+  const visibleRows = useMemo<RailRow[]>(
+    () => buildRows(fullDayWindow, byDay, todayKey, tomorrowKey, showEmpty),
+    [fullDayWindow, byDay, todayKey, tomorrowKey, showEmpty],
+  );
+
   // Auto-scroll to today on mount so user lands on "now" instead of the
   // window's start. data-day-key marker is on each row.
   const tilesRef = useRef<HTMLDivElement | null>(null);
@@ -107,9 +131,9 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
       // Center today in the visible scroll area
       el.scrollIntoView({ block: "center", behavior: "auto" });
     }
-    // Run only on first mount + when dayWindow length changes (not item taps)
+    // Run only on first mount + when visibleRows length changes (not item taps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dayWindow.length]);
+  }, [visibleRows.length]);
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#06070d" }}>
@@ -134,7 +158,25 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
             {new Date().getFullYear()}
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {/* M4-polish: 「显示空闲」toggle — default off so sparse calendars
+              don't look empty. Persisted in localStorage. */}
+          <button
+            type="button"
+            onClick={() => setShowEmpty((v) => !v)}
+            className="font-mono"
+            style={{
+              padding: "4px 10px", borderRadius: 999,
+              fontSize: 10.5, letterSpacing: "0.16em",
+              background: showEmpty ? "rgba(111,158,255,0.14)" : "rgba(255,255,255,0.03)",
+              color: showEmpty ? "#a4c2ff" : "rgba(255,255,255,0.55)",
+              border: `1px solid ${showEmpty ? "rgba(111,158,255,0.32)" : "rgba(255,255,255,0.08)"}`,
+              cursor: "pointer",
+            }}
+            title={showEmpty ? "隐藏空闲日" : "显示空闲日"}
+          >
+            {showEmpty ? "全部" : "仅有事"}
+          </button>
           <IconChip glyph="⌕" />
           <IconChip glyph="⋮" />
         </div>
@@ -195,7 +237,18 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
         className="flex-1 overflow-y-auto eu-noscroll"
         style={{ paddingTop: 6, paddingBottom: 16 }}
       >
-        {dayWindow.map((dayKey) => {
+        {visibleRows.map((row) => {
+          if (row.kind === "gap") {
+            return (
+              <GapRow
+                key={`gap-${row.from}-${row.to}`}
+                count={row.count}
+                onExpand={() => setShowEmpty(true)}
+              />
+            );
+          }
+
+          const dayKey = row.dayKey;
           const dayItems = byDay.get(dayKey) ?? [];
           const tone = dayTone(dayItems);
           const empty = dayItems.length === 0;
@@ -306,6 +359,44 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/**
+ * GapRow — collapsed-empty-days separator.
+ * Replaces a sequence of empty days with one slim "N 天空闲" row that
+ * expands into full empty tiles on click. Keeps the schedule scannable
+ * when the user has only a few real items.
+ */
+function GapRow({ count, onExpand }: { count: number; onExpand: () => void }) {
+  return (
+    <div
+      className="grid"
+      style={{ gridTemplateColumns: "64px 1fr", marginBottom: 6, paddingRight: 16 }}
+    >
+      <div
+        style={{
+          borderRight: "1px solid rgba(255,255,255,0.04)",
+          height: 26,
+        }}
+      />
+      <button
+        type="button"
+        onClick={onExpand}
+        className="flex items-center justify-center ml-1.5 font-mono"
+        style={{
+          height: 26, borderRadius: 999,
+          background: "rgba(255,255,255,0.025)",
+          border: "1px dashed rgba(255,255,255,0.08)",
+          color: "rgba(255,255,255,0.40)",
+          fontSize: 10.5, letterSpacing: "0.16em",
+          cursor: "pointer",
+        }}
+        title="展开空闲日"
+      >
+        ⌄ {count} 天空闲
+      </button>
     </div>
   );
 }
@@ -488,6 +579,52 @@ function buildDayWindow(items: TimelineItem[]): string[] {
     days.push(toLocalDayKey(new Date(t).toISOString()));
   }
   return days;
+}
+
+/**
+ * RailRow — discriminated union of items rendered in the schedule stream.
+ *   - { kind: "day", dayKey } → render a full day tile + rail cell
+ *   - { kind: "gap", from, to, count } → render one slim "N 天空闲" separator
+ *
+ * Used by `buildRows` to compress a window's empty days into a single
+ * collapsible row when `showEmpty=false`. Today and tomorrow are ALWAYS
+ * shown as day rows (even empty) so the user always sees "现在 / 接下来"
+ * even on a brand-new install with no data.
+ */
+type RailRow =
+  | { kind: "day"; dayKey: string }
+  | { kind: "gap"; from: string; to: string; count: number };
+
+function buildRows(
+  fullDayWindow: string[],
+  byDay: Map<string, TimelineItem[]>,
+  todayKey: string,
+  tomorrowKey: string,
+  showEmpty: boolean,
+): RailRow[] {
+  if (showEmpty) return fullDayWindow.map((k) => ({ kind: "day", dayKey: k }));
+
+  const rows: RailRow[] = [];
+  let gap: { from: string; to: string; count: number } | null = null;
+
+  const flushGap = () => {
+    if (gap && gap.count > 0) rows.push({ kind: "gap", ...gap });
+    gap = null;
+  };
+
+  for (const k of fullDayWindow) {
+    const isAnchored = k === todayKey || k === tomorrowKey || (byDay.get(k)?.length ?? 0) > 0;
+    if (isAnchored) {
+      flushGap();
+      rows.push({ kind: "day", dayKey: k });
+    } else {
+      if (!gap) gap = { from: k, to: k, count: 0 };
+      gap.to = k;
+      gap.count += 1;
+    }
+  }
+  flushGap();
+  return rows;
 }
 
 function tileHeightFor(n: number): number {

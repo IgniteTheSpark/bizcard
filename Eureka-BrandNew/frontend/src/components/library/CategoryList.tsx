@@ -1,162 +1,367 @@
-import { ChevronRight, Plus, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import useSWR from "swr";
 
 import { swrFetcher } from "@/lib/api";
 import type {
-  AssetsResponse, ContactsResponse, EventsResponse, FilesResponse,
+  Asset, AssetsResponse, ContactsResponse, Event,
+  EventsResponse, FileRow, FilesResponse,
 } from "@/lib/types";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
-import type { AccentColor } from "@/lib/render-spec";
 
 /**
- * CategoryList — primary library view (M1).
+ * LibraryHub — primary library view (M4-polish, replaces M1's 8-行 list).
  *
- * iOS-Files-style: each registered skill is one row showing icon + name + count
- * + chevron. Tap → drill into CategoryDetail for that skill.
+ * Implements `rebuild/design-canvas/var-b-calendar.jsx#CalAssetLibrary` and
+ * design-system.md §6.1 literally:
  *
- * Counts:
- *   - regular skills (todo/idea/notes/misc/expense/contact)  → /api/assets
- *     grouped by user_skill_name
- *   - event                                                   → /api/events
- *   - file                                                    → /api/files
+ *   ┌──────────────────────────────────────┐
+ *   │ 资产库                            ⌕   │  ← big title + total count caps
+ *   │ 27 ITEMS · LAST 30D                  │
+ *   ├──────────────────────────────────────┤
+ *   │ ┌──────────┐  ┌──────────┐           │  ← 2×3 (mobile) or 3×2 (desktop)
+ *   │ │ ☑    14  │  │ ●     8  │           │    type tile grid
+ *   │ │ 待办     │  │ 事件     │           │    each: icon-block (glow) +
+ *   │ │ 财务对账 │  │ 产品评审 │           │    big mono count + label +
+ *   │ └──────────┘  └──────────┘           │    "最近一个" preview
+ *   │ ┌──────────┐  ┌──────────┐           │
+ *   │ │ ◇    22  │  │ ¥     6  │           │
+ *   │ │ 想法     │  │ 记账     │           │
+ *   │ └──────────┘  └──────────┘           │
+ *   │ ┌──────────┐  ┌──────────┐           │
+ *   │ │ ◯    11  │  │ ♪     7  │           │
+ *   │ │ 名片     │  │ 文件     │           │
+ *   │ └──────────┘  └──────────┘           │
+ *   │                                       │
+ *   │ ──── 最近 ────────────                │  ← caps mono section label
+ *   │ ┌──────────────────────────────────┐  │
+ *   │ │ ◇ IDEA  SkillCard 的「沉淀」动画 │  │  ← cross-type latest 4-6
+ *   │ │     ♪  14:32 · 闪念              │  │
+ *   │ └──────────────────────────────────┘  │
+ *   │ ┌──────────────────────────────────┐  │
+ *   │ │ ● EVENT 产品评审 · Eureka v2     │  │
+ *   │ │     5月27日 10:00                 │  │
+ *   │ └──────────────────────────────────┘  │
+ *   │                                       │
+ *   │ ── 扩展 ──                            │
+ *   │ ┌──────────────────────────────────┐  │
+ *   │ │ ✨ 添加新技能                     │  │
+ *   │ └──────────────────────────────────┘  │
+ *   └──────────────────────────────────────┘
  *
- * Bottom area: + 添加新技能 row → AddSkillWizard (M5, placeholder for now).
+ * Per-tile count + preview rules:
+ *   - todo / idea / expense / notes / misc → /api/assets filtered by user_skill_name
+ *   - contact → /api/contacts (real contacts table)
+ *   - event   → /api/events
+ *   - file    → /api/files
+ *
+ * Preview text = latest item's title-ish field (per skill).
  */
+
+interface TileKind {
+  key:       string;
+  to:        string;
+  label:     string;
+  icon:      string;
+  accent:    LibAccent;
+}
+
+type LibAccent = "blue" | "amber" | "green" | "purple" | "neutral" | "cyan";
+
+const LIB_ACCENT: Record<LibAccent, { fg: string; bg: string; edge: string; glow: string }> = {
+  blue:    { fg: "#8ab4ff", bg: "rgba(138,180,255,0.10)", edge: "rgba(138,180,255,0.24)", glow: "rgba(111,158,255,0.30)" },
+  amber:   { fg: "#f5c977", bg: "rgba(245,201,119,0.10)", edge: "rgba(245,201,119,0.24)", glow: "rgba(245,201,119,0.30)" },
+  green:   { fg: "#86e0a5", bg: "rgba(134,224,165,0.10)", edge: "rgba(134,224,165,0.24)", glow: "rgba(134,224,165,0.30)" },
+  purple:  { fg: "#c4a8ff", bg: "rgba(196,168,255,0.10)", edge: "rgba(196,168,255,0.24)", glow: "rgba(196,168,255,0.30)" },
+  neutral: { fg: "#d4dbe6", bg: "rgba(212,219,230,0.05)", edge: "rgba(212,219,230,0.16)", glow: "rgba(212,219,230,0.18)" },
+  cyan:    { fg: "#7dd3df", bg: "rgba(125,211,223,0.10)", edge: "rgba(125,211,223,0.24)", glow: "rgba(125,211,223,0.30)" },
+};
+
+// Fixed 6-tile shape per design-system §6.1 (待办 / 事件 / 想法 / 记账 / 名片 / 文件).
+// Other skills (notes / misc / etc.) still get drill-down pages via the per-skill
+// route — they just don't get a hub tile by default.
+const TILES: TileKind[] = [
+  { key: "todo",    to: "/library/todo",    label: "待办", icon: "☑", accent: "blue"    },
+  { key: "event",   to: "/library/event",   label: "事件", icon: "●", accent: "purple"  },
+  { key: "idea",    to: "/library/idea",    label: "想法", icon: "◇", accent: "amber"   },
+  { key: "expense", to: "/library/expense", label: "记账", icon: "¥", accent: "green"   },
+  { key: "contact", to: "/library/contact", label: "名片", icon: "◯", accent: "neutral" },
+  { key: "file",    to: "/library/file",    label: "文件", icon: "♪", accent: "cyan"    },
+];
+
 export function CategoryList() {
   const { skills } = useSkillRegistry();
 
-  // Pull everything in parallel; SWR dedupes
-  const allAssets  = useSWR<AssetsResponse>("/api/assets?limit=500", swrFetcher);
-  const events     = useSWR<EventsResponse>("/api/events", swrFetcher);
-  const files      = useSWR<FilesResponse>("/api/files", swrFetcher);
-  const contacts   = useSWR<ContactsResponse>("/api/contacts", swrFetcher);
+  // Pull everything in parallel; SWR dedupes across the hub + drill-down pages.
+  const allAssets = useSWR<AssetsResponse>("/api/assets?limit=500", swrFetcher);
+  const events    = useSWR<EventsResponse>("/api/events", swrFetcher);
+  const files     = useSWR<FilesResponse>("/api/files", swrFetcher);
+  const contacts  = useSWR<ContactsResponse>("/api/contacts", swrFetcher);
 
-  // Count assets by user_skill_name
-  const assetCounts = new Map<string, number>();
-  for (const a of allAssets.data?.assets ?? []) {
-    assetCounts.set(a.user_skill_name, (assetCounts.get(a.user_skill_name) ?? 0) + 1);
-  }
+  const assets = allAssets.data?.assets ?? [];
 
-  // Build the row list — skill-driven for asset skills, plus 3 first-class
-  // entities (event / file / contact) that live in separate tables.
-  const rows: CategoryRowData[] = [];
+  // Total count for the caps mono subtitle. Sums everything visible in the
+  // hub (asset-backed skills + first-class entities).
+  const totalCount =
+    assets.length + (events.data?.events?.length ?? 0) +
+    (files.data?.files?.length ?? 0) + (contacts.data?.contacts?.length ?? 0);
 
-  // Order asset-backed skills first (filtered: skip qa which has no card,
-  // skip external_ref which is task-skill output not user-facing)
-  for (const s of skills) {
-    if (s.name === "qa" || s.name === "external_ref") continue;
-    if (!s.render_spec) continue; // system skills
-    // Contact's "真身" lives in the contacts table — the asset-skill is just
-    // a timeline reference shape (per Phase B v1.4 §三). Show real contacts
-    // here, not the reference assets.
-    const count = s.name === "contact"
-      ? (contacts.data?.contacts?.length ?? 0)
-      : (assetCounts.get(s.name) ?? 0);
-    rows.push({
-      to: `/library/${s.name}`,
-      icon: s.render_spec.icon ?? "•",
-      accent: (s.render_spec.accent_color ?? "gray") as AccentColor,
-      label: s.display_name || s.name,
-      count,
-      sub: subLabelForSkill(s.name),
-    });
-  }
-
-  // Inject first-class entities that live outside `assets` table.
-  // NB: skip "contact" first-class row because we already have a
-  // 名片 (contact-asset) row from the skill loop above — they'd visually
-  // duplicate. The first-class contacts table is wired separately when
-  // its CategoryDetail page is opened.
-  rows.push({
-    to: "/library/event",
-    icon: "📅",
-    accent: "purple",
-    label: "事件",
-    count: events.data?.events?.length ?? 0,
-    sub: "日历 events",
-  });
-  rows.push({
-    to: "/library/file",
-    icon: "📎",
-    accent: "gray",
-    label: "文件",
-    count: files.data?.files?.length ?? 0,
-    sub: "录音 / 上传",
-  });
-  // (contacts SWR result used above for 名片's real count — keep the fetch
-  // running even when no per-row needs it explicitly)
+  // Build the 「最近」 cross-type list — newest 5 across asset / event / file
+  // (contacts aren't time-stamped meaningfully so they don't appear in this
+  // "recent activity" list; they're reachable via the 名片 tile).
+  const recent = buildRecent({
+    assets, events: events.data?.events ?? [], files: files.data?.files ?? [],
+    bySkillIcon: iconMap(skills),
+  }, 5);
 
   return (
-    <div className="px-eu-md pt-eu-md flex flex-col gap-eu-sm">
-      <SectionLabel>资产类型</SectionLabel>
-      <div className="rounded-eu-lg overflow-hidden bg-eu-surface border border-eu-border divide-y divide-eu-rule">
-        {rows.map((row) => (
-          <CategoryRow key={row.to} {...row} />
-        ))}
-      </div>
+    <div
+      className="flex flex-col h-full"
+      style={{
+        background:
+          "radial-gradient(800px 500px at 20% -10%, rgba(111,158,255,0.10), transparent 60%), #06070d",
+        color: "#d4dbe6",
+        fontFamily: '"Manrope","Noto Sans SC", system-ui, sans-serif',
+      }}
+    >
+      {/* ── Hero header: 大字 + caps mono total + 搜索 ───────────────── */}
+      <header
+        className="flex items-baseline justify-between shrink-0"
+        style={{ padding: "8px 22px 14px" }}
+      >
+        <div>
+          <h1
+            className="font-display"
+            style={{
+              fontSize: 26, fontWeight: 700, color: "#f4f7fb",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            资产库
+          </h1>
+          <div
+            className="font-mono"
+            style={{
+              fontSize: 10.5, color: "rgba(255,255,255,0.45)",
+              letterSpacing: "0.16em", marginTop: 4,
+            }}
+          >
+            {totalCount} ITEMS · LAST 30D
+          </div>
+        </div>
+        <button
+          type="button"
+          className="font-mono"
+          style={{
+            width: 32, height: 32, borderRadius: 999,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            color: "rgba(255,255,255,0.70)", fontSize: 13, cursor: "pointer",
+          }}
+          title="搜索"
+        >
+          ⌕
+        </button>
+      </header>
 
-      <SectionLabel className="mt-eu-md">扩展</SectionLabel>
-      <div className="rounded-eu-lg overflow-hidden bg-eu-surface border border-eu-border">
+      {/* ── Scrollable body: tiles + 最近 + 扩展 ───────────────────── */}
+      <div
+        className="flex-1 overflow-y-auto eu-noscroll"
+        style={{ padding: "0 16px 18px" }}
+      >
+        {/* Type-tile grid: 2 cols mobile, 3 cols md+ */}
+        <div
+          className="grid grid-cols-2 md:grid-cols-3 gap-2.5"
+          style={{ marginBottom: 22 }}
+        >
+          {TILES.map((t) => (
+            <TypeTile
+              key={t.key}
+              tile={t}
+              count={countFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
+              preview={previewFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
+            />
+          ))}
+        </div>
+
+        {/* 最近 divider */}
+        <div className="flex items-center gap-2.5" style={{ marginBottom: 10 }}>
+          <span
+            className="font-mono"
+            style={{
+              fontSize: 10.5, letterSpacing: "0.22em",
+              color: "rgba(255,255,255,0.55)", fontWeight: 600,
+            }}
+          >
+            最近
+          </span>
+          <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
+        </div>
+
+        {/* Cross-type latest 5 */}
+        <div className="flex flex-col gap-2">
+          {recent.length === 0 ? (
+            <div
+              className="font-mono"
+              style={{ fontSize: 11, color: "rgba(255,255,255,0.30)", padding: "10px 0" }}
+            >
+              还没有资产 — 用底部 + 或 🎙 创建
+            </div>
+          ) : (
+            recent.map((r) => <RecentCard key={r.id} item={r} />)
+          )}
+        </div>
+
+        {/* 扩展 — 添加新技能 */}
+        <div className="flex items-center gap-2.5" style={{ margin: "22px 0 10px" }}>
+          <span
+            className="font-mono"
+            style={{
+              fontSize: 10.5, letterSpacing: "0.22em",
+              color: "rgba(255,255,255,0.55)", fontWeight: 600,
+            }}
+          >
+            扩展
+          </span>
+          <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
+        </div>
         <AddSkillRow />
       </div>
     </div>
   );
 }
 
-/* ── Subcomponents ──────────────────────────────────────────────────────── */
+/* ── Tile + RecentCard subcomponents ──────────────────────────────────── */
 
-interface CategoryRowData {
-  to: string;
-  icon: string;
-  accent: AccentColor;
-  label: string;
-  count: number;
-  sub: string;
-}
-
-function CategoryRow({ to, icon, accent, label, count, sub }: CategoryRowData) {
+function TypeTile({
+  tile, count, preview,
+}: { tile: TileKind; count: number; preview: string }) {
+  const ac = LIB_ACCENT[tile.accent];
   return (
     <Link
-      to={to}
-      className={[
-        "flex items-center gap-eu-md px-eu-md py-eu-sm",
-        "transition-colors duration-eu-fast",
-        "hover:bg-eu-surface-hover active:bg-eu-surface-raised",
-      ].join(" ")}
+      to={tile.to}
+      className="flex flex-col text-left active:scale-95"
+      style={{
+        gap: 12,
+        padding: "14px 14px 12px", borderRadius: 14,
+        background: ac.bg, border: `1px solid ${ac.edge}`,
+        minHeight: 116,
+        transition: "all 280ms cubic-bezier(.2,.7,.3,1)",
+      }}
     >
-      <CategoryIcon icon={icon} accent={accent} />
-      <div className="flex-1 min-w-0">
-        <div className="text-eu-base text-eu-text-hi truncate">{label}</div>
-        <div className="text-eu-xs text-eu-text-lo font-mono mt-0.5">{sub}</div>
+      <div className="flex items-center justify-between">
+        <span
+          className="font-mono"
+          style={{
+            width: 30, height: 30, borderRadius: 8,
+            background: "rgba(0,0,0,0.20)",
+            border: `1px solid ${ac.edge}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: ac.fg, fontSize: 14,
+            boxShadow: `0 0 10px ${ac.glow}`,
+          }}
+        >
+          {tile.icon}
+        </span>
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 22, fontWeight: 700, color: "#ffffff",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {count}
+        </span>
       </div>
-      <div className="font-mono text-eu-sm text-eu-text-mid shrink-0">{count}</div>
-      <ChevronRight size={16} strokeWidth={1.75} className="text-eu-text-lo shrink-0" />
+      <div>
+        <div
+          style={{
+            fontSize: 15, fontWeight: 600, color: "#f4f7fb",
+            letterSpacing: "-0.005em",
+          }}
+        >
+          {tile.label}
+        </div>
+        <div
+          style={{
+            fontSize: 11, color: "rgba(255,255,255,0.50)", marginTop: 4,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            fontFamily: tile.key === "file" ? '"JetBrains Mono", monospace' : "inherit",
+          }}
+        >
+          {preview || "—"}
+        </div>
+      </div>
     </Link>
   );
 }
 
-function CategoryIcon({ icon, accent }: { icon: string; accent: AccentColor }) {
-  // Per-accent classes (Tailwind-static so purger keeps them)
-  const map: Record<AccentColor, { bg: string; fg: string; border: string }> = {
-    blue:    { bg: "bg-eu-accent-blue-bg",    fg: "text-eu-accent-blue-fg",    border: "border-eu-accent-blue-edge"    },
-    amber:   { bg: "bg-eu-accent-amber-bg",   fg: "text-eu-accent-amber-fg",   border: "border-eu-accent-amber-edge"   },
-    green:   { bg: "bg-eu-accent-green-bg",   fg: "text-eu-accent-green-fg",   border: "border-eu-accent-green-edge"   },
-    red:     { bg: "bg-eu-accent-red-bg",     fg: "text-eu-accent-red-fg",     border: "border-eu-accent-red-edge"     },
-    purple:  { bg: "bg-eu-accent-purple-bg",  fg: "text-eu-accent-purple-fg",  border: "border-eu-accent-purple-edge"  },
-    gray:    { bg: "bg-eu-accent-gray-bg",    fg: "text-eu-accent-gray-fg",    border: "border-eu-accent-gray-edge"    },
-    neutral: { bg: "bg-eu-accent-neutral-bg", fg: "text-eu-accent-neutral-fg", border: "border-eu-accent-neutral-edge" },
-  };
-  const a = map[accent];
+interface RecentItem {
+  id:       string;
+  to:       string;
+  accent:   LibAccent;
+  icon:     string;
+  kindCaps: string;
+  title:    string;
+  sub:      string;
+  hasSource: boolean;
+}
+
+function RecentCard({ item }: { item: RecentItem }) {
+  const ac = LIB_ACCENT[item.accent];
   return (
-    <div className={[
-      "shrink-0 h-9 w-9 rounded-eu-md border",
-      "flex items-center justify-center",
-      "text-eu-md font-mono font-semibold",
-      a.bg, a.fg, a.border,
-    ].join(" ")}>
-      {icon}
-    </div>
+    <Link
+      to={item.to}
+      className="flex flex-col text-left"
+      style={{
+        padding: "12px 14px", borderRadius: 14,
+        background: ac.bg, border: `1px solid ${ac.edge}`,
+        gap: 6,
+        transition: "all 280ms cubic-bezier(.2,.7,.3,1)",
+      }}
+    >
+      <div className="flex items-center" style={{ gap: 8 }}>
+        <span
+          className="font-mono"
+          style={{
+            width: 22, height: 22, borderRadius: 6,
+            background: "rgba(0,0,0,0.20)",
+            border: `1px solid ${ac.edge}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: ac.fg, fontSize: 12,
+          }}
+        >
+          {item.icon}
+        </span>
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 9.5, letterSpacing: "0.18em",
+            color: ac.fg, fontWeight: 600,
+          }}
+        >
+          {item.kindCaps}
+        </span>
+        {item.hasSource && (
+          <span style={{ marginLeft: "auto", fontSize: 11, color: "rgba(164,194,255,0.65)" }}>♪</span>
+        )}
+      </div>
+      <div
+        style={{
+          fontSize: 14, fontWeight: 600, color: "#f4f7fb",
+          letterSpacing: "-0.005em",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}
+      >
+        {item.title}
+      </div>
+      <div
+        className="font-mono"
+        style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", letterSpacing: "0.06em" }}
+      >
+        {item.sub}
+      </div>
+    </Link>
   );
 }
 
@@ -165,49 +370,174 @@ function AddSkillRow() {
     <button
       type="button"
       onClick={() => alert("AddSkillWizard 在 M5 接入(design_agent 端到端验证)")}
-      className={[
-        "w-full flex items-center gap-eu-md px-eu-md py-eu-sm",
-        "transition-colors duration-eu-fast",
-        "hover:bg-eu-surface-hover active:bg-eu-surface-raised",
-        "text-left",
-      ].join(" ")}
+      className="w-full flex items-center text-left"
+      style={{
+        gap: 12,
+        padding: "14px 14px", borderRadius: 14,
+        background: "rgba(196,168,255,0.06)",
+        border: "1px solid rgba(196,168,255,0.20)",
+        color: "inherit", cursor: "pointer",
+      }}
     >
-      <div className={[
-        "shrink-0 h-9 w-9 rounded-eu-md border border-eu-accent-purple-edge",
-        "bg-eu-accent-purple-bg text-eu-accent-purple-fg",
-        "flex items-center justify-center",
-      ].join(" ")}>
-        <Sparkles size={16} strokeWidth={1.75} />
-      </div>
+      <span
+        style={{
+          width: 30, height: 30, borderRadius: 8,
+          background: "rgba(196,168,255,0.10)",
+          border: "1px solid rgba(196,168,255,0.24)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#c4a8ff",
+          boxShadow: "0 0 10px rgba(196,168,255,0.30)",
+        }}
+      >
+        <Sparkles size={14} strokeWidth={1.75} />
+      </span>
       <div className="flex-1">
-        <div className="text-eu-base text-eu-text-hi">添加新技能</div>
-        <div className="text-eu-xs text-eu-text-lo font-mono mt-0.5">由 AI 帮你设计卡片</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "#f4f7fb" }}>添加新技能</div>
+        <div
+          className="font-mono"
+          style={{ fontSize: 10.5, color: "rgba(255,255,255,0.50)", letterSpacing: "0.06em", marginTop: 2 }}
+        >
+          由 AI 帮你设计卡片
+        </div>
       </div>
-      <Plus size={16} strokeWidth={1.75} className="text-eu-text-lo" />
     </button>
   );
 }
 
-function SectionLabel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`px-eu-sm text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono ${className}`}>
-      {children}
-    </div>
-  );
+/* ── Data helpers ─────────────────────────────────────────────────────── */
+
+function iconMap(skills: ReturnType<typeof useSkillRegistry>["skills"]) {
+  const m = new Map<string, string>();
+  for (const s of skills) {
+    if (s.render_spec?.icon) m.set(s.name, s.render_spec.icon);
+  }
+  return m;
 }
 
-function subLabelForSkill(name: string): string {
-  // Static one-liners shown under each category name (the kind of thing
-  // designers would write into design canvas's sample data)
-  switch (name) {
-    case "todo":    return "待办事项";
-    case "idea":    return "灵感速记";
-    case "notes":   return "笔记 / 纪要";
-    case "misc":    return "其它";
-    case "expense": return "消费记录";
-    case "contact": return "名片资产";
-    case "event":   return "日历 events";
-    case "file":    return "录音 / 上传";
-    default:        return name;
+function countFor(
+  key: string,
+  d: { assets: Asset[]; events?: Event[]; files?: FileRow[]; contacts?: ContactsResponse["contacts"] },
+): number {
+  if (key === "event")   return d.events?.length ?? 0;
+  if (key === "file")    return d.files?.length  ?? 0;
+  if (key === "contact") return d.contacts?.length ?? 0;
+  return d.assets.filter((a) => a.user_skill_name === key).length;
+}
+
+function previewFor(
+  key: string,
+  d: { assets: Asset[]; events?: Event[]; files?: FileRow[]; contacts?: ContactsResponse["contacts"] },
+): string {
+  if (key === "event") {
+    const e = d.events?.[0];
+    if (!e) return "";
+    const d2 = new Date(e.start_at);
+    return `${e.title} · ${d2.getMonth() + 1}月${d2.getDate()}`;
   }
+  if (key === "file") {
+    const f = d.files?.[0];
+    if (!f) return "";
+    const tag = f.source_tag === "flash" ? "闪念"
+              : f.source_tag === "meeting" ? "会议" : "上传";
+    return `${tag} · ${f.duration_sec ? `${Math.round(f.duration_sec)}s` : ""}`.trim();
+  }
+  if (key === "contact") {
+    const c = d.contacts?.[0];
+    if (!c) return "";
+    return c.company ? `${c.name} · ${c.company}` : c.name;
+  }
+  // Asset-backed skills — first row's title-ish field
+  const a = d.assets.find((x) => x.user_skill_name === key);
+  if (!a) return "";
+  const p = a.payload as { content?: unknown; title?: unknown; name?: unknown };
+  return String(p.content ?? p.title ?? p.name ?? key);
+}
+
+/* ── 最近 list builder ──────────────────────────────────────────────── */
+
+function buildRecent(
+  d: {
+    assets: Asset[]; events: Event[]; files: FileRow[];
+    bySkillIcon: Map<string, string>;
+  },
+  limit: number,
+): RecentItem[] {
+  const merged: Array<RecentItem & { _ts: number }> = [];
+
+  for (const a of d.assets) {
+    const skillName = a.user_skill_name;
+    const tileAccent = accentForSkill(skillName);
+    const icon = d.bySkillIcon.get(skillName) ?? "·";
+    const p = a.payload as { content?: unknown; title?: unknown; name?: unknown };
+    merged.push({
+      _ts:      +new Date(a.created_at),
+      id:       `asset-${a.id}`,
+      to:       `/library/${skillName}`,
+      accent:   tileAccent,
+      icon,
+      kindCaps: skillName.toUpperCase(),
+      title:    String(p.content ?? p.title ?? p.name ?? skillName),
+      sub:      relativeTime(a.created_at),
+      hasSource: !!a.source_input_turn_id,
+    });
+  }
+  for (const e of d.events) {
+    merged.push({
+      _ts:      +new Date(e.created_at),
+      id:       `event-${e.event_id}`,
+      to:       `/library/event`,
+      accent:   "purple",
+      icon:     "●",
+      kindCaps: "EVENT",
+      title:    e.title,
+      sub:      formatStart(e.start_at, e.all_day),
+      hasSource: !!e.source_input_turn_id,
+    });
+  }
+  for (const f of d.files) {
+    merged.push({
+      _ts:      +new Date(f.created_at),
+      id:       `file-${f.id}`,
+      to:       `/library/file`,
+      accent:   "cyan",
+      icon:     "♪",
+      kindCaps: (f.source_tag ?? "FILE").toUpperCase(),
+      title:    `${f.source_tag === "flash" ? "闪念录音" : f.source_tag === "meeting" ? "会议录音" : "文件"}`,
+      sub:      `${f.duration_sec ? `${Math.round(f.duration_sec)}s · ` : ""}${relativeTime(f.created_at)}`,
+      hasSource: false,
+    });
+  }
+
+  merged.sort((a, b) => b._ts - a._ts);
+  return merged.slice(0, limit).map(({ _ts: _, ...rest }) => rest);
+}
+
+function accentForSkill(name: string): LibAccent {
+  switch (name) {
+    case "todo":    return "blue";
+    case "idea":    return "amber";
+    case "expense": return "green";
+    case "contact": return "neutral";
+    case "notes":   return "blue";
+    default:        return "neutral";
+  }
+}
+
+function relativeTime(iso: string): string {
+  const t = +new Date(iso);
+  const now = Date.now();
+  const diffSec = Math.max(0, Math.floor((now - t) / 1000));
+  if (diffSec < 60)        return "刚刚";
+  if (diffSec < 3600)      return `${Math.floor(diffSec / 60)} 分钟前`;
+  if (diffSec < 86400)     return `${Math.floor(diffSec / 3600)} 小时前`;
+  if (diffSec < 86400 * 7) return `${Math.floor(diffSec / 86400)} 天前`;
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+function formatStart(iso: string, allDay: boolean): string {
+  const d = new Date(iso);
+  if (allDay) return `${d.getMonth() + 1}月${d.getDate()}日 · 全天`;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

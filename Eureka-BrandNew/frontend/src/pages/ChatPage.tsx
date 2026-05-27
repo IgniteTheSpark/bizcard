@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, History, Home, Plus } from "lucide-react";
+import { ArrowLeft, History } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -115,17 +115,6 @@ export function ChatPage() {
     navigate(backTarget);
   }
 
-  function handleHome() {
-    navigate("/library");
-  }
-
-  function handleNewSession() {
-    // Drop any active session so the next user message starts a fresh chat;
-    // /api/chat will create a new session_id on first turn.
-    setActiveSessionId(null);
-    chat.reset([]);
-  }
-
   return (
     // h-full = fit within AppShell's <main>. M3.5: dock hidden on /chat
     // so we get the full height for sidebar + chat column.
@@ -138,7 +127,10 @@ export function ChatPage() {
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* ── Top nav: back + breadcrumb + home + history + 新对话 ─── */}
+        {/* ── Top nav (M4-polish): minimal — back + centered title only.
+            Removed home button (back's fallback already lands at /library)
+            and 「+ 新对话」 (sidebar's 「+ 新建对话」 already covers it).
+            Mobile keeps the history toggle since sidebar isn't visible.  */}
         <div className="flex items-center gap-eu-sm px-eu-md py-eu-sm border-b border-eu-rule bg-eu-bg/70 backdrop-blur shrink-0">
           <button
             type="button"
@@ -149,29 +141,12 @@ export function ChatPage() {
             <ArrowLeft size={14} strokeWidth={2} />
             <span className="max-w-[14ch] truncate">{backLabel}</span>
           </button>
-          <button
-            type="button"
-            onClick={handleHome}
-            className="p-1.5 rounded-eu-md text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
-            aria-label="首页"
-            title="首页"
-          >
-            <Home size={14} strokeWidth={1.75} />
-          </button>
 
-          <div className="flex-1 min-w-0 text-center text-eu-xs text-eu-text-lo font-mono truncate">
-            {sessionDetail?.title ?? (activeSessionId ? `session ${activeSessionId.slice(0, 8)}` : "新对话")}
+          <div className="flex-1 min-w-0 text-center text-eu-sm text-eu-text-hi font-medium truncate">
+            {sessionDetail?.title ?? (activeSessionId ? `对话 ${activeSessionId.slice(0, 6)}` : "新对话")}
           </div>
 
-          <button
-            type="button"
-            onClick={handleNewSession}
-            className="inline-flex items-center gap-1 text-eu-sm text-eu-text-mid hover:text-eu-text-hi rounded-eu-md px-1.5 py-1 hover:bg-eu-surface-hover active:scale-95"
-            title="新对话"
-          >
-            <Plus size={14} strokeWidth={2} />
-            <span className="hidden md:inline">新对话</span>
-          </button>
+          {/* Mobile-only history opener (desktop has the sidebar always visible). */}
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}

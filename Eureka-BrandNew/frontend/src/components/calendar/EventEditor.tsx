@@ -142,27 +142,37 @@ function EventEditorBody({ existing, defaultStart, onClose, onSaved }: EventEdit
 
   return (
     <div
-      className="fixed inset-0 z-50"
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center"
       style={{ background: "rgba(6,7,13,0.75)", backdropFilter: "blur(8px)" }}
       onClick={onClose}
     >
+      {/* M4-polish: desktop = centered sheet (canvas-faithful 380×~720,
+          relaxed to 480×min(720,90vh) so the colored panel doesn't lose its
+          proportions on wide screens). Mobile = full-width bottom sheet. */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="fixed flex flex-col overflow-hidden"
+        className="flex flex-col overflow-hidden"
         style={{
-          inset: 0,
+          width: "100%",
+          maxWidth: 480,
+          height: "min(720px, 92vh)",
           background: "#06070d",
           color: "#d4dbe6",
           fontFamily: '"Manrope","Noto Sans SC", system-ui, sans-serif',
+          borderRadius: 20,
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
         }}
       >
-        {/* ── Top 64%: colored panel ─────────────────────────────────── */}
+        {/* ── Top 60%: colored panel ─────────────────────────────────── */}
         <div
           className="relative flex flex-col overflow-hidden"
           style={{
-            flex: "0 0 64%",
+            flex: "0 0 60%",
             background: "linear-gradient(155deg, #4a3a8f 0%, #2a1f6a 100%)",
             padding: "20px 24px 22px",
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
           }}
         >
           {/* corner glow */}
@@ -438,10 +448,10 @@ function EventEditorBody({ existing, defaultStart, onClose, onSaved }: EventEdit
           </ToolButton>
         </div>
 
-        {/* ── Recent events tray (acts as the bottom 36%) ────────────── */}
+        {/* ── Recent events tray (acts as the bottom ~36%) ──────────── */}
         <div
-          className="flex-1 overflow-hidden"
-          style={{ padding: "14px 22px" }}
+          className="flex-1 overflow-y-auto eu-noscroll"
+          style={{ padding: "14px 22px 18px" }}
         >
           <div className="flex items-center justify-between mb-2.5">
             <span

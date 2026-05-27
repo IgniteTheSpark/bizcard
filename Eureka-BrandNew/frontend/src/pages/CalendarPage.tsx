@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, List, LayoutGrid, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, List, LayoutGrid } from "lucide-react";
 
 import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
 import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
@@ -14,11 +14,11 @@ import useSWR from "swr";
 import type { AssetsResponse, TimelineItem } from "@/lib/types";
 
 /**
- * CalendarPage — M3.
+ * CalendarPage — M3 → M4-polish.
  *
  * Layout:
  *   ┌──────────────────────────────────────────────┐
- *   │ « 2026年5月 » │ [Schedule | Month] │ + 新建   │ ← CalendarHeader
+ *   │ « 2026年5月 » │ [Schedule | Month]            │ ← CalendarHeader
  *   ├──────────────────────────────────────────────┤
  *   │                                              │
  *   │   <ScheduleView/> or <MonthGrid/>            │
@@ -28,7 +28,9 @@ import type { AssetsResponse, TimelineItem } from "@/lib/types";
  * Interactions:
  *   - Schedule row tap → event → EventEditor (edit); asset → AssetDetailDrawer
  *   - Month day tap   → DayDetailSheet (which can route to either above)
- *   - + 新建事件       → EventEditor (create, defaults to now)
+ *   - 新建事件         → FloatingDock + → CreateAssetMenu → 事件 tile → EventEditor
+ *                         (M4-polish: removed the redundant top-bar + button;
+ *                          the global dock + already routes to EventEditor)
  *
  * MonthGrid uses a navigable cursor (prev/next month); ScheduleView always
  * shows everything sorted desc (no cursor).
@@ -42,6 +44,9 @@ export function CalendarPage() {
   const [selectedDay, setSelectedDay]   = useState<string | null>(null); // for MonthGrid
   const [dayDetailKey, setDayDetailKey] = useState<string | null>(null);
   const [editingId, setEditingId]       = useState<string | null>(null);
+  // creating/createDefault now only used by handleCreateFromDay (DayDetail
+  // → + add, MonthGrid → + 添加事件). The global "new event" entry is the
+  // FloatingDock + button. Calendar's top bar no longer has its own +.
   const [createDefault, setCreateDefault] = useState<Date | undefined>(undefined);
   const [creating, setCreating]         = useState(false);
   const [openAssetId, setOpenAssetId]   = useState<string | null>(null);
@@ -58,11 +63,6 @@ export function CalendarPage() {
     // Tap on a row from DayDetailSheet should also close that sheet so the
     // editor/drawer takes over the screen cleanly.
     setDayDetailKey(null);
-  }
-
-  function handleNewEvent() {
-    setCreateDefault(undefined);
-    setCreating(true);
   }
 
   function handleCreateFromDay(dayKey: string) {
@@ -90,7 +90,6 @@ export function CalendarPage() {
         cursor={cursor}
         onShiftMonth={shiftMonth}
         onToday={() => setCursor(new Date())}
-        onNewEvent={handleNewEvent}
       />
 
       <div className="flex-1 overflow-y-auto">
@@ -146,14 +145,13 @@ export function CalendarPage() {
 /* ── CalendarHeader ────────────────────────────────────────────────────── */
 
 function CalendarHeader({
-  view, onSetView, cursor, onShiftMonth, onToday, onNewEvent,
+  view, onSetView, cursor, onShiftMonth, onToday,
 }: {
   view: View;
   onSetView: (v: View) => void;
   cursor: Date;
   onShiftMonth: (delta: number) => void;
   onToday: () => void;
-  onNewEvent: () => void;
 }) {
   const label = view === "month"
     ? `${cursor.getFullYear()}年${cursor.getMonth() + 1}月`
@@ -182,29 +180,18 @@ function CalendarHeader({
         {label}
       </h1>
 
-      <div className="ml-auto flex items-center gap-eu-sm">
-        <div className="inline-flex rounded-eu-md border border-eu-border p-0.5">
-          <ToggleBtn active={view === "schedule"} onClick={() => onSetView("schedule")}>
-            <List size={14} strokeWidth={1.75} />
-            日程
-          </ToggleBtn>
-          <ToggleBtn active={view === "month"} onClick={() => onSetView("month")}>
-            <LayoutGrid size={14} strokeWidth={1.75} />
-            月
-          </ToggleBtn>
-        </div>
-        <button
-          type="button"
-          onClick={onNewEvent}
-          className={[
-            "inline-flex items-center gap-1 px-eu-sm py-eu-xs rounded-eu-md text-eu-sm font-medium",
-            "bg-eu-brand text-white hover:bg-eu-brand-hi",
-            "transition-colors duration-eu-fast",
-          ].join(" ")}
-        >
-          <Plus size={14} strokeWidth={2} />
-          新建事件
-        </button>
+      {/* M4-polish: only view toggle remains here. + 新建事件 absorbed by
+          the global FloatingDock + button (CreateAssetMenu → 事件 tile
+          opens EventEditor). */}
+      <div className="ml-auto inline-flex rounded-eu-md border border-eu-border p-0.5">
+        <ToggleBtn active={view === "schedule"} onClick={() => onSetView("schedule")}>
+          <List size={14} strokeWidth={1.75} />
+          日程
+        </ToggleBtn>
+        <ToggleBtn active={view === "month"} onClick={() => onSetView("month")}>
+          <LayoutGrid size={14} strokeWidth={1.75} />
+          月
+        </ToggleBtn>
       </div>
     </header>
   );
