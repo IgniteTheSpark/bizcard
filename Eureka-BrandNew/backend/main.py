@@ -41,6 +41,7 @@ from api.contacts import router as contacts_router
 from api.events import router as events_router       # v1.4
 from api.timeline import router as timeline_router    # v1.4.x
 from api.tasks import router as tasks_router          # v1.4.x — async MCP tasks
+from api.notifications import router as notifications_router  # Phase D M6
 
 
 @asynccontextmanager
@@ -70,6 +71,7 @@ app.include_router(contacts_router,    prefix="/api", tags=["contacts"])
 app.include_router(events_router,      prefix="/api", tags=["events"])       # v1.4
 app.include_router(timeline_router,    prefix="/api", tags=["timeline"])     # v1.4.x
 app.include_router(tasks_router,       prefix="/api", tags=["tasks"])        # v1.4.x
+app.include_router(notifications_router, prefix="/api", tags=["notifications"])  # Phase D M6
 
 
 @app.get("/health")

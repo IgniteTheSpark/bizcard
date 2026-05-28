@@ -26,6 +26,7 @@ from sqlalchemy import select
 
 from agents.flash_pipeline import run_flash_pipeline
 from core.auth import get_current_user_id
+from core.notifications import create_notification
 from core.session_service import (
     create_input_turn_for_message,
     persist_chat_turn,
@@ -171,6 +172,18 @@ async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
         # Persistence failure is non-fatal for the immediate response —
         # the derived assets are already in the DB via run_flash_pipeline.
         pass
+
+    # M6: log a notification so the bell + history reflect what was captured.
+    # Only when something was actually derived (a pure conversational reply
+    # with no assets isn't worth a notification line).
+    derived = result.get("derived_assets", []) or cards
+    if result.get("ok", True) and derived:
+        await create_notification(
+            user_id=user_id,
+            type="flash_done",
+            title="闪念已整理",
+            body=(summary or reply or f"已记录 {len(derived)} 项")[:200],
+        )
 
     return FlashResponse(
         ok=result.get("ok", True),

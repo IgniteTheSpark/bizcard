@@ -325,3 +325,32 @@ class Task(Base):
         Index("idx_tasks_user_status", "user_id", "status", "created_at"),
         Index("idx_tasks_session",     "session_id", "created_at"),
     )
+
+
+class Notification(Base):
+    """
+    Notification — Phase D M6/M7. A lightweight, user-facing event log that
+    powers the NotificationBell badge, the toast queue, and the history page.
+
+    Created by:
+      - M6: flash completion, async task done/failed (api/flash.py, agents/task_skill.py)
+      - M7: time-driven reminders (todo due / event starting soon)
+
+    `link` is an opaque target the frontend resolves (usually an asset_id or
+    event_id) so tapping a notification can deep-link to the thing it's about.
+    `read` follows the codebase's 0/1 Integer convention (no Boolean type).
+    """
+    __tablename__ = "notifications"
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id    = Column(String(50), nullable=False, server_default="default")
+    type       = Column(String(20), nullable=False)   # flash_done | task_done | task_failed | reminder
+    title      = Column(String(255), nullable=False)
+    body       = Column(Text)
+    link       = Column(String(255))                   # opaque deep-link target (asset/event id)
+    read       = Column(Integer, nullable=False, server_default="0")  # 0/1
+    created_at = Column(TIMESTAMPTZ, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_notifications_user_created", "user_id", "created_at"),
+    )

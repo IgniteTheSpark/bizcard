@@ -38,6 +38,7 @@ from agents.flash_pipeline import _run_agent, _extract_tool_result_payload
 from agents.mcp_config import MCP_SERVERS
 from agents.mcp_toolset import get_all_external_toolsets
 from core.llm import TASK_MODEL
+from core.notifications import create_notification
 from db.database import AsyncSessionLocal
 from db.models import Task, Asset, UserSkill, GlobalSkill
 
@@ -257,6 +258,16 @@ async def _run_task_async(
             ))
             await db.commit()
 
+        # M6: notify — async tasks finish minutes after the user moved on, so
+        # this is the high-value case for the notification system.
+        await create_notification(
+            user_id=user_id,
+            type="task_done",
+            title="任务已完成",
+            body=(ext_info.get("title") or user_text)[:200],
+            link=asset_id,
+        )
+
     except Exception as exc:   # broad-catch is intentional for fire-and-forget worker
         async with AsyncSessionLocal() as db:
             await db.execute(update(Task).where(Task.id == uuid.UUID(task_id)).values(
@@ -273,6 +284,16 @@ async def _run_task_async(
                 },
             ))
             await db.commit()
+
+        # M6: notify on failure so the user learns the background task didn't
+        # land (otherwise it fails silently).
+        await create_notification(
+            user_id=user_id,
+            type="task_failed",
+            title="任务失败",
+            body=f"{user_text[:120]} — {str(exc)[:120]}",
+            link=asset_id,
+        )
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
