@@ -81,16 +81,22 @@ const LIB_ACCENT: Record<LibAccent, { fg: string; bg: string; edge: string; glow
   cyan:    { fg: "#7dd3df", bg: "rgba(125,211,223,0.10)", edge: "rgba(125,211,223,0.24)", glow: "rgba(125,211,223,0.30)" },
 };
 
-// Fixed 6-tile shape per design-system §6.1 (待办 / 事件 / 想法 / 记账 / 名片 / 文件).
-// Other skills (notes / misc / etc.) still get drill-down pages via the per-skill
-// route — they just don't get a hub tile by default.
-const TILES: TileKind[] = [
-  { key: "todo",    to: "/library/todo",    label: "待办", icon: "☑", accent: "blue"    },
+// OP9: type tiles split into two semantic sections.
+// 「核心」 = first-class entities that exist regardless of user skills
+//   (event / contact / file — backed by their own tables).
+// 「我的技能」 = user-extensible skill assets (todo / expense / idea /
+//   notes / misc) — these evolve over time as user adds new skill types
+//   via the AddSkillWizard. The 添加新技能 tile sits at the end of this
+//   row so the "I can add more" affordance is visible inline.
+const CORE_TILES: TileKind[] = [
   { key: "event",   to: "/library/event",   label: "事件", icon: "●", accent: "purple"  },
-  { key: "idea",    to: "/library/idea",    label: "想法", icon: "◇", accent: "amber"   },
-  { key: "expense", to: "/library/expense", label: "记账", icon: "¥", accent: "green"   },
   { key: "contact", to: "/library/contact", label: "名片", icon: "◯", accent: "neutral" },
   { key: "file",    to: "/library/file",    label: "文件", icon: "♪", accent: "cyan"    },
+];
+const SKILL_TILES: TileKind[] = [
+  { key: "todo",    to: "/library/todo",    label: "待办", icon: "☑", accent: "blue"    },
+  { key: "idea",    to: "/library/idea",    label: "想法", icon: "◇", accent: "amber"   },
+  { key: "expense", to: "/library/expense", label: "记账", icon: "¥", accent: "green"   },
 ];
 
 export function CategoryList() {
@@ -173,15 +179,32 @@ export function CategoryList() {
         className="flex-1 overflow-y-auto eu-noscroll"
         style={{ padding: "0 16px 18px" }}
       >
-        {/* OP4: type-tile grid + AddSkillTile inline as the 7th tile.
-            Discovering "I can add my own skill type" is more natural up
-            here next to the existing types than buried under the 最近
-            section. */}
+        {/* OP9: two semantic sections — 核心 (常驻 first-class entities)
+            and 我的技能 (user-evolvable skill assets). Both use 3-col grid
+            so a 393px iPhone frame fits 3 tiles per row neatly. The
+            添加新技能 tile lives at the end of 技能 inline as the natural
+            "extend" affordance. */}
+        <SectionLabel>核心</SectionLabel>
         <div
-          className="grid grid-cols-2 md:grid-cols-3 gap-2.5"
-          style={{ marginBottom: 22 }}
+          className="grid grid-cols-3 gap-2.5"
+          style={{ margin: "6px 0 16px" }}
         >
-          {TILES.map((t) => (
+          {CORE_TILES.map((t) => (
+            <TypeTile
+              key={t.key}
+              tile={t}
+              count={countFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
+              preview={previewFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
+            />
+          ))}
+        </div>
+
+        <SectionLabel>我的技能</SectionLabel>
+        <div
+          className="grid grid-cols-3 gap-2.5"
+          style={{ margin: "6px 0 22px" }}
+        >
+          {SKILL_TILES.map((t) => (
             <TypeTile
               key={t.key}
               tile={t}
@@ -192,19 +215,7 @@ export function CategoryList() {
           <AddSkillTile />
         </div>
 
-        {/* 最近 divider */}
-        <div className="flex items-center gap-2.5" style={{ marginBottom: 10 }}>
-          <span
-            className="font-mono"
-            style={{
-              fontSize: 10.5, letterSpacing: "0.22em",
-              color: "rgba(255,255,255,0.55)", fontWeight: 600,
-            }}
-          >
-            最近
-          </span>
-          <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-        </div>
+        <SectionLabel>最近</SectionLabel>
 
         {/* Cross-type latest 5 */}
         <div className="flex flex-col gap-2">
@@ -220,6 +231,25 @@ export function CategoryList() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Section divider — caps mono label + thin rule on the right ─────── */
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5" style={{ marginTop: 6 }}>
+      <span
+        className="font-mono"
+        style={{
+          fontSize: 10.5, letterSpacing: "0.22em",
+          color: "rgba(255,255,255,0.55)", fontWeight: 600,
+        }}
+      >
+        {children}
+      </span>
+      <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
     </div>
   );
 }
@@ -318,6 +348,7 @@ function RecentCard({ item }: { item: RecentItem }) {
       <EventCard
         event={item.event}
         onClick={() => navigate(item.to)}
+        createdMeta={relativeTime(item.event.created_at)}
       />
     );
   }
@@ -330,6 +361,14 @@ function RecentCard({ item }: { item: RecentItem }) {
       cardType: item.asset.user_skill_name,
       displayName: skill?.display_name ?? item.asset.user_skill_name,
     });
+    // OP8: 最近 list is sorted by created_at desc — surface that as a
+    // meta chip so the sort dimension is visible (cards otherwise show
+    // skill-natural fields like due_date/expense.created, which made
+    // the order look random to the user).
+    card.metaFields = [
+      ...card.metaFields,
+      { field: "created_at", value: relativeTime(item.asset.created_at) },
+    ];
     return (
       <SkillCard
         data={card}

@@ -39,14 +39,23 @@ interface EventCardProps {
   onClick?:  () => void;
   /** Override (rare). Defaults to "horizontal" matching SkillCard. */
   layout?:   CardLayout;
+  /** OP8: optional "created at" relative-time chip appended to meta. Used
+   *  by Library 最近 to surface the sort dimension (created_at desc). */
+  createdMeta?: string;
 }
 
-export function EventCard({ event, onClick, layout }: EventCardProps) {
-  const payload = {
+export function EventCard({ event, onClick, layout, createdMeta }: EventCardProps) {
+  const payload: Record<string, unknown> = {
     title:    event.title,
     when:     formatWhen(event),
     location: event.location ?? "",
   };
+  const metaFields: Array<{ field: string }> = [];
+  if (event.location)  metaFields.push({ field: "location" });
+  if (createdMeta) {
+    payload.created_meta = createdMeta;
+    metaFields.push({ field: "created_meta" });
+  }
   const card = buildCard({
     payload,
     spec: {
@@ -55,7 +64,7 @@ export function EventCard({ event, onClick, layout }: EventCardProps) {
       accent_color:   "purple",
       primary_field:  "title",
       secondary_field: "when",
-      meta_fields:    event.location ? [{ field: "location" }] : [],
+      meta_fields:    metaFields,
     },
     assetId:    event.event_id ?? event.id ?? null,
     cardType:   "event",

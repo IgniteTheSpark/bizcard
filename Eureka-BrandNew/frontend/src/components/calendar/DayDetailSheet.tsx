@@ -105,30 +105,62 @@ export function DayDetailSheet({
           fontFamily: '"Manrope","Noto Sans SC", system-ui, sans-serif',
         }}
       >
-        {/* ── Header: weekday · distance · M月D日 ─────────────────── */}
+        {/* ── Header: ← / weekday + date / +  (OP7: top toolbar) ──── */}
         <header
-          className="shrink-0"
-          style={{ padding: "20px 20px 12px" }}
+          className="shrink-0 flex items-center"
+          style={{ padding: "16px 16px 12px", gap: 12 }}
         >
-          <div
-            className="font-display"
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="返回"
+            className="shrink-0"
             style={{
-              fontSize: 22, fontWeight: 700, letterSpacing: "0.04em",
-              color: "#ffffff",
-              textShadow: "0 0 24px rgba(255,255,255,0.30)",
+              width: 36, height: 36, borderRadius: 999,
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              color: "#fff", fontSize: 16, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
-            {weekdayLabel(dayKey)}
+            <ArrowLeft size={16} strokeWidth={2} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div
+              className="font-display"
+              style={{
+                fontSize: 22, fontWeight: 700, letterSpacing: "0.04em",
+                color: "#ffffff",
+                textShadow: "0 0 24px rgba(255,255,255,0.30)",
+              }}
+            >
+              {weekdayLabel(dayKey)}
+            </div>
+            <div
+              className="font-mono mt-0.5"
+              style={{
+                fontSize: 11, color: "rgba(255,255,255,0.70)",
+                letterSpacing: "0.18em",
+              }}
+            >
+              {distanceLabel(dayKey)} · {monthDayCaps(dayKey)}
+            </div>
           </div>
-          <div
-            className="font-mono mt-1"
+          <button
+            type="button"
+            onClick={() => onCreateEvent(dayKey)}
+            aria-label="新建事件"
+            className="shrink-0"
             style={{
-              fontSize: 11, color: "rgba(255,255,255,0.70)",
-              letterSpacing: "0.18em",
+              width: 36, height: 36, borderRadius: 999,
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              color: "#fff", fontSize: 18, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
-            {distanceLabel(dayKey)} · {monthDayCaps(dayKey)}
-          </div>
+            <Plus size={18} strokeWidth={2} />
+          </button>
         </header>
 
         {/* ── All-day chip row (only when present) ─────────────────── */}
@@ -152,6 +184,38 @@ export function DayDetailSheet({
             <div className="flex-1 flex flex-wrap gap-1.5">
               {allDay.map((it) => (
                 <AllDayChip
+                  key={`${it.kind}-${it.id}`}
+                  item={it}
+                  onClick={() => onItemTap(it)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 今日捕捉 (OP6: moved above the grid so it's not hidden
+            at the bottom). Renders idea / expense / contact / notes —
+            assets without a time anchor. Hidden when none. */}
+        {captured.length > 0 && (
+          <div
+            className="shrink-0"
+            style={{
+              padding: "10px 20px 14px",
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <div
+              className="font-mono mb-2"
+              style={{
+                fontSize: 10, letterSpacing: "0.22em",
+                color: "rgba(255,255,255,0.50)", fontWeight: 600,
+              }}
+            >
+              今日捕捉
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {captured.map((it) => (
+                <CapturedCard
                   key={`${it.kind}-${it.id}`}
                   item={it}
                   onClick={() => onItemTap(it)}
@@ -258,37 +322,6 @@ export function DayDetailSheet({
             <NowLine dayKey={dayKey} />
           </div>
 
-          {/* Captured (idea / expense / contact / notes / typed-todo) below grid */}
-          {captured.length > 0 && (
-            <div
-              className="relative"
-              style={{
-                padding: "20px 20px 24px",
-                borderTop: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(0,0,0,0.15)",
-              }}
-            >
-              <div
-                className="font-mono mb-3"
-                style={{
-                  fontSize: 10.5, letterSpacing: "0.22em",
-                  color: "rgba(255,255,255,0.50)", fontWeight: 600,
-                }}
-              >
-                今日捕捉
-              </div>
-              <div className="flex flex-col gap-2">
-                {captured.map((it) => (
-                  <CapturedCard
-                    key={`${it.kind}-${it.id}`}
-                    item={it}
-                    onClick={() => onItemTap(it)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
           {items.length === 0 && (
             <div
               className="absolute inset-x-0 text-center"
@@ -302,45 +335,6 @@ export function DayDetailSheet({
             </div>
           )}
         </div>
-
-        {/* ── Bottom toolbar: ← back / + add (K) ────────────────── */}
-        <footer
-          className="shrink-0 flex items-center justify-between"
-          style={{
-            padding: "10px 16px 14px",
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(0,0,0,0.20)",
-          }}
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="返回"
-            style={{
-              width: 40, height: 40, borderRadius: 999,
-              background: "rgba(255,255,255,0.10)",
-              border: "1px solid rgba(255,255,255,0.14)",
-              color: "#fff", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <ArrowLeft size={16} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onCreateEvent(dayKey)}
-            aria-label="添加事件"
-            style={{
-              width: 40, height: 40, borderRadius: 999,
-              background: "rgba(255,255,255,0.10)",
-              border: "1px solid rgba(255,255,255,0.14)",
-              color: "#fff", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <Plus size={18} strokeWidth={2} />
-          </button>
-        </footer>
       </div>
     </div>
   );

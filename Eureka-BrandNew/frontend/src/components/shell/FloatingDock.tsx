@@ -119,9 +119,10 @@ interface FloatChipProps {
 }
 
 /**
- * FloatChip — each dock icon is its own floating chip (OP1). Translucent
- * dark background + backdrop blur + 1px subtle ring; no shared capsule.
- * Visual reads as standalone dots, not a bar.
+ * FloatChip — OP5: pure outline ring, no fill. Removed bg + backdrop-blur
+ * + shadow that had been creating a visible "chip plate" under each icon.
+ * Now the icon hangs in space and only the 1px ring outlines it. The
+ * page's bottom gradient handles legibility against scrolling content.
  */
 function FloatChip({ ariaLabel, onClick, children }: FloatChipProps) {
   return (
@@ -133,9 +134,8 @@ function FloatChip({ ariaLabel, onClick, children }: FloatChipProps) {
         "h-10 w-10 rounded-eu-full",
         "flex items-center justify-center",
         "text-eu-text-mid hover:text-eu-text-hi",
-        "bg-eu-bg/55 backdrop-blur-md",
-        "ring-1 ring-white/[0.06] hover:ring-white/[0.12]",
-        "shadow-[0_4px_16px_rgba(0,0,0,0.35)]",
+        "bg-transparent",
+        "ring-1 ring-white/15 hover:ring-white/30",
         "transition-all duration-eu-fast ease-eu-out",
         "active:scale-90",
       ].join(" ")}
