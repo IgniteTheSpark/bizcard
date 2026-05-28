@@ -48,9 +48,11 @@ export function FloatingDock() {
           "left-1/2 -translate-x-1/2 z-[60]",
           "flex items-center gap-1",
           "h-14 pl-2 pr-2 rounded-eu-full",
-          "bg-eu-surface-raised/92 backdrop-blur-xl",
+          // OP-fix:真正的玻璃感 — 低不透明度白色 tint + 重 blur，让底层内容
+          // 透出来（暗页透出暗纹理、蓝页透出蓝），不再是首页那种实心暗胶囊。
+          "bg-white/[0.06] backdrop-blur-2xl",
           "border border-white/10",
-          "shadow-[0_12px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)]",
+          "shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]",
           "transition-all duration-eu-fast ease-eu-out",
           hidden ? "opacity-0 pointer-events-none translate-y-3" : "",
         ].join(" ")}

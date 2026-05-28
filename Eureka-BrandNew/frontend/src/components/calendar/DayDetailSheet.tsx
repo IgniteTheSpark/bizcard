@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect } from "react";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { EventCard } from "@/components/calendar/EventCard";
 import { SkillCard } from "@/components/skill/SkillCard";
@@ -56,15 +56,14 @@ interface DayDetailSheetProps {
   dayKey: string;
   onClose: () => void;
   onItemTap: (item: TimelineItem) => void;
-  onCreateEvent: (dayKey: string) => void;
 }
 
 export function DayDetailSheet({
-  dayKey, onClose, onItemTap, onCreateEvent,
+  dayKey, onClose, onItemTap,
 }: DayDetailSheetProps) {
   // OP10: keep the floating dock visible over DayDetail (it's a page-like
-  // view, not a transient picker). The dock's + provides add-all-assets;
-  // DayDetail's own + (below) is the day-aware variant.
+  // view, not a transient picker). The dock's + is the single create
+  // entry — DayDetail no longer has its own top-right + (OP-fix #3).
   useModalMount({ keepDock: true });
   const { byDay } = useTimeline();
   const items = byDay.get(dayKey) ?? [];
@@ -149,21 +148,9 @@ export function DayDetailSheet({
               {distanceLabel(dayKey)} · {monthDayCaps(dayKey)}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => onCreateEvent(dayKey)}
-            aria-label="新建事件"
-            className="shrink-0"
-            style={{
-              width: 36, height: 36, borderRadius: 999,
-              background: "rgba(255,255,255,0.10)",
-              border: "1px solid rgba(255,255,255,0.18)",
-              color: "#fff", fontSize: 18, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <Plus size={18} strokeWidth={2} />
-          </button>
+          {/* OP-fix #3: removed the top-right "+" — it duplicated the
+              persistent dock's + (both open CreateAssetMenu). The dock is
+              the single global create entry now; only ← back stays here. */}
         </header>
 
         {/* ── All-day chip row (only when present) ─────────────────── */}

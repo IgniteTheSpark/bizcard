@@ -107,7 +107,6 @@ export function CalendarPage() {
           dayKey={dayDetailKey}
           onClose={() => setDayDetailKey(null)}
           onItemTap={handleItemTap}
-          onCreateEvent={handleCreateFromDay}
         />
       )}
 
