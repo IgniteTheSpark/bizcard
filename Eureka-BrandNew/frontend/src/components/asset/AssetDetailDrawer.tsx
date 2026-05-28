@@ -186,7 +186,7 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
   return (
     <div
       // Heavy backdrop so the FloatingDock fades behind the drawer cleanly
-      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md"
+      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md eu-fade-in"
       onClick={onClose}
     >
       <aside
@@ -198,7 +198,7 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
           "fixed inset-x-0 bottom-0 max-h-[85vh] rounded-t-eu-xl",
           "bg-eu-surface-raised border-t border-eu-border",
           "shadow-eu-lg pt-eu-md pb-safe overflow-y-auto",
-          "flex flex-col gap-eu-md",
+          "flex flex-col gap-eu-md eu-sheet-up",
         ].join(" ")}
       >
         {/* drag handle (mobile only) */}
@@ -327,6 +327,7 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
 // Fields that are internal plumbing — never useful to show
 const SKIP_KEYS = new Set([
   "ok",                  // RV3: tool_result envelope flag, never user-facing
+  "when",                // OP12: synthetic subtitle field (event drawer)
   "card_type",           // RV3: synthesized by extractCardFromToolResult
   "kind",                // timeline kind discriminator
   "skill_name",          // duplicate of cardType caps
@@ -406,9 +407,14 @@ const MULTILINE_KEYS = new Set([
 function inferFormat(key: string, value: unknown): FieldFormat | undefined {
   if (typeof value !== "string") return undefined;
   if (key === "amount" || key === "price")  return "currency";
-  if (key.endsWith("_date") || key.endsWith("_at")) return "relative_date";
-  if (key === "date")                       return "absolute_date";
-  if (key === "duration_sec")               return undefined;
+  // due_date is the only field where the "截止" (deadline) suffix makes
+  // sense (todo). Event start_at/end_at + created_at etc. use the plain
+  // absolute date — otherwise an event shows "5月28日截止" which reads as
+  // a deadline.
+  if (key === "due_date")                    return "relative_date";
+  if (key.endsWith("_date") || key.endsWith("_at")) return "absolute_date";
+  if (key === "date")                        return "absolute_date";
+  if (key === "duration_sec")                return undefined;
   return undefined;
 }
 

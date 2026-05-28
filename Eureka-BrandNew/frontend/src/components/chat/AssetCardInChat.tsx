@@ -87,13 +87,16 @@ export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
 }
 
 /** Build a minimal CardData for the onOpen callback when the event branch
- *  is taken — keeps the existing onOpen signature happy. */
+ *  is taken — keeps the existing onOpen signature happy. OP12: subtitle uses
+ *  a precomputed clean "when" string so the drawer header doesn't show raw
+ *  ISO (2026-05-29T02:00:00+00:00). */
 function buildEventCardData(data: Record<string, unknown>): CardData {
+  const payload = { ...data, when: eventWhen(data) };
   return buildCard({
-    payload: data,
+    payload,
     spec: {
       card_layout: "horizontal", icon: "📅", accent_color: "purple",
-      primary_field: "title", secondary_field: "start_at",
+      primary_field: "title", secondary_field: "when",
     },
     assetId:    String(data.event_id ?? data.id ?? ""),
     cardType:   "event",
@@ -102,6 +105,24 @@ function buildEventCardData(data: Record<string, unknown>): CardData {
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
+
+/** Clean "5月29日 10:00 — 12:00" / "… · 全天" subtitle for an event-shaped
+ *  tool_result. Mirrors EventCard.formatWhen + CalendarPage.eventWhenLabel. */
+function eventWhen(data: Record<string, unknown>): string {
+  const startRaw = data.start_at;
+  if (typeof startRaw !== "string") return "";
+  const d = new Date(startRaw);
+  if (Number.isNaN(d.getTime())) return "";
+  const md = `${d.getMonth() + 1}月${d.getDate()}日`;
+  if (data.all_day) return `${md} · 全天`;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const startT = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const endRaw = data.end_at;
+  if (typeof endRaw !== "string" || !endRaw) return `${md} ${startT}`;
+  const e = new Date(endRaw);
+  if (Number.isNaN(e.getTime())) return `${md} ${startT}`;
+  return `${md} ${startT} — ${pad(e.getHours())}:${pad(e.getMinutes())}`;
+}
 
 function pickString(obj: Record<string, unknown>, keys: string[]): string | null {
   for (const k of keys) {

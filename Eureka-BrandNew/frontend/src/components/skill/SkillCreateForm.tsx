@@ -147,7 +147,7 @@ export function SkillCreateForm({ skill, onClose, onCreated, existing }: SkillCr
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md flex items-end md:items-center justify-center"
+      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md flex items-end md:items-center justify-center eu-fade-in"
       onClick={onClose}
     >
       <form
@@ -157,6 +157,7 @@ export function SkillCreateForm({ skill, onClose, onCreated, existing }: SkillCr
           "w-full",
           "bg-eu-surface-raised border-t border-eu-border md:border md:rounded-eu-xl",
           "rounded-t-eu-xl shadow-eu-lg pt-eu-md pb-safe",
+          "eu-sheet-up",
           "flex flex-col gap-eu-md max-h-[88vh] overflow-y-auto",
         ].join(" ")}
       >

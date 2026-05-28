@@ -49,7 +49,7 @@ export function AssetPickerSheet({ onConfirm, onClose, excludeIds = [] }: AssetP
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md flex items-end md:items-center justify-center"
+      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md flex items-end md:items-center justify-center eu-fade-in"
       onClick={onClose}
     >
       <div
@@ -58,6 +58,7 @@ export function AssetPickerSheet({ onConfirm, onClose, excludeIds = [] }: AssetP
           "w-full",
           "bg-eu-surface-raised border-t border-eu-border md:border md:rounded-eu-xl",
           "rounded-t-eu-xl shadow-eu-lg pt-eu-md pb-safe",
+          "eu-sheet-up",
           "flex flex-col max-h-[85vh]",
         ].join(" ")}
       >

@@ -226,8 +226,9 @@ function extractCardFromToolResult(response: Record<string, unknown>): Record<st
 /** Stamp the response with the right card_type so AssetCardInChat can pick
  *  the matching render_spec (synthesizeSpec(card_type) keys off this). */
 function tagByIdField(d: Record<string, unknown>): Record<string, unknown> | null {
-  if (d.asset_id) return d;                      // user_skill_name already present
-  if (d.event_id) return { ...d, card_type: "event" };
-  if (d.task_id)  return { ...d, card_type: "task" };
+  if (d.asset_id)   return d;                      // user_skill_name already present
+  if (d.event_id)   return { ...d, card_type: "event" };
+  if (d.contact_id) return { ...d, card_type: "contact" };
+  if (d.task_id)    return { ...d, card_type: "task" };
   return null;
 }

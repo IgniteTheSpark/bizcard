@@ -284,7 +284,10 @@ function EventDetailModal({ eventId, onClose }: { eventId: string; onClose: () =
       icon:           "📅",
       accent_color:   "purple",
       primary_field:  "title",
-      secondary_field: "start_at",
+      // OP12: use a precomputed clean "when" string (was secondary_field:
+      // start_at → rendered the raw ISO "2026-05-27T16:00:00+00:00" in the
+      // drawer header).
+      secondary_field: "when",
     },
     assetId:     event.event_id,
     cardType:    "event",
@@ -293,8 +296,12 @@ function EventDetailModal({ eventId, onClose }: { eventId: string; onClose: () =
 
   // Make a payload object so GenericField can render the readable fields
   // (title / start_at / end_at / location / description). SKIP_KEYS hides
-  // the noisy internals (status, all_day, ok, event_id, etc.).
-  const payload = event as unknown as Record<string, unknown>;
+  // the noisy internals (status, all_day, ok, event_id, etc.). `when` is a
+  // synthetic field only used for the card subtitle, not shown in the body.
+  const payload = {
+    ...(event as unknown as Record<string, unknown>),
+    when: eventWhenLabel(event),
+  };
 
   return (
     <AssetDetailDrawer
@@ -304,4 +311,16 @@ function EventDetailModal({ eventId, onClose }: { eventId: string; onClose: () =
       onClose={onClose}
     />
   );
+}
+
+/** OP12: clean "when" subtitle for the event drawer header. */
+function eventWhenLabel(e: { start_at: string; end_at?: string | null; all_day?: boolean }): string {
+  const d = new Date(e.start_at);
+  const md = `${d.getMonth() + 1}月${d.getDate()}日`;
+  if (e.all_day) return `${md} · 全天`;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const startT = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (!e.end_at) return `${md} ${startT}`;
+  const e2 = new Date(e.end_at);
+  return `${md} ${startT} — ${pad(e2.getHours())}:${pad(e2.getMinutes())}`;
 }

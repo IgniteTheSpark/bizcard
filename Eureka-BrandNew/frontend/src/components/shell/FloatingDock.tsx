@@ -164,7 +164,7 @@ function FlashSheet({ onClose }: { onClose: () => void }) {
   return (
     <div
       // Heavy backdrop so FloatingDock items don't bleed into the sheet.
-      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md"
+      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md eu-fade-in"
       onClick={handleClose}
     >
       <div
@@ -172,6 +172,7 @@ function FlashSheet({ onClose }: { onClose: () => void }) {
           // VF: bottom sheet only (phone-frame is mobile-shaped).
           "fixed inset-x-0 bottom-0",
           "bg-eu-surface-raised border-t border-eu-border rounded-t-eu-xl",
+          "eu-sheet-up",
           "p-eu-lg pb-safe flex flex-col gap-eu-md shadow-eu-lg",
           "max-h-[88vh] overflow-y-auto",
         ].join(" ")}

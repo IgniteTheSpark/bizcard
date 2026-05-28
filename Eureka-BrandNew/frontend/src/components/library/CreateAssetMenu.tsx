@@ -69,7 +69,7 @@ function CreateAssetMenuBody({ onClose, defaultDate }: { onClose: () => void; de
     <div
       // Heavy backdrop so the FloatingDock (Agent pill, calendar badge etc.)
       // doesn't bleed through and clash with the menu content above.
-      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md flex items-end md:items-center justify-center"
+      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md flex items-end md:items-center justify-center eu-fade-in"
       onClick={onClose}
     >
       <div
@@ -78,6 +78,7 @@ function CreateAssetMenuBody({ onClose, defaultDate }: { onClose: () => void; de
           "w-full",
           "bg-eu-surface-raised border-t border-eu-border md:border md:rounded-eu-xl",
           "rounded-t-eu-xl shadow-eu-lg pt-eu-md pb-safe",
+          "eu-sheet-up",
           "flex flex-col gap-eu-sm",
         ].join(" ")}
       >

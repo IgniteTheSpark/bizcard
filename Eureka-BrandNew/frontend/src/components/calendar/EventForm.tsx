@@ -137,7 +137,7 @@ function EventFormBody({ existing, defaultStart, onClose, onSaved }: EventFormPr
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md"
+      className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md eu-fade-in"
       onClick={onClose}
     >
       <aside
@@ -145,6 +145,7 @@ function EventFormBody({ existing, defaultStart, onClose, onSaved }: EventFormPr
         className={[
           // VF: phone-frame is always mobile-shaped, so bottom sheet only.
           "fixed inset-x-0 bottom-0 max-h-[88vh] rounded-t-eu-xl",
+          "eu-sheet-up",
           "bg-eu-surface-raised border-t border-eu-border",
           "shadow-eu-lg pt-eu-md pb-safe overflow-y-auto",
           "flex flex-col gap-eu-md",
