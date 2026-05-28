@@ -140,8 +140,12 @@ export function CategoryList() {
   // surface here automatically, so M5's "register" step is visible end-to-end
   // and nothing in the registry stays hidden.
   const knownKeys = new Set([...CORE_TILES, ...SKILL_TILES].map((t) => t.key));
+  // System skills aren't user-creatable types — hide them here, matching
+  // CreateAssetMenu's filter (external_ref backs async task results; qa is
+  // internal). Otherwise an empty "外部引用 0" tile clutters the hub.
+  const SYSTEM_SKILLS = new Set(["external_ref", "qa"]);
   const extraSkillTiles: TileKind[] = skills
-    .filter((s) => s.render_spec && !knownKeys.has(s.name))
+    .filter((s) => s.render_spec && !knownKeys.has(s.name) && !SYSTEM_SKILLS.has(s.name))
     .map((s) => ({
       key:    s.name,
       to:     `/library/${s.name}`,
@@ -587,11 +591,14 @@ function previewFor(
     if (!c) return "";
     return c.company ? `${c.name} · ${c.company}` : c.name;
   }
-  // Asset-backed skills — first row's title-ish field
+  // Asset-backed skills — first row's title-ish field. Fall back to "" (not
+  // the machine name) so AI-created skills with custom fields like 跑步记录
+  // (distance/pace/feeling) don't surface a raw "running" preview string.
   const a = d.assets.find((x) => x.user_skill_name === key);
   if (!a) return "";
   const p = a.payload as { content?: unknown; title?: unknown; name?: unknown };
-  return String(p.content ?? p.title ?? p.name ?? key);
+  const v = p.content ?? p.title ?? p.name;
+  return v != null && v !== "" ? String(v) : "";
 }
 
 /* ── 最近 list builder ──────────────────────────────────────────────── */
