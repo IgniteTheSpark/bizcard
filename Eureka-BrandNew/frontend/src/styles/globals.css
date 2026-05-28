@@ -57,9 +57,14 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+@keyframes eu-sheet-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
 @layer utilities {
-  .eu-sheet-up { animation: eu-sheet-up 280ms cubic-bezier(.2, .7, .3, 1) both; }
-  .eu-fade-in  { animation: eu-fade-in 200ms ease-out both; }
+  .eu-sheet-up   { animation: eu-sheet-up 280ms cubic-bezier(.2, .7, .3, 1) both; }
+  .eu-sheet-left { animation: eu-sheet-left 280ms cubic-bezier(.2, .7, .3, 1) both; }
+  .eu-fade-in    { animation: eu-fade-in 200ms ease-out both; }
 }
 @media (prefers-reduced-motion: reduce) {
   .eu-sheet-up, .eu-fade-in { animation: none; }

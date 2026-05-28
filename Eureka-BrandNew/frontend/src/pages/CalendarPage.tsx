@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, List, LayoutGrid } from "lucide-react";
+import { List, LayoutGrid } from "lucide-react";
 
 import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
 import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
-import { MonthGrid } from "@/components/calendar/MonthGrid";
+import { MonthPanel } from "@/components/calendar/MonthPanel";
 import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
 import { ScheduleView } from "@/components/calendar/ScheduleView";
 import { useEvents } from "@/hooks/useEvents";
@@ -39,9 +39,11 @@ import type { AssetsResponse, TimelineItem } from "@/lib/types";
 type View = "schedule" | "month";
 
 export function CalendarPage() {
+  // TP2 FG: Schedule is the always-present base; Month is a slide-in
+  // overlay panel (MonthPanel), not a page swap. `view` drives whether
+  // the panel is open.
   const [view, setView]                 = useState<View>("schedule");
-  const [cursor, setCursor]             = useState<Date>(() => new Date());
-  const [selectedDay, setSelectedDay]   = useState<string | null>(null); // for MonthGrid
+  const [cursor]                        = useState<Date>(() => new Date());
   const [dayDetailKey, setDayDetailKey] = useState<string | null>(null);
   // RV5: tap event → AssetDetailDrawer (view first), drawer's 编辑 button
   // (RV3) opens EventForm. Same flow as assets — no special-case "tap
@@ -71,40 +73,34 @@ export function CalendarPage() {
     setCreateMenuDate(new Date(y, m - 1, d, 9, 0, 0, 0));
   }
 
-  function shiftMonth(delta: number) {
-    setCursor((c) => {
-      const next = new Date(c);
-      next.setMonth(next.getMonth() + delta);
-      return next;
-    });
-  }
-
   return (
     <div className="flex flex-col h-full">
       <CalendarHeader
         view={view}
         onSetView={setView}
-        cursor={cursor}
-        onShiftMonth={shiftMonth}
-        onToday={() => setCursor(new Date())}
       />
 
+      {/* Schedule is always the base layer (TP2 FG). */}
       <div className="flex-1 overflow-y-auto">
-        {view === "schedule"
-          ? <ScheduleView
-              onItemTap={handleItemTap}
-              onDayTap={(k) => setDayDetailKey(k)}
-            />
-          : <MonthGrid
-              cursor={cursor}
-              selectedKey={selectedDay}
-              onSelectDay={setSelectedDay}
-              onCreateEvent={handleCreateFromDay}
-              onItemTap={handleItemTap}
-            />}
+        <ScheduleView
+          onItemTap={handleItemTap}
+          onDayTap={(k) => setDayDetailKey(k)}
+        />
       </div>
 
       {/* ── overlays ─────────────────────────────────────────────────── */}
+
+      {/* Month slide-in panel (TP2 FG). Tap the schedule peek / scrim
+          (or the 日程 toggle) to close. */}
+      {view === "month" && (
+        <MonthPanel
+          cursor={cursor}
+          onClose={() => setView("schedule")}
+          onSelectDay={() => { /* selection lives inside the panel */ }}
+          onItemTap={handleItemTap}
+          onCreateEvent={handleCreateFromDay}
+        />
+      )}
 
       {dayDetailKey && (
         <DayDetailSheet
@@ -143,44 +139,20 @@ export function CalendarPage() {
 /* ── CalendarHeader ────────────────────────────────────────────────────── */
 
 function CalendarHeader({
-  view, onSetView, cursor, onShiftMonth, onToday,
+  view, onSetView,
 }: {
   view: View;
   onSetView: (v: View) => void;
-  cursor: Date;
-  onShiftMonth: (delta: number) => void;
-  onToday: () => void;
 }) {
-  const label = view === "month"
-    ? `${cursor.getFullYear()}年${cursor.getMonth() + 1}月`
-    : "日程";
-
   return (
     <header className="flex items-center gap-eu-sm px-eu-md py-eu-sm border-b border-eu-rule">
-      {view === "month" && (
-        <>
-          <IconBtn ariaLabel="上个月" onClick={() => onShiftMonth(-1)}>
-            <ChevronLeft size={16} strokeWidth={1.75} />
-          </IconBtn>
-          <button
-            type="button"
-            onClick={onToday}
-            className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo hover:text-eu-text-hi font-mono"
-          >
-            今天
-          </button>
-          <IconBtn ariaLabel="下个月" onClick={() => onShiftMonth(1)}>
-            <ChevronRight size={16} strokeWidth={1.75} />
-          </IconBtn>
-        </>
-      )}
       <h1 className="font-display text-eu-lg text-eu-text-hi tracking-tight">
-        {label}
+        日程
       </h1>
 
-      {/* M4-polish: only view toggle remains here. + 新建事件 absorbed by
-          the global FloatingDock + button (CreateAssetMenu → 事件 tile
-          opens EventForm). */}
+      {/* 日程 / 月 toggle. 月 opens the MonthPanel slide-in (TP2 FG);
+          月内的前后导航靠连续滚动,不再需要 ‹ › 月份按钮。
+          + 新建事件 absorbed by the global FloatingDock + button. */}
       <div className="ml-auto inline-flex rounded-eu-md border border-eu-border p-0.5">
         <ToggleBtn active={view === "schedule"} onClick={() => onSetView("schedule")}>
           <List size={14} strokeWidth={1.75} />
@@ -192,21 +164,6 @@ function CalendarHeader({
         </ToggleBtn>
       </div>
     </header>
-  );
-}
-
-function IconBtn({
-  ariaLabel, onClick, children,
-}: { ariaLabel: string; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      onClick={onClick}
-      className="h-7 w-7 rounded-eu-md inline-flex items-center justify-center text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
-    >
-      {children}
-    </button>
   );
 }
 
