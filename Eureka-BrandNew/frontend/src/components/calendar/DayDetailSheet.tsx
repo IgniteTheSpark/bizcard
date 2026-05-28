@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { EventCard } from "@/components/calendar/EventCard";
@@ -183,36 +183,12 @@ export function DayDetailSheet({
           </div>
         )}
 
-        {/* ── 今日捕捉 (OP6: moved above the grid so it's not hidden
-            at the bottom). Renders idea / expense / contact / notes —
-            assets without a time anchor. Hidden when none. */}
+        {/* ── 今日捕捉 (OP6 above-grid + #4 tabbed fixed-height). Renders
+            idea / expense / contact / notes — assets without a time anchor.
+            Tabs by type so a card-heavy day doesn't push the hour grid
+            infinitely down; container capped to ~3 cards, scrolls inside. */}
         {captured.length > 0 && (
-          <div
-            className="shrink-0"
-            style={{
-              padding: "10px 20px 14px",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <div
-              className="font-mono mb-2"
-              style={{
-                fontSize: 10, letterSpacing: "0.22em",
-                color: "rgba(255,255,255,0.50)", fontWeight: 600,
-              }}
-            >
-              今日捕捉
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {captured.map((it) => (
-                <CapturedCard
-                  key={`${it.kind}-${it.id}`}
-                  item={it}
-                  onClick={() => onItemTap(it)}
-                />
-              ))}
-            </div>
-          </div>
+          <CapturedSection items={captured} onItemTap={onItemTap} />
         )}
 
         {/* ── Hour grid (scrollable) ─────────────────────────────── */}
@@ -409,6 +385,94 @@ function AllDayChip({ item, onClick }: { item: TimelineItem; onClick: () => void
         {item.title}
       </span>
     </button>
+  );
+}
+
+/**
+ * CapturedSection — #4: tabbed, fixed-height 今日捕捉.
+ *
+ * Groups the day's time-less assets by skill type into tabs. The card
+ * container is capped to ~3 cards tall and scrolls internally, so a day
+ * with many captures no longer pushes the hour grid down indefinitely.
+ * When only one type exists, the tab row collapses to a single label.
+ */
+const CAPTURE_LABELS: Record<string, string> = {
+  idea: "想法", expense: "记账", contact: "名片", notes: "笔记",
+  todo: "待办", misc: "其它",
+};
+
+function CapturedSection({
+  items, onItemTap,
+}: { items: TimelineItem[]; onItemTap: (it: TimelineItem) => void }) {
+  // Distinct types present, in a stable order.
+  const types = useMemo(() => {
+    const seen: string[] = [];
+    for (const it of items) {
+      const k = it.skill_name ?? "misc";
+      if (!seen.includes(k)) seen.push(k);
+    }
+    return seen;
+  }, [items]);
+
+  const [active, setActive] = useState<string>(types[0] ?? "misc");
+  // Keep active valid if the day's types change.
+  const activeType = types.includes(active) ? active : (types[0] ?? "misc");
+  const shown = items.filter((it) => (it.skill_name ?? "misc") === activeType);
+
+  return (
+    <div
+      className="shrink-0"
+      style={{ padding: "10px 20px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span
+          className="font-mono"
+          style={{ fontSize: 10, letterSpacing: "0.22em", color: "rgba(255,255,255,0.50)", fontWeight: 600 }}
+        >
+          今日捕捉
+        </span>
+        {/* Tab row — only when >1 type */}
+        {types.length > 1 && (
+          <div className="flex items-center gap-1 overflow-x-auto eu-noscroll">
+            {types.map((t) => {
+              const isActive = t === activeType;
+              const count = items.filter((it) => (it.skill_name ?? "misc") === t).length;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setActive(t)}
+                  className="font-mono shrink-0"
+                  style={{
+                    fontSize: 10.5, padding: "3px 9px", borderRadius: 999,
+                    letterSpacing: "0.04em",
+                    background: isActive ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.05)",
+                    color: isActive ? "#fff" : "rgba(255,255,255,0.55)",
+                    border: `1px solid ${isActive ? "rgba(255,255,255,0.24)" : "transparent"}`,
+                    cursor: "pointer", whiteSpace: "nowrap",
+                  }}
+                >
+                  {CAPTURE_LABELS[t] ?? t} {count}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {/* Fixed ~3-card container; scrolls inside. 1 card ≈ 60px + gap. */}
+      <div
+        className="flex flex-col gap-1.5 overflow-y-auto eu-noscroll"
+        style={{ maxHeight: 204 }}
+      >
+        {shown.map((it) => (
+          <CapturedCard
+            key={`${it.kind}-${it.id}`}
+            item={it}
+            onClick={() => onItemTap(it)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
