@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { List, LayoutGrid } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
 import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
-import { MonthPanel } from "@/components/calendar/MonthPanel";
+import { MonthPane } from "@/components/calendar/MonthPane";
+import { YearPane } from "@/components/calendar/YearPane";
 import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
 import { ScheduleView } from "@/components/calendar/ScheduleView";
 import { useEvents } from "@/hooks/useEvents";
@@ -14,44 +14,30 @@ import useSWR from "swr";
 import type { AssetsResponse, TimelineItem } from "@/lib/types";
 
 /**
- * CalendarPage — M3 → M4-polish.
+ * CalendarPage — SW: Timepage-style horizontal swipe deck.
  *
- * Layout:
- *   ┌──────────────────────────────────────────────┐
- *   │ « 2026年5月 » │ [Schedule | Month]            │ ← CalendarHeader
- *   ├──────────────────────────────────────────────┤
- *   │                                              │
- *   │   <ScheduleView/> or <MonthGrid/>            │
- *   │                                              │
- *   └──────────────────────────────────────────────┘
+ *   ┌─────────────────────────────────────────┐
+ *   │ 日程 · 月 · 年   (slim tappable dots)     │ ← header indicator
+ *   ├─────────────────────────────────────────┤
+ *   │ [ Schedule ][ Month ][ Year ]           │ ← 3 panes, translateX deck
+ *   │   swipe ←/→ (touch) or trackpad deltaX    │
+ *   └─────────────────────────────────────────┘
  *
- * Interactions:
- *   - Schedule row tap → event → EventForm (edit); asset → AssetDetailDrawer
- *   - Month day tap   → DayDetailSheet (which can route to either above)
- *   - 新建事件         → FloatingDock + → CreateAssetMenu → 事件 tile → EventForm
- *                         (M4-polish: removed the redundant top-bar + button;
- *                          the global dock + already routes to EventForm)
- *
- * MonthGrid uses a navigable cursor (prev/next month); ScheduleView always
- * shows everything sorted desc (no cursor).
+ * Pane 0 = Schedule (colored-tile timeline), 1 = Month (continuous scroll
+ * + selected-day footer), 2 = Year (12 mini months). Horizontal swipe /
+ * two-finger trackpad scroll moves between them. The old 日程/月 toggle is
+ * gone (per user #1).
  */
 
-type View = "schedule" | "month";
+const PANES = ["schedule", "month", "year"] as const;
+const PANE_LABELS = ["日程", "月", "年"];
 
 export function CalendarPage() {
-  // TP2 FG: Schedule is the always-present base; Month is a slide-in
-  // overlay panel (MonthPanel), not a page swap. `view` drives whether
-  // the panel is open.
-  const [view, setView]                 = useState<View>("schedule");
   const [cursor]                        = useState<Date>(() => new Date());
+  const [paneIndex, setPaneIndex]       = useState(0); // 0 schedule / 1 month / 2 year
+  const [focusMonthKey, setFocusMonthKey] = useState<string | null>(null);
   const [dayDetailKey, setDayDetailKey] = useState<string | null>(null);
-  // RV5: tap event → AssetDetailDrawer (view first), drawer's 编辑 button
-  // (RV3) opens EventForm. Same flow as assets — no special-case "tap
-  // event = jump to editor".
   const [openEventId, setOpenEventId]   = useState<string | null>(null);
-  // OP10: the day-scoped "+" (DayDetail / MonthGrid 添加) now opens the
-  // all-types CreateAssetMenu (not event-only), with the day pre-filled so
-  // new events default to that day.
   const [createMenuDate, setCreateMenuDate] = useState<Date | null>(null);
   const [openAssetId, setOpenAssetId]   = useState<string | null>(null);
 
@@ -61,46 +47,135 @@ export function CalendarPage() {
     } else {
       setOpenAssetId(item.id);
     }
-    // Tap on a row from DayDetailSheet should also close that sheet so the
-    // editor/drawer takes over the screen cleanly.
     setDayDetailKey(null);
   }
 
   function handleCreateFromDay(dayKey: string) {
-    // Default time on that day: 09:00 local. Opens the all-types menu so
-    // the user can add ANY asset to this day, not just an event.
     const [y, m, d] = dayKey.split("-").map(Number);
     setCreateMenuDate(new Date(y, m - 1, d, 9, 0, 0, 0));
   }
 
+  // Year pane → tap a month → swipe to Month pane + scroll it to that month.
+  function handlePickMonth(monthKey: string) {
+    setFocusMonthKey(monthKey);
+    setPaneIndex(1);
+  }
+
+  // ── Swipe gesture (touch + trackpad wheel deltaX) ──────────────────────
+  const deckRef = useRef<HTMLDivElement | null>(null);
+  const touch = useRef<{ x: number; y: number; lockH: boolean | null } | null>(null);
+  const wheelAccum = useRef(0);
+  const wheelLock = useRef(false);
+
+  function step(delta: number) {
+    setPaneIndex((i) => Math.max(0, Math.min(PANES.length - 1, i + delta)));
+  }
+
+  useEffect(() => {
+    const el = deckRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      // Only react to horizontal-dominant scroll (two-finger sideways on a
+      // trackpad). Vertical scroll passes through to the active pane.
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault(); // stop browser back-swipe / horizontal page scroll
+      if (wheelLock.current) return;
+      wheelAccum.current += e.deltaX;
+      if (Math.abs(wheelAccum.current) > 60) {
+        step(wheelAccum.current > 0 ? 1 : -1);
+        wheelAccum.current = 0;
+        wheelLock.current = true;
+        window.setTimeout(() => { wheelLock.current = false; }, 450);
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY, lockH: null };
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (!touch.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touch.current.x;
+    const dy = t.clientY - touch.current.y;
+    if (touch.current.lockH === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      touch.current.lockH = Math.abs(dx) > Math.abs(dy);
+    }
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (!touch.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.current.x;
+    if (touch.current.lockH && Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
+    touch.current = null;
+  }
+
   return (
     <div className="flex flex-col h-full">
-      <CalendarHeader
-        view={view}
-        onSetView={setView}
-      />
+      {/* Slim pane indicator (tappable — trackpad-less fallback + a11y) */}
+      <header className="flex items-center justify-center gap-1 px-eu-md py-eu-sm border-b border-eu-rule">
+        {PANE_LABELS.map((label, i) => {
+          const active = paneIndex === i;
+          return (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setPaneIndex(i)}
+              className="font-mono"
+              style={{
+                fontSize: 11, letterSpacing: "0.16em",
+                padding: "4px 12px", borderRadius: 999,
+                color: active ? "#a4c2ff" : "rgba(255,255,255,0.45)",
+                background: active ? "rgba(111,158,255,0.14)" : "transparent",
+                border: `1px solid ${active ? "rgba(111,158,255,0.30)" : "transparent"}`,
+                cursor: "pointer",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </header>
 
-      {/* Schedule is always the base layer (TP2 FG). */}
-      <div className="flex-1 overflow-y-auto">
-        <ScheduleView
-          onItemTap={handleItemTap}
-          onDayTap={(k) => setDayDetailKey(k)}
-        />
+      {/* Swipe deck — 3 panes side by side */}
+      <div
+        ref={deckRef}
+        className="flex-1 overflow-hidden relative"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <div
+          className="flex h-full"
+          style={{
+            width: "300%",
+            transform: `translateX(-${(paneIndex * 100) / PANES.length}%)`,
+            transition: "transform 280ms cubic-bezier(.2,.7,.3,1)",
+          }}
+        >
+          <div className="h-full" style={{ width: `${100 / PANES.length}%` }}>
+            <ScheduleView onItemTap={handleItemTap} onDayTap={(k) => setDayDetailKey(k)} />
+          </div>
+          <div className="h-full" style={{ width: `${100 / PANES.length}%` }}>
+            <MonthPane
+              cursor={cursor}
+              focusMonthKey={focusMonthKey}
+              onItemTap={handleItemTap}
+              onCreateEvent={handleCreateFromDay}
+              onDayOpen={(k) => setDayDetailKey(k)}
+            />
+          </div>
+          <div className="h-full" style={{ width: `${100 / PANES.length}%` }}>
+            <YearPane initialYear={cursor.getFullYear()} onPickMonth={handlePickMonth} />
+          </div>
+        </div>
       </div>
 
       {/* ── overlays ─────────────────────────────────────────────────── */}
-
-      {/* Month slide-in panel (TP2 FG). Tap the schedule peek / scrim
-          (or the 日程 toggle) to close. */}
-      {view === "month" && (
-        <MonthPanel
-          cursor={cursor}
-          onClose={() => setView("schedule")}
-          onSelectDay={() => { /* selection lives inside the panel */ }}
-          onItemTap={handleItemTap}
-          onCreateEvent={handleCreateFromDay}
-        />
-      )}
 
       {dayDetailKey && (
         <DayDetailSheet
@@ -132,57 +207,6 @@ export function CalendarPage() {
         />
       )}
     </div>
-  );
-}
-
-/* ── CalendarHeader ────────────────────────────────────────────────────── */
-
-function CalendarHeader({
-  view, onSetView,
-}: {
-  view: View;
-  onSetView: (v: View) => void;
-}) {
-  return (
-    <header className="flex items-center gap-eu-sm px-eu-md py-eu-sm border-b border-eu-rule">
-      <h1 className="font-display text-eu-lg text-eu-text-hi tracking-tight">
-        日程
-      </h1>
-
-      {/* 日程 / 月 toggle. 月 opens the MonthPanel slide-in (TP2 FG);
-          月内的前后导航靠连续滚动,不再需要 ‹ › 月份按钮。
-          + 新建事件 absorbed by the global FloatingDock + button. */}
-      <div className="ml-auto inline-flex rounded-eu-md border border-eu-border p-0.5">
-        <ToggleBtn active={view === "schedule"} onClick={() => onSetView("schedule")}>
-          <List size={14} strokeWidth={1.75} />
-          日程
-        </ToggleBtn>
-        <ToggleBtn active={view === "month"} onClick={() => onSetView("month")}>
-          <LayoutGrid size={14} strokeWidth={1.75} />
-          月
-        </ToggleBtn>
-      </div>
-    </header>
-  );
-}
-
-function ToggleBtn({
-  active, onClick, children,
-}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "inline-flex items-center gap-1 px-eu-sm py-1 rounded-eu-sm text-eu-xs font-mono",
-        "transition-colors duration-eu-fast",
-        active
-          ? "bg-eu-surface-hover text-eu-text-hi"
-          : "text-eu-text-mid hover:text-eu-text-hi",
-      ].join(" ")}
-    >
-      {children}
-    </button>
   );
 }
 

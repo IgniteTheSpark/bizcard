@@ -1,60 +1,55 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useModalMount } from "@/context/ModalContext";
 import { useTimeline, toLocalDayKey } from "@/hooks/useTimeline";
 import type { TimelineItem } from "@/lib/types";
 
 /**
- * MonthPanel — TP2 F+G: month view as a left slide-in panel over the
- * Schedule, with continuous multi-month vertical scrolling inside.
+ * MonthPane — SW: Month as an inline swipe-deck pane (was a slide-in
+ * overlay in TP2 FG). The deck in CalendarPage arranges Schedule / Month /
+ * Year side by side; horizontal swipe moves between them. So Month no
+ * longer needs an overlay shell / scrim — it's a full-size pane.
  *
- * Why a panel (not a page swap): the Timepage recording shows Month
- * sliding in from the left while a sliver of the Schedule stays visible
- * at the right edge — a "peek" affordance signalling "Schedule is behind,
- * tap/swipe to return". On our 393px iPhone frame a 60/40 split is too
- * cramped, so the panel takes ~86% and the Schedule peeks ~14% (also the
- * tap-to-close target alongside the scrim).
+ * Continuous scroll (G, retained): stacks 13 months (cursor −6 … +6) in a
+ * vertical scroll, auto-scrolls to the cursor month on mount, and re-scrolls
+ * when `focusMonthKey` changes (e.g. Year pane → tap a month → deck swipes
+ * here + scrolls to it).
  *
- * Continuous scroll (G): instead of one cursor-bound month, the panel
- * stacks 13 months (cursor −6 … +6) in a vertical scroll. Auto-scrolls
- * to the cursor month on open. Each month is a compact dot grid (no brand
- * logo / gesture strip — those were single-month chrome that doesn't make
- * sense repeated 13×).
+ * Selected-day footer: tapping a day selects it (blue ring) → footer shows
+ * that day's items; tapping an item routes up via onItemTap; tapping a day
+ * twice (or via the footer) can open DayDetail through onDayOpen.
  *
- * Selected-day summary is a fixed footer at the bottom of the panel:
- * tapping any day selects it (blue ring) and the footer shows that day's
- * items; tapping an item routes up via onItemTap.
- *
- *   ┌───────────────────────────────┬──┐
- *   │ 2026                    今天   │  │ ← header (year + jump-to-today)
- *   │ ─────────────────────────────  │░░│
- *   │  4月                           │░░│ ← scrolls through months
- *   │  S M T W T F S                 │░░│   (right strip = Schedule peek
- *   │  · · ● · · ○ ·                 │░░│    + scrim, tap to close)
- *   │  5月                           │░░│
- *   │  ...                           │  │
- *   ├───────────────────────────────┤  │
- *   │ 周三 · 今天 · 5月27日           │  │ ← selected-day footer
- *   │ 10:00 ● 产品评审                │  │
- *   │ + 添加事件                      │  │
- *   └───────────────────────────────┴──┘
+ *   ┌───────────────────────────────┐
+ *   │ 2026                    今天   │ ← header (year + jump-to-today)
+ *   │ ─────────────────────────────  │
+ *   │  4月  S M T W T F S            │ ← continuous month scroll
+ *   │  · · ● · · ○ ·                 │
+ *   │  5月  ...                      │
+ *   ├───────────────────────────────┤
+ *   │ 周三 · 今天 · 5月27日           │ ← selected-day footer
+ *   │ 10:00 ● 产品评审                │
+ *   │ + 添加事件                      │
+ *   └───────────────────────────────┘
  */
 
-interface MonthPanelProps {
+interface MonthPaneProps {
+  /** Anchor month (the deck keeps this = today; Year nav overrides via
+   *  focusMonthKey). */
   cursor: Date;
-  onClose: () => void;
-  onSelectDay?: (dayKey: string) => void;
+  /** YYYY-MM — when set/changed, scroll that month into view (Year→Month). */
+  focusMonthKey?: string | null;
   onItemTap?: (item: TimelineItem) => void;
   onCreateEvent?: (dayKey: string) => void;
+  /** Open DayDetail for a day (tap the day's date dot a second time, or any
+   *  day with content). */
+  onDayOpen?: (dayKey: string) => void;
 }
 
 const MONTHS_BACK = 6;
 const MONTHS_FWD = 6;
 
-export function MonthPanel({
-  cursor, onClose, onSelectDay, onItemTap, onCreateEvent,
-}: MonthPanelProps) {
-  useModalMount();
+export function MonthPane({
+  cursor, focusMonthKey, onItemTap, onCreateEvent, onDayOpen,
+}: MonthPaneProps) {
   const { byDay } = useTimeline();
   const todayKey = toLocalDayKey(new Date().toISOString());
 
@@ -72,109 +67,98 @@ export function MonthPanel({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const cursorMonthKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
 
-  // Auto-scroll to the cursor month on open.
+  // Auto-scroll to the cursor month on mount.
   useEffect(() => {
     const el = scrollRef.current?.querySelector<HTMLElement>(`[data-month="${cursorMonthKey}"]`);
     el?.scrollIntoView({ block: "start", behavior: "auto" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-scroll when Year pane requests a specific month.
+  useEffect(() => {
+    if (!focusMonthKey) return;
+    const el = scrollRef.current?.querySelector<HTMLElement>(`[data-month="${focusMonthKey}"]`);
+    el?.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [focusMonthKey]);
+
   function handleSelect(dayKey: string) {
+    // Tapping the already-selected day opens DayDetail (matches the
+    // Timepage "tap day → day view" affordance).
+    if (dayKey === selected) onDayOpen?.(dayKey);
     setSelected(dayKey);
-    onSelectDay?.(dayKey);
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex" aria-modal="true">
-      {/* Panel — slides in from the left */}
-      <aside
-        className="relative flex flex-col eu-sheet-left"
-        style={{
-          width: "86%",
-          height: "100%",
-          background: "#06070d",
-          color: "#d4dbe6",
-          fontFamily: '"Manrope","Noto Sans SC", system-ui, sans-serif',
-          boxShadow: "8px 0 40px rgba(0,0,0,0.55)",
-        }}
+    <div
+      className="relative flex flex-col h-full"
+      style={{
+        background: "#06070d",
+        color: "#d4dbe6",
+        fontFamily: '"Manrope","Noto Sans SC", system-ui, sans-serif',
+      }}
+    >
+      {/* Header: year + jump-to-today */}
+      <header
+        className="shrink-0 flex items-center justify-between"
+        style={{ padding: "16px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
       >
-        {/* Header: year + jump-to-today */}
-        <header
-          className="shrink-0 flex items-center justify-between"
-          style={{ padding: "16px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-        >
-          <div
-            className="font-display"
-            style={{
-              fontSize: 26, fontWeight: 700, color: "#a4c2ff",
-              letterSpacing: "-0.01em",
-              textShadow: "0 0 18px rgba(111,158,255,0.4)",
-            }}
-          >
-            {cursor.getFullYear()}
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              handleSelect(todayKey);
-              const el = scrollRef.current?.querySelector<HTMLElement>(
-                `[data-month="${todayKey.slice(0, 7)}"]`,
-              );
-              el?.scrollIntoView({ block: "start", behavior: "smooth" });
-            }}
-            className="font-mono"
-            style={{
-              fontSize: 11, letterSpacing: "0.16em",
-              color: "rgba(255,255,255,0.55)",
-              padding: "4px 10px", borderRadius: 999,
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              cursor: "pointer",
-            }}
-          >
-            今天
-          </button>
-        </header>
-
-        {/* Continuous month scroll */}
         <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto eu-noscroll"
-          style={{ padding: "8px 0 12px" }}
+          className="font-display"
+          style={{
+            fontSize: 26, fontWeight: 700, color: "#a4c2ff",
+            letterSpacing: "-0.01em",
+            textShadow: "0 0 18px rgba(111,158,255,0.4)",
+          }}
         >
-          {months.map((m) => (
-            <MonthBlock
-              key={`${m.getFullYear()}-${m.getMonth()}`}
-              month={m}
-              byDay={byDay}
-              todayKey={todayKey}
-              selected={selected}
-              onSelect={handleSelect}
-            />
-          ))}
+          {cursor.getFullYear()}
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSelected(todayKey);
+            const el = scrollRef.current?.querySelector<HTMLElement>(
+              `[data-month="${todayKey.slice(0, 7)}"]`,
+            );
+            el?.scrollIntoView({ block: "start", behavior: "smooth" });
+          }}
+          className="font-mono"
+          style={{
+            fontSize: 11, letterSpacing: "0.16em",
+            color: "rgba(255,255,255,0.55)",
+            padding: "4px 10px", borderRadius: 999,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            cursor: "pointer",
+          }}
+        >
+          今天
+        </button>
+      </header>
 
-        {/* Selected-day footer */}
-        <SelectedDayFooter
-          dayKey={selected}
-          items={byDay.get(selected) ?? []}
-          onItemTap={(it) => onItemTap?.(it)}
-          onCreateEvent={() => onCreateEvent?.(selected)}
-        />
-      </aside>
+      {/* Continuous month scroll */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto eu-noscroll"
+        style={{ padding: "8px 0 12px" }}
+      >
+        {months.map((m) => (
+          <MonthBlock
+            key={`${m.getFullYear()}-${m.getMonth()}`}
+            month={m}
+            byDay={byDay}
+            todayKey={todayKey}
+            selected={selected}
+            onSelect={handleSelect}
+          />
+        ))}
+      </div>
 
-      {/* Schedule peek + scrim — tap to close (return to Schedule) */}
-      <button
-        type="button"
-        aria-label="返回日程"
-        onClick={onClose}
-        className="flex-1 eu-fade-in"
-        style={{
-          background: "rgba(6,7,13,0.55)",
-          backdropFilter: "blur(2px)",
-          cursor: "pointer",
-          border: "none",
-        }}
+      {/* Selected-day footer */}
+      <SelectedDayFooter
+        dayKey={selected}
+        items={byDay.get(selected) ?? []}
+        onItemTap={(it) => onItemTap?.(it)}
+        onCreateEvent={() => onCreateEvent?.(selected)}
       />
     </div>
   );
