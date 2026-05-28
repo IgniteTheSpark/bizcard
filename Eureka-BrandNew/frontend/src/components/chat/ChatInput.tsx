@@ -43,7 +43,7 @@ export function ChatInput({ onSend, streaming, placeholder }: ChatInputProps) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKey}
-          placeholder={placeholder ?? "问 Agent 任何事…(Enter 发送 / Shift+Enter 换行)"}
+          placeholder={placeholder ?? "问 Agent 任何事…"}
           rows={1}
           className={[
             "flex-1 resize-none",
