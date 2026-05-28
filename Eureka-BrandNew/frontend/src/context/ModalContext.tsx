@@ -35,15 +35,24 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Call from any full-screen modal: increments on mount, decrements on unmount. */
-export function useModalMount() {
+/**
+ * Call from any full-screen modal: increments on mount, decrements on unmount.
+ *
+ * OP10: page-like modals (DayDetailSheet) that WANT the dock to stay visible
+ * pass `{ keepDock: true }` — they skip registration entirely, so the dock's
+ * `useIsAnyModalOpen()` stays false and the dock keeps floating (at z-[60],
+ * above the page-modal). Picker/form modals omit the flag → dock hides as
+ * before (they're transient overlays where the dock would just clutter).
+ */
+export function useModalMount(opts?: { keepDock?: boolean }) {
   const ctx = useContext(ModalContext);
+  const keepDock = opts?.keepDock ?? false;
   // No-op if no provider (e.g. in unit tests) — fail soft so callers don't crash
   useEffect(() => {
-    if (!ctx) return;
+    if (!ctx || keepDock) return;
     ctx.register();
     return () => ctx.unregister();
-  }, [ctx]);
+  }, [ctx, keepDock]);
 }
 
 export function useIsAnyModalOpen(): boolean {

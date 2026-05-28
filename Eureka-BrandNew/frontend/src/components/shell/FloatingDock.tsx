@@ -34,65 +34,58 @@ export function FloatingDock() {
 
   return (
     <>
-      {/* OP1: gradient bottom fade so content scrolling under the dock
-          fades into the background instead of clashing with the floating
-          icons. Lives above the dock layer-wise but pointer-events:none
-          so it doesn't catch taps. */}
-      <div
-        aria-hidden="true"
-        className={[
-          "fixed inset-x-0 bottom-0 z-20 pointer-events-none",
-          "h-24",
-          "transition-opacity duration-eu-fast",
-          hidden ? "opacity-0" : "opacity-100",
-        ].join(" ")}
-        style={{
-          background: "linear-gradient(180deg, rgba(6,7,13,0) 0%, rgba(6,7,13,0.6) 55%, rgba(6,7,13,0.92) 100%)",
-        }}
-      />
-
-      {/* OP1: dock without an opaque capsule container. Each icon is its
-          own self-contained chip (subtle bg + blur), so the visual reads
-          as "5 floating dots", not "1 bar". The previous design was a
-          single capsule with bg-eu-surface-raised/85 which felt heavy. */}
+      {/* OP10: back to a single floating capsule (premium version). The
+          earlier 5-separate-chips / transparent-ring iterations felt
+          unanchored. This is a solid dark-glass capsule that hovers above
+          the page — z-[60] so it stays above page-like modals (DayDetail)
+          that opt to keep the dock. backdrop-blur kept but the bg is solid
+          enough (92%) that the old saturated-bleed issue doesn't recur. */}
       <nav
         aria-label="主要操作"
         aria-hidden={hidden}
         className={[
-          "fixed bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]",
-          "left-1/2 -translate-x-1/2 z-30",
-          "flex items-center gap-2",
+          "fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)]",
+          "left-1/2 -translate-x-1/2 z-[60]",
+          "flex items-center gap-1",
+          "h-14 pl-2 pr-2 rounded-eu-full",
+          "bg-eu-surface-raised/92 backdrop-blur-xl",
+          "border border-white/10",
+          "shadow-[0_12px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)]",
           "transition-all duration-eu-fast ease-eu-out",
           hidden ? "opacity-0 pointer-events-none translate-y-3" : "",
         ].join(" ")}
       >
-        <FloatChip ariaLabel="日历" onClick={() => navigate("/calendar")}>
-          <CalendarDays size={18} strokeWidth={1.6} />
-        </FloatChip>
+        <DockIcon ariaLabel="日历" onClick={() => navigate("/calendar")}>
+          <CalendarDays size={19} strokeWidth={1.7} />
+        </DockIcon>
 
-        <FloatChip ariaLabel="资产库" onClick={() => navigate("/library")}>
-          <Grid3x3 size={17} strokeWidth={1.75} />
-        </FloatChip>
+        <DockIcon ariaLabel="资产库" onClick={() => navigate("/library")}>
+          <Grid3x3 size={18} strokeWidth={1.85} />
+        </DockIcon>
 
-        <FloatChip ariaLabel="快创" onClick={() => setCreateOpen(true)}>
-          <Plus size={19} strokeWidth={2} />
-        </FloatChip>
+        <Divider />
 
-        <FloatChip ariaLabel="闪念输入" onClick={() => setFlashOpen(true)}>
-          <Mic size={17} strokeWidth={1.75} />
-        </FloatChip>
+        <DockIcon ariaLabel="快创" onClick={() => setCreateOpen(true)}>
+          <Plus size={20} strokeWidth={2.1} />
+        </DockIcon>
 
-        {/* Agent — purple gradient pill (kept distinctive, the brand entry) */}
+        <DockIcon ariaLabel="闪念输入" onClick={() => setFlashOpen(true)}>
+          <Mic size={18} strokeWidth={1.85} />
+        </DockIcon>
+
+        <Divider />
+
+        {/* Agent — purple gradient pill, brand entry */}
         <button
           type="button"
           aria-label="Agent 对话"
           onClick={() => navigate("/chat")}
           className={[
-            "h-10 pl-3 pr-4 rounded-eu-full",
+            "h-10 pl-3 pr-4 ml-0.5 rounded-eu-full",
             "bg-gradient-to-br from-eu-accent-purple-solid to-eu-accent-blue-solid",
             "text-white font-medium text-eu-sm",
             "flex items-center gap-1.5",
-            "shadow-[0_8px_24px_rgba(111,158,255,0.35),0_0_0_1px_rgba(255,255,255,0.06)]",
+            "shadow-[0_6px_20px_rgba(111,158,255,0.4)]",
             "transition-all duration-eu-fast ease-eu-out",
             "active:scale-95",
           ].join(" ")}
@@ -112,19 +105,15 @@ export function FloatingDock() {
 
 /* ── Internal pieces ───────────────────────────────────────────────────── */
 
-interface FloatChipProps {
+interface DockIconProps {
   ariaLabel: string;
   onClick: () => void;
   children: React.ReactNode;
 }
 
-/**
- * FloatChip — OP5: pure outline ring, no fill. Removed bg + backdrop-blur
- * + shadow that had been creating a visible "chip plate" under each icon.
- * Now the icon hangs in space and only the 1px ring outlines it. The
- * page's bottom gradient handles legibility against scrolling content.
- */
-function FloatChip({ ariaLabel, onClick, children }: FloatChipProps) {
+/** DockIcon — a plain icon button inside the capsule (OP10). No per-icon
+ *  plate; the capsule is the container. */
+function DockIcon({ ariaLabel, onClick, children }: DockIconProps) {
   return (
     <button
       type="button"
@@ -133,9 +122,7 @@ function FloatChip({ ariaLabel, onClick, children }: FloatChipProps) {
       className={[
         "h-10 w-10 rounded-eu-full",
         "flex items-center justify-center",
-        "text-eu-text-mid hover:text-eu-text-hi",
-        "bg-transparent",
-        "ring-1 ring-white/15 hover:ring-white/30",
+        "text-eu-text-mid hover:text-eu-text-hi hover:bg-white/5",
         "transition-all duration-eu-fast ease-eu-out",
         "active:scale-90",
       ].join(" ")}
@@ -143,6 +130,10 @@ function FloatChip({ ariaLabel, onClick, children }: FloatChipProps) {
       {children}
     </button>
   );
+}
+
+function Divider() {
+  return <div aria-hidden="true" className="h-6 w-px bg-white/10 mx-0.5" />;
 }
 
 /* ── Flash sheet (was FlashFab) ────────────────────────────────────────── */

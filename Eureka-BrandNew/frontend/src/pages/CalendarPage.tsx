@@ -3,8 +3,8 @@ import { ChevronLeft, ChevronRight, List, LayoutGrid } from "lucide-react";
 
 import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
 import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
-import { EventForm } from "@/components/calendar/EventForm";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
+import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
 import { ScheduleView } from "@/components/calendar/ScheduleView";
 import { useEvents } from "@/hooks/useEvents";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
@@ -47,10 +47,10 @@ export function CalendarPage() {
   // (RV3) opens EventForm. Same flow as assets — no special-case "tap
   // event = jump to editor".
   const [openEventId, setOpenEventId]   = useState<string | null>(null);
-  // creating/createDefault still used by NEW event flow (DayDetail
-  // 「+ add」, MonthGrid 「+ 添加事件」, Dock + 「事件」 tile).
-  const [createDefault, setCreateDefault] = useState<Date | undefined>(undefined);
-  const [creating, setCreating]         = useState(false);
+  // OP10: the day-scoped "+" (DayDetail / MonthGrid 添加) now opens the
+  // all-types CreateAssetMenu (not event-only), with the day pre-filled so
+  // new events default to that day.
+  const [createMenuDate, setCreateMenuDate] = useState<Date | null>(null);
   const [openAssetId, setOpenAssetId]   = useState<string | null>(null);
 
   function handleItemTap(item: TimelineItem) {
@@ -65,12 +65,10 @@ export function CalendarPage() {
   }
 
   function handleCreateFromDay(dayKey: string) {
-    setDayDetailKey(null);
-    // Build a sensible default time on that day: 09:00 local.
+    // Default time on that day: 09:00 local. Opens the all-types menu so
+    // the user can add ANY asset to this day, not just an event.
     const [y, m, d] = dayKey.split("-").map(Number);
-    const def = new Date(y, m - 1, d, 9, 0, 0, 0);
-    setCreateDefault(def);
-    setCreating(true);
+    setCreateMenuDate(new Date(y, m - 1, d, 9, 0, 0, 0));
   }
 
   function shiftMonth(delta: number) {
@@ -117,10 +115,11 @@ export function CalendarPage() {
         />
       )}
 
-      {creating && (
-        <EventForm
-          defaultStart={createDefault}
-          onClose={() => { setCreating(false); setCreateDefault(undefined); }}
+      {createMenuDate && (
+        <CreateAssetMenu
+          open
+          defaultDate={createMenuDate}
+          onClose={() => setCreateMenuDate(null)}
         />
       )}
 

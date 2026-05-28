@@ -62,7 +62,10 @@ interface DayDetailSheetProps {
 export function DayDetailSheet({
   dayKey, onClose, onItemTap, onCreateEvent,
 }: DayDetailSheetProps) {
-  useModalMount();
+  // OP10: keep the floating dock visible over DayDetail (it's a page-like
+  // view, not a transient picker). The dock's + provides add-all-assets;
+  // DayDetail's own + (below) is the day-aware variant.
+  useModalMount({ keepDock: true });
   const { byDay } = useTimeline();
   const items = byDay.get(dayKey) ?? [];
 

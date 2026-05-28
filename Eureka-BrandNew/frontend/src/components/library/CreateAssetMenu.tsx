@@ -25,14 +25,17 @@ import type { Skill } from "@/lib/types";
 interface CreateAssetMenuProps {
   open: boolean;
   onClose: () => void;
+  /** OP10: optional default date — when opened from DayDetail, new
+   *  events default to that day instead of "now". */
+  defaultDate?: Date;
 }
 
-export function CreateAssetMenu({ open, onClose }: CreateAssetMenuProps) {
+export function CreateAssetMenu({ open, onClose, defaultDate }: CreateAssetMenuProps) {
   if (!open) return null;
-  return <CreateAssetMenuBody onClose={onClose} />;
+  return <CreateAssetMenuBody onClose={onClose} defaultDate={defaultDate} />;
 }
 
-function CreateAssetMenuBody({ onClose }: { onClose: () => void }) {
+function CreateAssetMenuBody({ onClose, defaultDate }: { onClose: () => void; defaultDate?: Date }) {
   useModalMount();
   const navigate = useNavigate();
   const { skills } = useSkillRegistry();
@@ -45,7 +48,7 @@ function CreateAssetMenuBody({ onClose }: { onClose: () => void }) {
 
   if (eventOpen) {
     return (
-      <EventForm onClose={() => { setEventOpen(false); onClose(); }} />
+      <EventForm defaultStart={defaultDate} onClose={() => { setEventOpen(false); onClose(); }} />
     );
   }
 
