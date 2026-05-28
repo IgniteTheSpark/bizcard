@@ -164,6 +164,33 @@
   --eu-brand-line: rgba(111,158,255,0.32);
   --eu-brand-glow: 0 0 24px rgba(111,158,255,0.35);
 
+  /* design-B1: Atmosphere never overrode --eu-rule or the accent palette, so
+   * the production theme used the stale :root "Slate" accents (#7aa2f7…) while
+   * the calendar/library tier hardcoded the brighter design-canvas palette
+   * (#8ab4ff…) — two different "blues" across surfaces. Define both here so the
+   * tokens match the approved canvas and every surface shares one palette. */
+  --eu-rule: rgba(255,255,255,0.06);
+
+  --eu-accent-blue-fg: #8ab4ff;
+  --eu-accent-blue-bg: rgba(138,180,255,0.10);
+  --eu-accent-blue-edge: rgba(138,180,255,0.24);
+  --eu-accent-blue-solid: #6f9eff;
+
+  --eu-accent-amber-fg: #f5c977;
+  --eu-accent-amber-bg: rgba(245,201,119,0.10);
+  --eu-accent-amber-edge: rgba(245,201,119,0.24);
+  --eu-accent-amber-solid: #f0b86f;
+
+  --eu-accent-green-fg: #86e0a5;
+  --eu-accent-green-bg: rgba(134,224,165,0.10);
+  --eu-accent-green-edge: rgba(134,224,165,0.24);
+  --eu-accent-green-solid: #6fe0a0;
+
+  --eu-accent-purple-fg: #c4a8ff;
+  --eu-accent-purple-bg: rgba(196,168,255,0.10);
+  --eu-accent-purple-edge: rgba(196,168,255,0.24);
+  --eu-accent-purple-solid: #9c80f0;
+
   --eu-r-sm: 8px; --eu-r-md: 12px; --eu-r-lg: 16px; --eu-r-xl: 24px;
   --eu-dur-fast: 150ms; --eu-dur-normal: 280ms; --eu-dur-slow: 420ms;
 }
