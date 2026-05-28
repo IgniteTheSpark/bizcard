@@ -4,6 +4,7 @@ import { ExternalLink, History, MessageCircle, Pencil, Trash2, X, Loader2 } from
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { EventForm } from "@/components/calendar/EventForm";
+import { ContactForm } from "@/components/contact/ContactForm";
 import { GenericField } from "@/components/skill/GenericField";
 import { SkillCreateForm } from "@/components/skill/SkillCreateForm";
 import { useModalMount } from "@/context/ModalContext";
@@ -12,7 +13,7 @@ import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { openSession, type SubjectType } from "@/hooks/useSessions";
 import { apiFetch } from "@/lib/api";
 import type { CardData, FieldFormat } from "@/lib/render-spec";
-import type { Asset } from "@/lib/types";
+import type { Asset, Contact } from "@/lib/types";
 
 /**
  * AssetDetailDrawer — read-only detail + actions (M2.2).
@@ -49,7 +50,7 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
   // - editing: which inner form is open (event / asset / null)
   // - confirmDel: double-click delete pattern (same as EventForm)
   // - busy: prevents re-clicks during the delete API call
-  const [editing,    setEditing]    = useState<"event" | "asset" | null>(null);
+  const [editing,    setEditing]    = useState<"event" | "asset" | "contact" | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
   const [busy,       setBusy]       = useState(false);
 
@@ -69,19 +70,18 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
   const eventRow = isEvent
     ? events.find((e) => e.event_id === card.assetId)
     : undefined;
-  // Edit/delete only make sense when we have an id AND know how to act
-  // on it. Contact-edit is not built (would need a Contact-form) so it's
-  // disabled for now.
-  const editable   = !!card.assetId && (isEvent ? !!eventRow : (!!skill && !isContact));
-  const deletable  = !!card.assetId && !isContact;
+  // CF: contact-edit now has a ContactForm, so contacts are editable +
+  // deletable too. Edit/delete still need an id + a known edit path.
+  const editable   = !!card.assetId && (isEvent ? !!eventRow : (isContact || !!skill));
+  const deletable  = !!card.assetId;
 
   async function handleDelete() {
     if (!card.assetId || busy) return;
     setBusy(true);
     try {
-      const url = isEvent
-        ? `/api/events/${card.assetId}`
-        : `/api/assets/${card.assetId}`;
+      const url = isEvent   ? `/api/events/${card.assetId}`
+                : isContact ? `/api/contacts/${card.assetId}`
+                : `/api/assets/${card.assetId}`;
       const resp = await apiFetch<{ ok: boolean; error?: string }>(
         url, { method: "DELETE" },
       );
@@ -89,6 +89,7 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
       await mutate((key) => typeof key === "string" && (
         key.startsWith("/api/assets") ||
         key.startsWith("/api/events")  ||
+        key.startsWith("/api/contacts") ||
         key.startsWith("/api/timeline")
       ));
       onClose();
@@ -101,8 +102,21 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
   }
 
   function handleEdit() {
-    setEditing(isEvent ? "event" : "asset");
+    setEditing(isEvent ? "event" : isContact ? "contact" : "asset");
   }
+
+  // Build the Contact-shaped object ContactForm needs for prefill from the
+  // drawer's payload (contact opened from Library has name/phone/... fields).
+  const contactForEdit: Contact | null = card.assetId && isContact ? {
+    id:      card.assetId,
+    name:    String((payload as Record<string, unknown>).name ?? card.title ?? ""),
+    phone:   (payload.phone   as string) ?? null,
+    company: (payload.company as string) ?? null,
+    title:   (payload.title   as string) ?? null,
+    email:   (payload.email   as string) ?? null,
+    notes:   Array.isArray(payload.notes) ? (payload.notes as string[]) : [],
+    created_at: "",
+  } : null;
 
   // Build the Asset-shaped object the SkillCreateForm needs for prefill.
   // We have payload + assetId + cardType so this is straightforward.
@@ -172,6 +186,9 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
   // refreshed the displayed payload.
   if (editing === "event" && eventRow) {
     return <EventForm existing={eventRow} onClose={() => setEditing(null)} />;
+  }
+  if (editing === "contact" && contactForEdit) {
+    return <ContactForm existing={contactForEdit} onClose={() => setEditing(null)} />;
   }
   if (editing === "asset" && assetForEdit && skill) {
     return (
