@@ -262,7 +262,10 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
       <div
         ref={tilesRef}
         className="absolute inset-0 overflow-y-auto eu-noscroll"
-        style={{ paddingTop: 6, paddingBottom: 16 }}
+        // Bottom padding clears the floating dock so the last day tile can
+        // scroll fully into view (mid tiles still pass behind the glass dock
+        // → 背透). Matches the Library 最近 list clearance.
+        style={{ paddingTop: 6, paddingBottom: "calc(env(safe-area-inset-bottom) + 104px)" }}
       >
         {visibleRows.map((row, idx) => {
           if (row.kind === "gap") {

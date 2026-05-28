@@ -60,58 +60,97 @@ export function CalendarPage() {
     setPaneIndex(1);
   }
 
-  // ── Swipe gesture (touch + trackpad wheel deltaX) ──────────────────────
+  // ── Swipe gesture: drag-following carousel (touch) + trackpad wheel ─────
+  // The deck tracks the finger live (dragX) and snaps on release. Touch
+  // listeners are attached natively with { passive: false } so that, once a
+  // horizontal swipe is locked, preventDefault() stops the pane's own
+  // vertical scroll / browser back-swipe from stealing the gesture — the bug
+  // behind "横向滑动有问题". React's synthetic onTouch* handlers are passive
+  // and cannot preventDefault, so we bypass them here.
   const deckRef = useRef<HTMLDivElement | null>(null);
-  const touch = useRef<{ x: number; y: number; lockH: boolean | null } | null>(null);
-  const wheelAccum = useRef(0);
-  const wheelLock = useRef(false);
+  const [dragX, setDragX] = useState(0);     // live finger offset (px)
+  const [dragging, setDragging] = useState(false); // disables snap transition
+  const paneIndexRef = useRef(0);
+  const dragXRef = useRef(0);
+
+  function setDrag(v: number) { dragXRef.current = v; setDragX(v); }
 
   function step(delta: number) {
-    setPaneIndex((i) => Math.max(0, Math.min(PANES.length - 1, i + delta)));
+    setPaneIndex((i) => {
+      const n = Math.max(0, Math.min(PANES.length - 1, i + delta));
+      paneIndexRef.current = n;
+      return n;
+    });
   }
+
+  useEffect(() => { paneIndexRef.current = paneIndex; }, [paneIndex]);
 
   useEffect(() => {
     const el = deckRef.current;
     if (!el) return;
 
+    // ── trackpad: discrete horizontal-scroll step ──
+    let wheelAccum = 0;
+    let wheelLock = false;
     const onWheel = (e: WheelEvent) => {
-      // Only react to horizontal-dominant scroll (two-finger sideways on a
-      // trackpad). Vertical scroll passes through to the active pane.
-      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-      e.preventDefault(); // stop browser back-swipe / horizontal page scroll
-      if (wheelLock.current) return;
-      wheelAccum.current += e.deltaX;
-      if (Math.abs(wheelAccum.current) > 60) {
-        step(wheelAccum.current > 0 ? 1 : -1);
-        wheelAccum.current = 0;
-        wheelLock.current = true;
-        window.setTimeout(() => { wheelLock.current = false; }, 450);
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // vertical → pane
+      e.preventDefault();
+      if (wheelLock) return;
+      wheelAccum += e.deltaX;
+      if (Math.abs(wheelAccum) > 60) {
+        step(wheelAccum > 0 ? 1 : -1);
+        wheelAccum = 0;
+        wheelLock = true;
+        window.setTimeout(() => { wheelLock = false; }, 450);
       }
     };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
 
-  function onTouchStart(e: React.TouchEvent) {
-    const t = e.touches[0];
-    touch.current = { x: t.clientX, y: t.clientY, lockH: null };
-  }
-  function onTouchMove(e: React.TouchEvent) {
-    if (!touch.current) return;
-    const t = e.touches[0];
-    const dx = t.clientX - touch.current.x;
-    const dy = t.clientY - touch.current.y;
-    if (touch.current.lockH === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-      touch.current.lockH = Math.abs(dx) > Math.abs(dy);
-    }
-  }
-  function onTouchEnd(e: React.TouchEvent) {
-    if (!touch.current) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touch.current.x;
-    if (touch.current.lockH && Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
-    touch.current = null;
-  }
+    // ── touch: live drag + snap ──
+    let startX = 0, startY = 0, lockH: boolean | null = null, active = false;
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      startX = t.clientX; startY = t.clientY; lockH = null; active = true;
+      setDragging(true);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!active) return;
+      const t = e.touches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      if (lockH === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+        lockH = Math.abs(dx) > Math.abs(dy);
+        if (!lockH) { active = false; setDragging(false); return; } // vertical → let pane scroll
+      }
+      if (lockH) {
+        e.preventDefault(); // own the gesture: no vertical scroll / back-swipe
+        const i = paneIndexRef.current;
+        const atEdge = (i === 0 && dx > 0) || (i === PANES.length - 1 && dx < 0);
+        setDrag(atEdge ? dx * 0.35 : dx); // rubber-band past the ends
+      }
+    };
+    const onTouchEnd = () => {
+      if (!active) return;
+      active = false;
+      setDragging(false);
+      const w = el.clientWidth || 1;
+      const d = dragXRef.current;
+      if (lockH && Math.abs(d) > w * 0.2) step(d < 0 ? 1 : -1);
+      setDrag(0);
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -122,15 +161,13 @@ export function CalendarPage() {
       <div
         ref={deckRef}
         className="flex-1 overflow-hidden relative"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        style={{ touchAction: "pan-y" }}
       >
         <div
           className="flex h-full"
           style={{
-            transform: `translateX(-${paneIndex * 100}%)`,
-            transition: "transform 280ms cubic-bezier(.2,.7,.3,1)",
+            transform: `translateX(calc(${-paneIndex * 100}% + ${dragX}px))`,
+            transition: dragging ? "none" : "transform 280ms cubic-bezier(.2,.7,.3,1)",
           }}
         >
           <div className="h-full w-full shrink-0">

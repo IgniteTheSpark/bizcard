@@ -273,12 +273,15 @@ function SelectedDayFooter({
 }) {
   return (
     <div
-      className="shrink-0"
+      className="shrink-0 eu-noscroll"
       style={{
         borderTop: "1px solid rgba(255,255,255,0.08)",
         background: "rgba(0,0,0,0.20)",
-        padding: "14px 20px 16px",
-        maxHeight: "34%", overflowY: "auto",
+        // Bottom padding clears the floating dock so 添加事件 / the last item
+        // aren't hidden behind it (this footer is pinned, not scrolled-through).
+        padding: "14px 20px",
+        paddingBottom: "calc(env(safe-area-inset-bottom) + 96px)",
+        maxHeight: "42%", overflowY: "auto",
       }}
     >
       <div

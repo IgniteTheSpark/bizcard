@@ -177,7 +177,10 @@ export function CategoryList() {
       {/* ── Scrollable body: tiles + 最近 + 扩展 ───────────────────── */}
       <div
         className="flex-1 overflow-y-auto eu-noscroll"
-        style={{ padding: "0 16px 18px" }}
+        // Bottom padding clears the floating dock (h-56 + 16px offset + glow)
+        // so the last 最近 card can scroll fully into view instead of sitting
+        // permanently half-hidden behind the dock.
+        style={{ padding: "0 16px", paddingBottom: "calc(env(safe-area-inset-bottom) + 104px)" }}
       >
         {/* OP9: two semantic sections — 核心 (常驻 first-class entities)
             and 我的技能 (user-evolvable skill assets). Both use 3-col grid
@@ -372,6 +375,12 @@ function RecentCard({ item }: { item: RecentItem }) {
     return (
       <SkillCard
         data={card}
+        // 最近 is a cross-type list — force the compact horizontal layout so
+        // every row is the same height. Without this, skills whose render_spec
+        // uses `stacked` (e.g. 想法, with a 3-line body) render ~50px taller
+        // than expense/event rows, making the list look ragged. Each skill's
+        // natural layout still applies inside its own category view.
+        layoutOverride="horizontal"
         onClick={() => navigate(item.to)}
         onToggleCheck={card.checkDone !== undefined && item.asset
           ? (next) => toggleTodo(item.asset!.id, next)
