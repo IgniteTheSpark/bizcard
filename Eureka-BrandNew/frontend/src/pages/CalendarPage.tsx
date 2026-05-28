@@ -30,7 +30,6 @@ import type { AssetsResponse, TimelineItem } from "@/lib/types";
  */
 
 const PANES = ["schedule", "month", "year"] as const;
-const PANE_LABELS = ["日程", "月", "年"];
 
 export function CalendarPage() {
   const [cursor]                        = useState<Date>(() => new Date());
@@ -116,32 +115,10 @@ export function CalendarPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Slim pane indicator (tappable — trackpad-less fallback + a11y) */}
-      <header className="flex items-center justify-center gap-1 px-eu-md py-eu-sm border-b border-eu-rule">
-        {PANE_LABELS.map((label, i) => {
-          const active = paneIndex === i;
-          return (
-            <button
-              key={label}
-              type="button"
-              onClick={() => setPaneIndex(i)}
-              className="font-mono"
-              style={{
-                fontSize: 11, letterSpacing: "0.16em",
-                padding: "4px 12px", borderRadius: 999,
-                color: active ? "#a4c2ff" : "rgba(255,255,255,0.45)",
-                background: active ? "rgba(111,158,255,0.14)" : "transparent",
-                border: `1px solid ${active ? "rgba(111,158,255,0.30)" : "transparent"}`,
-                cursor: "pointer",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </header>
-
-      {/* Swipe deck — 3 panes side by side */}
+      {/* Swipe deck — 3 panes side by side. No tab/indicator header: swipe
+       *  (touch) or two-finger trackpad scroll is the sole navigation (user #1).
+       *  Each pane carries its own title (日程「5月 2026」/ 月「2026」/ 年「‹2026›」)
+       *  so the current view is always self-evident. */}
       <div
         ref={deckRef}
         className="flex-1 overflow-hidden relative"
@@ -152,15 +129,14 @@ export function CalendarPage() {
         <div
           className="flex h-full"
           style={{
-            width: "300%",
-            transform: `translateX(-${(paneIndex * 100) / PANES.length}%)`,
+            transform: `translateX(-${paneIndex * 100}%)`,
             transition: "transform 280ms cubic-bezier(.2,.7,.3,1)",
           }}
         >
-          <div className="h-full" style={{ width: `${100 / PANES.length}%` }}>
+          <div className="h-full w-full shrink-0">
             <ScheduleView onItemTap={handleItemTap} onDayTap={(k) => setDayDetailKey(k)} />
           </div>
-          <div className="h-full" style={{ width: `${100 / PANES.length}%` }}>
+          <div className="h-full w-full shrink-0">
             <MonthPane
               cursor={cursor}
               focusMonthKey={focusMonthKey}
@@ -169,7 +145,7 @@ export function CalendarPage() {
               onDayOpen={(k) => setDayDetailKey(k)}
             />
           </div>
-          <div className="h-full" style={{ width: `${100 / PANES.length}%` }}>
+          <div className="h-full w-full shrink-0">
             <YearPane initialYear={cursor.getFullYear()} onPickMonth={handlePickMonth} />
           </div>
         </div>

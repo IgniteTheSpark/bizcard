@@ -45,6 +45,19 @@
   .pr-safe { padding-right: env(safe-area-inset-right); }
 }
 
+/* ── Hide scrollbars (was referenced everywhere but never defined — that's
+ *    the ugly grey bar bleeding at the calendar swipe-deck seams). Keeps
+ *    scrolling functional, just removes the visible track. */
+.eu-noscroll {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* old Edge/IE */
+}
+.eu-noscroll::-webkit-scrollbar { /* Chromium/Safari */
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* ── Sheet / modal entrance animations (OP12) ────────────────────────────
  * Bottom sheets slide up from the screen edge; backdrops fade in. Gives
  * modals a proper "popping from the bottom" feel instead of appearing

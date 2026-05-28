@@ -48,11 +48,12 @@ export function FloatingDock() {
           "left-1/2 -translate-x-1/2 z-[60]",
           "flex items-center gap-1",
           "h-14 pl-2 pr-2 rounded-eu-full",
-          // OP-fix:真正的玻璃感 — 低不透明度白色 tint + 重 blur，让底层内容
-          // 透出来（暗页透出暗纹理、蓝页透出蓝），不再是首页那种实心暗胶囊。
-          "bg-white/[0.06] backdrop-blur-2xl",
-          "border border-white/10",
-          "shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]",
+          // 真正背透 — 设计语言统一用 blur(10px) + 轻阴影。之前 blur-2xl(40px) +
+          // 重暗阴影把背后内容糊成一坨纯暗,看起来像实心胶囊。改成 blur-md(12px) +
+          // saturate 让背后的蓝/绿瓦片透出颜色,轻阴影避免“悬浮实心块”观感。
+          "bg-white/[0.05] backdrop-blur-md backdrop-saturate-150",
+          "border border-white/[0.08]",
+          "shadow-[0_6px_24px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)]",
           "transition-all duration-eu-fast ease-eu-out",
           hidden ? "opacity-0 pointer-events-none translate-y-3" : "",
         ].join(" ")}
