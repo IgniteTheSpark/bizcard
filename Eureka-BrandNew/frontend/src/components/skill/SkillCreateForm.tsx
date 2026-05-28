@@ -152,7 +152,7 @@ export function SkillCreateForm({ skill, onClose, onCreated, existing }: SkillCr
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
         className={[
-          "w-full md:w-[480px] max-w-md",
+          "w-full",
           "bg-eu-surface-raised border-t border-eu-border md:border md:rounded-eu-xl",
           "rounded-t-eu-xl shadow-eu-lg pt-eu-md pb-safe",
           "flex flex-col gap-eu-md max-h-[88vh] overflow-y-auto",

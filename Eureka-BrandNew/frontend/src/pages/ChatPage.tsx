@@ -145,11 +145,12 @@ export function ChatPage() {
             {sessionDetail?.title ?? (activeSessionId ? `对话 ${activeSessionId.slice(0, 6)}` : "新对话")}
           </div>
 
-          {/* Mobile-only history opener (desktop has the sidebar always visible). */}
+          {/* History opener — always shown now that PhoneFrame collapsed
+              the previously-desktop persistent sidebar into a drawer. */}
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="md:hidden inline-flex items-center gap-1 text-eu-sm text-eu-text-mid hover:text-eu-text-hi rounded-eu-md px-1.5 py-1 hover:bg-eu-surface-hover active:scale-95"
+            className="inline-flex items-center gap-1 text-eu-sm text-eu-text-mid hover:text-eu-text-hi rounded-eu-md px-1.5 py-1 hover:bg-eu-surface-hover active:scale-95"
             aria-label="对话历史"
             title="对话历史"
           >

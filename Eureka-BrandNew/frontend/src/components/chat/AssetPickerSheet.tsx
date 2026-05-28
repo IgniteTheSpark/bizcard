@@ -55,7 +55,7 @@ export function AssetPickerSheet({ onConfirm, onClose, excludeIds = [] }: AssetP
       <div
         onClick={(e) => e.stopPropagation()}
         className={[
-          "w-full md:w-[480px] max-w-md",
+          "w-full",
           "bg-eu-surface-raised border-t border-eu-border md:border md:rounded-eu-xl",
           "rounded-t-eu-xl shadow-eu-lg pt-eu-md pb-safe",
           "flex flex-col max-h-[85vh]",

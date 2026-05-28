@@ -6,8 +6,10 @@ import type { Session } from "@/lib/types";
 /**
  * SessionSidebar — Claude-style chat history.
  *
- * Desktop (md:+) — persistent left column, ~260px.
- * Mobile          — slide-out drawer (caller controls open state).
+ * VF (iPhone frame): the app is now always 393px wide (PhoneFrame), so the
+ * old desktop-persistent-260px-column variant is gone. Sidebar is always
+ * a slide-in drawer triggered by the「☰ 历史」 button in ChatPage's top
+ * nav. This frees the full chat width for messages.
  *
  * Lists chat + flash sessions newest first. Tapping switches active session;
  * the「新建对话」button clears the active session_id so the next send opens
@@ -20,66 +22,55 @@ import type { Session } from "@/lib/types";
 interface SessionSidebarProps {
   activeId: string | null;
   onSelect: (id: string | null) => void;
-  /** Only used on mobile — desktop sidebar is always visible. */
-  open?: boolean;
-  onClose?: () => void;
+  open: boolean;
+  onClose: () => void;
 }
 
 export function SessionSidebar({ activeId, onSelect, open, onClose }: SessionSidebarProps) {
   return (
-    <>
-      {/* Desktop sidebar — fixed left column */}
-      <aside className="hidden md:flex flex-col w-[260px] shrink-0 border-r border-eu-rule bg-eu-surface/40 h-full">
-        <SidebarInner activeId={activeId} onSelect={onSelect} />
-      </aside>
-
-      {/* Mobile drawer — slides in from left */}
-      {open !== undefined && (
-        <div
-          className={[
-            "md:hidden fixed inset-0 z-50",
-            open ? "pointer-events-auto" : "pointer-events-none",
-          ].join(" ")}
-          aria-hidden={!open}
-        >
-          {/* Backdrop */}
-          <div
-            className={[
-              "absolute inset-0 bg-eu-bg/85 backdrop-blur-md",
-              "transition-opacity duration-eu-fast",
-              open ? "opacity-100" : "opacity-0",
-            ].join(" ")}
+    <div
+      className={[
+        "fixed inset-0 z-50",
+        open ? "pointer-events-auto" : "pointer-events-none",
+      ].join(" ")}
+      aria-hidden={!open}
+    >
+      {/* Backdrop */}
+      <div
+        className={[
+          "absolute inset-0 bg-eu-bg/85 backdrop-blur-md",
+          "transition-opacity duration-eu-fast",
+          open ? "opacity-100" : "opacity-0",
+        ].join(" ")}
+        onClick={onClose}
+      />
+      {/* Drawer */}
+      <aside
+        className={[
+          "absolute inset-y-0 left-0 w-[80%] max-w-[300px]",
+          "bg-eu-surface-raised border-r border-eu-border",
+          "shadow-eu-lg flex flex-col pt-safe",
+          "transition-transform duration-[200ms] ease-eu-out",
+          open ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+      >
+        <div className="flex items-center justify-between px-eu-md py-eu-sm border-b border-eu-rule">
+          <span className="font-display text-eu-md text-eu-text-hi">对话历史</span>
+          <button
+            type="button"
+            aria-label="关闭"
             onClick={onClose}
-          />
-          {/* Drawer */}
-          <aside
-            className={[
-              "absolute inset-y-0 left-0 w-[80vw] max-w-[300px]",
-              "bg-eu-surface-raised border-r border-eu-border",
-              "shadow-eu-lg flex flex-col pt-safe",
-              "transition-transform duration-[200ms] ease-eu-out",
-              open ? "translate-x-0" : "-translate-x-full",
-            ].join(" ")}
+            className="p-1 rounded-eu-sm text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
           >
-            <div className="flex items-center justify-between px-eu-md py-eu-sm border-b border-eu-rule">
-              <span className="font-display text-eu-md text-eu-text-hi">对话历史</span>
-              <button
-                type="button"
-                aria-label="关闭"
-                onClick={onClose}
-                className="p-1 rounded-eu-sm text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
-              >
-                <X size={18} strokeWidth={1.75} />
-              </button>
-            </div>
-            <SidebarInner
-              activeId={activeId}
-              onSelect={(id) => { onSelect(id); onClose?.(); }}
-            />
-          </aside>
+            <X size={18} strokeWidth={1.75} />
+          </button>
         </div>
-      )}
-    </>
+        <SidebarInner
+          activeId={activeId}
+          onSelect={(id) => { onSelect(id); onClose(); }}
+        />
+      </aside>
+    </div>
   );
 }
 

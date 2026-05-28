@@ -31,10 +31,10 @@ export function AppShell() {
   const onChat = location.pathname.startsWith("/chat");
 
   return (
-    // h-dvh (not min-h-dvh) so flex-1 children get a determinate height to
-    // fill — pages that use h-full inside (e.g. ChatPage with sidebar +
-    // input column) need this to lay out their own bottom bar correctly.
-    <div className="h-dvh flex flex-col bg-eu-bg text-eu-text overflow-hidden">
+    // VF: was h-dvh; now h-full so we inherit the PhoneFrame's fixed 852px
+    // height (and on real mobile, 100dvh via PhoneFrame's clamp). Layout
+    // contract for children unchanged.
+    <div className="h-full flex flex-col bg-eu-bg text-eu-text overflow-hidden">
       <TopBar />
       {/* pb-28 reserves room for the floating dock + safe area;
           0 on /chat where the dock is hidden and ChatInput owns the bottom. */}

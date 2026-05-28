@@ -192,10 +192,10 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
       <aside
         onClick={(e) => e.stopPropagation()}
         className={[
-          // Mobile: bottom sheet
+          // VF: phone-frame is always mobile-shaped, so bottom sheet only —
+          // killed the old md: right-drawer override which used to width
+          // 480px (escapes the 393px frame).
           "fixed inset-x-0 bottom-0 max-h-[85vh] rounded-t-eu-xl",
-          // Desktop: right drawer
-          "md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[480px] md:rounded-none md:border-l",
           "bg-eu-surface-raised border-t border-eu-border",
           "shadow-eu-lg pt-eu-md pb-safe overflow-y-auto",
           "flex flex-col gap-eu-md",

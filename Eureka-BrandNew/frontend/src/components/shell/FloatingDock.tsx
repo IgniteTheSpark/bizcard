@@ -167,9 +167,9 @@ function FlashSheet({ onClose }: { onClose: () => void }) {
     >
       <div
         className={[
-          "fixed inset-x-0 bottom-0 md:inset-auto",
-          "md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[520px]",
-          "bg-eu-surface-raised border-t border-eu-border md:border md:rounded-eu-xl",
+          // VF: bottom sheet only (phone-frame is mobile-shaped).
+          "fixed inset-x-0 bottom-0",
+          "bg-eu-surface-raised border-t border-eu-border rounded-t-eu-xl",
           "p-eu-lg pb-safe flex flex-col gap-eu-md shadow-eu-lg",
           "max-h-[88vh] overflow-y-auto",
         ].join(" ")}

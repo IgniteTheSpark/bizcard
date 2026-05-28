@@ -72,7 +72,7 @@ function CreateAssetMenuBody({ onClose }: { onClose: () => void }) {
       <div
         onClick={(e) => e.stopPropagation()}
         className={[
-          "w-full md:w-[420px] max-w-md mx-auto",
+          "w-full",
           "bg-eu-surface-raised border-t border-eu-border md:border md:rounded-eu-xl",
           "rounded-t-eu-xl shadow-eu-lg pt-eu-md pb-safe",
           "flex flex-col gap-eu-sm",
