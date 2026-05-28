@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import useSWR from "swr";
 
 import { EventCard } from "@/components/calendar/EventCard";
 import { SkillCard } from "@/components/skill/SkillCard";
+import { AddSkillWizard } from "@/components/skill/AddSkillWizard";
 import { swrFetcher } from "@/lib/api";
 import { buildCard } from "@/lib/render-spec";
+import type { AccentColor } from "@/lib/render-spec";
 import type {
   Asset, AssetsResponse, ContactsResponse, Event,
   EventsResponse, FileRow, FilesResponse,
@@ -99,6 +102,14 @@ const SKILL_TILES: TileKind[] = [
   { key: "expense", to: "/library/expense", label: "记账", icon: "¥", accent: "green"   },
 ];
 
+// render_spec.accent_color → LibAccent, for dynamically-surfaced user skills
+// (seeded 笔记 + anything created via AddSkillWizard). red/gray fold into the
+// nearest library accent since the library palette has no red.
+const RENDER_TO_LIB: Record<AccentColor, LibAccent> = {
+  blue: "blue", amber: "amber", green: "green", purple: "purple",
+  red: "amber", gray: "neutral", neutral: "neutral",
+};
+
 export function CategoryList() {
   const { skills } = useSkillRegistry();
 
@@ -123,6 +134,22 @@ export function CategoryList() {
     assets, events: events.data?.events ?? [], files: files.data?.files ?? [],
     bySkillIcon: iconMap(skills),
   }, 5);
+
+  // 我的技能 tiles = the 3 designed defaults + every other registered user
+  // skill (seeded 笔记, plus anything created via AddSkillWizard). New skills
+  // surface here automatically, so M5's "register" step is visible end-to-end
+  // and nothing in the registry stays hidden.
+  const knownKeys = new Set([...CORE_TILES, ...SKILL_TILES].map((t) => t.key));
+  const extraSkillTiles: TileKind[] = skills
+    .filter((s) => s.render_spec && !knownKeys.has(s.name))
+    .map((s) => ({
+      key:    s.name,
+      to:     `/library/${s.name}`,
+      label:  s.display_name || s.name,
+      icon:   s.render_spec?.icon ?? "◇",
+      accent: RENDER_TO_LIB[s.render_spec?.accent_color ?? "neutral"] ?? "neutral",
+    }));
+  const skillTiles = [...SKILL_TILES, ...extraSkillTiles];
 
   return (
     <div
@@ -207,7 +234,7 @@ export function CategoryList() {
           className="grid grid-cols-3 gap-2.5"
           style={{ margin: "6px 0 22px" }}
         >
-          {SKILL_TILES.map((t) => (
+          {skillTiles.map((t) => (
             <TypeTile
               key={t.key}
               tile={t}
@@ -454,10 +481,13 @@ function RecentCard({ item }: { item: RecentItem }) {
  * the "magical / experimental" framing of the AddSkillWizard.
  */
 function AddSkillTile() {
+  const [open, setOpen] = useState(false);
   return (
+    <>
+    {open && <AddSkillWizard onClose={() => setOpen(false)} />}
     <button
       type="button"
-      onClick={() => alert("AddSkillWizard 在 M5 接入(design_agent 端到端验证)")}
+      onClick={() => setOpen(true)}
       className="flex flex-col text-left active:scale-95"
       style={{
         gap: 12,
@@ -511,6 +541,7 @@ function AddSkillTile() {
         </div>
       </div>
     </button>
+    </>
   );
 }
 
