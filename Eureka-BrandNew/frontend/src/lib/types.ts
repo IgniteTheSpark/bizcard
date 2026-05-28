@@ -206,6 +206,31 @@ export interface MessagesResponse {
   messages: Message[];
 }
 
+/* ── /api/notifications ─────────────────────────────────────────────────── */
+
+export type NotificationType =
+  | "flash_done"
+  | "task_done"
+  | "task_failed"
+  | "reminder";
+
+export interface Notification {
+  id: string;
+  type: NotificationType | string;
+  title: string;
+  body: string;
+  /** opaque deep-link target the frontend resolves (asset/event id) */
+  link: string | null;
+  read: boolean;
+  created_at: string | null;
+}
+
+export interface NotificationsResponse {
+  ok: boolean;
+  notifications: Notification[];
+  unread: number;
+}
+
 /* ── /api/tasks ─────────────────────────────────────────────────────────── */
 
 export interface Task {

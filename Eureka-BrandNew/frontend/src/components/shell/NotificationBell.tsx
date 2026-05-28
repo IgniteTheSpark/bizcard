@@ -1,17 +1,28 @@
 import { useState } from "react";
 import { Bell } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+
+import { NotificationItem } from "@/components/notification/NotificationItem";
+import { notifLinkTarget } from "@/components/notification/meta";
+import { useNotifications } from "@/hooks/useNotifications";
+import type { Notification } from "@/lib/types";
 
 /**
- * NotificationBell — TopBar icon → popover with recent 5 + link to full page.
- *
- * M0: placeholder. Shows "暂无通知".
- * M6 wires this to useNotifications() (SSE subscription + history fetch).
+ * NotificationBell — TopBar icon → popover with the recent 5 + a link to the
+ * full history page. M6: wired to useNotifications (SWR list + unread count;
+ * realtime arrives via the App-level SSE bridge which revalidates this cache).
  */
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  // M6: replace with `const { unread } = useNotifications();`
-  const unread = 0;
+  const navigate = useNavigate();
+  const { notifications, unread, markRead, markAllRead, dismiss } = useNotifications();
+
+  function openNotif(n: Notification) {
+    if (!n.read) markRead(n.id);
+    const target = notifLinkTarget(n);
+    setOpen(false);
+    if (target) navigate(target);
+  }
 
   return (
     <div className="relative">
@@ -23,7 +34,12 @@ export function NotificationBell() {
       >
         <Bell size={18} strokeWidth={1.75} />
         {unread > 0 && (
-          <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-eu-accent-red-solid" />
+          <span
+            className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 rounded-full bg-eu-accent-red-solid text-white font-mono flex items-center justify-center"
+            style={{ fontSize: 9, lineHeight: 1 }}
+          >
+            {unread > 9 ? "9+" : unread}
+          </span>
         )}
       </button>
 
@@ -31,22 +47,38 @@ export function NotificationBell() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className={[
-              "absolute right-0 top-full mt-2 z-50",
-              "w-72 rounded-eu-md",
-              "bg-eu-surface-raised border border-eu-border shadow-eu-md",
-            ].join(" ")}
+            className="absolute right-0 top-full mt-2 z-50 w-80 max-w-[88vw] rounded-eu-md overflow-hidden bg-eu-surface-raised border border-eu-border shadow-eu-md"
           >
-            <div className="p-eu-md text-eu-sm text-eu-text-mid">暂无通知。</div>
-            <div className="border-t border-eu-rule">
-              <Link
-                to="/notifications"
-                onClick={() => setOpen(false)}
-                className="block px-eu-md py-eu-sm text-eu-sm text-eu-brand-hi hover:bg-eu-surface-hover"
-              >
-                查看全部 →
-              </Link>
+            <div className="flex items-center justify-between px-3 py-2 border-b border-eu-rule">
+              <span className="text-eu-sm font-medium text-eu-text-hi">通知</span>
+              {unread > 0 && (
+                <button
+                  type="button"
+                  onClick={() => markAllRead()}
+                  className="text-eu-xs text-eu-brand-hi hover:brightness-110"
+                >
+                  全部已读
+                </button>
+              )}
             </div>
+
+            <div className="max-h-80 overflow-y-auto eu-noscroll divide-y divide-eu-rule">
+              {notifications.length === 0 ? (
+                <div className="px-3 py-6 text-center text-eu-sm text-eu-text-lo">暂无通知</div>
+              ) : (
+                notifications.slice(0, 5).map((n) => (
+                  <NotificationItem key={n.id} notif={n} onOpen={openNotif} onDismiss={dismiss} />
+                ))
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => { setOpen(false); navigate("/notifications"); }}
+              className="block w-full text-left px-3 py-2 border-t border-eu-rule text-eu-sm text-eu-brand-hi hover:bg-eu-surface-hover"
+            >
+              查看全部 →
+            </button>
           </div>
         </>
       )}
