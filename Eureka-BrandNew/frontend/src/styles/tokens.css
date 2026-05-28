@@ -7,6 +7,12 @@
 :root {
   /* ── Font families ───────────────────────────── */
   --eu-font-sans: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+  /* --eu-font-display was previously defined ONLY in .theme-lab, so the
+   * Tailwind `font-display` utility (→ var(--eu-font-display)) resolved to an
+   * undefined var in :root and .theme-atmosphere — every brand heading using
+   * the class fell back to the inherited body font. Define it at root as a
+   * safe fallback; themes override below. */
+  --eu-font-display: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
   --eu-font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
   /* ── Font sizes ──────────────────────────────── */
@@ -136,6 +142,7 @@
 .theme-atmosphere,
 [data-theme="atmosphere"] {
   --eu-font-sans: "Manrope", "Noto Sans SC", system-ui, sans-serif;
+  --eu-font-display: "Manrope", "Noto Sans SC", system-ui, sans-serif;
   --eu-font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --eu-bg: #0b1220;
