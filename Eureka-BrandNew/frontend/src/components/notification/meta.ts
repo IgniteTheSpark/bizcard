@@ -28,9 +28,11 @@ export function notifMeta(type: string): NotifMeta {
 /** Where tapping a notification should take the user (null = no nav). */
 export function notifLinkTarget(n: Notification): string | null {
   if (!n.link) return null;
-  // link is an asset/event id; library list view resolves it. (Calendar event
-  // deep-links could be added later; for now route to library.)
-  return `/library`;
+  // M7 reminder links are structured: "reminder:evt:<id>:<thr>" / "reminder:todo:..".
+  if (n.link.startsWith("reminder:evt:")) return "/calendar";
+  if (n.link.startsWith("reminder:todo:")) return "/library/todo";
+  // M6 task/flash links carry an opaque asset id; the library resolves it.
+  return "/library";
 }
 
 export function relativeTime(iso: string | null): string {

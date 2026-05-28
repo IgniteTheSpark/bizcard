@@ -46,9 +46,20 @@ from api.notifications import router as notifications_router  # Phase D M6
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """App lifecycle: startup is implicit; shutdown closes the MCP subprocess."""
-    yield
-    await close_mcp_toolset()
+    """App lifecycle: start the M7 reminder scheduler; shutdown cancels it and
+    closes the MCP subprocess."""
+    import asyncio
+    from core.reminder_scheduler import reminder_loop
+    reminder_task = asyncio.create_task(reminder_loop())
+    try:
+        yield
+    finally:
+        reminder_task.cancel()
+        try:
+            await reminder_task
+        except asyncio.CancelledError:
+            pass
+        await close_mcp_toolset()
 
 
 app = FastAPI(title="Eureka API", version="1.4.0", lifespan=lifespan)
