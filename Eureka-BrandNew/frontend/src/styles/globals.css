@@ -35,6 +35,15 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
+  /* Keyboard focus visibility — app-wide. Most components were built with no
+   * focus-visible ring, so keyboard users had no idea what was focused.
+   * :focus-visible only triggers for keyboard nav (not mouse clicks), and
+   * :where() keeps specificity 0 so components can still opt out/override.
+   * Modern browsers render the outline following the element's border-radius. */
+  :where(a, button, [role="button"], input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--eu-brand);
+    outline-offset: 2px;
+  }
 }
 
 /* ── Safe-area utilities (iOS notch / bottom home indicator) ─────────────── */
