@@ -1,6 +1,7 @@
 import { EventCard } from "@/components/calendar/EventCard";
 import { SkillCard } from "@/components/skill/SkillCard";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
+import { useToggleTodo } from "@/hooks/useToggleTodo";
 import { buildCard } from "@/lib/render-spec";
 import type { CardData } from "@/lib/render-spec";
 
@@ -29,6 +30,7 @@ interface AssetCardInChatProps {
 
 export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
   const { bySkill } = useSkillRegistry();
+  const toggleTodo = useToggleTodo();
 
   const skillName = pickString(data, ["user_skill_name", "card_type", "skill_name"]);
   const payload   = pickObject(data, "payload") ?? data;
@@ -77,6 +79,9 @@ export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
       // existing layout if explicitly set (rare).
       layoutOverride={cardData.layout === "compact" ? "compact" : "horizontal"}
       onClick={onOpen ? () => onOpen(cardData, payload) : undefined}
+      onToggleCheck={cardData.checkDone !== undefined && assetId
+        ? (next) => toggleTodo(assetId, next)
+        : undefined}
     />
   );
 }

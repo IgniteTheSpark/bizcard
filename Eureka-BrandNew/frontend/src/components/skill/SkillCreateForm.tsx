@@ -102,9 +102,11 @@ export function SkillCreateForm({ skill, onClose, onCreated, existing }: SkillCr
       // RV4: edit mode → PUT /api/assets/:id (always assets — contact edit
       // doesn't have a wrapper-asset to PATCH; that would be a follow-up).
       if (isEdit && existing) {
+        // Backend's PUT /api/assets/:id takes payload_patch (merged into
+        // existing payload), not payload — mismatch 422s.
         const resp = await apiFetch<{ ok: boolean; error?: string }>(
           `/api/assets/${existing.id}`,
-          { method: "PUT", body: { payload } },
+          { method: "PUT", body: { payload_patch: payload } },
         );
         if (!resp.ok) throw new Error(resp.error ?? "保存失败");
         await mutate((key) => typeof key === "string" && key.startsWith("/api/assets"));

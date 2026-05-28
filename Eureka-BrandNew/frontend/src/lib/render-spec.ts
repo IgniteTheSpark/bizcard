@@ -71,6 +71,10 @@ export interface CardData {
   metaFields: Array<{ field: string; value: string; format?: FieldFormat }>;
   actions: CardAction[];
   assetId: string | null;
+  /** OP3: when actions includes "check", derived done-state used by the
+   *  SkillCard checkbox affordance. Undefined = no checkbox shown.
+   *  True when payload.status === "done" or payload.done === true. */
+  checkDone?: boolean;
 }
 
 /* ── Interpreter ──────────────────────────────────────────────────────────
@@ -131,6 +135,17 @@ export function buildCard(input: BuildCardInput): CardData {
     })
     .filter((m): m is NonNullable<typeof m> => m !== null);
 
+  // OP3: derive checkDone from payload when the spec exposes a "check"
+  // action. Supports both shapes (todo uses status enum; some other skills
+  // might add a simple boolean `done`).
+  const actions = spec.actions ?? [];
+  let checkDone: boolean | undefined;
+  if (actions.includes("check")) {
+    const status = payload.status;
+    const doneField = payload.done;
+    checkDone = status === "done" || doneField === true;
+  }
+
   return {
     cardType,
     layout: spec.card_layout ?? DEFAULT_LAYOUT,
@@ -139,7 +154,8 @@ export function buildCard(input: BuildCardInput): CardData {
     title,
     subtitle,
     metaFields,
-    actions: spec.actions ?? [],
+    actions,
     assetId,
+    checkDone,
   };
 }

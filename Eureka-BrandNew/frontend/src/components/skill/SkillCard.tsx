@@ -1,3 +1,5 @@
+import { Check } from "lucide-react";
+
 import type { AccentColor, CardData, CardLayout } from "@/lib/render-spec";
 
 /**
@@ -22,34 +24,62 @@ interface SkillCardProps {
   selected?: boolean;
   /** Override layout (e.g. when used inline in chat) */
   layoutOverride?: CardLayout;
+  /** OP3: called when the user taps the checkbox (only rendered when
+   *  data.checkDone is defined, ie. spec has "check" action). Receives
+   *  the NEW desired done-state. Caller is responsible for PUT-ing the
+   *  asset and mutating SWR caches. */
+  onToggleCheck?: (nextDone: boolean) => void;
 }
 
-export function SkillCard({ data, onClick, selected, layoutOverride }: SkillCardProps) {
+export function SkillCard({ data, onClick, selected, layoutOverride, onToggleCheck }: SkillCardProps) {
   const layout = layoutOverride ?? data.layout;
   switch (layout) {
     case "inline":   return <InlineCard data={data} onClick={onClick} />;
     case "compact":  return <CompactCard data={data} onClick={onClick} />;
-    case "stacked":  return <StackedCard data={data} onClick={onClick} selected={selected} />;
+    case "stacked":  return <StackedCard data={data} onClick={onClick} selected={selected} onToggleCheck={onToggleCheck} />;
     case "horizontal":
-    default:         return <HorizontalCard data={data} onClick={onClick} selected={selected} />;
+    default:         return <HorizontalCard data={data} onClick={onClick} selected={selected} onToggleCheck={onToggleCheck} />;
   }
 }
 
 /* ── Layouts ─────────────────────────────────────────────────────────────── */
 
-function HorizontalCard({ data, onClick, selected }: { data: CardData; onClick?: () => void; selected?: boolean }) {
+function HorizontalCard({
+  data, onClick, selected, onToggleCheck,
+}: {
+  data: CardData; onClick?: () => void; selected?: boolean;
+  onToggleCheck?: (next: boolean) => void;
+}) {
   const a = ACCENT[data.accentColor];
+  const hasCheck = data.checkDone !== undefined;
+  const done = data.checkDone === true;
+
   return (
     <CardShell accent={data.accentColor} selected={selected} onClick={onClick}>
-      <IconTile icon={data.icon} accent={data.accentColor} />
+      {hasCheck
+        ? <CheckTile done={done} accent={data.accentColor}
+            onClick={(e) => { e.stopPropagation(); onToggleCheck?.(!done); }} />
+        : <IconTile icon={data.icon} accent={data.accentColor} />}
       <div className="flex-1 min-w-0">
-        <div className="text-eu-base font-medium text-eu-text-hi leading-snug tracking-tight truncate">
+        <div
+          className={[
+            "text-eu-base font-medium leading-snug tracking-tight truncate",
+            done ? "text-eu-text-lo line-through" : "text-eu-text-hi",
+          ].join(" ")}
+        >
           {data.title}
         </div>
         {(data.subtitle || data.metaFields.length > 0) && (
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
             {data.subtitle && (
-              <span className="text-eu-sm text-eu-text-mid truncate">{data.subtitle}</span>
+              <span
+                className={[
+                  "text-eu-sm truncate",
+                  done ? "text-eu-text-lo line-through" : "text-eu-text-mid",
+                ].join(" ")}
+              >
+                {data.subtitle}
+              </span>
             )}
             {data.metaFields.map((m, i) => (
               <MetaPill key={`${m.field}-${i}`} value={m.value} format={m.format} accentClass={a.metaFg} />
@@ -61,12 +91,25 @@ function HorizontalCard({ data, onClick, selected }: { data: CardData; onClick?:
   );
 }
 
-function StackedCard({ data, onClick, selected }: { data: CardData; onClick?: () => void; selected?: boolean }) {
+function StackedCard({
+  data, onClick, selected, onToggleCheck,
+}: {
+  data: CardData; onClick?: () => void; selected?: boolean;
+  onToggleCheck?: (next: boolean) => void;
+}) {
+  const hasCheck = data.checkDone !== undefined;
+  const done = data.checkDone === true;
   return (
     <CardShell accent={data.accentColor} selected={selected} onClick={onClick} extraClass="flex-col items-stretch gap-eu-sm py-eu-md">
       <div className="flex items-center gap-eu-sm">
-        <IconTile icon={data.icon} accent={data.accentColor} />
-        <div className="text-eu-base font-medium text-eu-text-hi tracking-tight flex-1 min-w-0 truncate">
+        {hasCheck
+          ? <CheckTile done={done} accent={data.accentColor}
+              onClick={(e) => { e.stopPropagation(); onToggleCheck?.(!done); }} />
+          : <IconTile icon={data.icon} accent={data.accentColor} />}
+        <div className={[
+          "text-eu-base font-medium tracking-tight flex-1 min-w-0 truncate",
+          done ? "text-eu-text-lo line-through" : "text-eu-text-hi",
+        ].join(" ")}>
           {data.title}
         </div>
       </div>
@@ -187,6 +230,37 @@ function IconTile({ icon, accent }: { icon: string; accent: AccentColor }) {
     >
       {icon}
     </div>
+  );
+}
+
+/**
+ * CheckTile — OP3 tap-target replacing the IconTile when a card has the
+ * "check" action. Visually:
+ *   - unchecked: open circle, accent border
+ *   - checked: filled accent square + white ✓
+ * stopPropagation in the onClick is handled by the caller.
+ */
+function CheckTile({
+  done, accent, onClick,
+}: { done: boolean; accent: AccentColor; onClick: (e: React.MouseEvent) => void }) {
+  const a = ACCENT[accent];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={done ? "标记未完成" : "标记完成"}
+      className={[
+        "shrink-0 h-8 w-8 rounded-eu-md",
+        "flex items-center justify-center",
+        "border transition-all duration-eu-fast ease-eu-out",
+        "active:scale-90",
+        done
+          ? `${a.iconBg} ${a.border} text-white`
+          : `bg-transparent ${a.border} ${a.iconFg} hover:${a.iconBg}`,
+      ].join(" ")}
+    >
+      {done && <Check size={14} strokeWidth={3} />}
+    </button>
   );
 }
 

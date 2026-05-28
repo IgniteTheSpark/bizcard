@@ -3,12 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import useSWR from "swr";
 
 import { EventCard } from "@/components/calendar/EventCard";
+import { SkillCard } from "@/components/skill/SkillCard";
 import { swrFetcher } from "@/lib/api";
+import { buildCard } from "@/lib/render-spec";
 import type {
   Asset, AssetsResponse, ContactsResponse, Event,
   EventsResponse, FileRow, FilesResponse,
 } from "@/lib/types";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
+import { useToggleTodo } from "@/hooks/useToggleTodo";
 
 /**
  * LibraryHub — primary library view (M4-polish, replaces M1's 8-行 list).
@@ -170,7 +173,10 @@ export function CategoryList() {
         className="flex-1 overflow-y-auto eu-noscroll"
         style={{ padding: "0 16px 18px" }}
       >
-        {/* Type-tile grid: 2 cols mobile, 3 cols md+ */}
+        {/* OP4: type-tile grid + AddSkillTile inline as the 7th tile.
+            Discovering "I can add my own skill type" is more natural up
+            here next to the existing types than buried under the 最近
+            section. */}
         <div
           className="grid grid-cols-2 md:grid-cols-3 gap-2.5"
           style={{ marginBottom: 22 }}
@@ -183,6 +189,7 @@ export function CategoryList() {
               preview={previewFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
             />
           ))}
+          <AddSkillTile />
         </div>
 
         {/* 最近 divider */}
@@ -212,21 +219,6 @@ export function CategoryList() {
             recent.map((r) => <RecentCard key={r.id} item={r} />)
           )}
         </div>
-
-        {/* 扩展 — 添加新技能 */}
-        <div className="flex items-center gap-2.5" style={{ margin: "22px 0 10px" }}>
-          <span
-            className="font-mono"
-            style={{
-              fontSize: 10.5, letterSpacing: "0.22em",
-              color: "rgba(255,255,255,0.55)", fontWeight: 600,
-            }}
-          >
-            扩展
-          </span>
-          <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-        </div>
-        <AddSkillRow />
       </div>
     </div>
   );
@@ -306,15 +298,21 @@ interface RecentItem {
   title:    string;
   sub:      string;
   hasSource: boolean;
-  /** When the source is an event, keep the raw row so we can render via
-   *  the unified EventCard instead of the bespoke RecentCard. */
+  /** When the source is an event, render via EventCard. */
   event?:   Event;
+  /** OP2: when the source is an asset, render via SkillCard for visual
+   *  uniformity with /library and chat. */
+  asset?:   Asset;
 }
 
 function RecentCard({ item }: { item: RecentItem }) {
   const navigate = useNavigate();
-  // M4-bugfix-2: route events through the unified EventCard so chat /
-  // library / calendar all show identical event surfaces.
+  const { bySkill } = useSkillRegistry();
+  const toggleTodo = useToggleTodo();
+
+  // OP2: route events through EventCard, asset-backed items through
+  // SkillCard. Both are the universal "list-item" container — Library
+  // Recent now matches DayDetail / Chat visually field-for-field.
   if (item.event) {
     return (
       <EventCard
@@ -323,6 +321,27 @@ function RecentCard({ item }: { item: RecentItem }) {
       />
     );
   }
+  if (item.asset) {
+    const skill = bySkill.get(item.asset.user_skill_name);
+    const card = buildCard({
+      payload: item.asset.payload,
+      spec:    skill?.render_spec ?? null,
+      assetId: item.asset.id,
+      cardType: item.asset.user_skill_name,
+      displayName: skill?.display_name ?? item.asset.user_skill_name,
+    });
+    return (
+      <SkillCard
+        data={card}
+        onClick={() => navigate(item.to)}
+        onToggleCheck={card.checkDone !== undefined && item.asset
+          ? (next) => toggleTodo(item.asset!.id, next)
+          : undefined}
+      />
+    );
+  }
+
+  // File / non-asset fallback: keep the bespoke compact card below.
   const ac = LIB_ACCENT[item.accent];
   return (
     <Link
@@ -380,37 +399,65 @@ function RecentCard({ item }: { item: RecentItem }) {
   );
 }
 
-function AddSkillRow() {
+/**
+ * AddSkillTile — OP4 grid-tile variant of "添加新技能". Lives inline
+ * with the type tiles so users find it where they look for "what types
+ * exist". Visually:dashed purple border + ✨ icon + label, leaning into
+ * the "magical / experimental" framing of the AddSkillWizard.
+ */
+function AddSkillTile() {
   return (
     <button
       type="button"
       onClick={() => alert("AddSkillWizard 在 M5 接入(design_agent 端到端验证)")}
-      className="w-full flex items-center text-left"
+      className="flex flex-col text-left active:scale-95"
       style={{
         gap: 12,
-        padding: "14px 14px", borderRadius: 14,
-        background: "rgba(196,168,255,0.06)",
-        border: "1px solid rgba(196,168,255,0.20)",
+        padding: "14px 14px 12px", borderRadius: 14,
+        background: "rgba(196,168,255,0.04)",
+        border: "1px dashed rgba(196,168,255,0.32)",
+        minHeight: 116,
         color: "inherit", cursor: "pointer",
+        transition: "all 280ms cubic-bezier(.2,.7,.3,1)",
       }}
     >
-      <span
-        style={{
-          width: 30, height: 30, borderRadius: 8,
-          background: "rgba(196,168,255,0.10)",
-          border: "1px solid rgba(196,168,255,0.24)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#c4a8ff",
-          boxShadow: "0 0 10px rgba(196,168,255,0.30)",
-        }}
-      >
-        <Sparkles size={14} strokeWidth={1.75} />
-      </span>
-      <div className="flex-1">
-        <div style={{ fontSize: 15, fontWeight: 600, color: "#f4f7fb" }}>添加新技能</div>
-        <div
+      <div className="flex items-center justify-between">
+        <span
+          style={{
+            width: 30, height: 30, borderRadius: 8,
+            background: "rgba(196,168,255,0.10)",
+            border: "1px solid rgba(196,168,255,0.32)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#c4a8ff",
+            boxShadow: "0 0 10px rgba(196,168,255,0.30)",
+          }}
+        >
+          <Sparkles size={14} strokeWidth={1.75} />
+        </span>
+        <span
           className="font-mono"
-          style={{ fontSize: 10.5, color: "rgba(255,255,255,0.50)", letterSpacing: "0.06em", marginTop: 2 }}
+          style={{
+            fontSize: 11, color: "rgba(196,168,255,0.65)",
+            letterSpacing: "0.18em",
+          }}
+        >
+          NEW
+        </span>
+      </div>
+      <div>
+        <div
+          style={{
+            fontSize: 15, fontWeight: 600, color: "#f4f7fb",
+            letterSpacing: "-0.005em",
+          }}
+        >
+          添加新技能
+        </div>
+        <div
+          style={{
+            fontSize: 11, color: "rgba(255,255,255,0.50)", marginTop: 4,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
         >
           由 AI 帮你设计卡片
         </div>
@@ -494,6 +541,7 @@ function buildRecent(
       title:    String(p.content ?? p.title ?? p.name ?? skillName),
       sub:      relativeTime(a.created_at),
       hasSource: !!a.source_input_turn_id,
+      asset:    a,   // OP2: enables SkillCard rendering
     });
   }
   for (const e of d.events) {

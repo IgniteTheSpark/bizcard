@@ -34,55 +34,65 @@ export function FloatingDock() {
 
   return (
     <>
-      {/* Capsule — fixed bottom, centered, with safe-area + margin from edge */}
+      {/* OP1: gradient bottom fade so content scrolling under the dock
+          fades into the background instead of clashing with the floating
+          icons. Lives above the dock layer-wise but pointer-events:none
+          so it doesn't catch taps. */}
+      <div
+        aria-hidden="true"
+        className={[
+          "fixed inset-x-0 bottom-0 z-20 pointer-events-none",
+          "h-24",
+          "transition-opacity duration-eu-fast",
+          hidden ? "opacity-0" : "opacity-100",
+        ].join(" ")}
+        style={{
+          background: "linear-gradient(180deg, rgba(6,7,13,0) 0%, rgba(6,7,13,0.6) 55%, rgba(6,7,13,0.92) 100%)",
+        }}
+      />
+
+      {/* OP1: dock without an opaque capsule container. Each icon is its
+          own self-contained chip (subtle bg + blur), so the visual reads
+          as "5 floating dots", not "1 bar". The previous design was a
+          single capsule with bg-eu-surface-raised/85 which felt heavy. */}
       <nav
         aria-label="主要操作"
         aria-hidden={hidden}
         className={[
           "fixed bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]",
           "left-1/2 -translate-x-1/2 z-30",
-          "flex items-center gap-1",
-          "h-14 px-2 rounded-eu-full",
-          "bg-eu-surface-raised/85 backdrop-blur-md",
-          "border border-eu-border shadow-eu-lg",
+          "flex items-center gap-2",
           "transition-all duration-eu-fast ease-eu-out",
           hidden ? "opacity-0 pointer-events-none translate-y-3" : "",
         ].join(" ")}
       >
-        <DockIcon ariaLabel="日历" onClick={() => navigate("/calendar")}>
-          {/* M4-polish: plain CalendarDays icon (no red 27 badge). The
-              red dot overlay read as "new event / notification" rather
-              than "today is 27"; iconography alone is clearer. */}
-          <CalendarDays size={20} strokeWidth={1.6} />
-        </DockIcon>
+        <FloatChip ariaLabel="日历" onClick={() => navigate("/calendar")}>
+          <CalendarDays size={18} strokeWidth={1.6} />
+        </FloatChip>
 
-        <DockIcon ariaLabel="资产库" onClick={() => navigate("/library")}>
-          <Grid3x3 size={18} strokeWidth={1.75} />
-        </DockIcon>
+        <FloatChip ariaLabel="资产库" onClick={() => navigate("/library")}>
+          <Grid3x3 size={17} strokeWidth={1.75} />
+        </FloatChip>
 
-        <Divider />
+        <FloatChip ariaLabel="快创" onClick={() => setCreateOpen(true)}>
+          <Plus size={19} strokeWidth={2} />
+        </FloatChip>
 
-        <DockIcon ariaLabel="快创" onClick={() => setCreateOpen(true)}>
-          <Plus size={20} strokeWidth={2} />
-        </DockIcon>
+        <FloatChip ariaLabel="闪念输入" onClick={() => setFlashOpen(true)}>
+          <Mic size={17} strokeWidth={1.75} />
+        </FloatChip>
 
-        <DockIcon ariaLabel="闪念输入" onClick={() => setFlashOpen(true)}>
-          <Mic size={18} strokeWidth={1.75} />
-        </DockIcon>
-
-        <Divider />
-
-        {/* Agent — purple gradient pill */}
+        {/* Agent — purple gradient pill (kept distinctive, the brand entry) */}
         <button
           type="button"
           aria-label="Agent 对话"
           onClick={() => navigate("/chat")}
           className={[
-            "h-10 pl-3 pr-4 ml-0.5 rounded-eu-full",
+            "h-10 pl-3 pr-4 rounded-eu-full",
             "bg-gradient-to-br from-eu-accent-purple-solid to-eu-accent-blue-solid",
             "text-white font-medium text-eu-sm",
             "flex items-center gap-1.5",
-            "shadow-eu-sm hover:shadow-eu-md",
+            "shadow-[0_8px_24px_rgba(111,158,255,0.35),0_0_0_1px_rgba(255,255,255,0.06)]",
             "transition-all duration-eu-fast ease-eu-out",
             "active:scale-95",
           ].join(" ")}
@@ -102,14 +112,18 @@ export function FloatingDock() {
 
 /* ── Internal pieces ───────────────────────────────────────────────────── */
 
-interface DockIconProps {
+interface FloatChipProps {
   ariaLabel: string;
   onClick: () => void;
   children: React.ReactNode;
-  accentClass?: string;
 }
 
-function DockIcon({ ariaLabel, onClick, children, accentClass = "" }: DockIconProps) {
+/**
+ * FloatChip — each dock icon is its own floating chip (OP1). Translucent
+ * dark background + backdrop blur + 1px subtle ring; no shared capsule.
+ * Visual reads as standalone dots, not a bar.
+ */
+function FloatChip({ ariaLabel, onClick, children }: FloatChipProps) {
   return (
     <button
       type="button"
@@ -118,20 +132,17 @@ function DockIcon({ ariaLabel, onClick, children, accentClass = "" }: DockIconPr
       className={[
         "h-10 w-10 rounded-eu-full",
         "flex items-center justify-center",
+        "text-eu-text-mid hover:text-eu-text-hi",
+        "bg-eu-bg/55 backdrop-blur-md",
+        "ring-1 ring-white/[0.06] hover:ring-white/[0.12]",
+        "shadow-[0_4px_16px_rgba(0,0,0,0.35)]",
         "transition-all duration-eu-fast ease-eu-out",
         "active:scale-90",
-        accentClass
-          ? `${accentClass} hover:brightness-110`
-          : "text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover",
       ].join(" ")}
     >
       {children}
     </button>
   );
-}
-
-function Divider() {
-  return <div aria-hidden="true" className="h-6 w-px bg-eu-rule mx-0.5" />;
 }
 
 /* ── Flash sheet (was FlashFab) ────────────────────────────────────────── */

@@ -2,8 +2,12 @@ import { useMemo, useRef, useEffect } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 
 import { EventCard } from "@/components/calendar/EventCard";
+import { SkillCard } from "@/components/skill/SkillCard";
 import { useModalMount } from "@/context/ModalContext";
+import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { useTimeline } from "@/hooks/useTimeline";
+import { useToggleTodo } from "@/hooks/useToggleTodo";
+import { buildCard } from "@/lib/render-spec";
 import type { TimelineItem } from "@/lib/types";
 
 /**
@@ -425,8 +429,13 @@ function AllDayChip({ item, onClick }: { item: TimelineItem; onClick: () => void
 }
 
 function CapturedCard({ item, onClick }: { item: TimelineItem; onClick: () => void }) {
-  // Captured cards re-use the unified EventCard shape for events; otherwise
-  // a compact line. Simple variant inline here.
+  // OP2: route ALL non-event captured items through the universal SkillCard
+  // so DayDetail's 今日捕捉 visual matches Library Recent / Chat tool_result
+  // exactly (same icon block, same title/subtitle/meta layout, same hover
+  // affordances, todo checkbox auto-enabled when spec includes "check").
+  const { bySkill } = useSkillRegistry();
+  const toggleTodo = useToggleTodo();
+
   if (item.kind === "event") {
     return (
       <EventCard
@@ -442,53 +451,24 @@ function CapturedCard({ item, onClick }: { item: TimelineItem; onClick: () => vo
       />
     );
   }
-  const skill = item.skill_name ?? "asset";
-  const accent =
-    skill === "idea"    ? { fg: "#f5c977", bg: "rgba(245,201,119,0.10)", edge: "rgba(245,201,119,0.24)", glyph: "◇", caps: "IDEA" }
-  : skill === "expense" ? { fg: "#86e0a5", bg: "rgba(134,224,165,0.10)", edge: "rgba(134,224,165,0.24)", glyph: "¥", caps: "EXPENSE" }
-  : skill === "contact" ? { fg: "#d4dbe6", bg: "rgba(212,219,230,0.05)", edge: "rgba(212,219,230,0.16)", glyph: "·", caps: "CONTACT" }
-  : skill === "notes"   ? { fg: "#a4c2ff", bg: "rgba(111,158,255,0.10)", edge: "rgba(111,158,255,0.22)", glyph: "≡", caps: "NOTE" }
-  :                       { fg: "#9aa6b8", bg: "rgba(154,166,184,0.08)", edge: "rgba(154,166,184,0.22)", glyph: "•", caps: skill.toUpperCase() };
+
+  const skillName = item.skill_name ?? "asset";
+  const skill = bySkill.get(skillName);
+  const card = buildCard({
+    payload: (item.payload as Record<string, unknown>) ?? { title: item.title },
+    spec:    skill?.render_spec ?? null,
+    assetId: item.id,
+    cardType: skillName,
+    displayName: skill?.display_name ?? item.title,
+  });
   return (
-    <button
-      type="button"
+    <SkillCard
+      data={card}
       onClick={onClick}
-      className="flex items-center text-left"
-      style={{
-        gap: 10, padding: "10px 12px", borderRadius: 12,
-        background: accent.bg, border: `1px solid ${accent.edge}`,
-        color: "#fff", cursor: "pointer",
-      }}
-    >
-      <span
-        className="font-mono shrink-0"
-        style={{
-          width: 22, height: 22, borderRadius: 6,
-          background: "rgba(0,0,0,0.20)",
-          border: `1px solid ${accent.edge}`,
-          color: accent.fg, fontSize: 12,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >
-        {accent.glyph}
-      </span>
-      <div className="flex-1 min-w-0">
-        <div
-          className="font-mono"
-          style={{ fontSize: 9.5, letterSpacing: "0.18em", color: accent.fg, fontWeight: 600 }}
-        >
-          {accent.caps}
-        </div>
-        <div
-          style={{
-            fontSize: 13.5, color: "#fff", fontWeight: 500, marginTop: 1,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}
-        >
-          {item.title}
-        </div>
-      </div>
-    </button>
+      onToggleCheck={card.checkDone !== undefined
+        ? (next) => toggleTodo(item.id, next)
+        : undefined}
+    />
   );
 }
 

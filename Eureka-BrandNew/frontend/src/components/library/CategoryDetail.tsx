@@ -5,6 +5,7 @@ import useSWR from "swr";
 
 import { useAssets } from "@/hooks/useAssets";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
+import { useToggleTodo } from "@/hooks/useToggleTodo";
 import { swrFetcher } from "@/lib/api";
 import { buildCard } from "@/lib/render-spec";
 import type {
@@ -29,6 +30,7 @@ export function CategoryDetail() {
   const { skillName = "" } = useParams<{ skillName: string }>();
   const { bySkill } = useSkillRegistry();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const toggleTodo = useToggleTodo();
 
   const skill = bySkill.get(skillName);
 
@@ -179,6 +181,9 @@ export function CategoryDetail() {
             data={c.data}
             onClick={() => setSelectedId(c.id)}
             selected={selectedId === c.id}
+            onToggleCheck={c.data.checkDone !== undefined && c.id
+              ? (next) => toggleTodo(c.id, next)
+              : undefined}
           />
         ))}
       </div>
