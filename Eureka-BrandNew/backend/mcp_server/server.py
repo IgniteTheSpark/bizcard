@@ -251,5 +251,39 @@ async def tool_link_event_file(
     return _jsonify(await link_event_file(event_id, file_id, kind))
 
 
+# ── v1.4.x: task-skill bridge ─────────────────────────────────────────────────
+
+@mcp.tool()
+async def tool_create_task(
+    user_text: str,
+    session_id: str = "",
+    source_input_turn_id: str = "",
+) -> str:
+    """
+    Kick off an async task that calls a third-party MCP (Notion / Google
+    Calendar / Dingtalk / etc.).
+
+    Use when the user wants to perform an action in an EXTERNAL system —
+    e.g. "把这次会议同步到我的 Google Calendar", "存到 Notion", "发到钉钉".
+    NOT for native Eureka assets (use tool_create_asset / tool_create_event
+    for those).
+
+    Returns immediately with task_id + placeholder asset_id. The actual MCP
+    invocation runs in the background; poll GET /api/tasks/{task_id} to see
+    when status transitions to done/failed.
+
+    Args:
+        user_text:            User's original request describing the action.
+        session_id:           Current session UUID (from this turn's context).
+        source_input_turn_id: Current input_turn UUID (provenance).
+    """
+    from agents.task_skill import run_task_intent
+    return _jsonify(await run_task_intent(
+        user_text=user_text,
+        session_id=session_id,
+        source_input_turn_id=source_input_turn_id,
+    ))
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

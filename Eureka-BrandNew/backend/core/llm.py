@@ -60,3 +60,4 @@ ASSISTANT_MODEL        = LiteLlm(model="openrouter/deepseek/deepseek-chat")
 FLASH_DISPATCHER_MODEL = LiteLlm(model="openrouter/deepseek/deepseek-chat")
 FLASH_SKILL_MODEL      = LiteLlm(model="openrouter/deepseek/deepseek-chat")
 DESIGN_AGENT_MODEL     = LiteLlm(model="openrouter/deepseek/deepseek-chat")
+TASK_MODEL             = LiteLlm(model="openrouter/deepseek/deepseek-chat")   # v1.4.x — task-skill MCP router

@@ -46,6 +46,7 @@ description: >
 | `notes` | **长的**记录:会议纪要、报告要点、briefing、参考文档 | "Q3 复盘要点:营收增长32%,客户主要来自社交媒体" |
 | `misc` | 兜底,无明确分类的零碎内容 | "今天天气不错" / "刚才那只猫很有意思" |
 | `qa` | 问题、查询、想知道某件事 | "今天有几个待办" / "帮我看看最近的消费" / "为什么..." |
+| `task` | **调用外部系统**(Notion / Google Calendar / Dingtalk 等)做一个动作 | "把这个会议同步到我的日历" / "存到 Notion" / "发条钉钉给团队" / "在 Notion 建一个页面" |
 
 ### idea vs notes vs misc 的区分
 
@@ -85,6 +86,29 @@ description: >
 - `source_text`：从 `user_text` 中截取与此意图直接相关的文字片段
 - 不确定时，默认归类为 `note`
 - 纯闲聊或无法分类 → 归为 `qa`，source_text = 原文
+
+## 关于「让 AI 生成内容」的请求
+
+像「帮我做一份 X 调研」「整理一份 briefing」「写一篇 X 简介」这种,**目前先归
+`qa`**,qa-skill 会给一个简短答案。深度生成由未来扩展处理,本 dispatcher 不需识别。
+
+**不要**为这类请求额外输出 `notes` / `idea` / `todo` 意图。一个 `qa` 就够了。
+
+## 关于「调用外部系统」的请求(task)
+
+`task` ≠ `qa`!关键判断:用户是否要把某个**动作落到一个外部产品**(Notion 页面 /
+Google Calendar 事件 / 钉钉消息 / Linear issue / 等)?
+
+| 输入 | 类型 | 原因 |
+|---|---|---|
+| 「帮我把这个会议同步到我的 Google Calendar」 | `task` | 动作落在 Google Calendar |
+| 「在 Notion 建一个页面记录这次讨论」 | `task` | 动作落在 Notion |
+| 「发一条钉钉消息给团队说会议改到三点」 | `task` | 动作落在钉钉 |
+| 「明天三点开会」 | `todo`(或 `event`) | 动作落在 Eureka 自己 |
+| 「保存联系人张三」 | `contact` | 动作落在 Eureka 自己 |
+
+对 `task` 意图,`source_text` = 用户原话(完整,包含外部系统名),不要切碎。
+后端 task-skill 会基于这段话自动选 MCP 工具。
 
 ---
 

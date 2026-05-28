@@ -26,7 +26,11 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Message, Session as DBSession, InputTurn
+from db.models import (
+    Message, Session as DBSession, InputTurn,
+    Asset, UserSkill, GlobalSkill, Event,
+    Contact, File,
+)
 
 
 # Decision #3: fixed window size for in-context history
@@ -143,6 +147,246 @@ async def load_recent_messages(
     msgs = list(result.scalars().all())
     msgs.reverse()
     return msgs
+
+
+async def load_session_assets_hint(
+    db: AsyncSession,
+    session_id: str,
+    user_id: str,
+    limit: int = 10,
+) -> str:
+    """
+    Build a human-readable, model-friendly bullet list of assets / events
+    created in this session — used by the Assistant prompt as the「刚刚那个」
+    candidate pool.
+
+    Why this exists: Flash Pipeline creates assets but does NOT write to the
+    messages table (it's a parallel intent-fan-out runner, not a chat turn).
+    When the user follows up via /api/chat with「把刚刚那个改成…」, the
+    chat history loaded by load_recent_messages is empty — the agent has no
+    way to find the asset_id of the thing the user just spoke into Flash.
+
+    This helper closes that gap by querying the asset / event tables
+    directly, scoped to the same session_id.
+
+    Format:
+      - todo  (asset_id=fc00aaaf...): 「明天下午五点饭局」 due 2026-05-26 17:00
+      - event (event_id=abcd1234...): 「跟客户开会」 2026-05-27 14:00–15:00
+    """
+    lines: list[str] = []
+
+    # ── Assets in this session (joined to skill name) ──
+    stmt = (
+        select(Asset, GlobalSkill.name.label("skill_name"))
+        .join(UserSkill, Asset.user_skill_id == UserSkill.id)
+        .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
+        .where(
+            Asset.user_id == user_id,
+            Asset.session_id == uuid.UUID(session_id),
+        )
+        .order_by(Asset.created_at.desc())
+        .limit(limit)
+    )
+    asset_rows = (await db.execute(stmt)).all()
+    for asset, skill_name in asset_rows:
+        p = asset.payload or {}
+        title = (
+            p.get("content") or p.get("title") or p.get("name") or
+            (f"¥{p.get('amount')}" if p.get("amount") else None) or
+            f"[{skill_name}]"
+        )
+        extras: list[str] = []
+        if skill_name == "todo" and p.get("due_date"):
+            extras.append(f"due {p['due_date']}")
+        if skill_name == "todo" and p.get("status"):
+            extras.append(f"status={p['status']}")
+        if skill_name == "expense":
+            if p.get("amount"):
+                extras.append(f"¥{p['amount']}")
+            if p.get("at"):
+                extras.append(f"at {p['at']}")
+            elif p.get("date"):
+                extras.append(f"date {p['date']}")
+        suffix = (" " + " ".join(extras)) if extras else ""
+        lines.append(
+            f"- {skill_name} (asset_id={asset.id}): 「{str(title)[:60]}」{suffix}"
+        )
+
+    # ── Events whose source_input_turn belongs to this session ──
+    # Event has no direct session_id column — go via source_input_turn_id.
+    stmt = (
+        select(Event)
+        .join(InputTurn, Event.source_input_turn_id == InputTurn.id)
+        .where(
+            Event.user_id == user_id,
+            InputTurn.session_id == uuid.UUID(session_id),
+        )
+        .order_by(Event.created_at.desc())
+        .limit(limit)
+    )
+    events = (await db.execute(stmt)).scalars().all()
+    for ev in events:
+        time_range = ev.start_at.isoformat() if ev.start_at else "?"
+        if ev.end_at:
+            time_range += f" – {ev.end_at.isoformat()}"
+        lines.append(
+            f"- event (event_id={ev.id}): 「{ev.title[:60]}」 {time_range}"
+            + (f" @ {ev.location}" if ev.location else "")
+        )
+
+    if not lines:
+        return ""
+    return "\n".join(lines)
+
+
+async def load_session_context_hint(
+    db: AsyncSession,
+    session_id: str,
+    user_id: str,
+) -> str:
+    """
+    Build a bullet list of assets the user **explicitly attached** as context
+    to this chat session (M2.2). Different from `load_session_assets_hint`,
+    which lists assets created IN this session — that hint is for resolving
+    「刚刚那个」 references. This one is for "the user wants the agent to
+    actively use these assets to do something."
+
+    The agent should treat these as primary subject matter:
+      - "combine these 3 ideas into a product spec"
+      - "make a master todo from these subtasks"
+      - "summarize what you know about Kevin" (single contact context)
+
+    Returns empty string if the session has no context.
+    """
+    # Read session.context_asset_ids
+    sess = (await db.execute(
+        select(DBSession).where(
+            DBSession.id == uuid.UUID(session_id),
+            DBSession.user_id == user_id,
+        )
+    )).scalar_one_or_none()
+    if not sess or not sess.context_asset_ids:
+        return ""
+
+    # Join assets to their skill name for readable output
+    stmt = (
+        select(Asset, GlobalSkill.name.label("skill_name"))
+        .join(UserSkill, Asset.user_skill_id == UserSkill.id)
+        .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
+        .where(
+            Asset.user_id == user_id,
+            Asset.id.in_(sess.context_asset_ids),
+        )
+    )
+    rows = (await db.execute(stmt)).all()
+
+    lines: list[str] = []
+    for asset, skill_name in rows:
+        p = asset.payload or {}
+        title = (
+            p.get("content") or p.get("title") or p.get("name") or
+            (f"¥{p.get('amount')}" if p.get("amount") else None) or
+            f"[{skill_name}]"
+        )
+        # Inline a few signal fields per skill so agent has structured info
+        extras: list[str] = []
+        if skill_name == "todo" and p.get("due_date"):
+            extras.append(f"due {p['due_date']}")
+        if skill_name == "idea" and p.get("content"):
+            extras.append(f'"{str(p["content"])[:80]}"')
+        if skill_name == "notes" and p.get("content"):
+            extras.append(f'"{str(p["content"])[:80]}"')
+        suffix = (" " + " ".join(extras)) if extras else ""
+        lines.append(
+            f"- {skill_name} (asset_id={asset.id}): 「{str(title)[:60]}」{suffix}"
+        )
+
+    if not lines:
+        return ""
+    return "\n".join(lines)
+
+
+async def load_session_subject_hint(
+    db: AsyncSession,
+    session_id: str,
+    user_id: str,
+) -> str:
+    """
+    Build a「本 session 主语」 block for the Assistant prompt (M2.3).
+
+    Subjects are immutable home FKs:
+      sessions.contact_id       → 1 contact
+      sessions.event_id         → 1 event
+      sessions.file_id          → 1 file
+      sessions.subject_asset_id → 1 asset (sub-asset type)
+
+    The subject is the **focal point** of the conversation — the Agent
+    should treat user questions as primarily about this entity by default,
+    with context_asset_ids as ad-hoc additions.
+
+    Returns "" when no subject (manual / flash / new chat sessions).
+    """
+    sess = (await db.execute(
+        select(DBSession).where(
+            DBSession.id == uuid.UUID(session_id),
+            DBSession.user_id == user_id,
+        )
+    )).scalar_one_or_none()
+    if not sess:
+        return ""
+
+    if sess.contact_id:
+        c = (await db.execute(
+            select(Contact).where(Contact.id == sess.contact_id)
+        )).scalar_one_or_none()
+        if c:
+            bits = [f"姓名:{c.name}"]
+            if c.company: bits.append(f"公司:{c.company}")
+            if c.title:   bits.append(f"职位:{c.title}")
+            if c.phone:   bits.append(f"电话:{c.phone}")
+            if c.email:   bits.append(f"邮箱:{c.email}")
+            return f"- contact (contact_id={c.id}): {' / '.join(bits)}"
+
+    if sess.event_id:
+        e = (await db.execute(
+            select(Event).where(Event.id == sess.event_id)
+        )).scalar_one_or_none()
+        if e:
+            when = e.start_at.isoformat() if e.start_at else "?"
+            return (
+                f"- event (event_id={e.id}): 「{e.title}」 "
+                f"start={when} location={e.location or '-'}"
+            )
+
+    if sess.file_id:
+        f = (await db.execute(
+            select(File).where(File.id == sess.file_id)
+        )).scalar_one_or_none()
+        if f:
+            return f"- file (file_id={f.id}): type={f.file_type} source={f.source_tag}"
+
+    if sess.subject_asset_id:
+        result = (await db.execute(
+            select(Asset, GlobalSkill.name.label("skill_name"))
+            .join(UserSkill, Asset.user_skill_id == UserSkill.id)
+            .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
+            .where(Asset.id == sess.subject_asset_id)
+        )).first()
+        if result:
+            asset, skill_name = result
+            p = asset.payload or {}
+            title = p.get("content") or p.get("title") or p.get("name") or f"[{skill_name}]"
+            extras = []
+            if skill_name == "todo" and p.get("due_date"):
+                extras.append(f"due {p['due_date']}")
+            if skill_name == "todo" and p.get("status"):
+                extras.append(f"status={p['status']}")
+            if p.get("description"):
+                extras.append(f'desc="{str(p["description"])[:60]}"')
+            suffix = (" " + " ".join(extras)) if extras else ""
+            return f"- {skill_name} (asset_id={asset.id}): 「{str(title)[:60]}」{suffix}"
+
+    return ""
 
 
 async def persist_chat_turn(

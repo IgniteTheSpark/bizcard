@@ -40,13 +40,26 @@ from api.sessions import router as sessions_router
 from api.contacts import router as contacts_router
 from api.events import router as events_router       # v1.4
 from api.timeline import router as timeline_router    # v1.4.x
+from api.tasks import router as tasks_router          # v1.4.x — async MCP tasks
+from api.notifications import router as notifications_router  # Phase D M6
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """App lifecycle: startup is implicit; shutdown closes the MCP subprocess."""
-    yield
-    await close_mcp_toolset()
+    """App lifecycle: start the M7 reminder scheduler; shutdown cancels it and
+    closes the MCP subprocess."""
+    import asyncio
+    from core.reminder_scheduler import reminder_loop
+    reminder_task = asyncio.create_task(reminder_loop())
+    try:
+        yield
+    finally:
+        reminder_task.cancel()
+        try:
+            await reminder_task
+        except asyncio.CancelledError:
+            pass
+        await close_mcp_toolset()
 
 
 app = FastAPI(title="Eureka API", version="1.4.0", lifespan=lifespan)
@@ -68,6 +81,8 @@ app.include_router(sessions_router,    prefix="/api", tags=["sessions"])
 app.include_router(contacts_router,    prefix="/api", tags=["contacts"])
 app.include_router(events_router,      prefix="/api", tags=["events"])       # v1.4
 app.include_router(timeline_router,    prefix="/api", tags=["timeline"])     # v1.4.x
+app.include_router(tasks_router,       prefix="/api", tags=["tasks"])        # v1.4.x
+app.include_router(notifications_router, prefix="/api", tags=["notifications"])  # Phase D M6
 
 
 @app.get("/health")

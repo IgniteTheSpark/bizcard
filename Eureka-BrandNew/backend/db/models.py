@@ -71,7 +71,16 @@ class Session(Base):
     session_type = Column(String(20), nullable=False)   # flash | chat | meeting | manual
     title        = Column(String(255))
     date         = Column(Date)                          # natural-day grouping for flash; null for others
-    event_id     = Column(UUID(as_uuid=True), ForeignKey("events.id"))   # v1.4: chat session anchored to an event (nullable)
+    # ── Subject FKs (M2.3) — each asset/entity has ONE home discussion
+    # session. get-or-create on「在 chat 里讨论」. Exactly one of these is
+    # set per chat-discussion session (manual/flash sessions have none set).
+    event_id          = Column(UUID(as_uuid=True), ForeignKey("events.id"))    # v1.4
+    contact_id        = Column(UUID(as_uuid=True), ForeignKey("contacts.id"))  # M2.3
+    file_id           = Column(UUID(as_uuid=True), ForeignKey("files.id"))     # M2.3
+    subject_asset_id  = Column(UUID(as_uuid=True), ForeignKey("assets.id"))    # M2.3
+    # ── Additive context (M2.2) — assets pulled into discussion via
+    # 「+ 添加资产」, mutable list. Distinct from subject FK above.
+    context_asset_ids = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
     created_at   = Column(TIMESTAMPTZ, server_default=func.now())
 
     __table_args__ = (
@@ -280,4 +289,68 @@ class Message(Base):
 
     __table_args__ = (
         Index("idx_messages_session", "session_id", "created_at"),
+    )
+
+
+class Task(Base):
+    """
+    Async task — wraps a third-party MCP call (Notion / Google Calendar /
+    Dingtalk / etc.). Two-phase lifecycle:
+      1. Sync head: row created with status=pending + placeholder external_ref
+         asset; both returned to caller immediately.
+      2. Async tail: asyncio.create_task picks up, runs the MCP via an
+         ephemeral LlmAgent with that MCP's toolset attached, updates row +
+         placeholder asset on success/failure.
+
+    `result_asset_id` points to the external_ref asset that will eventually
+    hold the {external_system, external_id, external_url, ...} payload after
+    the MCP returns.
+    """
+    __tablename__ = "tasks"
+
+    id                   = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id              = Column(String(50), nullable=False, server_default="default")
+    user_text            = Column(Text, nullable=False)                       # original ask
+    mcp_target           = Column(String(50))                                 # filled by agent after tool selection (notion/google_calendar/...)
+    status               = Column(String(20), nullable=False, server_default="pending")  # pending | running | done | failed
+    error_message        = Column(Text)
+    result_asset_id      = Column(UUID(as_uuid=True), ForeignKey("assets.id"))
+    session_id           = Column(UUID(as_uuid=True), ForeignKey("sessions.id"))
+    source_input_turn_id = Column(UUID(as_uuid=True), ForeignKey("input_turns.id"))
+    started_at           = Column(TIMESTAMPTZ)
+    completed_at         = Column(TIMESTAMPTZ)
+    created_at           = Column(TIMESTAMPTZ, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_tasks_user_status", "user_id", "status", "created_at"),
+        Index("idx_tasks_session",     "session_id", "created_at"),
+    )
+
+
+class Notification(Base):
+    """
+    Notification — Phase D M6/M7. A lightweight, user-facing event log that
+    powers the NotificationBell badge, the toast queue, and the history page.
+
+    Created by:
+      - M6: flash completion, async task done/failed (api/flash.py, agents/task_skill.py)
+      - M7: time-driven reminders (todo due / event starting soon)
+
+    `link` is an opaque target the frontend resolves (usually an asset_id or
+    event_id) so tapping a notification can deep-link to the thing it's about.
+    `read` follows the codebase's 0/1 Integer convention (no Boolean type).
+    """
+    __tablename__ = "notifications"
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id    = Column(String(50), nullable=False, server_default="default")
+    type       = Column(String(20), nullable=False)   # flash_done | task_done | task_failed | reminder
+    title      = Column(String(255), nullable=False)
+    body       = Column(Text)
+    link       = Column(String(255))                   # opaque deep-link target (asset/event id)
+    read       = Column(Integer, nullable=False, server_default="0")  # 0/1
+    created_at = Column(TIMESTAMPTZ, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_notifications_user_created", "user_id", "created_at"),
     )

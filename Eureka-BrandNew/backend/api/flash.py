@@ -26,6 +26,7 @@ from sqlalchemy import select
 
 from agents.flash_pipeline import run_flash_pipeline
 from core.auth import get_current_user_id
+from core.notifications import create_notification
 from core.session_service import (
     create_input_turn_for_message,
     persist_chat_turn,
@@ -49,6 +50,11 @@ class FlashResponse(BaseModel):
     ok:            bool
     session_id:    str
     input_turn_id: str
+    # `reply` — conversational free-text answer (from qa-skill outputs).
+    # Treated like a chat bubble in the session stream; NOT a card.
+    # Cards are reserved for persistent asset / event references that have
+    # an actionable handle (asset_id / event_id) the user can tap or edit.
+    reply:         str = ""
     summary:       str = ""
     cards:         list = []
     derived_assets: list = []
@@ -143,16 +149,22 @@ async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
         )
 
     # Phase 3 — persist an agent Message so the chat surface can replay
+    reply   = result.get("reply", "")
     summary = result.get("summary", "")
     cards   = result.get("cards", [])
     elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+    # The persisted agent_text is what shows up in chat-history replay; prefer
+    # the conversational reply, fall back to summary when only assets were
+    # produced.
+    agent_text_for_history = reply or summary
 
     try:
         async with AsyncSessionLocal() as db:
             await persist_chat_turn(
                 db, session_id, user_id,
                 user_text=req.text,
-                agent_text=summary,
+                agent_text=agent_text_for_history,
                 cards=cards,
                 elapsed_ms=elapsed_ms,
             )
@@ -161,10 +173,23 @@ async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
         # the derived assets are already in the DB via run_flash_pipeline.
         pass
 
+    # M6: log a notification so the bell + history reflect what was captured.
+    # Only when something was actually derived (a pure conversational reply
+    # with no assets isn't worth a notification line).
+    derived = result.get("derived_assets", []) or cards
+    if result.get("ok", True) and derived:
+        await create_notification(
+            user_id=user_id,
+            type="flash_done",
+            title="闪念已整理",
+            body=(summary or reply or f"已记录 {len(derived)} 项")[:200],
+        )
+
     return FlashResponse(
         ok=result.get("ok", True),
         session_id=session_id,
         input_turn_id=input_turn_id,
+        reply=reply,
         summary=summary,
         cards=cards,
         derived_assets=result.get("derived_assets", []),
