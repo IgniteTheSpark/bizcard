@@ -34,6 +34,27 @@ export function FloatingDock() {
 
   return (
     <>
+      {/* 背透 fix — the dock is the same glass everywhere, but on flat near-black
+          pages (#06070d) the glass has nothing to transmit so it reads as a
+          solid 背景板; in DayDetail it sits over a blue gradient and reads as
+          real 背透. This ambient brand glow gives the glass something to pick
+          up on every page → the dock now blends like it does in DayDetail.
+          z-[55]: above page content, below the z-[60] nav so the dock's
+          backdrop-blur samples it. Hides/fades together with the dock. */}
+      <div
+        aria-hidden="true"
+        className={[
+          "fixed inset-x-0 bottom-0 z-[55] pointer-events-none",
+          "transition-opacity duration-eu-fast ease-eu-out",
+          hidden ? "opacity-0" : "opacity-100",
+        ].join(" ")}
+        style={{
+          height: 220,
+          background:
+            "radial-gradient(120% 100% at 50% 120%, rgba(111,158,255,0.34) 0%, rgba(111,158,255,0.12) 38%, rgba(6,7,13,0) 72%)",
+        }}
+      />
+
       {/* OP10: back to a single floating capsule (premium version). The
           earlier 5-separate-chips / transparent-ring iterations felt
           unanchored. This is a solid dark-glass capsule that hovers above
