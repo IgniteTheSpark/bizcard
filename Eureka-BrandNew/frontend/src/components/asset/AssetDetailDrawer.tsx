@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
-import { ExternalLink, History, MessageCircle, Pencil, Trash2, X, Loader2 } from "lucide-react";
+import { ExternalLink, History, Pencil, Trash2, X, Loader2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { EventForm } from "@/components/calendar/EventForm";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { GenericField } from "@/components/skill/GenericField";
 import { SkillCreateForm } from "@/components/skill/SkillCreateForm";
-import { useModalMount } from "@/context/ModalContext";
+import { useAgentTarget, useModalMount } from "@/context/ModalContext";
 import { useEvents } from "@/hooks/useEvents";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
-import { openSession, type SubjectType } from "@/hooks/useSessions";
 import { apiFetch } from "@/lib/api";
 import type { CardData, FieldFormat } from "@/lib/render-spec";
 import type { Asset, Contact } from "@/lib/types";
@@ -38,13 +37,26 @@ interface AssetDetailDrawerProps {
 }
 
 export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: AssetDetailDrawerProps) {
-  useModalMount();
+  // keepDock: the global dock stays visible over the detail — its Agent button
+  // is now the entry into this asset's bound session (no in-drawer discuss btn).
+  useModalMount({ keepDock: true });
   const navigate = useNavigate();
   const location = useLocation();
   const { mutate } = useSWRConfig();
   const { bySkill } = useSkillRegistry();
   const { events } = useEvents();
-  const [discussLoading, setDiscussLoading] = useState(false);
+  const { setAgentTarget } = useAgentTarget();
+
+  // Register this asset as the dock's Agent target while the detail is open.
+  useEffect(() => {
+    if (!card.assetId) return;
+    const subjectType = card.cardType === "contact" ? "contact"
+      : card.cardType === "event" ? "event"
+      : card.cardType === "file" ? "file"
+      : "asset";
+    setAgentTarget({ subject: { type: subjectType, id: card.assetId }, label: card.title });
+    return () => setAgentTarget(null);
+  }, [card.assetId, card.cardType, card.title, setAgentTarget]);
 
   // RV3: edit + delete state.
   // - editing: which inner form is open (event / asset / null)
@@ -129,46 +141,6 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
     created_at: "",
   } : null;
 
-  /**
-   * 在 chat 里讨论 — M2.3 home-session pattern.
-   *
-   * Each asset / first-class entity has ONE chat session anchored to it. We
-   * map card.cardType to the right subject_type:
-   *   contact → "contact" (uses contacts.id)
-   *   event   → "event"   (uses events.id)
-   *   file    → "file"    (uses files.id)
-   *   any other (todo / idea / notes / misc / expense) → "asset"
-   *
-   * Repeated clicks return the same session — no fragmentation.
-   */
-  async function openDiscuss() {
-    if (!card.assetId || discussLoading) return;
-    setDiscussLoading(true);
-    try {
-      const subjectType: SubjectType =
-          card.cardType === "contact" ? "contact"
-        : card.cardType === "event"   ? "event"
-        : card.cardType === "file"    ? "file"
-        : "asset";
-      const { sessionId } = await openSession({
-        subject: { type: subjectType, id: card.assetId },
-      });
-      window.localStorage.setItem("eureka:active_chat_session", sessionId);
-      onClose();
-      // Pass `from` so ChatPage's back button can return here cleanly. We
-      // also send a short label derived from the subject so the back button
-      // renders 「← Kevin」 instead of just 「← 资产库」.
-      navigate("/chat", {
-        state: { from: location.pathname, fromLabel: card.title || "上一页" },
-      });
-    } catch (e) {
-      // eslint-disable-next-line no-alert
-      alert("打开对话失败:" + ((e as Error).message ?? "未知错误"));
-    } finally {
-      setDiscussLoading(false);
-    }
-  }
-
   /** 跳到创建该 asset 的 session — opens chat with the existing creator session. */
   function openSourceSession() {
     if (!sourceSessionId) return;
@@ -214,9 +186,12 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
           // 480px (escapes the 393px frame).
           "fixed inset-x-0 bottom-0 max-h-[85vh] rounded-t-eu-xl",
           "bg-eu-surface-raised border-t border-eu-border",
-          "shadow-eu-lg pt-eu-md pb-safe overflow-y-auto",
+          "shadow-eu-lg pt-eu-md overflow-y-auto eu-noscroll",
           "flex flex-col gap-eu-md eu-sheet-up",
         ].join(" ")}
+        // Bottom clearance so the (now-visible) floating dock doesn't cover the
+        // last fields — the dock's Agent button is this asset's session entry.
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 92px)" }}
       >
         {/* drag handle (mobile only) */}
         <div className="md:hidden h-1 w-12 rounded-full bg-eu-rule mx-auto" />
@@ -254,15 +229,6 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
 
         {/* Action row */}
         <div className="px-eu-lg flex flex-wrap gap-eu-sm">
-          <ActionButton
-            icon={discussLoading
-              ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-              : <MessageCircle size={14} strokeWidth={1.75} />}
-            label={discussLoading ? "创建中…" : "在 chat 里讨论"}
-            onClick={openDiscuss}
-            disabled={!card.assetId || discussLoading}
-            variant="primary"
-          />
           {editable && (
             <ActionButton
               icon={<Pencil size={14} strokeWidth={1.75} />}

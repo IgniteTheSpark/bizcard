@@ -14,25 +14,48 @@ import type { ReactNode } from "react";
  * calls `useModalMount()` and the dock subscribes via `useIsAnyModalOpen()`.
  */
 
+/**
+ * AgentTarget — when an asset/event/contact detail is open, it registers the
+ * subject here so the GLOBAL dock's Agent button enters that thing's bound
+ * session directly (instead of a generic /chat). Per user: the detail page no
+ * longer needs its own 「在 chat 里讨论」 — the dock IS the agent entry.
+ */
+export interface AgentTarget {
+  subject: { type: "asset" | "event" | "contact" | "file"; id: string };
+  label: string;
+}
+
 interface ModalContextValue {
   count: number;
   register: () => void;
   unregister: () => void;
+  agentTarget: AgentTarget | null;
+  setAgentTarget: (t: AgentTarget | null) => void;
 }
 
 const ModalContext = createContext<ModalContextValue | null>(null);
 
 export function ModalProvider({ children }: { children: ReactNode }) {
   const [count, setCount] = useState(0);
+  const [agentTarget, setAgentTarget] = useState<AgentTarget | null>(null);
 
   const register = useCallback(() => setCount((n) => n + 1), []);
   const unregister = useCallback(() => setCount((n) => Math.max(0, n - 1)), []);
 
   return (
-    <ModalContext.Provider value={{ count, register, unregister }}>
+    <ModalContext.Provider value={{ count, register, unregister, agentTarget, setAgentTarget }}>
       {children}
     </ModalContext.Provider>
   );
+}
+
+/** Read/set the dock's context-bound Agent target (see AgentTarget). */
+export function useAgentTarget(): { agentTarget: AgentTarget | null; setAgentTarget: (t: AgentTarget | null) => void } {
+  const ctx = useContext(ModalContext);
+  return {
+    agentTarget: ctx?.agentTarget ?? null,
+    setAgentTarget: ctx?.setAgentTarget ?? (() => {}),
+  };
 }
 
 /**

@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
 import { AssetCardInChat } from "@/components/chat/AssetCardInChat";
 import { useFlashCapture } from "@/hooks/useFlashCapture";
-import { useIsAnyModalOpen, useModalMount } from "@/context/ModalContext";
+import { openSession } from "@/hooks/useSessions";
+import { useAgentTarget, useIsAnyModalOpen, useModalMount } from "@/context/ModalContext";
 
 /**
  * FloatingDock — global floating action capsule, replaces the old bottom
@@ -31,6 +32,25 @@ export function FloatingDock() {
   // Hide the dock whenever any modal is mounted — backdrop-blur + saturated
   // dock items would otherwise bleed through any z-50 backdrop overlay.
   const hidden = useIsAnyModalOpen();
+  const { agentTarget } = useAgentTarget();
+
+  /**
+   * Agent entry. When a detail view registered an agentTarget (asset/event/
+   * contact), enter that thing's bound session directly; otherwise open a
+   * fresh /chat. This is why the detail pages no longer need their own
+   * 「在 chat 里讨论」 button — the global dock is the agent entry.
+   */
+  async function openAgent() {
+    if (agentTarget) {
+      try {
+        const { sessionId } = await openSession({ subject: agentTarget.subject });
+        window.localStorage.setItem("eureka:active_chat_session", sessionId);
+      } catch {
+        /* fall through to a fresh chat */
+      }
+    }
+    navigate("/chat");
+  }
 
   return (
     <>
@@ -103,7 +123,7 @@ export function FloatingDock() {
         <button
           type="button"
           aria-label="Agent 对话"
-          onClick={() => navigate("/chat")}
+          onClick={openAgent}
           className={[
             "h-10 pl-3 pr-4 ml-0.5 rounded-eu-full",
             "bg-gradient-to-br from-eu-accent-purple-solid to-eu-accent-blue-solid",
