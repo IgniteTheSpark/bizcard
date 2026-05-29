@@ -218,7 +218,7 @@ export function CategoryList() {
             so a 393px iPhone frame fits 3 tiles per row neatly. The
             添加新技能 tile lives at the end of 技能 inline as the natural
             "extend" affordance. */}
-        <SectionLabel>核心</SectionLabel>
+        <SectionLabel>常驻 · PERMANENT</SectionLabel>
         <div
           className="grid grid-cols-3 gap-2.5"
           style={{ margin: "6px 0 16px" }}
@@ -233,7 +233,7 @@ export function CategoryList() {
           ))}
         </div>
 
-        <SectionLabel>我的技能</SectionLabel>
+        <SectionLabel>启用的技能 · SKILLS</SectionLabel>
         <div
           className="grid grid-cols-3 gap-2.5"
           style={{ margin: "6px 0 22px" }}
@@ -249,7 +249,7 @@ export function CategoryList() {
           <AddSkillTile />
         </div>
 
-        <SectionLabel>最近</SectionLabel>
+        <SectionLabel>最近 · RECENT</SectionLabel>
 
         {/* Cross-type latest 5 */}
         <div className="flex flex-col gap-2">
@@ -290,64 +290,41 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 /* ── Tile + RecentCard subcomponents ──────────────────────────────────── */
 
+// Compact entry tile per the Mobile-Redesign spec (library.jsx EntryRow) — the
+// user flagged the old blocks as "太大了". Small: icon + label + count, ~78px,
+// no preview line.
 function TypeTile({
-  tile, count, preview,
-}: { tile: TileKind; count: number; preview: string }) {
+  tile, count,
+}: { tile: TileKind; count: number; preview?: string }) {
   const ac = LIB_ACCENT[tile.accent];
   return (
     <Link
       to={tile.to}
       className="flex flex-col text-left active:scale-95"
       style={{
-        gap: 12,
-        padding: "14px 14px 12px", borderRadius: 14,
+        gap: 6,
+        padding: "10px 10px", borderRadius: 12,
         background: ac.bg, border: `1px solid ${ac.edge}`,
-        minHeight: 116,
-        transition: "all 280ms cubic-bezier(.2,.7,.3,1)",
+        minHeight: 78,
+        transition: "all 200ms cubic-bezier(.2,.7,.3,1)",
       }}
     >
-      <div className="flex items-center justify-between">
-        <span
-          className="font-mono"
-          style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: "rgba(0,0,0,0.20)",
-            border: `1px solid ${ac.edge}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: ac.fg, fontSize: 14,
-            boxShadow: `0 0 10px ${ac.glow}`,
-          }}
-        >
-          {tile.icon}
-        </span>
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 22, fontWeight: 700, color: "#ffffff",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {count}
-        </span>
-      </div>
-      <div>
-        <div
-          style={{
-            fontSize: 15, fontWeight: 600, color: "#f4f7fb",
-            letterSpacing: "-0.005em",
-          }}
-        >
-          {tile.label}
-        </div>
-        <div
-          style={{
-            fontSize: 11, color: "rgba(255,255,255,0.50)", marginTop: 4,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            fontFamily: tile.key === "file" ? '"JetBrains Mono", monospace' : "inherit",
-          }}
-        >
-          {preview || "—"}
-        </div>
+      <span
+        className="font-mono"
+        style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: `linear-gradient(140deg, ${ac.bg}, rgba(255,255,255,0.02))`,
+          border: `1px solid ${ac.edge}`,
+          boxShadow: `inset 0 0 12px ${ac.glow}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: ac.fg, fontSize: 13, fontWeight: 600,
+        }}
+      >
+        {tile.icon}
+      </span>
+      <div className="flex items-baseline justify-between" style={{ marginTop: "auto" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#f4f7fb" }}>{tile.label}</span>
+        <span className="font-mono" style={{ fontSize: 13, fontWeight: 600, color: ac.fg }}>{count}</span>
       </div>
     </Link>
   );
@@ -494,55 +471,30 @@ function AddSkillTile() {
       onClick={() => setOpen(true)}
       className="flex flex-col text-left active:scale-95"
       style={{
-        gap: 12,
-        padding: "14px 14px 12px", borderRadius: 14,
+        gap: 6,
+        padding: "10px 10px", borderRadius: 12,
         background: "rgba(196,168,255,0.04)",
         border: "1px dashed rgba(196,168,255,0.32)",
-        minHeight: 116,
+        minHeight: 78,
         color: "inherit", cursor: "pointer",
-        transition: "all 280ms cubic-bezier(.2,.7,.3,1)",
+        transition: "all 200ms cubic-bezier(.2,.7,.3,1)",
       }}
     >
-      <div className="flex items-center justify-between">
-        <span
-          style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: "rgba(196,168,255,0.10)",
-            border: "1px solid rgba(196,168,255,0.32)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#c4a8ff",
-            boxShadow: "0 0 10px rgba(196,168,255,0.30)",
-          }}
-        >
-          <Sparkles size={14} strokeWidth={1.75} />
-        </span>
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 11, color: "rgba(196,168,255,0.65)",
-            letterSpacing: "0.18em",
-          }}
-        >
-          NEW
-        </span>
-      </div>
-      <div>
-        <div
-          style={{
-            fontSize: 15, fontWeight: 600, color: "#f4f7fb",
-            letterSpacing: "-0.005em",
-          }}
-        >
-          添加新技能
-        </div>
-        <div
-          style={{
-            fontSize: 11, color: "rgba(255,255,255,0.50)", marginTop: 4,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}
-        >
-          由 AI 帮你设计卡片
-        </div>
+      <span
+        style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: "rgba(196,168,255,0.10)",
+          border: "1px solid rgba(196,168,255,0.32)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#c4a8ff",
+          boxShadow: "inset 0 0 12px rgba(196,168,255,0.30)",
+        }}
+      >
+        <Sparkles size={13} strokeWidth={1.75} />
+      </span>
+      <div className="flex items-baseline justify-between" style={{ marginTop: "auto" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#f4f7fb" }}>新技能</span>
+        <span className="font-mono" style={{ fontSize: 10, color: "rgba(196,168,255,0.65)", letterSpacing: "0.14em" }}>NEW</span>
       </div>
     </button>
     </>
