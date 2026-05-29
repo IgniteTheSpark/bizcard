@@ -290,13 +290,6 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
               {confirmDel ? "确认删除" : "删除"}
             </button>
           )}
-          {sourceSessionId && (
-            <ActionButton
-              icon={<History size={14} strokeWidth={1.75} />}
-              label="跳到创建对话"
-              onClick={openSourceSession}
-            />
-          )}
           {externalUrl(payload) && (
             <a
               href={externalUrl(payload) ?? "#"}
@@ -312,6 +305,43 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
               <ExternalLink size={14} strokeWidth={1.75} />
               打开外部链接
             </a>
+          )}
+        </div>
+
+        {/* 来源 · SOURCE — R6: brief source only (manual vs agent-session),
+            not the full source detail. The agent line is tappable → opens the
+            creating session. */}
+        <div className="px-eu-lg pt-eu-md">
+          <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono mb-2">
+            来源 · SOURCE
+          </div>
+          {sourceSessionId ? (
+            <button
+              type="button"
+              onClick={openSourceSession}
+              className="w-full flex items-center gap-2.5 px-eu-md py-2.5 rounded-eu-md bg-eu-accent-amber-bg border border-eu-accent-amber-edge text-left hover:brightness-110 transition-all duration-eu-fast"
+            >
+              <span
+                className="shrink-0 grid place-items-center font-mono"
+                style={{ width: 24, height: 24, borderRadius: 7, background: "var(--eu-accent-amber-bg)", border: "1px solid var(--eu-accent-amber-edge)", color: "var(--eu-accent-amber-fg)", fontSize: 13, fontWeight: 600 }}
+              >●</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-eu-xs uppercase tracking-eu-caps font-mono text-eu-accent-amber-fg">Agent · 对话</div>
+                <div className="text-eu-sm text-eu-text-hi mt-0.5">由 Agent 在对话中创建</div>
+              </div>
+              <History size={14} strokeWidth={1.75} className="text-eu-text-mid shrink-0" />
+            </button>
+          ) : (
+            <div className="w-full flex items-center gap-2.5 px-eu-md py-2.5 rounded-eu-md bg-eu-surface border border-eu-border">
+              <span
+                className="shrink-0 grid place-items-center font-mono"
+                style={{ width: 24, height: 24, borderRadius: 7, background: "var(--eu-accent-neutral-bg)", border: "1px solid var(--eu-accent-neutral-edge)", color: "var(--eu-accent-neutral-fg)", fontSize: 13 }}
+              >✎</span>
+              <div className="flex-1">
+                <div className="text-eu-xs uppercase tracking-eu-caps font-mono text-eu-text-lo">Manual</div>
+                <div className="text-eu-sm text-eu-text-hi mt-0.5">手动创建</div>
+              </div>
+            </div>
           )}
         </div>
 
