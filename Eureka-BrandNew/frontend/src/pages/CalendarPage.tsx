@@ -69,6 +69,7 @@ export function CalendarPage() {
         )}
         {mode === "month" && (
           <MonthPane
+            embedded
             cursor={cursor}
             focusMonthKey={focusMonthKey}
             onItemTap={handleItemTap}

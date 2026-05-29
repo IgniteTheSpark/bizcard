@@ -42,13 +42,15 @@ interface MonthPaneProps {
   /** Open DayDetail for a day (tap the day's date dot a second time, or any
    *  day with content). */
   onDayOpen?: (dayKey: string) => void;
+  /** Redesign: hide own header when rendered under CalendarPage's Segmented. */
+  embedded?: boolean;
 }
 
 const MONTHS_BACK = 6;
 const MONTHS_FWD = 6;
 
 export function MonthPane({
-  cursor, focusMonthKey, onItemTap, onCreateEvent, onDayOpen,
+  cursor, focusMonthKey, onItemTap, onCreateEvent, onDayOpen, embedded,
 }: MonthPaneProps) {
   const { byDay } = useTimeline();
   const todayKey = toLocalDayKey(new Date().toISOString());
@@ -97,7 +99,9 @@ export function MonthPane({
         fontFamily: '"Manrope","Noto Sans SC", system-ui, sans-serif',
       }}
     >
-      {/* Header: year + jump-to-today */}
+      {/* Header: year + jump-to-today — hidden when embedded under the
+          CalendarPage Segmented control (redesign). */}
+      {!embedded && (
       <header
         className="shrink-0 flex items-center justify-between"
         style={{ padding: "16px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
@@ -134,6 +138,7 @@ export function MonthPane({
           今天
         </button>
       </header>
+      )}
 
       {/* Continuous month scroll */}
       <div
