@@ -196,35 +196,39 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
         {/* drag handle (mobile only) */}
         <div className="md:hidden h-1 w-12 rounded-full bg-eu-rule mx-auto" />
 
-        <header className="flex items-start gap-eu-md px-eu-lg">
-          <div className={[
-            "shrink-0 h-10 w-10 rounded-eu-md border",
-            "flex items-center justify-center font-mono font-semibold text-eu-lg",
-            ACCENT_BG[card.accentColor],
-            ACCENT_FG[card.accentColor],
-            ACCENT_BORDER[card.accentColor],
-          ].join(" ")}>
-            {card.icon}
-          </div>
-          <div className="flex-1 min-w-0">
+        {/* Hero — column layout per the design's AssetHero (big gradient icon
+            → prominent title → subtitle), replacing the old compact row. */}
+        <header className="px-eu-lg">
+          <div className="flex items-center justify-between">
             <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono">
               {card.cardType}
             </div>
-            <h2 className="text-eu-lg text-eu-text-hi font-medium tracking-tight mt-0.5 break-words">
-              {card.title}
-            </h2>
-            {card.subtitle && (
-              <div className="text-eu-sm text-eu-text-mid mt-1">{card.subtitle}</div>
-            )}
+            <button
+              type="button"
+              aria-label="关闭"
+              onClick={onClose}
+              className="shrink-0 p-1.5 rounded-eu-sm text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
+            >
+              <X size={18} strokeWidth={1.75} />
+            </button>
           </div>
-          <button
-            type="button"
-            aria-label="关闭"
-            onClick={onClose}
-            className="shrink-0 p-1.5 rounded-eu-sm text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
+          <div
+            className={[
+              "mt-3 flex items-center justify-center border font-mono font-semibold",
+              ACCENT_BG[card.accentColor],
+              ACCENT_FG[card.accentColor],
+              ACCENT_BORDER[card.accentColor],
+            ].join(" ")}
+            style={{ width: 54, height: 54, borderRadius: 14, fontSize: 22, boxShadow: "inset 0 0 18px rgba(255,255,255,0.05)" }}
           >
-            <X size={18} strokeWidth={1.75} />
-          </button>
+            {card.icon}
+          </div>
+          <h2 className="mt-3.5 text-eu-text-hi font-semibold tracking-tight break-words" style={{ fontSize: 22, lineHeight: 1.25 }}>
+            {card.title}
+          </h2>
+          {card.subtitle && (
+            <div className="text-eu-text-mid mt-2" style={{ fontSize: 14 }}>{card.subtitle}</div>
+          )}
         </header>
 
         {/* Action row */}
