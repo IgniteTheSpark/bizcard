@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarClock, List } from "lucide-react";
 
 import { EventCard } from "@/components/calendar/EventCard";
 import { SkillCard } from "@/components/skill/SkillCard";
@@ -72,6 +72,16 @@ export function DayDetailSheet({
   // (anything else — idea / expense / contact / notes / todo without time).
   const { allDay, timed, captured } = useMemo(() => bucket(items), [items]);
 
+  // View toggle (per design chat2 #4): the day view DEFAULTS to a flat LIST
+  // of every asset that day (events + todos + ideas + notes + expenses —
+  // including non-time captures the hour grid can't surface), and a 日程
+  // toggle flips to the Timepage-style hour-grid timeline.
+  const [view, setView] = useState<"list" | "schedule">("list");
+  const listItems = useMemo(
+    () => [...items].sort((a, b) => a.effective_at.localeCompare(b.effective_at)),
+    [items],
+  );
+
   // Auto-scroll anchor: prefer "couple hours before earliest event" so we
   // don't hide events above the fold. Fallback: a few hours before now
   // (today) / 7 AM (other days). Never push past the earliest event.
@@ -89,7 +99,7 @@ export function DayDetailSheet({
       : fallback;
     gridRef.current.scrollTop = (anchorHour - GRID_START_HOUR) * HOUR_HEIGHT;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dayKey, timed.length]);
+  }, [dayKey, timed.length, view]);
 
   return (
     <div
@@ -148,11 +158,67 @@ export function DayDetailSheet({
               {distanceLabel(dayKey)} · {monthDayCaps(dayKey)}
             </div>
           </div>
-          {/* OP-fix #3: removed the top-right "+" — it duplicated the
-              persistent dock's + (both open CreateAssetMenu). The dock is
-              the single global create entry now; only ← back stays here. */}
+          {/* 日程 toggle — flips between the default LIST view and the
+              hour-grid timeline. (OP-fix #3: the create "+" lives on the
+              persistent dock now, so the only top-right control is this.) */}
+          <button
+            type="button"
+            onClick={() => setView((v) => (v === "list" ? "schedule" : "list"))}
+            aria-pressed={view === "schedule"}
+            className="shrink-0 inline-flex items-center gap-1.5 active:scale-[0.97]"
+            style={{
+              height: 36, padding: "0 13px", borderRadius: 999,
+              background: view === "schedule"
+                ? "rgba(196,168,255,0.22)"
+                : "rgba(255,255,255,0.10)",
+              border: `1px solid ${view === "schedule"
+                ? "rgba(196,168,255,0.45)"
+                : "rgba(255,255,255,0.18)"}`,
+              color: "#fff", fontSize: 12.5, fontWeight: 600,
+              letterSpacing: "0.02em", cursor: "pointer",
+              transition: "all 180ms cubic-bezier(.2,.7,.3,1)",
+            }}
+          >
+            {view === "schedule"
+              ? <List size={14} strokeWidth={2} />
+              : <CalendarClock size={14} strokeWidth={2} />}
+            {view === "schedule" ? "列表" : "日程"}
+          </button>
         </header>
 
+        {/* ── LIST view (default) — every asset that day, chronological ── */}
+        {view === "list" && (
+          <div
+            className="flex-1 overflow-y-auto eu-noscroll"
+            style={{ padding: "4px 16px 24px" }}
+          >
+            {listItems.length === 0 ? (
+              <div
+                className="text-center"
+                style={{
+                  marginTop: 96, color: "rgba(255,255,255,0.55)",
+                  fontSize: 14, fontStyle: "italic",
+                }}
+              >
+                这一天什么都没有
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {listItems.map((it) => (
+                  <CapturedCard
+                    key={`${it.kind}-${it.id}`}
+                    item={it}
+                    onClick={() => onItemTap(it)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── SCHEDULE view (toggle on) — all-day chips + 今日捕捉 + hour grid ── */}
+        {view === "schedule" && (
+        <>
         {/* ── All-day chip row (only when present) ─────────────────── */}
         {allDay.length > 0 && (
           <div
@@ -301,6 +367,8 @@ export function DayDetailSheet({
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );
