@@ -65,7 +65,7 @@ export function CalendarPage() {
 
       <div className="flex-1 min-h-0 overflow-hidden">
         {mode === "timeline" && (
-          <ScheduleView onItemTap={handleItemTap} onDayTap={(k) => setDayDetailKey(k)} />
+          <ScheduleView embedded onItemTap={handleItemTap} onDayTap={(k) => setDayDetailKey(k)} />
         )}
         {mode === "month" && (
           <MonthPane

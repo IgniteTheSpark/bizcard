@@ -47,6 +47,10 @@ interface ScheduleViewProps {
   onItemTap: (item: TimelineItem) => void;
   /** Day-tile tap (whole tile, not item row) → DayDetailSheet. */
   onDayTap?: (dayKey: string) => void;
+  /** Redesign: when rendered under CalendarPage's Segmented control, hide this
+   *  view's own header (month label + 仅有事/⌕/⋮) — the month context lives in
+   *  the left vertical rail, and the redesign drops the filter toggle. */
+  embedded?: boolean;
 }
 
 /**
@@ -62,7 +66,7 @@ const EMPTY_PREF_KEY = "eureka:schedule_show_empty";
 // type display preference will move to a Settings page in M5; in the
 // meantime Schedule shows everything.
 
-export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
+export function ScheduleView({ onItemTap, onDayTap, embedded }: ScheduleViewProps) {
   const { items, isLoading } = useTimeline();
   const [showEmpty, setShowEmpty] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -156,7 +160,10 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#06070d" }}>
-      {/* ── Top header: month + tools ─────────────────────────────────── */}
+      {/* ── Top header: month + tools ─── hidden when embedded under the
+          CalendarPage Segmented control (redesign) ───────────────────── */}
+      {!embedded && (
+      <>
       <header className="flex items-center justify-between px-eu-md pt-1 pb-2.5">
         <div className="flex items-baseline gap-2">
           <span
@@ -205,6 +212,8 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
           type display preferences will move to a Settings page in M5.
           A thin separator keeps the header / content visually divided. */}
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }} />
+      </>
+      )}
 
       {isLoading && (
         <div className="px-eu-md py-eu-md text-eu-sm text-eu-text-lo font-mono">加载…</div>
@@ -421,34 +430,26 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
  * expands into full empty tiles on click. Keeps the schedule scannable
  * when the user has only a few real items.
  */
-function GapRow({ count, onExpand }: { count: number; onExpand: () => void }) {
+function GapRow({ count }: { count: number; onExpand?: () => void }) {
+  // Redesign: empty stretches are a quiet thin gradient line, not a prominent
+  // "N 天空闲" chip (the user flagged 空闲 as redundant; the spec's flow renders
+  // empty days as a faint line). Slightly taller for longer gaps.
+  const h = Math.min(34, 16 + count * 2);
   return (
     <div
       className="grid"
       style={{ gridTemplateColumns: "64px 1fr", marginBottom: 6, paddingRight: 16 }}
     >
-      <div
-        style={{
-          borderRight: "1px solid rgba(255,255,255,0.04)",
-          height: 26,
-        }}
-      />
-      <button
-        type="button"
-        onClick={onExpand}
-        className="flex items-center justify-center ml-1.5 font-mono"
-        style={{
-          height: 26, borderRadius: 999,
-          background: "rgba(255,255,255,0.025)",
-          border: "1px dashed rgba(255,255,255,0.08)",
-          color: "rgba(255,255,255,0.40)",
-          fontSize: 10.5, letterSpacing: "0.16em",
-          cursor: "pointer",
-        }}
-        title="展开空闲日"
-      >
-        ⌄ {count} 天空闲
-      </button>
+      <div style={{ borderRight: "1px solid rgba(255,255,255,0.04)", height: h }} />
+      <div className="ml-1.5 flex items-center" style={{ height: h }}>
+        <div
+          style={{
+            width: "100%",
+            height: 1,
+            background: "linear-gradient(90deg, rgba(255,255,255,0.10), transparent)",
+          }}
+        />
+      </div>
     </div>
   );
 }
