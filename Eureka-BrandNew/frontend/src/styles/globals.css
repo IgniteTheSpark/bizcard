@@ -88,11 +88,6 @@
   from { transform: translateY(-16px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
-/* Mobile-Redesign dock: the protruding center mic breathes a brand glow. */
-@keyframes eu-pulse-glow {
-  0%, 100% { box-shadow: 0 8px 24px rgba(111,158,255,0.45), inset 0 0 0 1px rgba(255,255,255,0.10); }
-  50%      { box-shadow: 0 8px 34px rgba(111,158,255,0.70), inset 0 0 0 1px rgba(255,255,255,0.12); }
-}
 @layer utilities {
   .eu-sheet-up   { animation: eu-sheet-up 280ms cubic-bezier(.2, .7, .3, 1) both; }
   .eu-sheet-left { animation: eu-sheet-left 280ms cubic-bezier(.2, .7, .3, 1) both; }
@@ -101,5 +96,4 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .eu-sheet-up, .eu-sheet-left, .eu-sheet-down, .eu-fade-in { animation: none; }
-  .eu-dock-mic { animation: none !important; }
 }
