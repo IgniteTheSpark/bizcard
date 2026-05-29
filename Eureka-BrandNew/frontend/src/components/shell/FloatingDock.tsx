@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { CalendarDays, Grid3x3, Loader2, Mic, Plus, Send, Sparkles, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Loader2, Send, X } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
 import { AssetCardInChat } from "@/components/chat/AssetCardInChat";
@@ -24,100 +24,94 @@ import { useIsAnyModalOpen, useModalMount } from "@/context/ModalContext";
  * Per Phase D spec amendment (2026-05-26): no current-page active state on
  * the dock — TopBar already shows the page title; dock is pure shortcut bar.
  */
+/**
+ * FloatingDock — Mobile-Redesign spec (chat2 decision #2): one global glass
+ * pill with Cal / Lib / [Mic hero, center, protruding] / Agent / Plus. The
+ * mic is the brand entry (闪念 capture) and breathes a glow. Active tab gets a
+ * brand-hi tint + glow + a dot. Hidden in agent/session and behind modals.
+ */
 export function FloatingDock() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [flashOpen, setFlashOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  // Hide the dock whenever any modal is mounted — backdrop-blur + saturated
-  // dock items would otherwise bleed through any z-50 backdrop overlay.
+  // Hide whenever any modal is mounted (the shell already drops the dock on
+  // /chat — the agent/session surface — via AppShell's !onChat gate).
   const hidden = useIsAnyModalOpen();
+
+  const active = location.pathname.startsWith("/calendar")
+    ? "calendar"
+    : location.pathname.startsWith("/library")
+      ? "library"
+      : location.pathname.startsWith("/chat")
+        ? "agent"
+        : "";
 
   return (
     <>
-      {/* 背透 fix — the dock is the same glass everywhere, but on flat near-black
-          pages (#06070d) the glass has nothing to transmit so it reads as a
-          solid 背景板; in DayDetail it sits over a blue gradient and reads as
-          real 背透. This ambient brand glow gives the glass something to pick
-          up on every page → the dock now blends like it does in DayDetail.
-          z-[55]: above page content, below the z-[60] nav so the dock's
-          backdrop-blur samples it. Hides/fades together with the dock. */}
       <div
-        aria-hidden="true"
-        className={[
-          "fixed inset-x-0 bottom-0 z-[55] pointer-events-none",
-          "transition-opacity duration-eu-fast ease-eu-out",
-          hidden ? "opacity-0" : "opacity-100",
-        ].join(" ")}
-        style={{
-          height: 220,
-          background:
-            "radial-gradient(120% 100% at 50% 120%, rgba(111,158,255,0.34) 0%, rgba(111,158,255,0.12) 38%, rgba(6,7,13,0) 72%)",
-        }}
-      />
-
-      {/* OP10: back to a single floating capsule (premium version). The
-          earlier 5-separate-chips / transparent-ring iterations felt
-          unanchored. This is a solid dark-glass capsule that hovers above
-          the page — z-[60] so it stays above page-like modals (DayDetail)
-          that opt to keep the dock. backdrop-blur kept but the bg is solid
-          enough (92%) that the old saturated-bleed issue doesn't recur. */}
-      <nav
         aria-label="主要操作"
         aria-hidden={hidden}
-        className={[
-          "fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)]",
-          "left-1/2 -translate-x-1/2 z-[60]",
-          "flex items-center gap-1",
-          "h-14 pl-2 pr-2 rounded-eu-full",
-          // 真正背透 — 设计语言统一用 blur(10px) + 轻阴影。之前 blur-2xl(40px) +
-          // 重暗阴影把背后内容糊成一坨纯暗,看起来像实心胶囊。改成 blur-md(12px) +
-          // saturate 让背后的蓝/绿瓦片透出颜色,轻阴影避免“悬浮实心块”观感。
-          "bg-white/[0.05] backdrop-blur-md backdrop-saturate-150",
-          "border border-white/[0.08]",
-          "shadow-[0_6px_24px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)]",
-          "transition-all duration-eu-fast ease-eu-out",
-          hidden ? "opacity-0 pointer-events-none translate-y-3" : "",
-        ].join(" ")}
+        style={{
+          position: "fixed",
+          left: "50%",
+          bottom: "calc(env(safe-area-inset-bottom) + 18px)",
+          transform: `translate(-50%, ${hidden ? 110 : 0}px)`,
+          opacity: hidden ? 0 : 1,
+          transition: "transform var(--eu-dur-slow) var(--eu-ease-in-out), opacity var(--eu-dur-normal) var(--eu-ease-in-out)",
+          zIndex: 60,
+          pointerEvents: hidden ? "none" : "auto",
+        }}
       >
-        <DockIcon ariaLabel="日历" onClick={() => navigate("/calendar")}>
-          <CalendarDays size={19} strokeWidth={1.7} />
-        </DockIcon>
-
-        <DockIcon ariaLabel="资产库" onClick={() => navigate("/library")}>
-          <Grid3x3 size={18} strokeWidth={1.85} />
-        </DockIcon>
-
-        <Divider />
-
-        <DockIcon ariaLabel="快创" onClick={() => setCreateOpen(true)}>
-          <Plus size={20} strokeWidth={2.1} />
-        </DockIcon>
-
-        <DockIcon ariaLabel="闪念输入" onClick={() => setFlashOpen(true)}>
-          <Mic size={18} strokeWidth={1.85} />
-        </DockIcon>
-
-        <Divider />
-
-        {/* Agent — purple gradient pill, brand entry */}
-        <button
-          type="button"
-          aria-label="Agent 对话"
-          onClick={() => navigate("/chat")}
-          className={[
-            "h-10 pl-3 pr-4 ml-0.5 rounded-eu-full",
-            "bg-gradient-to-br from-eu-accent-purple-solid to-eu-accent-blue-solid",
-            "text-white font-medium text-eu-sm",
-            "flex items-center gap-1.5",
-            "shadow-[0_6px_20px_rgba(111,158,255,0.4)]",
-            "transition-all duration-eu-fast ease-eu-out",
-            "active:scale-95",
-          ].join(" ")}
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            gap: 0,
+            padding: "6px 10px",
+            borderRadius: 999,
+            background: "rgba(14,20,38,0.78)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid var(--eu-border-strong)",
+            boxShadow: "0 18px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07)",
+          }}
         >
-          <Sparkles size={14} strokeWidth={2} />
-          Agent
-        </button>
-      </nav>
+          <DockBtn label="日历" active={active === "calendar"} onClick={() => navigate("/calendar")} icon={ICON.calendar} />
+          <DockBtn label="资产库" active={active === "library"} onClick={() => navigate("/library")} icon={ICON.library} />
+
+          {/* Mic — protruding brand hero (闪念 capture) */}
+          <button
+            type="button"
+            aria-label="闪念输入"
+            onClick={() => setFlashOpen(true)}
+            className="eu-dock-mic"
+            style={{
+              width: 54,
+              height: 54,
+              borderRadius: 999,
+              background: "linear-gradient(135deg, #6f9eff 0%, #9c80f0 100%)",
+              border: "3px solid rgba(14,20,38,0.85)",
+              margin: "0 4px",
+              marginTop: -18,
+              cursor: "pointer",
+              display: "grid",
+              placeItems: "center",
+              boxShadow: "0 8px 24px rgba(111,158,255,0.55), inset 0 0 0 1px rgba(255,255,255,0.10)",
+              animation: "eu-pulse-glow 2.4s ease-in-out infinite",
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="8.5" y="3" width="5" height="11" rx="2.5" fill="#fff" />
+              <path d="M5 10v.8a6 6 0 0012 0V10M11 17.5V20" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <DockBtn label="Agent 对话" active={active === "agent"} onClick={() => navigate("/chat")} icon={ICON.agent} />
+          <DockBtn label="快创" active={false} onClick={() => setCreateOpen(true)} icon={ICON.plus} />
+        </div>
+      </div>
 
       {flashOpen && (
         <FlashSheet onClose={() => setFlashOpen(false)} />
@@ -129,35 +123,84 @@ export function FloatingDock() {
 
 /* ── Internal pieces ───────────────────────────────────────────────────── */
 
-interface DockIconProps {
-  ariaLabel: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}
+/** Spec inline SVGs (1.5-1.8 stroke), colored by the passed currentColor. */
+const ICON = {
+  calendar: (c: string) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect x="2.5" y="4" width="15" height="13" rx="2.5" stroke={c} strokeWidth="1.6" />
+      <path d="M2.5 8h15M6.5 2.5v3M13.5 2.5v3" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  ),
+  library: (c: string) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect x="3" y="3" width="6" height="6" rx="1.4" stroke={c} strokeWidth="1.6" />
+      <rect x="11" y="3" width="6" height="6" rx="1.4" stroke={c} strokeWidth="1.6" />
+      <rect x="3" y="11" width="6" height="6" rx="1.4" stroke={c} strokeWidth="1.6" />
+      <rect x="11" y="11" width="6" height="6" rx="1.4" stroke={c} strokeWidth="1.6" />
+    </svg>
+  ),
+  agent: (c: string) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2.5l1.6 4.4 4.4 1.6-4.4 1.6L10 14.5l-1.6-4.4L4 8.5l4.4-1.6L10 2.5z" stroke={c} strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  ),
+  plus: (c: string) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 4v12M4 10h12" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  ),
+};
 
-/** DockIcon — a plain icon button inside the capsule (OP10). No per-icon
- *  plate; the capsule is the container. */
-function DockIcon({ ariaLabel, onClick, children }: DockIconProps) {
+/** DockBtn — 48×48 nav cell, brand-hi + glow + dot when active. */
+function DockBtn({
+  label, active, onClick, icon,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  icon: (c: string) => React.ReactNode;
+}) {
+  const c = active ? "var(--eu-brand-hi)" : "var(--eu-text-mid)";
   return (
     <button
       type="button"
-      aria-label={ariaLabel}
+      aria-label={label}
       onClick={onClick}
-      className={[
-        "h-10 w-10 rounded-eu-full",
-        "flex items-center justify-center",
-        "text-eu-text-mid hover:text-eu-text-hi hover:bg-white/5",
-        "transition-all duration-eu-fast ease-eu-out",
-        "active:scale-90",
-      ].join(" ")}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 2,
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        background: "transparent",
+        border: "none",
+        cursor: "pointer",
+        color: c,
+        position: "relative",
+        filter: active ? "drop-shadow(0 0 8px rgba(111,158,255,0.55))" : "none",
+        transition: "color var(--eu-dur-fast) var(--eu-ease-in-out)",
+      }}
     >
-      {children}
+      {icon(c)}
+      {active && (
+        <span
+          style={{
+            position: "absolute",
+            bottom: 5,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 4,
+            height: 4,
+            borderRadius: 999,
+            background: "var(--eu-brand)",
+            boxShadow: "var(--eu-brand-glow)",
+          }}
+        />
+      )}
     </button>
   );
-}
-
-function Divider() {
-  return <div aria-hidden="true" className="h-6 w-px bg-white/10 mx-0.5" />;
 }
 
 /* ── Flash sheet (was FlashFab) ────────────────────────────────────────── */
