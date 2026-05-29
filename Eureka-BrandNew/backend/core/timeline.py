@@ -118,13 +118,20 @@ def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
 
 
-def _asset_item(asset: Asset, skill_name: str) -> dict:
+def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = None, display_name: Optional[str] = None) -> dict:
     p = asset.payload or {}
-    # Heuristic title per skill; frontend can override
+    # Title: prefer the skill's render_spec.primary_field (matches how the card
+    # renders), then common title-ish fields, then the skill's display_name.
+    # Never fall back to "[skill_name]" — AI-created skills with custom payloads
+    # (e.g. 跑步记录 {distance, pace}) used to surface an ugly "[running]".
+    rs = render_spec if isinstance(render_spec, dict) else {}
+    pf = rs.get("primary_field")
+    pf_val = p.get(pf) if pf else None
     title = (
+        (str(pf_val) if pf_val not in (None, "") else None) or
         p.get("content") or p.get("title") or p.get("name") or
         (f"¥{p.get('amount')}" if p.get("amount") else None) or
-        f"[{skill_name}]"
+        display_name or skill_name
     )
     subtitle = p.get("description") or p.get("merchant") or ""
     return {
@@ -213,7 +220,7 @@ async def assemble_timeline(
     # ── assets (joined to skill name) ──
     if "asset" in kinds:
         stmt = (
-            select(Asset, GlobalSkill.name.label("skill_name"))
+            select(Asset, GlobalSkill.name.label("skill_name"), UserSkill.render_spec, UserSkill.display_name)
             .join(UserSkill, Asset.user_skill_id == UserSkill.id)
             .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
             .where(Asset.user_id == user_id)
@@ -221,8 +228,8 @@ async def assemble_timeline(
         if skill_names:
             stmt = stmt.where(GlobalSkill.name.in_(skill_names))
         rows = (await db.execute(stmt)).all()
-        for asset, skill_name in rows:
-            items.append(_asset_item(asset, skill_name))
+        for asset, skill_name, render_spec, display_name in rows:
+            items.append(_asset_item(asset, skill_name, render_spec, display_name))
 
     # ── events ──
     if "event" in kinds:
