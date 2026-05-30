@@ -325,6 +325,69 @@ for line in sys.stdin:
 }
 
 
+# ─── 异步任务(task-skill → 第三方 MCP) ─────────────────────────
+
+eu_tasks() {
+    # 列最近 20 条任务,显示状态 / 目标 MCP / 外部链接
+    curl -s "$EUREKA_API/api/tasks?limit=20" | python3 -c "
+import sys, json
+r = json.load(sys.stdin)
+if not r.get('tasks'):
+    print('(no tasks)'); sys.exit(0)
+for t in r['tasks']:
+    icon = {'pending':'⏳','running':'⏳','done':'✅','failed':'❌'}.get(t['status'],'?')
+    line = f\"  {icon} {t['id'][:8]}  {t['status']:8} {(t.get('mcp_target') or '-'):20} {(t.get('user_text','') or '')[:50]}\"
+    print(line)
+    if t.get('error_message'): print(f'           error: {t[\"error_message\"][:100]}')
+    payload = t.get('result_asset_payload') or {}
+    if payload.get('external_url'):
+        print(f'           {payload[\"external_url\"]}')
+"
+}
+
+eu_task() {
+    # 看单个 task 的详细状态(传 task_id 前 8 位即可)
+    local tid=${1:?usage: eu_task <task_id_prefix>}
+    local full=$(curl -s "$EUREKA_API/api/tasks?limit=50" | python3 -c "
+import sys, json
+r = json.load(sys.stdin)
+for t in r.get('tasks', []):
+    if t['id'].startswith('$tid'):
+        print(t['id']); break")
+    if [ -z "$full" ]; then echo "task $tid not found"; return 1; fi
+    curl -s "$EUREKA_API/api/tasks/$full" | python3 -m json.tool
+}
+
+eu_task_wait() {
+    # 阻塞等一个 task 跑完,然后显示结果(传 task_id 前 8 位即可)
+    local tid=${1:?usage: eu_task_wait <task_id_prefix>}
+    local full=$(curl -s "$EUREKA_API/api/tasks?limit=50" | python3 -c "
+import sys, json
+r = json.load(sys.stdin)
+for t in r.get('tasks', []):
+    if t['id'].startswith('$tid'):
+        print(t['id']); break")
+    if [ -z "$full" ]; then echo "task $tid not found"; return 1; fi
+    printf "waiting for task %s ..." "${full:0:8}"
+    until curl -s "$EUREKA_API/api/tasks/$full" | python3 -c "
+import sys, json
+exit(0 if json.load(sys.stdin)['task']['status'] in ('done','failed') else 1)" 2>/dev/null; do
+        printf "."; sleep 3
+    done
+    echo " done"
+    eu_task "${full:0:8}"
+}
+
+eu_mcp() {
+    # 列当前启用的第三方 MCP(从 backend 容器里读 mcp_config)
+    docker compose exec -T backend python3 -c "
+from agents.mcp_config import MCP_SERVERS
+print('enabled MCPs:')
+for name, cfg in MCP_SERVERS.items():
+    print(f'  {name}  ({cfg.get(\"transport\",\"stdio\")})')"
+}
+
+
 # ─── 帮助 ─────────────────────────────────────────────────────────
 
 eu_help() {
@@ -358,6 +421,12 @@ eureka 测试 helper 命令:
     eu_skills         eu_contacts
     eu_session_detail [sid]   eu_messages [sid]
     eu_turns                      最近 10 条 input_turn
+
+  异步任务(第三方 MCP)
+    eu_tasks                        列最近 20 个 task(状态 + 外链)
+    eu_task <id-prefix>            一个 task 的完整状态
+    eu_task_wait <id-prefix>       阻塞等到 task 跑完
+    eu_mcp                         列当前启用的 MCP
 
   DB 直查
     eu_db "SELECT ..."

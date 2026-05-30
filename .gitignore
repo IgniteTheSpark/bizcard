@@ -18,3 +18,9 @@ uvicorn*.err.log
 # OS
 .DS_Store
 Thumbs.db
+.gstack/
+
+# Nested repos — Eureka-Assistant is a fork with its own git.git history.
+# bizcard's phase-d branch tracks the original Eureka rebuild; Assistant is
+# developed entirely inside its own folder/repo.
+Eureka-Assistant/
