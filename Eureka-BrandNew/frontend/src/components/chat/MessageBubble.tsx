@@ -126,27 +126,34 @@ function PartRenderer({
         className={[
           "inline-flex items-center gap-1.5 self-start",
           "px-2 py-1 rounded-eu-sm",
-          "text-eu-xs font-mono text-eu-accent-amber-fg",
+          "text-eu-xs text-eu-accent-amber-fg",
           "bg-eu-accent-amber-bg border border-eu-accent-amber-edge",
         ].join(" ")}
       >
         <Wrench size={11} strokeWidth={1.75} />
-        {part.name}
+        {humanToolLabel(part.name)}
       </div>
     );
   }
   if (part.type === "tool_result") {
-    // If the tool_result carries an asset-shaped payload, render the card.
-    // Otherwise skip — the user doesn't need to see raw tool JSON.
-    const card = extractCardFromToolResult(part.response);
-    if (!card) {
+    // Extract every card-shaped item the result carries — single asset, single
+    // event, OR a list (query_*). Falls back to a tiny "↩ ok" chip only when
+    // nothing renderable was returned. Plural results render as a stack.
+    const cards = extractCardsFromToolResult(part.response);
+    if (cards.length === 0) {
       return (
-        <div className="text-eu-xs text-eu-text-lo font-mono italic">
-          ↩ {part.name} ok
+        <div className="text-eu-xs text-eu-text-lo italic">
+          ↩ {humanToolLabel(part.name)} 完成
         </div>
       );
     }
-    return <AssetCardInChat data={card} onOpen={onOpenCard} />;
+    return (
+      <div className="flex flex-col gap-eu-sm">
+        {cards.map((c, i) => (
+          <AssetCardInChat key={i} data={c} onOpen={onOpenCard} />
+        ))}
+      </div>
+    );
   }
   if (part.type === "cards") {
     return (
@@ -183,52 +190,95 @@ function Cursor() {
 }
 
 /**
- * Unwrap FastMCP-style nested response shapes. Backend tool_create_asset
- * returns either {ok, asset_id, payload, ...} (our internal tools) or
- * {content: [{text: '<JSON>'}], structuredContent: {...}} (FastMCP wrap).
+ * Unwrap FastMCP-style nested response shapes into a list of card-shaped
+ * dicts. Backend tools return one of:
  *
- * Always tags the unwrapped dict with a `card_type` derived from which id
- * field is present (event_id → "event", task_id → "task"). asset responses
- * already carry user_skill_name from create_asset so they don't need a tag.
- * Without this tag the downstream AssetCardInChat falls through to a
- * generic 「资产」 card — which is the bug the user saw on tool_create_event
- * results before this layer existed.
+ *   1. Single asset/event/contact/task    → 1-card list
+ *   2. Plural list `{assets|contacts|events|tasks|input_turns: [...]}`
+ *      (query_* tools)                    → N-card list
+ *   3. FastMCP `{content: [{text: '<JSON>'}], structuredContent: {...}}`
+ *      wrap around either of the above
+ *
+ * Each card dict is tagged with `card_type` (event/contact/task) when the
+ * id field implies one, so AssetCardInChat → synthesizeSpec picks the right
+ * render. Asset responses carry user_skill_name from the backend already.
+ *
+ * Returns [] when the response shape has no renderable cards (e.g. delete_*
+ * returns just `{ok, asset_id}` — we render the small "↩ 完成" chip instead).
  */
-function extractCardFromToolResult(response: Record<string, unknown>): Record<string, unknown> | null {
-  if (!response) return null;
-  const tagged = tagByIdField(response);
-  if (tagged) return tagged;
+function extractCardsFromToolResult(response: Record<string, unknown>): Record<string, unknown>[] {
+  if (!response) return [];
 
-  // FastMCP structuredContent
+  // Walk all shapes that might contain the actual payload.
+  const candidates: Record<string, unknown>[] = [response];
   const sc = response.structuredContent;
   if (sc && typeof sc === "object" && !Array.isArray(sc)) {
-    const t = tagByIdField(sc as Record<string, unknown>);
-    if (t) return t;
+    candidates.push(sc as Record<string, unknown>);
   }
-
-  // FastMCP content[0].text JSON
   const content = response.content;
   if (Array.isArray(content) && content[0] && typeof content[0] === "object") {
     const text = (content[0] as Record<string, unknown>).text;
     if (typeof text === "string") {
       try {
         const parsed = JSON.parse(text);
-        if (parsed && typeof parsed === "object") {
-          const t = tagByIdField(parsed as Record<string, unknown>);
-          if (t) return t;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          candidates.push(parsed as Record<string, unknown>);
         }
-      } catch { /* fall through */ }
+      } catch { /* ignore */ }
     }
   }
-  return null;
+
+  for (const c of candidates) {
+    // Plural query result — assets / events / contacts / tasks / input_turns
+    for (const k of ["assets", "events", "contacts", "tasks", "input_turns"] as const) {
+      const arr = c[k];
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr
+          .map((item) => (item && typeof item === "object"
+            ? tagByIdField(item as Record<string, unknown>)
+            : null))
+          .filter((x): x is Record<string, unknown> => x !== null);
+      }
+    }
+    // Single result
+    const single = tagByIdField(c);
+    if (single) return [single];
+  }
+  return [];
 }
 
 /** Stamp the response with the right card_type so AssetCardInChat can pick
  *  the matching render_spec (synthesizeSpec(card_type) keys off this). */
 function tagByIdField(d: Record<string, unknown>): Record<string, unknown> | null {
-  if (d.asset_id)   return d;                      // user_skill_name already present
-  if (d.event_id)   return { ...d, card_type: "event" };
-  if (d.contact_id) return { ...d, card_type: "contact" };
-  if (d.task_id)    return { ...d, card_type: "task" };
+  if (d.asset_id)      return d;                      // user_skill_name carried
+  if (d.event_id)      return { ...d, card_type: "event" };
+  if (d.contact_id)    return { ...d, card_type: "contact" };
+  if (d.task_id)       return { ...d, card_type: "task" };
+  if (d.input_turn_id) return { ...d, card_type: "input_turn" };
   return null;
+}
+
+/** Translate machine tool names to Chinese labels for the chips. */
+const TOOL_LABEL: Record<string, string> = {
+  tool_create_asset:      "创建资产",
+  tool_update_asset:      "更新资产",
+  tool_query_asset:       "查询资产",
+  tool_delete_asset:      "删除资产",
+  tool_create_event:      "创建事件",
+  tool_update_event:      "更新事件",
+  tool_query_event:       "查询事件",
+  tool_get_event:         "读取事件",
+  tool_delete_event:      "删除事件",
+  tool_add_event_attendee:"添加事件参与者",
+  tool_link_event_file:   "关联事件文件",
+  tool_create_contact:    "创建联系人",
+  tool_update_contact:    "更新联系人",
+  tool_query_contact:     "查询联系人",
+  tool_delete_contact:    "删除联系人",
+  tool_query_input_turn:  "查找语音/输入",
+  tool_get_input_turn:    "取出原文",
+  tool_create_task:       "触发外部任务",
+};
+function humanToolLabel(name: string): string {
+  return TOOL_LABEL[name] ?? name;
 }

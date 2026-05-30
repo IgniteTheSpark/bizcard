@@ -69,11 +69,28 @@ export function ChatPage() {
     initialMessages,
   });
 
-  // When history loads / session changes, replace the chat state. Reset
-  // happens via the chat.reset helper.
+  // Seed the chat from DB history ONLY when we genuinely have nothing live.
+  //
+  // The naive `chat.reset(initialMessages)` on every initialMessages change
+  // had a race (issue #3, May audit): when the user sent the FIRST message
+  // of a new session, SSE `meta` minted a session_id → activeSessionId
+  // updated → SWR re-fetched (empty) → initialMessages identity changed →
+  // reset() wiped the optimistic user bubble. Now the live messages stayed
+  // hidden until the agent finished streaming, when SWR refetched the
+  // persisted pair and showed both.
+  //
+  // Condition `chat.messages.length === 0` covers the two cases we DO want
+  // to reset:
+  //   - first mount (chat starts empty, history arrives) → seed
+  //   - explicit handleSelectSession (calls chat.reset([]) → next history
+  //     for the new id arrives) → seed
+  // and skips the case we DON'T want to reset:
+  //   - mid-stream session promotion (chat has live messages, history is
+  //     briefly empty for the new id)
   useEffect(() => {
-    chat.reset(initialMessages);
-    // intentional: reset only when initialMessages identity changes (new session)
+    if (chat.messages.length === 0 && initialMessages.length > 0) {
+      chat.reset(initialMessages);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMessages]);
 
