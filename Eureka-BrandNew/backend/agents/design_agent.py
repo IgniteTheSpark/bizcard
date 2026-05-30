@@ -190,3 +190,145 @@ async def design_skill(description: str, user_id: str = "default") -> dict:
             final_text = event.content.parts[0].text or ""
 
     return json.loads(final_text)
+
+
+# ── Clarifier — guided card flow before generation ────────────────────────────
+#
+# Conversational wizard: when the user's description is too vague to design a
+# good skill from ("宝宝喂养记录"), ask 1-3 targeted questions first instead of
+# guessing. Returns either {ready: true} (description was concrete enough) or
+# {questions: [...]} for the frontend to render as a card flow.
+
+CLARIFIER_INSTRUCTION = """
+你是 Eureka 的 skill 引导助手。用户描述了一个想记录的东西,但有时候描述太
+笼统,你要决定是否追问几个关键问题,把记录意图问清楚。
+
+输入:用户的描述。
+输出:**只输出 JSON**,从以下两种里选一种。
+
+A) 描述已经够清楚(字段隐含、目的明确)→ 不需要追问:
+{"ready": true}
+
+B) 描述太笼统(只给类目,没说要记什么字段/目的)→ 追问:
+{
+  "questions": [
+    {
+      "key":         "<英文短标识,如 'purpose' / 'fields' / 'unit'>",
+      "prompt":      "<中文问题>",
+      "type":        "choice" | "text",
+      "options":     ["选项1","选项2","..."],   // type=choice 时必填,2-4 项
+      "placeholder": "<示例提示>"               // type=text 时可选
+    }
+  ]
+}
+
+## 判断「够清楚」的标准
+
+- 含动作 + 数值(「跑步训练」「读书 100 页」「记账 50 块」)→ ready=true
+- 已经隐含了核心字段(「跑步训练」隐含 距离/时长/配速)→ ready=true
+- 只给类目名,没有任何字段提示(「宝宝喂养记录」「看书」「健身」)→ 追问
+- 抽象 / 模糊(「灵感」「日记」「随便记记」)→ 追问
+
+## 出问题的纪律
+
+- **最多 3 个问题**,1-2 个最好;不要把 schema 设计全甩给用户
+- 优先问:**记录目的 + 关键字段 + 时间维度**
+- choice 给 2-4 个常见场景,涵盖大部分用户的需求
+- text 留给开放回答(还想记哪些细节)
+- 问的目的是缩小范围,不是 RPC 一个完整 schema —— 后面 design 阶段 LLM 还会扩展
+
+## 示例
+
+**输入:** `我想记录跑步训练`
+**输出:** `{"ready": true}`
+
+**输入:** `宝宝喂养记录`
+**输出:**
+{
+  "questions": [
+    {"key":"purpose","prompt":"主要想追踪什么?","type":"choice","options":["频率(几次)","量(毫升/克)","时间分布","综合"]},
+    {"key":"fields","prompt":"每次记录还想填哪些信息?","type":"text","placeholder":"如:奶/水/辅食、份量..."}
+  ]
+}
+
+**输入:** `看书`
+**输出:**
+{
+  "questions": [
+    {"key":"unit","prompt":"按什么粒度记?","type":"choice","options":["每天总时长","每本书的进度","每次阅读片段"]},
+    {"key":"meta","prompt":"还想顺手记什么?","type":"text","placeholder":"如:书名、感想、引文..."}
+  ]
+}
+
+**输入:** `健身打卡`
+**输出:**
+{
+  "questions": [
+    {"key":"focus","prompt":"主要想追踪哪一面?","type":"choice","options":["训练动作 + 组数","时长 + 强度","只是打卡完成"]}
+  ]
+}
+"""
+
+CLARIFIER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "ready": {"type": "boolean"},
+        "questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["key", "prompt", "type"],
+                "properties": {
+                    "key":         {"type": "string"},
+                    "prompt":      {"type": "string"},
+                    "type":        {"type": "string", "enum": ["choice", "text"]},
+                    "options":     {"type": "array", "items": {"type": "string"}},
+                    "placeholder": {"type": "string"},
+                },
+            },
+        },
+    },
+}
+
+
+def make_clarifier_agent() -> LlmAgent:
+    """Conversational stage of the skill wizard — emits questions or `ready`."""
+    return LlmAgent(
+        name="skill_clarifier",
+        model=DESIGN_AGENT_MODEL,
+        instruction=CLARIFIER_INSTRUCTION,
+        output_schema=CLARIFIER_SCHEMA,
+        tools=[],
+    )
+
+
+async def clarify_skill(description: str, user_id: str = "default") -> dict:
+    """
+    Returns either {"ready": true} or {"questions": [...]}.
+
+    Caller: api/skills.draft_skill — when ready, falls through to design_skill;
+    when questions, frontend collects answers and POSTs back with them folded
+    into the description for the design pass.
+    """
+    agent = make_clarifier_agent()
+    sid = str(uuid.uuid4())
+    await _session_service.create_session(
+        app_name=APP_NAME, user_id=user_id, session_id=sid,
+    )
+    runner = Runner(agent=agent, app_name=APP_NAME, session_service=_session_service)
+    msg = Content(role="user", parts=[Part(text=description)])
+    final_text = ""
+    async for event in runner.run_async(
+        user_id=user_id, session_id=sid, new_message=msg,
+    ):
+        if event.is_final_response() and event.content and event.content.parts:
+            final_text = event.content.parts[0].text or ""
+    try:
+        parsed = json.loads(final_text)
+    except (json.JSONDecodeError, ValueError):
+        # Conservative fallback: if the clarifier returns something we can't
+        # parse, treat as ready and let the design pass do its best.
+        return {"ready": True}
+    if not isinstance(parsed, dict):
+        return {"ready": True}
+    return parsed

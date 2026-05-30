@@ -36,6 +36,18 @@ interface SkillDraft {
   sample_payload: Record<string, unknown>;
 }
 
+/**
+ * One step in the guided card flow. Backend's clarifier emits 1-3 of these
+ * when the description is too vague to design a good skill from.
+ */
+interface ClarifyQuestion {
+  key:         string;
+  prompt:      string;
+  type:        "choice" | "text";
+  options?:    string[];
+  placeholder?: string;
+}
+
 interface AddSkillWizardProps {
   onClose: () => void;
   onCreated?: (name: string) => void;
@@ -62,16 +74,30 @@ export function AddSkillWizard(props: AddSkillWizardProps) {
 function Body({ onClose, onCreated }: AddSkillWizardProps) {
   const { mutate } = useSWRConfig();
 
-  const [step, setStep] = useState<"describe" | "preview">("describe");
+  const [step, setStep] = useState<"describe" | "clarify" | "preview">("describe");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false); // generating (describe) / confirming (preview)
   const [error, setError] = useState<string | null>(null);
 
   const [draft, setDraft] = useState<SkillDraft | null>(null);
+  // Guided card flow: when the description is vague, the backend returns
+  // 1-3 questions instead of a draft. The wizard renders them, collects
+  // answers, and POSTs back to /api/skills with `answers` to actually
+  // generate the draft.
+  const [questions, setQuestions] = useState<ClarifyQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   // Editable overrides applied on top of the AI draft in the preview step.
   const [displayName, setDisplayName] = useState("");
   const [accent, setAccent] = useState<AccentColor>("blue");
   const [icon, setIcon] = useState("");
+
+  function applyDraft(d: SkillDraft) {
+    setDraft(d);
+    setDisplayName(d.display_name ?? "");
+    setAccent(d.render_spec?.accent_color ?? "blue");
+    setIcon(d.render_spec?.icon ?? "•");
+    setStep("preview");
+  }
 
   async function generate() {
     const desc = description.trim();
@@ -79,17 +105,62 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
     setBusy(true);
     setError(null);
     try {
-      const resp = await apiFetch<{ ok: boolean; draft?: SkillDraft; error?: string }>(
+      // Stage 1: ask the backend whether the description needs clarification.
+      // It either returns a draft directly or a list of clarifying questions.
+      const resp = await apiFetch<{
+        ok: boolean;
+        draft?: SkillDraft;
+        questions?: ClarifyQuestion[];
+        error?: string;
+      }>(
         "/api/skills",
         { method: "POST", body: { description: desc }, timeoutMs: 60_000 },
       );
+      if (!resp.ok) throw new Error(resp.error ?? "生成失败,请重试");
+      if (resp.draft) {
+        applyDraft(resp.draft);
+        return;
+      }
+      const qs = resp.questions ?? [];
+      if (qs.length > 0) {
+        setQuestions(qs);
+        // Pre-fill choice questions with the first option so the user just
+        // confirms or changes — saves a click in the common case.
+        const init: Record<string, string> = {};
+        for (const q of qs) {
+          if (q.type === "choice" && q.options?.length) init[q.key] = q.options[0];
+        }
+        setAnswers(init);
+        setStep("clarify");
+        return;
+      }
+      // No draft and no questions — unlikely, surface a clear error.
+      throw new Error("生成失败,请重试");
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitClarify() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const payload = {
+        description: description.trim(),
+        answers: questions.map((q) => ({
+          key:   q.key,
+          value: (answers[q.key] ?? "").trim(),
+        })),
+      };
+      const resp = await apiFetch<{ ok: boolean; draft?: SkillDraft; error?: string }>(
+        "/api/skills",
+        { method: "POST", body: payload, timeoutMs: 60_000 },
+      );
       if (!resp.ok || !resp.draft) throw new Error(resp.error ?? "生成失败,请重试");
-      const d = resp.draft;
-      setDraft(d);
-      setDisplayName(d.display_name ?? "");
-      setAccent(d.render_spec?.accent_color ?? "blue");
-      setIcon(d.render_spec?.icon ?? "•");
-      setStep("preview");
+      applyDraft(resp.draft);
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -132,6 +203,8 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
 
   function backToDescribe() {
     setStep("describe");
+    setQuestions([]);
+    setAnswers({});
     setError(null);
   }
 
@@ -182,7 +255,9 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
               新技能 · AI 设计
             </div>
             <div className="text-eu-lg text-eu-text-hi font-medium tracking-tight mt-0.5">
-              {step === "describe" ? "想记录点什么?" : "预览这张卡片"}
+              {step === "describe" ? "想记录点什么?"
+                : step === "clarify" ? "再帮 AI 想清楚一下"
+                : "预览这张卡片"}
             </div>
           </div>
           <button
@@ -202,6 +277,18 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
             setDescription={setDescription}
             busy={busy}
             onGenerate={generate}
+          />
+        )}
+
+        {step === "clarify" && (
+          <ClarifyStep
+            description={description}
+            questions={questions}
+            answers={answers}
+            setAnswers={setAnswers}
+            busy={busy}
+            onBack={backToDescribe}
+            onSubmit={submitClarify}
           />
         )}
 
@@ -360,7 +447,140 @@ function DescribeStep({
   );
 }
 
-/* ── Step 2: preview + tweak ──────────────────────────────────────────────── */
+/* ── Step 2: clarify (only when AI needs more info) ───────────────────────── */
+
+/**
+ * ClarifyStep — guided card flow. The backend's clarifier returns 1-3
+ * questions when the user's description is too vague to draft a good
+ * skill from. We render each as a card row: title + (choice chips OR
+ * free-text input). User answers and we POST back to /api/skills with
+ * the answers folded into the description.
+ *
+ * Why this step exists: a one-shot description like 「宝宝喂养记录」 leaves
+ * the design agent guessing at the schema; the user ends up with fields
+ * that don't match their real intent. Letting the agent narrow the scope
+ * first produces skills users actually want.
+ */
+function ClarifyStep({
+  description,
+  questions,
+  answers,
+  setAnswers,
+  busy,
+  onBack,
+  onSubmit,
+}: {
+  description: string;
+  questions: ClarifyQuestion[];
+  answers: Record<string, string>;
+  setAnswers: (next: Record<string, string>) => void;
+  busy: boolean;
+  onBack: () => void;
+  onSubmit: () => void;
+}) {
+  function setAnswer(key: string, value: string) {
+    setAnswers({ ...answers, [key]: value });
+  }
+
+  // All questions must have a non-empty answer before submit. Choices are
+  // pre-filled; only free-text questions can stay blank.
+  const ready = questions.every((q) => (answers[q.key] ?? "").trim().length > 0);
+
+  return (
+    <div className="px-eu-lg flex flex-col gap-eu-md">
+      {/* Recap the original description so the user sees what they're refining. */}
+      <div
+        className="rounded-eu-md px-eu-md py-eu-sm border border-eu-rule"
+        style={{ background: "rgba(255,255,255,0.02)" }}
+      >
+        <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono mb-1">
+          原始描述
+        </div>
+        <div className="text-eu-sm text-eu-text-hi">{description}</div>
+      </div>
+
+      {/* Each question is its own card row. */}
+      <div className="flex flex-col gap-eu-md">
+        {questions.map((q, i) => (
+          <div key={q.key} className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span
+                className="font-mono text-eu-xs"
+                style={{ color: "rgba(196,168,255,0.75)" }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span className="text-eu-sm text-eu-text-hi font-medium">{q.prompt}</span>
+            </div>
+            {q.type === "choice" && q.options ? (
+              <div className="flex flex-wrap gap-1.5 pl-6">
+                {q.options.map((opt) => {
+                  const active = answers[q.key] === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setAnswer(q.key, opt)}
+                      disabled={busy}
+                      className={[
+                        "px-eu-md py-eu-sm rounded-eu-full text-eu-sm transition-all",
+                        "border active:scale-95",
+                        active
+                          ? "bg-eu-brand-faint text-eu-brand-hi border-eu-brand-line"
+                          : "bg-eu-surface text-eu-text-mid border-eu-border hover:border-eu-border-strong",
+                      ].join(" ")}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={answers[q.key] ?? ""}
+                onChange={(e) => setAnswer(q.key, e.target.value)}
+                placeholder={q.placeholder ?? ""}
+                disabled={busy}
+                className="ml-6 bg-eu-surface border border-eu-border rounded-eu-md px-eu-sm py-1.5 text-eu-base text-eu-text-hi focus:outline-none focus:border-eu-brand"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-eu-sm pt-eu-sm">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={busy}
+          className="px-eu-md py-eu-sm rounded-eu-md text-eu-text-mid hover:bg-eu-surface-hover text-eu-sm disabled:opacity-40"
+        >
+          ← 改描述
+        </button>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={busy || !ready}
+          className={[
+            "inline-flex items-center gap-1.5 px-eu-md py-eu-sm rounded-eu-full",
+            "bg-eu-brand-faint text-eu-brand-hi border border-eu-brand-line",
+            "text-eu-sm font-medium hover:brightness-110 active:scale-95",
+            "disabled:opacity-40 disabled:cursor-not-allowed",
+          ].join(" ")}
+        >
+          {busy
+            ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+            : <Wand2 size={14} strokeWidth={1.75} />}
+          {busy ? "生成中…" : "生成卡片"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Step 3: preview + tweak ──────────────────────────────────────────────── */
 
 function PreviewStep({
   card,

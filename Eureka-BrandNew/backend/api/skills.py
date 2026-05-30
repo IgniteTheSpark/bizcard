@@ -16,12 +16,13 @@ User-skill cap (May audit, decision):
 """
 import json
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select, update as sa_update, delete as sa_delete, func, or_, cast, String, text
 
-from agents.design_agent import design_skill
+from agents.design_agent import design_skill, clarify_skill
 from core.auth import get_current_user_id
 from db.database import AsyncSessionLocal
 from db.models import GlobalSkill, UserSkill, Asset, AssetField, Session as DBSession, Task
@@ -50,8 +51,17 @@ async def _count_user_skills(db, user_id: str) -> int:
 
 # ── Request bodies ─────────────────────────────────────────────────────────────
 
+class ClarifyAnswer(BaseModel):
+    key:   str
+    value: str
+
+
 class DraftSkillRequest(BaseModel):
     description: str   # user's NL description, e.g. "我想记录跑步训练"
+    # Guided wizard (May audit): when set, the user is back from the clarify
+    # step with answers — fold them into the description before generation,
+    # don't re-clarify. Empty / None on the first call.
+    answers: Optional[list[ClarifyAnswer]] = None
 
 
 class ConfirmSkillRequest(BaseModel):
@@ -117,21 +127,45 @@ async def draft_skill(
     user_id: str = Depends(get_current_user_id),
 ):
     """
-    Run the design agent against the user's description. Returns the draft
-    JSON for the frontend AddSkillWizard to preview + tweak.
+    Two-stage guided draft (May audit, user feedback):
 
-    Sync (not SSE) — draft is a single coherent JSON, no progressive value
-    in token-streaming. Phase D polish can upgrade to SSE if real-time
-    field-by-field preview becomes desired UX.
+    1. Initial call — no `answers`:
+       - Run the clarifier. If the description is too vague (「宝宝喂养记录」
+         / 「看书」), the clarifier returns 1-3 questions for the frontend to
+         render as a card flow.
+       - If the description is concrete enough, fall through to design and
+         return the draft directly.
+
+    2. Follow-up call — with `answers`:
+       - Skip the clarifier; fold answers into the description and run
+         design. Always returns a draft.
+
+    Response shape (one of):
+      {"ok": true, "questions": [{key, prompt, type, options?, placeholder?}]}
+      {"ok": true, "draft":     {name, display_name, payload_schema, render_spec, sample_payload}}
     """
     try:
-        draft = await design_skill(req.description, user_id)
+        if req.answers:
+            # Stage 2: user answered the clarifier. Enrich and design.
+            extras = "\n\n用户补充:\n" + "\n".join(
+                f"- {a.key}: {a.value}" for a in req.answers if a.value
+            )
+            enriched = req.description + extras
+            draft = await design_skill(enriched, user_id)
+            return {"ok": True, "draft": draft}
+
+        # Stage 1: ask the clarifier whether we need questions first.
+        clarify = await clarify_skill(req.description, user_id)
+        if clarify.get("ready"):
+            draft = await design_skill(req.description, user_id)
+            return {"ok": True, "draft": draft}
+
+        # Clarifier wants more info.
+        return {"ok": True, "questions": clarify.get("questions", [])}
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=502, detail=f"design agent returned invalid JSON: {e}")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"design agent error: {e}")
-
-    return {"ok": True, "draft": draft}
 
 
 # ── POST /api/skills/confirm (land a draft) ───────────────────────────────────
