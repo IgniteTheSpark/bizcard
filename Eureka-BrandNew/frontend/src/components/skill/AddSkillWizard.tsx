@@ -90,12 +90,29 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
   const [displayName, setDisplayName] = useState("");
   const [accent, setAccent] = useState<AccentColor>("blue");
   const [icon, setIcon] = useState("");
+  // Field-to-slot mapping: lets the user override the AI's choice of which
+  // payload field is primary (= big card title = calendar bullet title),
+  // secondary (= subtitle), or meta (= pills below). The big card and the
+  // calendar bullet share a single primary so the UI never disagrees with
+  // itself. See "## Unified display rule" banner in PreviewStep.
+  const [slots, setSlots] = useState<SlotMap>({});
+  // Label + unit overrides for the primary/secondary fields. Decorate
+  // values on both the big card title and the calendar bullet.
+  const [primaryLabel,   setPrimaryLabel]   = useState("");
+  const [primaryUnit,    setPrimaryUnit]    = useState("");
+  const [secondaryLabel, setSecondaryLabel] = useState("");
+  const [secondaryUnit,  setSecondaryUnit]  = useState("");
 
   function applyDraft(d: SkillDraft) {
     setDraft(d);
     setDisplayName(d.display_name ?? "");
     setAccent(d.render_spec?.accent_color ?? "blue");
     setIcon(d.render_spec?.icon ?? "•");
+    setSlots(initialSlots(d));
+    setPrimaryLabel(d.render_spec?.primary_label   ?? "");
+    setPrimaryUnit(d.render_spec?.primary_unit    ?? "");
+    setSecondaryLabel(d.render_spec?.secondary_label ?? "");
+    setSecondaryUnit(d.render_spec?.secondary_unit  ?? "");
     setStep("preview");
   }
 
@@ -173,7 +190,10 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
     setBusy(true);
     setError(null);
     try {
-      const render_spec: RenderSpec = { ...draft.render_spec, accent_color: accent, icon };
+      const render_spec: RenderSpec = composeRenderSpec(draft.render_spec, {
+        accent, icon, slots,
+        primaryLabel, primaryUnit, secondaryLabel, secondaryUnit,
+      });
       const resp = await apiFetch<{ ok: boolean; user_skill_id?: string; name?: string; error?: string }>(
         "/api/skills/confirm",
         {
@@ -209,12 +229,17 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
   }
 
   // Live preview card: feed the (possibly tweaked) spec + the AI's sample
-  // payload through the same interpreter the real cards use.
+  // payload through the same interpreter the real cards use. composeRenderSpec
+  // bakes in the user's slot mapping + label/unit overrides so the preview
+  // updates the instant the user picks a different field as 主标题.
   const previewCard =
     draft &&
     buildCard({
       payload: draft.sample_payload ?? {},
-      spec: { ...draft.render_spec, accent_color: accent, icon },
+      spec: composeRenderSpec(draft.render_spec, {
+        accent, icon, slots,
+        primaryLabel, primaryUnit, secondaryLabel, secondaryUnit,
+      }),
       assetId: null,
       cardType: draft.name,
       displayName: displayName || draft.display_name,
@@ -302,6 +327,12 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
             setAccent={setAccent}
             icon={icon}
             setIcon={setIcon}
+            slots={slots}
+            setSlots={setSlots}
+            primaryLabel={primaryLabel}     setPrimaryLabel={setPrimaryLabel}
+            primaryUnit={primaryUnit}       setPrimaryUnit={setPrimaryUnit}
+            secondaryLabel={secondaryLabel} setSecondaryLabel={setSecondaryLabel}
+            secondaryUnit={secondaryUnit}   setSecondaryUnit={setSecondaryUnit}
           />
         )}
 
@@ -583,25 +614,33 @@ function ClarifyStep({
 /* ── Step 3: preview + tweak ──────────────────────────────────────────────── */
 
 function PreviewStep({
-  card,
-  draft,
-  displayName,
-  setDisplayName,
-  accent,
-  setAccent,
-  icon,
-  setIcon,
+  card, draft,
+  displayName, setDisplayName,
+  accent, setAccent,
+  icon, setIcon,
+  slots, setSlots,
+  primaryLabel, setPrimaryLabel,
+  primaryUnit,  setPrimaryUnit,
+  secondaryLabel, setSecondaryLabel,
+  secondaryUnit,  setSecondaryUnit,
 }: {
   card: ReturnType<typeof buildCard>;
   draft: SkillDraft;
-  displayName: string;
-  setDisplayName: (v: string) => void;
-  accent: AccentColor;
-  setAccent: (v: AccentColor) => void;
-  icon: string;
-  setIcon: (v: string) => void;
+  displayName: string; setDisplayName: (v: string) => void;
+  accent: AccentColor; setAccent: (v: AccentColor) => void;
+  icon: string; setIcon: (v: string) => void;
+  slots: SlotMap; setSlots: (v: SlotMap) => void;
+  primaryLabel: string; setPrimaryLabel: (v: string) => void;
+  primaryUnit: string;  setPrimaryUnit: (v: string) => void;
+  secondaryLabel: string; setSecondaryLabel: (v: string) => void;
+  secondaryUnit: string;  setSecondaryUnit: (v: string) => void;
 }) {
   const fields = schemaFields(draft.payload_schema);
+  const metaCount = Object.values(slots).filter((s) => s === "meta").length;
+
+  function pick(field: string, kind: SlotKind) {
+    setSlots(applySlotPick(slots, field, kind));
+  }
 
   return (
     <div className="px-eu-lg flex flex-col gap-eu-md">
@@ -615,15 +654,62 @@ function PreviewStep({
         </div>
       </div>
 
-      {/* Calendar bullet preview — how this skill's assets will look in the
-          schedule / day-detail timeline. Per the rule: "time + title" only,
-          where title is the same decorated string the big card uses
-          (label + primary value + unit). */}
+      {/* Calendar bullet preview — same decorated title as the big card; the
+          rule is enforced in code (one source of truth, no per-surface drift). */}
       <div>
         <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono mb-1.5">
           日程行预览
         </div>
         <CalendarBulletPreview title={card.title} accent={card.accentColor} />
+      </div>
+
+      {/* ── 字段分配 — user picks which payload field is primary / secondary /
+          meta. Big card uses all three; calendar bullet inherits primary. */}
+      {fields.length > 0 && (
+        <div className="flex flex-col gap-1.5 border-t border-eu-rule pt-eu-md">
+          <div className="flex items-baseline justify-between">
+            <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono">
+              字段分配
+            </div>
+            <div className="text-eu-xs text-eu-text-lo font-mono">
+              主 1 · 副 1 · 信息≤3
+            </div>
+          </div>
+          <div className="text-eu-xs text-eu-text-lo leading-relaxed">
+            主标题同时出现在大卡片和日历行上。副标题和信息只出现在大卡片上。
+          </div>
+          <div className="flex flex-col gap-1 mt-0.5">
+            {fields.map((f) => (
+              <SlotRow
+                key={f.name}
+                field={f.name}
+                type={f.type}
+                slot={slots[f.name] ?? "hidden"}
+                metaFull={metaCount >= 3 && slots[f.name] !== "meta"}
+                onPick={(k) => pick(f.name, k)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Label + unit overrides for primary / secondary so the decoration on
+          the title / subtitle is what the user actually wants. */}
+      <div className="flex flex-col gap-eu-sm border-t border-eu-rule pt-eu-md">
+        <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono">
+          主标题装饰
+        </div>
+        <div className="flex gap-eu-sm">
+          <LabeledInput label="前缀" value={primaryLabel} onChange={setPrimaryLabel} placeholder="(可选,如 距离)" />
+          <LabeledInput label="单位" value={primaryUnit} onChange={setPrimaryUnit} placeholder="(可选,如 km)" />
+        </div>
+        <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono mt-1">
+          副标题装饰
+        </div>
+        <div className="flex gap-eu-sm">
+          <LabeledInput label="前缀" value={secondaryLabel} onChange={setSecondaryLabel} placeholder="(可选,如 配速)" />
+          <LabeledInput label="单位" value={secondaryUnit} onChange={setSecondaryUnit} placeholder="(可选,如 /km)" />
+        </div>
       </div>
 
       {/* Tweak: name + icon + accent */}
@@ -671,26 +757,70 @@ function PreviewStep({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Captured fields */}
-      {fields.length > 0 && (
-        <div className="flex flex-col gap-1.5 border-t border-eu-rule pt-eu-md">
-          <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono">
-            会记录这些字段
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {fields.map((f) => (
-              <span
-                key={f.name}
-                className="inline-flex items-center gap-1 px-eu-sm py-1 rounded-eu-md bg-eu-surface border border-eu-border text-eu-xs text-eu-text-mid"
-              >
-                <span className="text-eu-text-hi">{f.name}</span>
-                {f.type && <span className="font-mono text-eu-text-lo">{f.type}</span>}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+function SlotRow({
+  field, type, slot, metaFull, onPick,
+}: {
+  field: string;
+  type: string;
+  slot: SlotKind;
+  metaFull: boolean;
+  onPick: (s: SlotKind) => void;
+}) {
+  const options: Array<{ key: SlotKind; label: string; disabled?: boolean }> = [
+    { key: "primary",   label: "主" },
+    { key: "secondary", label: "副" },
+    { key: "meta",      label: "信息", disabled: metaFull },
+    { key: "hidden",    label: "隐藏" },
+  ];
+  return (
+    <div className="flex items-center gap-eu-sm py-1">
+      <div className="flex-1 min-w-0 flex items-baseline gap-1.5">
+        <span className="text-eu-sm text-eu-text-hi truncate">{field}</span>
+        {type && <span className="font-mono text-eu-xs text-eu-text-lo shrink-0">{type}</span>}
+      </div>
+      <div className="flex gap-0.5 shrink-0">
+        {options.map((o) => {
+          const active = slot === o.key;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              disabled={o.disabled && !active}
+              onClick={() => onPick(o.key)}
+              className={[
+                "px-2 py-0.5 rounded-eu-sm text-eu-xs border transition-all active:scale-95",
+                active
+                  ? "bg-eu-brand-faint text-eu-brand-hi border-eu-brand-line font-medium"
+                  : "bg-transparent text-eu-text-lo border-eu-border hover:border-eu-border-strong",
+                o.disabled && !active ? "opacity-30 cursor-not-allowed" : "",
+              ].join(" ")}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LabeledInput({
+  label, value, onChange, placeholder,
+}: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <div className="flex-1 flex flex-col gap-1 min-w-0">
+      <div className="text-eu-xs text-eu-text-lo font-mono">{label}</div>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-eu-surface border border-eu-border rounded-eu-md px-eu-sm py-1 text-eu-sm text-eu-text-hi focus:outline-none focus:border-eu-brand"
+      />
     </div>
   );
 }
@@ -741,6 +871,103 @@ function CalendarBulletPreview({
 }
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Slot a payload field can occupy on the rendered card:
+ *   primary   — 1, becomes the title (big card) AND the bullet on calendar
+ *   secondary — 0..1, becomes the subtitle (big card only)
+ *   meta      — 0..3, become the pills below subtitle (big card only)
+ *   hidden    — not shown on cards; still in payload, visible in the
+ *               AssetDetailDrawer / editor
+ *
+ * Unified rule (May audit): calendar bullet inherits primary, so the user
+ * configures the big card and the bullet follows automatically — no per-
+ * surface drift, no second config to keep in sync.
+ */
+export type SlotKind = "primary" | "secondary" | "meta" | "hidden";
+export type SlotMap = Record<string, SlotKind>;
+
+/**
+ * Seed the slot map from a fresh AI draft. Whatever primary/secondary/meta
+ * the AI picked becomes the starting point; remaining fields default to
+ * "hidden". User can reassign from here.
+ */
+function initialSlots(draft: SkillDraft): SlotMap {
+  const map: SlotMap = {};
+  const rs = draft.render_spec ?? {} as RenderSpec;
+  if (rs.primary_field)   map[rs.primary_field]   = "primary";
+  if (rs.secondary_field) map[rs.secondary_field] = "secondary";
+  for (const mf of rs.meta_fields ?? []) {
+    if (mf.field && map[mf.field] !== "primary" && map[mf.field] !== "secondary") {
+      map[mf.field] = "meta";
+    }
+  }
+  for (const fname of Object.keys(draft.payload_schema ?? {})) {
+    if (!(fname in map)) map[fname] = "hidden";
+  }
+  return map;
+}
+
+/**
+ * Picking a slot enforces the cardinality rules:
+ *   primary / secondary — at most one; previous holder gets demoted to hidden
+ *   meta                — many allowed; cap (≤3) is enforced in the UI by
+ *                         disabling the "信息" button when full
+ *   hidden              — always allowed
+ */
+function applySlotPick(slots: SlotMap, field: string, kind: SlotKind): SlotMap {
+  const next: SlotMap = { ...slots };
+  if (kind === "primary" || kind === "secondary") {
+    for (const [f, s] of Object.entries(next)) {
+      if (s === kind && f !== field) next[f] = "hidden";
+    }
+  }
+  next[field] = kind;
+  return next;
+}
+
+interface ComposeOpts {
+  accent: AccentColor;
+  icon: string;
+  slots: SlotMap;
+  primaryLabel:   string;
+  primaryUnit:    string;
+  secondaryLabel: string;
+  secondaryUnit:  string;
+}
+
+/**
+ * Compose a RenderSpec from the AI draft + the user's slot map +
+ * label/unit overrides. Falls back to the AI's choices when the slot map
+ * isn't populated yet (initial render, or skill with empty schema).
+ */
+function composeRenderSpec(base: RenderSpec, opts: ComposeOpts): RenderSpec {
+  const entries = Object.entries(opts.slots);
+  const primary   = entries.find(([_, s]) => s === "primary")?.[0]   ?? base.primary_field;
+  const secondary = entries.find(([_, s]) => s === "secondary")?.[0] ?? base.secondary_field;
+  const metaFromSlots = entries.filter(([_, s]) => s === "meta").map(([f]) => f);
+  const meta_fields = metaFromSlots.length > 0
+    ? metaFromSlots.slice(0, 3).map((field) => {
+        // Preserve any AI-set label / format on the meta field if it was
+        // already in the base spec.
+        const baseMeta = (base.meta_fields ?? []).find((m) => m.field === field);
+        return baseMeta ?? { field };
+      })
+    : base.meta_fields;
+
+  return {
+    ...base,
+    accent_color:    opts.accent,
+    icon:            opts.icon,
+    primary_field:   primary,
+    primary_label:   opts.primaryLabel   || undefined,
+    primary_unit:    opts.primaryUnit    || undefined,
+    secondary_field: secondary,
+    secondary_label: opts.secondaryLabel || undefined,
+    secondary_unit:  opts.secondaryUnit  || undefined,
+    meta_fields,
+  };
+}
 
 function schemaFields(schema: Record<string, unknown>): Array<{ name: string; type: string }> {
   if (!schema || typeof schema !== "object") return [];
