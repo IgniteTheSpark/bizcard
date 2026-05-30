@@ -11,7 +11,7 @@ payload_schema, render_spec, sample_payload} draft. The frontend shows
 the draft + preview, user tweaks, then POSTs /api/skills/confirm to land it.
 
 User-skill cap (May audit, decision):
-  USER_SKILL_CAP = 10 — measures the user-defined skills only (system
+  USER_SKILL_CAP = 9 — measures the user-defined skills only (system
   skills are excluded since their render_spec is null/JSON-null).
 """
 import json
@@ -26,7 +26,7 @@ from core.auth import get_current_user_id
 from db.database import AsyncSessionLocal
 from db.models import GlobalSkill, UserSkill, Asset, AssetField
 
-USER_SKILL_CAP = 10
+USER_SKILL_CAP = 9
 
 router = APIRouter()
 
@@ -62,6 +62,11 @@ class ConfirmSkillRequest(BaseModel):
     queryable_fields: list = []
 
 
+class ReorderSkillsRequest(BaseModel):
+    """Drag-to-reorder writes back the full ordered list of user_skill_ids."""
+    order: list[str]
+
+
 # ── GET /api/skills ────────────────────────────────────────────────────────────
 
 @router.get("/skills")
@@ -79,7 +84,9 @@ async def list_skills(user_id: str = Depends(get_current_user_id)):
             select(UserSkill, GlobalSkill.name.label("skill_name"))
             .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
             .where(UserSkill.user_id == user_id)
-            .order_by(UserSkill.created_at.asc())
+            # Position is the new ordering (drag-to-reorder); created_at is
+            # the tiebreaker for backfilled rows still at position 0.
+            .order_by(UserSkill.position.asc(), UserSkill.created_at.asc())
         )
         rows = (await db.execute(stmt)).all()
 
@@ -96,6 +103,7 @@ async def list_skills(user_id: str = Depends(get_current_user_id)):
             "payload_schema":   us.payload_schema,
             "render_spec":      us.render_spec,
             "queryable_fields": us.queryable_fields or [],
+            "position":         us.position,
         })
 
     return {"ok": True, "skills": skills}
@@ -171,6 +179,14 @@ async def confirm_skill(
                 detail=f"skill already registered: {req.name}",
             )
 
+        # New skill lands at the END of the user's grid (max position + 1
+        # across user-defined skills). Drag-to-reorder is the only way to
+        # change this afterward.
+        max_pos = int((await db.execute(
+            select(func.coalesce(func.max(UserSkill.position), -1))
+            .where(UserSkill.user_id == user_id)
+        )).scalar() or -1)
+
         us = UserSkill(
             user_id=user_id,
             skill_id=gs.id,
@@ -178,6 +194,7 @@ async def confirm_skill(
             payload_schema=req.payload_schema,
             render_spec=req.render_spec,
             queryable_fields=req.queryable_fields,
+            position=max_pos + 1,
         )
         db.add(us)
         await db.commit()
@@ -265,3 +282,54 @@ async def delete_skill(
         "user_skill_id": user_skill_id,
         "deleted_assets": asset_count if force else 0,
     }
+
+
+# ── PUT /api/skills/reorder ───────────────────────────────────────────────────
+
+@router.put("/skills/reorder")
+async def reorder_skills(
+    req: ReorderSkillsRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Persist a drag-to-reorder of the SKILLS grid.
+
+    `order` is the full list of this user's user_skill_ids, top-left to
+    bottom-right in grid order. We rewrite positions 0..N-1 in one transaction.
+
+    Validates:
+      - every id in `order` belongs to `user_id` (no cross-tenant smuggling).
+      - the set matches the user's current skills (no drops, no extras).
+
+    Missing skills (network split / concurrent delete) abort with 409 so the
+    frontend re-fetches and retries instead of silently dropping rows.
+    """
+    try:
+        ids = [uuid.UUID(s) for s in req.order]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid user_skill_id in order")
+
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(
+            select(UserSkill).where(UserSkill.user_id == user_id)
+        )).scalars().all()
+        existing_ids = {us.id for us in rows}
+        provided_ids = set(ids)
+
+        if existing_ids != provided_ids:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "order does not match current skills",
+                    "expected_count": len(existing_ids),
+                    "provided_count":  len(provided_ids),
+                    "hint": "refetch /api/skills and retry",
+                },
+            )
+
+        by_id = {us.id: us for us in rows}
+        for pos, sid in enumerate(ids):
+            by_id[sid].position = pos
+        await db.commit()
+
+    return {"ok": True, "count": len(ids)}

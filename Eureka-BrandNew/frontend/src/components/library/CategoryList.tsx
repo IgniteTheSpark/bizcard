@@ -1,11 +1,9 @@
-import { useState } from "react";
-import { Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import useSWR from "swr";
 
 import { EventCard } from "@/components/calendar/EventCard";
 import { SkillCard } from "@/components/skill/SkillCard";
-import { AddSkillWizard } from "@/components/skill/AddSkillWizard";
+import { SkillsGrid, type SkillTileData, type TileAccent } from "@/components/library/SkillsGrid";
 import { swrFetcher } from "@/lib/api";
 import { buildCard } from "@/lib/render-spec";
 import type { AccentColor } from "@/lib/render-spec";
@@ -96,19 +94,30 @@ const CORE_TILES: TileKind[] = [
   { key: "contact", to: "/library/contact", label: "名片", icon: "◯", accent: "neutral" },
   { key: "file",    to: "/library/file",    label: "文件", icon: "♪", accent: "cyan"    },
 ];
-const SKILL_TILES: TileKind[] = [
-  { key: "todo",    to: "/library/todo",    label: "待办", icon: "☑", accent: "blue"    },
-  { key: "idea",    to: "/library/idea",    label: "想法", icon: "◇", accent: "amber"   },
-  { key: "expense", to: "/library/expense", label: "记账", icon: "¥", accent: "green"   },
-];
 
-// render_spec.accent_color → LibAccent, for dynamically-surfaced user skills
-// (seeded 笔记 + anything created via AddSkillWizard). red/gray fold into the
-// nearest library accent since the library palette has no red.
+// render_spec.accent_color → LibAccent, for the core-tile fallback.
 const RENDER_TO_LIB: Record<AccentColor, LibAccent> = {
   blue: "blue", amber: "amber", green: "green", purple: "purple",
   red: "amber", gray: "neutral", neutral: "neutral",
 };
+
+// SkillsGrid uses a slimmer accent palette; map the registry's render_spec
+// colors into it. red/gray fold into amber/neutral.
+const RENDER_TO_GRID: Record<AccentColor, TileAccent> = {
+  blue: "blue", amber: "amber", green: "green", purple: "purple",
+  red: "amber", gray: "neutral", neutral: "neutral",
+};
+
+// Seeded canonical skills that we surface but DON'T allow deletion of —
+// these are the framework's default skill kinds. User-created skills (跑步
+// / 读书 / habit / ...) are deletable.
+const PROTECTED_SKILL_NAMES = new Set([
+  "todo", "idea", "expense", "notes", "misc",
+]);
+
+// System skills (not user-facing) — never shown in the SKILLS grid.
+const HIDDEN_SKILL_NAMES = new Set(["external_ref", "qa", "contact"]);
+// (`contact` is a system skill but its real list lives in the CORE 名片 tile.)
 
 export function CategoryList() {
   const { skills } = useSkillRegistry();
@@ -135,25 +144,23 @@ export function CategoryList() {
     bySkillIcon: iconMap(skills),
   }, 5);
 
-  // 我的技能 tiles = the 3 designed defaults + every other registered user
-  // skill (seeded 笔记, plus anything created via AddSkillWizard). New skills
-  // surface here automatically, so M5's "register" step is visible end-to-end
-  // and nothing in the registry stays hidden.
-  const knownKeys = new Set([...CORE_TILES, ...SKILL_TILES].map((t) => t.key));
-  // System skills aren't user-creatable types — hide them here, matching
-  // CreateAssetMenu's filter (external_ref backs async task results; qa is
-  // internal). Otherwise an empty "外部引用 0" tile clutters the hub.
-  const SYSTEM_SKILLS = new Set(["external_ref", "qa"]);
-  const extraSkillTiles: TileKind[] = skills
-    .filter((s) => s.render_spec && !knownKeys.has(s.name) && !SYSTEM_SKILLS.has(s.name))
+  // SKILLS tiles = every registered user skill (seeded defaults + anything
+  // created via AddSkillWizard), ordered by user_skills.position so drag-to-
+  // reorder persists. Backend already returns sorted; we re-sort defensively
+  // so a stale cache doesn't show jitter.
+  const gridTiles: SkillTileData[] = skills
+    .filter((s) => s.render_spec && !HIDDEN_SKILL_NAMES.has(s.name))
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     .map((s) => ({
-      key:    s.name,
-      to:     `/library/${s.name}`,
-      label:  s.display_name || s.name,
-      icon:   s.render_spec?.icon ?? "◇",
-      accent: RENDER_TO_LIB[s.render_spec?.accent_color ?? "neutral"] ?? "neutral",
+      user_skill_id: s.user_skill_id,
+      name:          s.name,
+      label:         s.display_name || s.name,
+      icon:          s.render_spec?.icon ?? "◇",
+      accent:        RENDER_TO_GRID[s.render_spec?.accent_color ?? "neutral"] ?? "neutral",
+      count:         countFor(s.name, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts }),
+      preview:       previewFor(s.name, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts }),
+      deletable:     !PROTECTED_SKILL_NAMES.has(s.name),
     }));
-  const skillTiles = [...SKILL_TILES, ...extraSkillTiles];
 
   return (
     <div
@@ -234,20 +241,7 @@ export function CategoryList() {
         </div>
 
         <SectionLabel>启用的技能 · SKILLS</SectionLabel>
-        <div
-          className="grid grid-cols-3 gap-2.5"
-          style={{ margin: "6px 0 22px" }}
-        >
-          {skillTiles.map((t) => (
-            <TypeTile
-              key={t.key}
-              tile={t}
-              count={countFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
-              preview={previewFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
-            />
-          ))}
-          <AddSkillTile userSkillCount={skills.filter((s) => s.render_spec).length} />
-        </div>
+        <SkillsGrid tiles={gridTiles} />
 
         <SectionLabel>最近 · RECENT</SectionLabel>
 
@@ -455,75 +449,9 @@ function RecentCard({ item }: { item: RecentItem }) {
   );
 }
 
-/** Hard cap mirrors backend USER_SKILL_CAP in api/skills.py. */
-const USER_SKILL_CAP = 10;
-
-/**
- * AddSkillTile — OP4 grid-tile variant of "添加新技能". Lives inline
- * with the type tiles so users find it where they look for "what types
- * exist". Visually: dashed purple border + ✨ icon + label, leaning into
- * the "magical / experimental" framing of the AddSkillWizard.
- *
- * Cap-aware (May audit): at USER_SKILL_CAP user skills the tile flips to
- * a quiet disabled state with "已满 N/10" instead of "新技能 NEW", and
- * tapping does nothing. Backend rejects POST /api/skills/confirm with 409
- * regardless, so this is a UX guard, not the source of truth.
- */
-function AddSkillTile({ userSkillCount }: { userSkillCount: number }) {
-  const [open, setOpen] = useState(false);
-  const atCap = userSkillCount >= USER_SKILL_CAP;
-  return (
-    <>
-    {open && <AddSkillWizard onClose={() => setOpen(false)} />}
-    <button
-      type="button"
-      onClick={() => { if (!atCap) setOpen(true); }}
-      disabled={atCap}
-      title={atCap ? `已达技能上限(${USER_SKILL_CAP});请先删除一个再添加` : undefined}
-      className="flex flex-col text-left active:scale-95"
-      style={{
-        gap: 6,
-        padding: "10px 10px", borderRadius: 12,
-        background: atCap ? "rgba(255,255,255,0.03)" : "rgba(196,168,255,0.04)",
-        border: atCap ? "1px dashed rgba(255,255,255,0.16)" : "1px dashed rgba(196,168,255,0.32)",
-        minHeight: 78,
-        color: "inherit",
-        cursor: atCap ? "not-allowed" : "pointer",
-        opacity: atCap ? 0.55 : 1,
-        transition: "all 200ms cubic-bezier(.2,.7,.3,1)",
-      }}
-    >
-      <span
-        style={{
-          width: 28, height: 28, borderRadius: 8,
-          background: atCap ? "rgba(255,255,255,0.04)" : "rgba(196,168,255,0.10)",
-          border: atCap ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(196,168,255,0.32)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: atCap ? "rgba(255,255,255,0.45)" : "#c4a8ff",
-          boxShadow: atCap ? "none" : "inset 0 0 12px rgba(196,168,255,0.30)",
-        }}
-      >
-        <Sparkles size={13} strokeWidth={1.75} />
-      </span>
-      <div className="flex items-baseline justify-between" style={{ marginTop: "auto" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: atCap ? "rgba(255,255,255,0.55)" : "#f4f7fb" }}>
-          {atCap ? "已满" : "新技能"}
-        </span>
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 10,
-            color: atCap ? "rgba(255,255,255,0.45)" : "rgba(196,168,255,0.65)",
-            letterSpacing: "0.14em",
-          }}
-        >
-          {atCap ? `${userSkillCount}/${USER_SKILL_CAP}` : "NEW"}
-        </span>
-      </div>
-    </button>
-    </>
-  );
-}
+/* (Old AddSkillTile / per-cap state removed — handled inside SkillsGrid +
+   backend USER_SKILL_CAP=9. The plus tile and the cap UI live in
+   SkillsGrid.tsx now so they share the same long-press/edit-mode state.) */
 
 /* ── Data helpers ─────────────────────────────────────────────────────── */
 

@@ -56,6 +56,10 @@ class UserSkill(Base):
     payload_schema   = Column(JSONB)   # nullable: system skills (e.g. qa) have no payload
     render_spec      = Column(JSONB)   # nullable: skills that don't produce visible assets
     queryable_fields = Column(JSONB)   # nullable
+    # Position drives the 3×3 SKILLS grid order in the library. 0-based,
+    # contiguous within (user_id). Drag-to-reorder writes via
+    # PUT /api/skills/reorder. New skills land at the end.
+    position         = Column(Integer, nullable=False, server_default="0")
     created_at       = Column(TIMESTAMPTZ, server_default=func.now())
 
     __table_args__ = (

@@ -88,12 +88,19 @@
   from { transform: translateY(-16px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
+/* iOS-Springboard-style wiggle for the library's SKILLS edit mode. */
+@keyframes eu-wiggle {
+  0%   { transform: rotate(-0.9deg) translate(-0.5px, 0); }
+  50%  { transform: rotate(0.9deg)  translate(0.5px, 0); }
+  100% { transform: rotate(-0.9deg) translate(-0.5px, 0); }
+}
 @layer utilities {
   .eu-sheet-up   { animation: eu-sheet-up 280ms cubic-bezier(.2, .7, .3, 1) both; }
   .eu-sheet-left { animation: eu-sheet-left 280ms cubic-bezier(.2, .7, .3, 1) both; }
   .eu-sheet-down { animation: eu-sheet-down 240ms cubic-bezier(.2, .7, .3, 1) both; }
   .eu-fade-in    { animation: eu-fade-in 200ms ease-out both; }
+  .eu-wiggle     { animation: eu-wiggle 220ms ease-in-out infinite; transform-origin: 50% 50%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .eu-sheet-up, .eu-sheet-left, .eu-sheet-down, .eu-fade-in { animation: none; }
+  .eu-sheet-up, .eu-sheet-left, .eu-sheet-down, .eu-fade-in, .eu-wiggle { animation: none; }
 }

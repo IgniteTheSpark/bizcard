@@ -1,7 +1,20 @@
 import useSWR from "swr";
 
-import { swrFetcher } from "@/lib/api";
+import { apiFetch, swrFetcher } from "@/lib/api";
 import type { Skill, SkillsResponse } from "@/lib/types";
+
+/**
+ * Persist a drag-to-reorder of the SKILLS grid.
+ * `orderedIds` is the full list of user_skill_ids top-left to bottom-right.
+ * Backend rewrites positions 0..N-1 in one transaction.
+ */
+export async function reorderSkills(orderedIds: string[]): Promise<void> {
+  const resp = await apiFetch<{ ok: boolean; count?: number; error?: string }>(
+    "/api/skills/reorder",
+    { method: "PUT", body: { order: orderedIds } },
+  );
+  if (!resp.ok) throw new Error(resp.error ?? "reorder failed");
+}
 
 /**
  * useSkillRegistry — fetch all UserSkills + their render_spec.
