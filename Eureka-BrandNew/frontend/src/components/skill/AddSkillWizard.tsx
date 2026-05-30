@@ -385,7 +385,7 @@ function PreviewStep({
 
   return (
     <div className="px-eu-lg flex flex-col gap-eu-md">
-      {/* Live card preview */}
+      {/* Live card preview — the big surface (library, chat, day-detail). */}
       <div>
         <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono mb-1.5">
           卡片预览
@@ -393,6 +393,17 @@ function PreviewStep({
         <div className="pointer-events-none">
           <SkillCard data={card} />
         </div>
+      </div>
+
+      {/* Calendar bullet preview — how this skill's assets will look in the
+          schedule / day-detail timeline. Per the rule: "time + title" only,
+          where title is the same decorated string the big card uses
+          (label + primary value + unit). */}
+      <div>
+        <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono mb-1.5">
+          日程行预览
+        </div>
+        <CalendarBulletPreview title={card.title} accent={card.accentColor} />
       </div>
 
       {/* Tweak: name + icon + accent */}
@@ -460,6 +471,51 @@ function PreviewStep({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * CalendarBulletPreview — mimics the schedule timeline bullet row:
+ *
+ *   ┌─────────────────────────────────────────┐
+ *   │  16:18   ●   距离 5 km                   │
+ *   └─────────────────────────────────────────┘
+ *
+ * Time is fixed at a sample value (the actual asset.effective_at will
+ * vary per record). Dot uses the skill's accent. Title is whatever the
+ * SkillCard's title would be — keeps the rendering rule consistent.
+ */
+function CalendarBulletPreview({
+  title, accent,
+}: { title: string; accent: AccentColor }) {
+  const dotColor = ACCENT_SWATCH[accent] ?? "rgba(255,255,255,0.55)";
+  return (
+    <div
+      className="flex items-center gap-3"
+      style={{
+        padding: "10px 14px",
+        background: "rgba(0,0,0,0.20)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: 10,
+      }}
+    >
+      <span
+        className="font-mono"
+        style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", minWidth: 40 }}
+      >
+        16:18
+      </span>
+      <span
+        style={{
+          width: 6, height: 6, borderRadius: 999,
+          background: dotColor,
+          boxShadow: `0 0 6px ${dotColor}`,
+        }}
+      />
+      <span style={{ fontSize: 13.5, color: "#f4f7fb", fontWeight: 500 }}>
+        {title}
+      </span>
     </div>
   );
 }

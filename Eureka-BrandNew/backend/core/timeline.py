@@ -118,22 +118,54 @@ def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
 
 
+def _decorate(value: str, label: Optional[str], unit: Optional[str]) -> str:
+    """
+    Mirror frontend lib/render-spec `decorate` so a single rendering rule
+    drives both calendar bullets and SkillCards.
+
+    decorate("5", "距离", "km") → "距离 5 km"
+    decorate("5", None,   "km") → "5 km"
+    decorate("5", "距离", None)  → "距离 5"
+    """
+    parts: list[str] = []
+    if label: parts.append(label)
+    parts.append(value)
+    if unit: parts.append(unit)
+    return " ".join(parts)
+
+
 def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = None, display_name: Optional[str] = None) -> dict:
     p = asset.payload or {}
     # Title: prefer the skill's render_spec.primary_field (matches how the card
     # renders), then common title-ish fields, then the skill's display_name.
     # Never fall back to "[skill_name]" — AI-created skills with custom payloads
     # (e.g. 跑步记录 {distance, pace}) used to surface an ugly "[running]".
+    #
+    # Measurement skills (跑步 distance=5, 喝水 ml=200) used to surface as
+    # the bare number "5". Bundle C added primary_label / primary_unit to
+    # render_spec for cards; apply the same decoration here so the calendar
+    # bullet reads "距离 5 km" instead of "5". Single source of rendering
+    # rule for the timeline: <label?> <value> <unit?>.
     rs = render_spec if isinstance(render_spec, dict) else {}
     pf = rs.get("primary_field")
     pf_val = p.get(pf) if pf else None
+    primary_str: Optional[str] = None
+    if pf_val not in (None, ""):
+        primary_str = _decorate(str(pf_val), rs.get("primary_label"), rs.get("primary_unit"))
     title = (
-        (str(pf_val) if pf_val not in (None, "") else None) or
+        primary_str or
         p.get("content") or p.get("title") or p.get("name") or
         (f"¥{p.get('amount')}" if p.get("amount") else None) or
         display_name or skill_name
     )
-    subtitle = p.get("description") or p.get("merchant") or ""
+    # Subtitle picks up the secondary field with its decoration too — useful
+    # for cards that want to show e.g. "配速 6 /km" as a one-line meta.
+    sf = rs.get("secondary_field")
+    sf_val = p.get(sf) if sf else None
+    if sf_val not in (None, ""):
+        subtitle = _decorate(str(sf_val), rs.get("secondary_label"), rs.get("secondary_unit"))
+    else:
+        subtitle = p.get("description") or p.get("merchant") or ""
     return {
         "kind":                 "asset",
         "id":                   str(asset.id),
