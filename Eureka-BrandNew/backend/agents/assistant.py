@@ -75,9 +75,21 @@ ASSISTANT_INSTRUCTION_BASE = """
 
 ## 工具签名要点
 
-- create_asset: user_skill_name('todo' / 'notes' / 'idea' / 'expense' / 'misc' / 'contact'),payload(JSON 字符串),session_id,source_input_turn_id(从下方「本轮上下文」拿)
+- create_asset: user_skill_name(**必须**是下方「用户的 skill 字典」里某条的 machine_name —— 不要自己发明,也不要不假思索写 'misc'),payload(JSON 字符串,字段名要严格按字典里给的来),session_id,source_input_turn_id(从下方「本轮上下文」拿)
 - update_asset: asset_id + payload_patch(只放变更字段的 JSON 字符串)
 - create_event / update_event: 见各自工具签名
+
+## skill 选择纪律(必读!)
+
+用户描述一件事时,**先在下方「用户的 skill 字典」里找**最匹配的一条:
+- 「我跑了 5 公里」 → 字典里有「跑步记录」 → user_skill_name=running,payload={"distance":5,...}
+- 「宝宝早上 8 点喝奶」 → 字典里有「宝宝养育记录」 → 用那个,**不要**写 misc
+- 「记一笔 50 块咖啡」 → 字典里有「记账」(expense) → 用那个
+- 字典里**没有**任何匹配的 → 才回退到 'misc'/'notes'
+
+判断标准:用户的内容里出现了字典某 skill 的关键名词(跑步 / 喝奶 / 健身 / 读书 / …) →
+**优先用那个 skill**。不要因为字段不完整就退到 misc —— payload 缺字段是 OK 的,
+字典里没有匹配的 skill 才是 misc 的真正用途。
 
 ## 回复风格
 
@@ -98,6 +110,7 @@ def make_assistant_agent(
     input_turn_id: str,
     event_id: str = "",
     today_str: str = "",
+    user_skills_hint: str = "",
     session_assets_hint: str = "",
     session_context_hint: str = "",
     session_subject_hint: str = "",
@@ -142,6 +155,15 @@ def make_assistant_agent(
         f"- input_turn_id: {input_turn_id}\n"
         "  → 创建资产时把这个值作为 source_input_turn_id 参数传给 create_asset\n"
     )
+
+    if user_skills_hint:
+        instruction += (
+            "\n## 用户的 skill 字典(create_asset 必须从这里选 machine_name!)\n"
+            + user_skills_hint
+            + "\n→ CREATE 意图时:**优先**匹配字典里的 skill,关键词命中就用对应的\n"
+            "  machine_name + 该 skill 的字段填 payload\n"
+            "→ 字典里没有匹配 → 才用 'misc' (兜底)或 'notes' (长文)\n"
+        )
 
     if session_assets_hint:
         instruction += (

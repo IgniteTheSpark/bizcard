@@ -306,6 +306,67 @@ async def load_session_context_hint(
     return "\n".join(lines)
 
 
+async def load_user_skills_hint(
+    db: AsyncSession,
+    user_id: str,
+) -> str:
+    """
+    Build the「可用 skill 字典」block injected into the Assistant prompt.
+
+    The assistant USED TO have a hardcoded list of seeded skills in its
+    base prompt (`'todo' / 'notes' / 'idea' / 'expense' / 'misc' / 'contact'`),
+    which meant any user-created skill (跑步记录 / 宝宝养育记录 / …) was
+    invisible — the agent would fall back to `misc` instead of picking the
+    matching custom skill. This helper closes the gap.
+
+    Format per line:
+        - 跑步记录 (machine_name=running, accent=green) 字段: distance:number(km), pace:number, mood:string
+          示例: {"distance": 5, "pace": 6, "mood": "good"}
+
+    Filters out system skills (qa / external_ref) whose render_spec is null.
+    """
+    stmt = (
+        select(UserSkill, GlobalSkill.name.label("skill_name"))
+        .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
+        .where(UserSkill.user_id == user_id)
+        .order_by(UserSkill.position.asc(), UserSkill.created_at.asc())
+    )
+    rows = (await db.execute(stmt)).all()
+
+    lines: list[str] = []
+    for us, machine_name in rows:
+        # Skip system skills — they're not user-facing record types.
+        if us.render_spec is None or us.render_spec == "null":
+            continue
+        rs = us.render_spec if isinstance(us.render_spec, dict) else {}
+        accent = rs.get("accent_color", "neutral")
+        # Compact schema description.
+        schema = us.payload_schema if isinstance(us.payload_schema, dict) else {}
+        field_bits: list[str] = []
+        for fname, fmeta in schema.items():
+            if not isinstance(fmeta, dict):
+                continue
+            ftype = fmeta.get("type", "string")
+            unit = ""
+            # Surface units from render_spec when present so the agent knows
+            # `distance` means km (not meters/miles).
+            if fname == rs.get("primary_field") and rs.get("primary_unit"):
+                unit = f"({rs['primary_unit']})"
+            elif fname == rs.get("secondary_field") and rs.get("secondary_unit"):
+                unit = f"({rs['secondary_unit']})"
+            field_bits.append(f"{fname}:{ftype}{unit}")
+        fields = ", ".join(field_bits) if field_bits else "(无字段)"
+
+        lines.append(
+            f"- **{us.display_name}** (machine_name=`{machine_name}`, accent={accent}) "
+            f"字段: {fields}"
+        )
+
+    if not lines:
+        return ""
+    return "\n".join(lines)
+
+
 async def load_session_subject_hint(
     db: AsyncSession,
     session_id: str,

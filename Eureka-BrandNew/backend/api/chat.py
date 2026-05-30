@@ -43,6 +43,7 @@ from core.session_service import (
     load_session_assets_hint,
     load_session_context_hint,
     load_session_subject_hint,
+    load_user_skills_hint,
     persist_chat_turn,
 )
 
@@ -111,6 +112,7 @@ async def _stream_assistant(
     user_id: str,
     event_id: str = "",
     today_str: str = "",
+    user_skills_hint: str = "",
     session_assets_hint: str = "",
     session_context_hint: str = "",
     session_subject_hint: str = "",
@@ -124,6 +126,7 @@ async def _stream_assistant(
         input_turn_id,
         event_id=event_id,
         today_str=today_str,
+        user_skills_hint=user_skills_hint,
         session_assets_hint=session_assets_hint,
         session_context_hint=session_context_hint,
         session_subject_hint=session_subject_hint,
@@ -216,6 +219,11 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
             session_subject_hint = await load_session_subject_hint(
                 db, session_id, user_id,
             )
+            # User's registered skill dictionary — injected into the prompt so
+            # the agent dispatches to user-created skills (跑步记录 / 宝宝养
+            # 育记录 / …) by name + payload schema instead of falling back to
+            # 'misc'. May audit, custom-skill dispatch bug.
+            user_skills_hint = await load_user_skills_hint(db, user_id)
 
         # Date the agent will use to resolve "明天" / "下周" / ... — local TZ
         today_str = datetime.now(_LOCAL_TZ).date().isoformat()
@@ -236,6 +244,7 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
                 req.user_text, history_text, session_id, input_turn_id, user_id,
                 event_id=req.event_id or "",
                 today_str=today_str,
+                user_skills_hint=user_skills_hint,
                 session_assets_hint=session_assets_hint,
                 session_context_hint=session_context_hint,
                 session_subject_hint=session_subject_hint,
