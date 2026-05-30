@@ -87,11 +87,19 @@ export interface OpenSessionInput {
   contextAssetIds?:  string[];
   sessionType?:      "flash" | "chat" | "meeting" | "manual";
   title?:            string;
+  /**
+   * Lazy mode (#5, May audit). When `true` AND subject is given, the call
+   * returns the existing session id or `null` WITHOUT creating one. Used by
+   * the dock to decide: open the existing thread, or just navigate /chat
+   * blank with a pending-subject hint so creation defers to first send.
+   */
+  peekOnly?:         boolean;
 }
 
 export interface OpenSessionResult {
-  sessionId: string;
-  created:   boolean;             // false → returned an existing home session
+  /** null only happens in peek mode when no session exists yet. */
+  sessionId: string | null;
+  created:   boolean;             // false → returned existing OR peek-not-found
   contextAssetIds: string[];
 }
 
@@ -105,16 +113,21 @@ export async function openSession(input: OpenSessionInput): Promise<OpenSessionR
     body.subject_type = input.subject.type;
     body.subject_id   = input.subject.id;
   }
+  if (input.peekOnly) body.peek_only = true;
   const resp = await apiFetch<{
-    ok: boolean; session_id: string; created?: boolean;
+    ok: boolean; session_id: string | null; created?: boolean;
     context_asset_ids?: string[]; error?: string;
   }>("/api/sessions", { method: "POST", body });
-  if (!resp.ok || !resp.session_id) {
+  if (!resp.ok) {
     throw new Error(resp.error ?? "failed to open session");
+  }
+  // peek_only=true is allowed to return session_id=null; create mode is not.
+  if (resp.session_id == null && !input.peekOnly) {
+    throw new Error("backend returned no session_id");
   }
   return {
     sessionId: resp.session_id,
-    created:   resp.created ?? true,
+    created:   resp.created ?? false,
     contextAssetIds: resp.context_asset_ids ?? [],
   };
 }

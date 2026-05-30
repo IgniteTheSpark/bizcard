@@ -36,20 +36,43 @@ export function FloatingDock() {
 
   /**
    * Agent entry. When a detail view registered an agentTarget (asset/event/
-   * contact), enter that thing's bound session directly; otherwise open a
-   * fresh /chat. This is why the detail pages no longer need their own
-   * 「在 chat 里讨论」 button — the global dock is the agent entry.
+   * contact), peek for an existing bound session:
+   *   - exists  → open it directly (instant reopen of the same thread).
+   *   - missing → navigate to /chat with `pendingSubject` in router state;
+   *               ChatPage creates the session JIT on first send so a stray
+   *               tap doesn't litter sidebar history (#5, May audit).
+   * No agentTarget → open last/empty /chat.
+   *
+   * Detail pages no longer need their own 「在 chat 里讨论」 button — the
+   * global dock is the agent entry.
    */
   async function openAgent() {
-    if (agentTarget) {
-      try {
-        const { sessionId } = await openSession({ subject: agentTarget.subject });
-        window.localStorage.setItem("eureka:active_chat_session", sessionId);
-      } catch {
-        /* fall through to a fresh chat */
-      }
+    if (!agentTarget) {
+      navigate("/chat");
+      return;
     }
-    navigate("/chat");
+    try {
+      const { sessionId } = await openSession({
+        subject: agentTarget.subject,
+        peekOnly: true,
+      });
+      if (sessionId) {
+        // Existing thread — open it directly.
+        window.localStorage.setItem("eureka:active_chat_session", sessionId);
+        navigate("/chat");
+      } else {
+        // No thread yet — defer creation to first send. /chat reads the
+        // hint from router state and binds the subject in the topic bar.
+        navigate("/chat", {
+          state: {
+            pendingSubject: agentTarget.subject,
+            pendingLabel:   agentTarget.label,
+          },
+        });
+      }
+    } catch {
+      navigate("/chat");
+    }
   }
 
   return (

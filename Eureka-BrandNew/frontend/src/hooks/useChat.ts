@@ -58,12 +58,19 @@ interface UseChatReturn {
   sessionId: string | null;
   /** True while a request is in flight (server still streaming) */
   streaming: boolean;
-  /** Send a user message. Returns the promise that resolves when stream ends. */
-  send: (text: string) => Promise<void>;
+  /**
+   * Send a user message. Optional `sessionIdOverride` is used for lazy
+   * session creation (#5, May audit): ChatPage creates the session JIT
+   * just before send and passes the new id here — internal state hasn't
+   * caught up yet, so we can't rely on `sessionId` alone.
+   */
+  send: (text: string, sessionIdOverride?: string) => Promise<void>;
   /** Reset to empty — caller is responsible for clearing session_id too */
   reset: (messages?: ChatMessage[]) => void;
   /** Last error from the stream, if any */
   error: string | null;
+  /** Manually set the session id (for lazy create — see send override). */
+  setSessionId: (id: string | null) => void;
 }
 
 export function useChat(opts: UseChatOptions = {}): UseChatReturn {
@@ -89,7 +96,7 @@ export function useChat(opts: UseChatOptions = {}): UseChatReturn {
     setMessages((prev) => prev.map((m) => (m.id === id ? mutator(m) : m)));
   }, []);
 
-  const send = useCallback(async (text: string) => {
+  const send = useCallback(async (text: string, sessionIdOverride?: string) => {
     if (!text.trim() || streaming) return;
     setError(null);
 
@@ -104,13 +111,19 @@ export function useChat(opts: UseChatOptions = {}): UseChatReturn {
     ]);
     setStreaming(true);
 
+    // Lazy session create (#5): the override wins because internal state
+    // wouldn't have caught up to a session we just created synchronously
+    // in the caller's same handler.
+    const effectiveSid = sessionIdOverride ?? sessionId ?? "";
+    if (sessionIdOverride) setSessionId(sessionIdOverride);
+
     try {
       const resp = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({
           user_text: text,
-          session_id: sessionId ?? "",
+          session_id: effectiveSid,
           event_id: opts.eventId ?? "",
         }),
       });
@@ -203,7 +216,7 @@ export function useChat(opts: UseChatOptions = {}): UseChatReturn {
     setError(null);
   }, []);
 
-  return { messages, sessionId, streaming, send, reset, error };
+  return { messages, sessionId, streaming, send, reset, error, setSessionId };
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
