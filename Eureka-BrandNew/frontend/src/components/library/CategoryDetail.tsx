@@ -1,12 +1,12 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import useSWR from "swr";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import useSWR, { useSWRConfig } from "swr";
 
 import { useAssets } from "@/hooks/useAssets";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { useToggleTodo } from "@/hooks/useToggleTodo";
-import { swrFetcher } from "@/lib/api";
+import { apiFetch, swrFetcher } from "@/lib/api";
 import { buildCard } from "@/lib/render-spec";
 import type {
   ContactsResponse, EventsResponse, FilesResponse,
@@ -26,13 +26,23 @@ import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
  *
  * Tapping a card opens AssetDetailDrawer (M1: read-only).
  */
+/** System / first-class skills the user can't delete from the UI. */
+const PROTECTED_SKILLS = new Set([
+  "event", "file", "contact", "external_ref", "qa",
+  "todo", "idea", "notes", "expense", "misc",
+]);
+
 export function CategoryDetail() {
   const { skillName = "" } = useParams<{ skillName: string }>();
   const { bySkill } = useSkillRegistry();
+  const navigate = useNavigate();
+  const { mutate } = useSWRConfig();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "force-confirm" | "deleting">("idle");
   const toggleTodo = useToggleTodo();
 
   const skill = bySkill.get(skillName);
+  const canDelete = !PROTECTED_SKILLS.has(skillName) && skill?.user_skill_id;
 
   // Determine data source for this skill.
   // contact: 真身 lives in /api/contacts (per Phase B v1.4); asset-skill is
@@ -147,6 +157,30 @@ export function CategoryDetail() {
   const selectedCard    = selectedEntry?.data ?? null;
   const selectedSource  = selectedEntry?.sourceSessionId ?? null;
 
+  async function handleDelete(force: boolean) {
+    if (!skill?.user_skill_id) return;
+    setDeleteState("deleting");
+    try {
+      const resp = await apiFetch<{ ok: boolean; deleted_assets?: number; error?: string }>(
+        `/api/skills/${skill.user_skill_id}${force ? "?force=true" : ""}`,
+        { method: "DELETE" },
+      );
+      if (!resp.ok && cards.length > 0 && !force) {
+        // assets exist — surface the force confirmation
+        setDeleteState("force-confirm");
+        return;
+      }
+      await mutate((key) => typeof key === "string" && (
+        key.startsWith("/api/skills") || key.startsWith("/api/assets")
+      ));
+      navigate("/library");
+    } catch (e) {
+      // Network / server error — let the user retry from the same modal
+      console.error("delete skill failed", e);
+      setDeleteState("confirm");
+    }
+  }
+
   return (
     <div className="px-eu-md pt-eu-md">
       <div className="flex items-center gap-eu-sm mb-eu-md">
@@ -162,6 +196,21 @@ export function CategoryDetail() {
         </Link>
         <h2 className="font-display text-eu-xl text-eu-text-hi tracking-tight">{titleText}</h2>
         <span className="font-mono text-eu-sm text-eu-text-lo">{cards.length}</span>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() => setDeleteState(cards.length > 0 ? "force-confirm" : "confirm")}
+            aria-label="删除技能"
+            title="删除这个技能"
+            className={[
+              "ml-auto h-7 w-7 rounded-eu-md flex items-center justify-center",
+              "text-eu-text-lo hover:text-eu-accent-red-fg hover:bg-eu-accent-red-bg",
+              "transition-colors duration-eu-fast",
+            ].join(" ")}
+          >
+            <Trash2 size={14} strokeWidth={1.75} />
+          </button>
+        )}
       </div>
 
       {loading && <SkeletonList />}
@@ -196,6 +245,77 @@ export function CategoryDetail() {
           onClose={() => setSelectedId(null)}
         />
       )}
+
+      {deleteState !== "idle" && canDelete && (
+        <DeleteSkillDialog
+          skillName={titleText}
+          assetCount={cards.length}
+          state={deleteState}
+          onCancel={() => setDeleteState("idle")}
+          onConfirm={() => handleDelete(deleteState === "force-confirm")}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * DeleteSkillDialog — two-stage confirm.
+ *
+ * Stage 1 ("confirm"):       skill has zero assets → simple "确定删除?"
+ * Stage 2 ("force-confirm"): assets exist → caller passes the count, we
+ *                            show "这会同时删除 N 条记录" and require an
+ *                            extra tap. force=true is sent to backend.
+ */
+function DeleteSkillDialog({
+  skillName, assetCount, state, onCancel, onConfirm,
+}: {
+  skillName: string;
+  assetCount: number;
+  state: "confirm" | "force-confirm" | "deleting";
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const isForce = state === "force-confirm";
+  const isBusy = state === "deleting";
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-eu-bg/85 backdrop-blur-sm"
+      onClick={isBusy ? undefined : onCancel}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full md:w-[420px] bg-eu-surface-raised border-t md:border md:rounded-eu-lg border-eu-border p-eu-lg flex flex-col gap-eu-md eu-sheet-up"
+      >
+        <div className="text-eu-lg font-medium text-eu-text-hi">
+          {isForce ? `删除「${skillName}」?` : `删除「${skillName}」?`}
+        </div>
+        <div className="text-eu-sm text-eu-text-mid leading-relaxed">
+          {isForce ? (
+            <>这会同时删除该技能下的 <span className="text-eu-accent-red-fg font-medium">{assetCount}</span> 条记录,无法恢复。</>
+          ) : (
+            "技能将从你的资产库移除。"
+          )}
+        </div>
+        <div className="flex justify-end gap-eu-sm pt-eu-sm">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isBusy}
+            className="px-eu-md py-eu-sm rounded-eu-md text-eu-text-mid hover:bg-eu-surface-hover text-eu-sm disabled:opacity-50"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isBusy}
+            className="px-eu-md py-eu-sm rounded-eu-md bg-eu-accent-red-bg border border-eu-accent-red-edge text-eu-accent-red-fg text-eu-sm font-medium hover:brightness-110 active:scale-95 disabled:opacity-50"
+          >
+            {isBusy ? "删除中…" : isForce ? "确定全部删除" : "确定删除"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

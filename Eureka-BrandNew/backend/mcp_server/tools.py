@@ -260,6 +260,12 @@ async def update_contact(
     value: str,
     user_id: str = "default",
 ) -> dict:
+    """
+    Update a single field on a contact, return the FULL contact row so the
+    chat card renders with the actual name + updated values (May audit:
+    previously returned just {field, value} and the chat fell back to a
+    generic 「名片」 placeholder with no name).
+    """
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(Contact).where(Contact.id == uuid.UUID(contact_id), Contact.user_id == user_id)
@@ -276,8 +282,14 @@ async def update_contact(
             return _err(f"unknown field: {field}")
 
         await db.commit()
+        await db.refresh(contact)
 
-    return _ok(contact_id=contact_id, contact_action="updated", field=field, value=value)
+    return _ok(
+        contact_id=contact_id, contact_action="updated",
+        field=field, value=value,
+        name=contact.name, phone=contact.phone, company=contact.company,
+        title=contact.title, email=contact.email, notes=contact.notes or [],
+    )
 
 
 async def delete_contact(contact_id: str, user_id: str = "default") -> dict:

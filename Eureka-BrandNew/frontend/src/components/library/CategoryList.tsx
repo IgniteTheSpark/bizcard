@@ -246,7 +246,7 @@ export function CategoryList() {
               preview={previewFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
             />
           ))}
-          <AddSkillTile />
+          <AddSkillTile userSkillCount={skills.filter((s) => s.render_spec).length} />
         </div>
 
         <SectionLabel>最近 · RECENT</SectionLabel>
@@ -455,46 +455,70 @@ function RecentCard({ item }: { item: RecentItem }) {
   );
 }
 
+/** Hard cap mirrors backend USER_SKILL_CAP in api/skills.py. */
+const USER_SKILL_CAP = 10;
+
 /**
  * AddSkillTile — OP4 grid-tile variant of "添加新技能". Lives inline
  * with the type tiles so users find it where they look for "what types
- * exist". Visually:dashed purple border + ✨ icon + label, leaning into
+ * exist". Visually: dashed purple border + ✨ icon + label, leaning into
  * the "magical / experimental" framing of the AddSkillWizard.
+ *
+ * Cap-aware (May audit): at USER_SKILL_CAP user skills the tile flips to
+ * a quiet disabled state with "已满 N/10" instead of "新技能 NEW", and
+ * tapping does nothing. Backend rejects POST /api/skills/confirm with 409
+ * regardless, so this is a UX guard, not the source of truth.
  */
-function AddSkillTile() {
+function AddSkillTile({ userSkillCount }: { userSkillCount: number }) {
   const [open, setOpen] = useState(false);
+  const atCap = userSkillCount >= USER_SKILL_CAP;
   return (
     <>
     {open && <AddSkillWizard onClose={() => setOpen(false)} />}
     <button
       type="button"
-      onClick={() => setOpen(true)}
+      onClick={() => { if (!atCap) setOpen(true); }}
+      disabled={atCap}
+      title={atCap ? `已达技能上限(${USER_SKILL_CAP});请先删除一个再添加` : undefined}
       className="flex flex-col text-left active:scale-95"
       style={{
         gap: 6,
         padding: "10px 10px", borderRadius: 12,
-        background: "rgba(196,168,255,0.04)",
-        border: "1px dashed rgba(196,168,255,0.32)",
+        background: atCap ? "rgba(255,255,255,0.03)" : "rgba(196,168,255,0.04)",
+        border: atCap ? "1px dashed rgba(255,255,255,0.16)" : "1px dashed rgba(196,168,255,0.32)",
         minHeight: 78,
-        color: "inherit", cursor: "pointer",
+        color: "inherit",
+        cursor: atCap ? "not-allowed" : "pointer",
+        opacity: atCap ? 0.55 : 1,
         transition: "all 200ms cubic-bezier(.2,.7,.3,1)",
       }}
     >
       <span
         style={{
           width: 28, height: 28, borderRadius: 8,
-          background: "rgba(196,168,255,0.10)",
-          border: "1px solid rgba(196,168,255,0.32)",
+          background: atCap ? "rgba(255,255,255,0.04)" : "rgba(196,168,255,0.10)",
+          border: atCap ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(196,168,255,0.32)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#c4a8ff",
-          boxShadow: "inset 0 0 12px rgba(196,168,255,0.30)",
+          color: atCap ? "rgba(255,255,255,0.45)" : "#c4a8ff",
+          boxShadow: atCap ? "none" : "inset 0 0 12px rgba(196,168,255,0.30)",
         }}
       >
         <Sparkles size={13} strokeWidth={1.75} />
       </span>
       <div className="flex items-baseline justify-between" style={{ marginTop: "auto" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#f4f7fb" }}>新技能</span>
-        <span className="font-mono" style={{ fontSize: 10, color: "rgba(196,168,255,0.65)", letterSpacing: "0.14em" }}>NEW</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: atCap ? "rgba(255,255,255,0.55)" : "#f4f7fb" }}>
+          {atCap ? "已满" : "新技能"}
+        </span>
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 10,
+            color: atCap ? "rgba(255,255,255,0.45)" : "rgba(196,168,255,0.65)",
+            letterSpacing: "0.14em",
+          }}
+        >
+          {atCap ? `${userSkillCount}/${USER_SKILL_CAP}` : "NEW"}
+        </span>
       </div>
     </button>
     </>
