@@ -51,13 +51,10 @@ DESIGN_INSTRUCTION = """
     "icon":             "string (1 个 emoji)",
     "accent_color":     "blue|amber|green|red|purple|gray|neutral",
     "primary_field":    "string (payload 字段名)",
-    "primary_label":    "string (中文标签,可省,如 '距离' / '书名')",
-    "primary_unit":     "string (单位后缀,可省,如 'km' / '页' / '¥')",
     "secondary_field":  "string (payload 字段名,可省)",
     "secondary_format": "text|relative_date|absolute_date|time|currency|duration|badge|truncate_40",
-    "secondary_label":  "string (可省)",
-    "secondary_unit":   "string (可省)",
-    "meta_fields":      [{"field": "string", "format": "可省", "label": "可省"}],
+    "meta_fields":      [{"field": "string", "format": "可省"}],
+    "field_units":      {"<field>": "<单位>"},   // 关键!测量字段一定要给单位
     "actions":          ["check"|"edit"|"delete"|"open"]
   },
   "sample_payload": {        // 示范数据一条,用于前端实时预览 card 的样子
@@ -77,20 +74,19 @@ DESIGN_INSTRUCTION = """
 - secondary_format 不确定就 "text",日期/时间字段用 "relative_date" 或 "absolute_date"
 - 不要发明 enum 外的值
 
-## 标签 + 单位(关键!不写卡片只有裸数字)
+## 字段单位(关键!measurement 字段不给单位卡片就是裸数字)
 
-每条 measurement 类型的 field,**必须**给 label(中文显示)和 unit(单位):
-- 跑步:primary_field="distance", primary_label="距离", primary_unit="km" ;
-        secondary_field="pace", secondary_label="配速", secondary_unit="/km"
-- 读书:primary_field="title", primary_label="" (书名本身就是标识,不需标签);
-        secondary_field="pages_read", secondary_label="读到", secondary_unit="页"
-- 睡眠:primary_field="hours", primary_label="时长", primary_unit="小时"
+每个 measurement 字段都要在 `field_units` 里填单位:
+- 跑步:`field_units: {"distance": "km", "pace": "/km"}`
+- 读书:`field_units: {"pages_read": "页", "duration_min": "分钟"}`
+- 睡眠:`field_units: {"hours": "小时"}`
+- 喝水:`field_units: {"amount": "ml"}`
 
-label 是「告诉用户这个数字是啥」的前缀;unit 是「数字的单位」的后缀。
-没有它们,用户看到「124」「7」一脸懵。
+字符串字段(书名、活动名、笔记)**不**需要单位 —— 它本身就是值。
+日期/时间字段也**不**需要单位 —— 格式化已经带上日期/时间形态。
 
-primary_field 是名字 / 标题 / 标签类(文字)就不要 primary_label —— 名字本身
-就是标识。primary_field 是数字 / 时长 / 金额时**一定要**给 label。
+**不要**用前缀标签(「距离」「配速」)装饰值 —— 卡片本身就有 icon + skill
+display_name 告诉用户这是什么,前缀只会重复。卡片显示规则:`<值> <单位?>`。
 
 ## actions: "check" 的纪律
 
@@ -130,13 +126,10 @@ RESPONSE_SCHEMA = {
                     "enum": ["blue", "amber", "green", "red", "purple", "gray", "neutral"],
                 },
                 "primary_field":    {"type": "string"},
-                "primary_label":    {"type": "string"},
-                "primary_unit":     {"type": "string"},
                 "secondary_field":  {"type": "string"},
                 "secondary_format": {"type": "string"},
-                "secondary_label":  {"type": "string"},
-                "secondary_unit":   {"type": "string"},
                 "meta_fields":      {"type": "array"},
+                "field_units":      {"type": "object"},
                 "actions":          {"type": "array"},
             },
         },

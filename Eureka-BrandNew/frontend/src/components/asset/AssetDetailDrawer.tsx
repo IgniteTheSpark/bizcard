@@ -432,9 +432,19 @@ function inferFormat(key: string, value: unknown): FieldFormat | undefined {
   // a deadline.
   if (key === "due_date")                    return "relative_date";
   if (key.endsWith("_date") || key.endsWith("_at")) return "absolute_date";
-  if (key === "date")                        return "absolute_date";
+  if (key === "date" || key === "time")      return "absolute_date";
   if (key === "duration_sec")                return undefined;
+  // Last resort: any string that parses as an ISO datetime (e.g., a
+  // user-defined skill's `time` / `at` / `recorded_at` field whose name
+  // doesn't match the heuristics above) — render it as 「5月30日 12:00」
+  // instead of dumping「2026-05-30T12:00:00+08:00」on the user.
+  if (looksLikeIsoDatetime(value))            return "absolute_date";
   return undefined;
+}
+
+const ISO_DT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/;
+function looksLikeIsoDatetime(s: string): boolean {
+  return ISO_DT_RE.test(s);
 }
 
 function externalUrl(payload: Record<string, unknown>): string | null {

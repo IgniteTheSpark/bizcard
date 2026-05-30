@@ -118,20 +118,29 @@ def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
 
 
-def _decorate(value: str, label: Optional[str], unit: Optional[str]) -> str:
+def _decorate(value: str, unit: Optional[str]) -> str:
     """
-    Mirror frontend lib/render-spec `decorate` so a single rendering rule
-    drives both calendar bullets and SkillCards.
+    Mirror frontend lib/render-spec `decorate`. May audit: labels were
+    dropped per user feedback — the card / bullet already shows the skill
+    icon + display_name, so a label prefix is redundant noise.
 
-    decorate("5", "距离", "km") → "距离 5 km"
-    decorate("5", None,   "km") → "5 km"
-    decorate("5", "距离", None)  → "距离 5"
+    decorate("5", "km") → "5 km"
+    decorate("吃辅食", None) → "吃辅食"
     """
-    parts: list[str] = []
-    if label: parts.append(label)
-    parts.append(value)
-    if unit: parts.append(unit)
-    return " ".join(parts)
+    return f"{value} {unit}" if unit else value
+
+
+def _unit_for(rs: dict, field: Optional[str]) -> Optional[str]:
+    """Resolve a field's unit from render_spec, tolerating legacy slot-scoped fields."""
+    if not field:
+        return None
+    fu = rs.get("field_units") if isinstance(rs.get("field_units"), dict) else None
+    if fu and fu.get(field):
+        return fu[field]
+    # Legacy: skills authored before field_units existed.
+    if field == rs.get("primary_field")   and rs.get("primary_unit"):   return rs["primary_unit"]
+    if field == rs.get("secondary_field") and rs.get("secondary_unit"): return rs["secondary_unit"]
+    return None
 
 
 def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = None, display_name: Optional[str] = None) -> dict:
@@ -151,7 +160,7 @@ def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = Non
     pf_val = p.get(pf) if pf else None
     primary_str: Optional[str] = None
     if pf_val not in (None, ""):
-        primary_str = _decorate(str(pf_val), rs.get("primary_label"), rs.get("primary_unit"))
+        primary_str = _decorate(str(pf_val), _unit_for(rs, pf))
     title = (
         primary_str or
         p.get("content") or p.get("title") or p.get("name") or
@@ -159,11 +168,11 @@ def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = Non
         display_name or skill_name
     )
     # Subtitle picks up the secondary field with its decoration too — useful
-    # for cards that want to show e.g. "配速 6 /km" as a one-line meta.
+    # for cards that want to show e.g. "6 /km" as a one-line meta.
     sf = rs.get("secondary_field")
     sf_val = p.get(sf) if sf else None
     if sf_val not in (None, ""):
-        subtitle = _decorate(str(sf_val), rs.get("secondary_label"), rs.get("secondary_unit"))
+        subtitle = _decorate(str(sf_val), _unit_for(rs, sf))
     else:
         subtitle = p.get("description") or p.get("merchant") or ""
     return {
