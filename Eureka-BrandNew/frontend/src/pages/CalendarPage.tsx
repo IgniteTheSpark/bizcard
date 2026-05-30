@@ -4,7 +4,6 @@ import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
 import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
 import { MonthPane } from "@/components/calendar/MonthPane";
 import { YearPane } from "@/components/calendar/YearPane";
-import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
 import { ScheduleView } from "@/components/calendar/ScheduleView";
 import { useEvents } from "@/hooks/useEvents";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
@@ -33,7 +32,6 @@ export function CalendarPage() {
   const [focusMonthKey, setFocusMonthKey] = useState<string | null>(null);
   const [dayDetailKey, setDayDetailKey] = useState<string | null>(null);
   const [openEventId, setOpenEventId]   = useState<string | null>(null);
-  const [createMenuDate, setCreateMenuDate] = useState<Date | null>(null);
   const [openAssetId, setOpenAssetId]   = useState<string | null>(null);
 
   function handleItemTap(item: TimelineItem) {
@@ -45,10 +43,8 @@ export function CalendarPage() {
     setDayDetailKey(null);
   }
 
-  function handleCreateFromDay(dayKey: string) {
-    const [y, m, d] = dayKey.split("-").map(Number);
-    setCreateMenuDate(new Date(y, m - 1, d, 9, 0, 0, 0));
-  }
+  // Create-from-day was removed: creation goes through the global dock + entry
+  // (FloatingDock owns CreateAssetMenu). No inline "+ 添加事件" anywhere.
 
   // Year view → tap a month → switch to Month view + scroll it to that month.
   function handlePickMonth(monthKey: string) {
@@ -73,7 +69,6 @@ export function CalendarPage() {
             cursor={cursor}
             focusMonthKey={focusMonthKey}
             onItemTap={handleItemTap}
-            onCreateEvent={handleCreateFromDay}
             onDayOpen={(k) => setDayDetailKey(k)}
           />
         )}
@@ -89,14 +84,6 @@ export function CalendarPage() {
           dayKey={dayDetailKey}
           onClose={() => setDayDetailKey(null)}
           onItemTap={handleItemTap}
-        />
-      )}
-
-      {createMenuDate && (
-        <CreateAssetMenu
-          open
-          defaultDate={createMenuDate}
-          onClose={() => setCreateMenuDate(null)}
         />
       )}
 

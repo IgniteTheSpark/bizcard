@@ -19,13 +19,15 @@ import type { Asset, Contact } from "@/lib/types";
  *
  * Mobile: bottom sheet (~85vh max). Desktop: right-side drawer 480px wide.
  *
- * Actions (M2.2):
- *   - 「在 chat 里讨论」 → creates a NEW chat session with this asset attached
- *     as context_asset_ids[0], navigates to /chat. Agent will see it in the
- *     prompt as「本 session 携带的上下文资产」.
- *   - 「跳到创建该 asset 的 session」 → navigates to /chat with the asset's
- *     existing session_id (if any), letting the user see the conversation
- *     that produced this asset.
+ * Actions:
+ *   - 编辑 / 删除          → opens the matching edit form / confirms delete.
+ *   - 来源 chip            → if Agent created the asset, taps into that
+ *                            source session (read the original conversation).
+ *
+ * No inline 「在 chat 里讨论」 — the global FloatingDock's Agent button is
+ * the entry. The drawer registers an AgentTarget on mount, so the dock's
+ * Agent opens the asset's bound session directly. Same doctrine across
+ * EventForm / ContactForm — dock = global, context-bound agent entry.
  */
 
 interface AssetDetailDrawerProps {
