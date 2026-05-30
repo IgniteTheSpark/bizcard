@@ -51,8 +51,12 @@ DESIGN_INSTRUCTION = """
     "icon":             "string (1 个 emoji)",
     "accent_color":     "blue|amber|green|red|purple|gray|neutral",
     "primary_field":    "string (payload 字段名)",
+    "primary_label":    "string (中文标签,可省,如 '距离' / '书名')",
+    "primary_unit":     "string (单位后缀,可省,如 'km' / '页' / '¥')",
     "secondary_field":  "string (payload 字段名,可省)",
     "secondary_format": "text|relative_date|absolute_date|time|currency|duration|badge|truncate_40",
+    "secondary_label":  "string (可省)",
+    "secondary_unit":   "string (可省)",
     "meta_fields":      [{"field": "string", "format": "可省", "label": "可省"}],
     "actions":          ["check"|"edit"|"delete"|"open"]
   },
@@ -72,6 +76,34 @@ DESIGN_INSTRUCTION = """
 - primary_field 必填,选最能一眼识别这条记录的字段(跑步 → 距离;读书 → 书名)
 - secondary_format 不确定就 "text",日期/时间字段用 "relative_date" 或 "absolute_date"
 - 不要发明 enum 外的值
+
+## 标签 + 单位(关键!不写卡片只有裸数字)
+
+每条 measurement 类型的 field,**必须**给 label(中文显示)和 unit(单位):
+- 跑步:primary_field="distance", primary_label="距离", primary_unit="km" ;
+        secondary_field="pace", secondary_label="配速", secondary_unit="/km"
+- 读书:primary_field="title", primary_label="" (书名本身就是标识,不需标签);
+        secondary_field="pages_read", secondary_label="读到", secondary_unit="页"
+- 睡眠:primary_field="hours", primary_label="时长", primary_unit="小时"
+
+label 是「告诉用户这个数字是啥」的前缀;unit 是「数字的单位」的后缀。
+没有它们,用户看到「124」「7」一脸懵。
+
+primary_field 是名字 / 标题 / 标签类(文字)就不要 primary_label —— 名字本身
+就是标识。primary_field 是数字 / 时长 / 金额时**一定要**给 label。
+
+## actions: "check" 的纪律
+
+**只有真正状态化的 skill 才用 "check"**:todo(完成/未完成)、习惯打卡(打 / 没打)、
+review(看了 / 没看)。这类 skill 的 payload 必有 status 或 done 字段。
+
+**不要给** measurement / record / log 类型的 skill 加 "check" —— 跑步记录、读书、
+喝水、记账,这些是「记下来一条」,不是「待办做完了」。强加 "check" 会让卡片
+长出一个无意义的勾选框。
+
+判断标准:你打算这条记录被「点击 ✓ 标记完成」吗?
+- 是 → actions 里加 "check",payload 加 status: "todo" | "done"
+- 否 → actions 别加 "check"(默认 ["edit", "delete"] 即可)
 """
 
 
@@ -98,8 +130,12 @@ RESPONSE_SCHEMA = {
                     "enum": ["blue", "amber", "green", "red", "purple", "gray", "neutral"],
                 },
                 "primary_field":    {"type": "string"},
+                "primary_label":    {"type": "string"},
+                "primary_unit":     {"type": "string"},
                 "secondary_field":  {"type": "string"},
                 "secondary_format": {"type": "string"},
+                "secondary_label":  {"type": "string"},
+                "secondary_unit":   {"type": "string"},
                 "meta_fields":      {"type": "array"},
                 "actions":          {"type": "array"},
             },
