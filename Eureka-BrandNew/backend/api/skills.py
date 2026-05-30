@@ -19,12 +19,12 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select, delete as sa_delete, func, or_, cast, String
+from sqlalchemy import select, update as sa_update, delete as sa_delete, func, or_, cast, String, text
 
 from agents.design_agent import design_skill
 from core.auth import get_current_user_id
 from db.database import AsyncSessionLocal
-from db.models import GlobalSkill, UserSkill, Asset, AssetField
+from db.models import GlobalSkill, UserSkill, Asset, AssetField, Session as DBSession, Task
 
 USER_SKILL_CAP = 9
 
@@ -259,14 +259,49 @@ async def delete_skill(
                 },
             )
 
-        # Cascade: asset_fields → assets → skill. Driven by explicit deletes
-        # since the FKs don't have ON DELETE CASCADE in the schema.
+        # Cascade order matters — multiple tables reference assets.id and
+        # block the delete unless cleaned up first:
+        #   - sessions.subject_asset_id      FK   → NULL out
+        #   - sessions.context_asset_ids[]   ARRAY → array_remove each
+        #   - tasks.result_asset_id          FK   → NULL out
+        #   - asset_fields                   FK   → delete (we own this child)
         if asset_count > 0:
             asset_ids_rows = (await db.execute(
                 select(Asset.id).where(Asset.user_skill_id == usid)
             )).all()
             asset_ids = [r[0] for r in asset_ids_rows]
             if asset_ids:
+                # 1. Sessions whose subject is one of these assets — drop the
+                #    subject pointer (keep the conversation history). Backend
+                #    treats subject_asset_id NULL as "general chat".
+                await db.execute(
+                    sa_update(DBSession)
+                    .where(DBSession.subject_asset_id.in_(asset_ids))
+                    .values(subject_asset_id=None)
+                )
+                # 2. Strip these asset ids from every session's
+                #    context_asset_ids array. PG's array_remove is a no-op
+                #    when the value isn't in the array, so we don't bother
+                #    pre-filtering. Cast in SQL because asyncpg sends the
+                #    uuid as a string and the array element type is uuid.
+                for aid in asset_ids:
+                    await db.execute(
+                        text(
+                            "UPDATE sessions "
+                            "SET context_asset_ids = "
+                            "array_remove(context_asset_ids, CAST(:aid AS uuid))"
+                        ),
+                        {"aid": str(aid)},
+                    )
+                # 3. Tasks that resolved to one of these assets — null the
+                #    pointer (the Task row is still useful as a log of what
+                #    the user attempted to do).
+                await db.execute(
+                    sa_update(Task)
+                    .where(Task.result_asset_id.in_(asset_ids))
+                    .values(result_asset_id=None)
+                )
+                # 4. Owned children + the asset rows themselves.
                 await db.execute(
                     sa_delete(AssetField).where(AssetField.asset_id.in_(asset_ids))
                 )
