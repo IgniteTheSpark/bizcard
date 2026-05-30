@@ -15,17 +15,42 @@
 
 import type { FieldFormat } from "./render-spec";
 
+/**
+ * Strict ISO8601 datetime detector. Used both to auto-format a raw value
+ * that looks like a timestamp AND to refuse date-formatting a value that
+ * obviously isn't one (e.g. a small number the AI mistakenly tagged with
+ * `secondary_format: absolute_date`).
+ */
+const ISO_DT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function looksLikeIsoTimestamp(v: unknown): v is string {
+  if (typeof v !== "string") return false;
+  return ISO_DT_RE.test(v) || ISO_DATE_RE.test(v);
+}
+
 export function applyFormat(value: unknown, format?: FieldFormat): string {
   if (value === null || value === undefined || value === "") return "";
   const s = String(value);
-  if (!format) return s;
+
+  // No explicit format directive — but the value LOOKS like an ISO
+  // datetime. Auto-format so meta fields don't dump raw ISO on the user
+  // (May audit: chat card meta showed "2026-05-30T08:00:00+08:00").
+  if (!format) {
+    return looksLikeIsoTimestamp(value) ? formatDate(s, { withDeadlineSuffix: false }) : s;
+  }
 
   switch (format) {
     case "relative_date":
+      // Defensive: AI sometimes tags a non-date value with a date format
+      // (e.g. amount=120 with secondary_format:absolute_date → "1月1日").
+      // If the value clearly isn't a date string, fall back to text.
+      if (!looksLikeIsoTimestamp(value)) return s;
       return formatDate(s, { withDeadlineSuffix: true });
     case "absolute_date":
+      if (!looksLikeIsoTimestamp(value)) return s;
       return formatDate(s, { withDeadlineSuffix: false });
     case "time":
+      if (!looksLikeIsoTimestamp(value)) return s;
       return formatTime(s);
     case "currency":
       return `¥${s}`;

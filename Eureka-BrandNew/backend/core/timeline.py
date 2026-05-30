@@ -1,6 +1,12 @@
 """
 Timeline assembly — Phase B v1.4.x.
 
+Note on rendering: this module is the source of the `title` / `subtitle`
+strings shown in calendar bullets + the "/api/timeline" feed. Field values
+are passed through `_format_value` so an ISO datetime in the primary slot
+reads as "5月30日 08:00" instead of "2026-05-30T08:00:00+08:00". Mirrors
+the auto-format in frontend/src/lib/format.ts applyFormat().
+
 Powers the「全部」filter tab in CalendarPage's Schedule view (per design
 DESIGN.md §5.2 + Phase B §八). NOT a standalone page — just the data source
 for that one tab.
@@ -118,6 +124,35 @@ def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
 
 
+import re
+
+_ISO_DT_RE   = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$")
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+def _format_value(raw) -> str:
+    """
+    Stringify a payload value for display in calendar bullets.
+
+    Auto-formats anything that looks like an ISO timestamp into 「月日 HH:MM」
+    so the user doesn't see "2026-05-30T08:00:00+08:00" on the timeline.
+    Other types pass through unchanged.
+    """
+    if raw is None:
+        return ""
+    s = str(raw)
+    if _ISO_DT_RE.match(s):
+        dt = _parse_iso(s)
+        if dt:
+            return f"{dt.month}月{dt.day}日 {dt.hour:02d}:{dt.minute:02d}"
+    if _ISO_DATE_RE.match(s):
+        try:
+            y, m, d = s.split("-")
+            return f"{int(m)}月{int(d)}日"
+        except ValueError:
+            return s
+    return s
+
+
 def _decorate(value: str, unit: Optional[str]) -> str:
     """
     Mirror frontend lib/render-spec `decorate`. May audit: labels were
@@ -160,7 +195,7 @@ def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = Non
     pf_val = p.get(pf) if pf else None
     primary_str: Optional[str] = None
     if pf_val not in (None, ""):
-        primary_str = _decorate(str(pf_val), _unit_for(rs, pf))
+        primary_str = _decorate(_format_value(pf_val), _unit_for(rs, pf))
     title = (
         primary_str or
         p.get("content") or p.get("title") or p.get("name") or
@@ -172,7 +207,7 @@ def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = Non
     sf = rs.get("secondary_field")
     sf_val = p.get(sf) if sf else None
     if sf_val not in (None, ""):
-        subtitle = _decorate(str(sf_val), _unit_for(rs, sf))
+        subtitle = _decorate(_format_value(sf_val), _unit_for(rs, sf))
     else:
         subtitle = p.get("description") or p.get("merchant") or ""
     return {
