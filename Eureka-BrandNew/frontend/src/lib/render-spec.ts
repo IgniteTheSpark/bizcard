@@ -53,6 +53,16 @@ export interface RenderSpec {
   actions?: CardAction[];
   timeline_position?: { time_field?: string; fallback: "created_at" };
   calendar_render?: { date_field: string; time_field?: string };
+  /**
+   * @deprecated Units were dropped per May audit — users embed them in the
+   * value when needed ("150 毫升" / "5 km"). Kept on the type so existing
+   * skills with these fields still type-check; renderer ignores them.
+   */
+  field_units?:    Record<string, string>;
+  /** @deprecated */ primary_label?:   string;
+  /** @deprecated */ primary_unit?:    string;
+  /** @deprecated */ secondary_label?: string;
+  /** @deprecated */ secondary_unit?:  string;
 }
 
 /**
@@ -103,6 +113,13 @@ const DEFAULT_LAYOUT: CardLayout = "horizontal";
 const DEFAULT_ACCENT: AccentColor = "gray";
 const DEFAULT_ICON = "•";
 
+// Decoration (label prefix, unit suffix) was removed in two passes per the
+// May audit. Final rule: the card title/subtitle = the field's value as-is.
+// Users embed units in the value when they need them ("150 毫升", "5 km"),
+// which also makes multi-modal skills (宝宝养育: amount in 毫升 OR 克 OR
+// 小时 depending on activity) actually work — one schema, no per-asset
+// unit-lookup gymnastics.
+
 export function buildCard(input: BuildCardInput): CardData {
   const { payload, spec, assetId, cardType, displayName } = input;
 
@@ -124,7 +141,12 @@ export function buildCard(input: BuildCardInput): CardData {
   const primaryRaw = spec.primary_field ? payload[spec.primary_field] : undefined;
   const secondaryRaw = spec.secondary_field ? payload[spec.secondary_field] : undefined;
 
-  const title = applyFormat(primaryRaw, spec.primary_format) || displayName || cardType;
+  // Title / subtitle: the raw payload value with format applied (date,
+  // currency, ...). No unit, no label — values speak for themselves. Falls
+  // back to displayName / cardType when the primary field is empty so the
+  // card never reads as blank.
+  const primaryValue = applyFormat(primaryRaw, spec.primary_format);
+  const title = primaryValue || displayName || cardType;
   const subtitle = applyFormat(secondaryRaw, spec.secondary_format);
 
   const metaFields = (spec.meta_fields ?? [])
@@ -138,12 +160,21 @@ export function buildCard(input: BuildCardInput): CardData {
   // OP3: derive checkDone from payload when the spec exposes a "check"
   // action. Supports both shapes (todo uses status enum; some other skills
   // might add a simple boolean `done`).
+  //
+  // Defensive backstop for #6 (May audit): early design-agent runs sometimes
+  // tagged measurement skills (跑步记录, etc.) with actions=["check"] even
+  // though the payload has no status/done concept. Without this check the
+  // card grew a meaningless checkbox stuck in unchecked state forever.
+  // Now: only honor "check" when the payload actually carries one of the
+  // state fields — keeps the phantom checkbox off for legacy bad specs.
   const actions = spec.actions ?? [];
   let checkDone: boolean | undefined;
   if (actions.includes("check")) {
-    const status = payload.status;
-    const doneField = payload.done;
-    checkDone = status === "done" || doneField === true;
+    const hasStatus = Object.prototype.hasOwnProperty.call(payload, "status");
+    const hasDone   = Object.prototype.hasOwnProperty.call(payload, "done");
+    if (hasStatus || hasDone) {
+      checkDone = payload.status === "done" || payload.done === true;
+    }
   }
 
   return {

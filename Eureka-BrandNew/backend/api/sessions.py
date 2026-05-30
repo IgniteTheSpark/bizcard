@@ -63,6 +63,12 @@ class CreateSessionRequest(BaseModel):
     # the old /sessions/for-subject endpoint had.
     subject_type: Optional[str] = None   # "contact" | "event" | "file" | "asset"
     subject_id:   Optional[str] = None
+    # Lazy-session mode (#5, May audit). When True + subject given, return
+    # the existing session id or session_id=null WITHOUT creating. The
+    # frontend's dock uses this to check "does Kevin already have a thread?"
+    # before deciding whether to open it directly or just navigate /chat
+    # blank with a pending-subject hint (creates only on first send).
+    peek_only: bool = False
 
 
 # ── GET /api/sessions ──────────────────────────────────────────────────────────
@@ -174,6 +180,18 @@ async def create_session(
                     "subject_type": req.subject_type,
                     "subject_id":   req.subject_id,
                     "context_asset_ids": [str(i) for i in (existing.context_asset_ids or [])],
+                }
+
+            # Peek mode: caller is checking, not committing. Tell them nothing
+            # exists so they can defer creation to first send.
+            if req.peek_only:
+                return {
+                    "ok":           True,
+                    "session_id":   None,
+                    "created":      False,
+                    "subject_type": req.subject_type,
+                    "subject_id":   req.subject_id,
+                    "context_asset_ids": [],
                 }
 
             # No existing — auto-title from subject + create.

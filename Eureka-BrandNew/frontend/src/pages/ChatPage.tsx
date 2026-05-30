@@ -7,7 +7,7 @@ import { MessageList } from "@/components/chat/MessageList";
 import { SessionSidebar } from "@/components/chat/SessionSidebar";
 import { SessionTopicBar } from "@/components/chat/SessionTopicBar";
 import { useChat, type ChatMessage, type ChatPart } from "@/hooks/useChat";
-import { useSessionDetail, useSessionMessages } from "@/hooks/useSessions";
+import { openSession, useSessionDetail, useSessionMessages, type SubjectType } from "@/hooks/useSessions";
 import type { Message as DbMessage } from "@/lib/types";
 
 const ACTIVE_SESSION_KEY = "eureka:active_chat_session";
@@ -16,6 +16,13 @@ const ACTIVE_SESSION_KEY = "eureka:active_chat_session";
 interface ChatRouteState {
   from?:      string;   // pathname to return to via back button
   fromLabel?: string;   // short label for the back button, e.g. "Kevin"
+  /**
+   * Lazy session-create hint (#5, May audit). The dock's Agent button passes
+   * this when no session for the subject exists yet — ChatPage shows the
+   * subject in the topic bar but defers POST /api/sessions until first send.
+   */
+  pendingSubject?: { type: SubjectType; id: string };
+  pendingLabel?:   string;
 }
 
 /**
@@ -44,10 +51,28 @@ interface ChatRouteState {
 export function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  // Read router state ONCE at mount — pendingSubject is a one-shot hint, not
+  // a reactive prop. If we re-read it on every render, switching sessions
+  // inside /chat would resurrect a stale pending subject.
+  const initialRouterState = useMemo(
+    () => (location.state ?? {}) as ChatRouteState,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    // If the dock handed us a pendingSubject, we deliberately start blank —
+    // the existing localStorage session would shadow the new binding intent.
+    if (initialRouterState.pendingSubject) return null;
     if (typeof window === "undefined") return null;
     return window.localStorage.getItem(ACTIVE_SESSION_KEY) || null;
   });
+  const [pendingSubject, setPendingSubject] = useState<ChatRouteState["pendingSubject"] | null>(
+    initialRouterState.pendingSubject ?? null,
+  );
+  const [pendingLabel, setPendingLabel] = useState<string | null>(
+    initialRouterState.pendingLabel ?? null,
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -69,11 +94,28 @@ export function ChatPage() {
     initialMessages,
   });
 
-  // When history loads / session changes, replace the chat state. Reset
-  // happens via the chat.reset helper.
+  // Seed the chat from DB history ONLY when we genuinely have nothing live.
+  //
+  // The naive `chat.reset(initialMessages)` on every initialMessages change
+  // had a race (issue #3, May audit): when the user sent the FIRST message
+  // of a new session, SSE `meta` minted a session_id → activeSessionId
+  // updated → SWR re-fetched (empty) → initialMessages identity changed →
+  // reset() wiped the optimistic user bubble. Now the live messages stayed
+  // hidden until the agent finished streaming, when SWR refetched the
+  // persisted pair and showed both.
+  //
+  // Condition `chat.messages.length === 0` covers the two cases we DO want
+  // to reset:
+  //   - first mount (chat starts empty, history arrives) → seed
+  //   - explicit handleSelectSession (calls chat.reset([]) → next history
+  //     for the new id arrives) → seed
+  // and skips the case we DON'T want to reset:
+  //   - mid-stream session promotion (chat has live messages, history is
+  //     briefly empty for the new id)
   useEffect(() => {
-    chat.reset(initialMessages);
-    // intentional: reset only when initialMessages identity changes (new session)
+    if (chat.messages.length === 0 && initialMessages.length > 0) {
+      chat.reset(initialMessages);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMessages]);
 
@@ -88,8 +130,34 @@ export function ChatPage() {
 
   const handleSelectSession = useCallback((id: string | null) => {
     setActiveSessionId(id);
+    setPendingSubject(null); // sidebar switch dismisses any deferred binding
+    setPendingLabel(null);
     chat.reset([]); // optimistic; useEffect above will re-seed when history loads
   }, [chat]);
+
+  /**
+   * Lazy-create wrapper around chat.send (#5, May audit). When a
+   * pendingSubject is active and we have no session yet, we get-or-create
+   * the subject session first, then send with that id. Stops empty subject
+   * sessions from littering history on a stray Agent tap.
+   */
+  const handleSend = useCallback(async (text: string) => {
+    if (pendingSubject && !chat.sessionId && !activeSessionId) {
+      try {
+        const { sessionId } = await openSession({ subject: pendingSubject });
+        if (sessionId) {
+          setActiveSessionId(sessionId);
+          setPendingSubject(null);
+          setPendingLabel(null);
+          await chat.send(text, sessionId);
+          return;
+        }
+      } catch {
+        // Fall through to plain send; backend will create a non-bound session.
+      }
+    }
+    await chat.send(text);
+  }, [pendingSubject, chat, activeSessionId]);
 
   const handlePrecipitate = useCallback((_text: string) => {
     // M2 placeholder — M5 / future will open the SkillCreateForm with the
@@ -142,7 +210,9 @@ export function ChatPage() {
           </button>
 
           <div className="flex-1 min-w-0 text-center text-eu-sm text-eu-text-hi font-medium truncate">
-            {sessionDetail?.title ?? (activeSessionId ? `对话 ${activeSessionId.slice(0, 6)}` : "新对话")}
+            {sessionDetail?.title
+              ?? (pendingSubject ? `${pendingLabel ?? "新对话"}` : null)
+              ?? (activeSessionId ? `对话 ${activeSessionId.slice(0, 6)}` : "新对话")}
           </div>
 
           {/* History opener — always shown now that PhoneFrame collapsed
@@ -163,14 +233,16 @@ export function ChatPage() {
         )}
 
         {/* RV1: SessionTopicBar = merged subject + context one-liner.
-            Replaces SubjectBanner (top row) + ContextChipRail (next row). */}
-        {activeSessionId && (
+            Replaces SubjectBanner (top row) + ContextChipRail (next row).
+            Also rendered for a *pending* subject (#5 lazy create) so the
+            user sees "you're about to talk about Kevin" before they send. */}
+        {(activeSessionId || pendingSubject) && (
           <div className="shrink-0">
             <SessionTopicBar
-              contactId={sessionDetail?.contact_id ?? null}
-              eventId={sessionDetail?.event_id ?? null}
-              fileId={sessionDetail?.file_id ?? null}
-              subjectAssetId={sessionDetail?.subject_asset_id ?? null}
+              contactId={sessionDetail?.contact_id ?? (pendingSubject?.type === "contact" ? pendingSubject.id : null)}
+              eventId={sessionDetail?.event_id ?? (pendingSubject?.type === "event" ? pendingSubject.id : null)}
+              fileId={sessionDetail?.file_id ?? (pendingSubject?.type === "file" ? pendingSubject.id : null)}
+              subjectAssetId={sessionDetail?.subject_asset_id ?? (pendingSubject?.type === "asset" ? pendingSubject.id : null)}
               contextAssetIds={sessionDetail?.context_asset_ids ?? []}
               sessionId={activeSessionId}
             />
@@ -187,7 +259,7 @@ export function ChatPage() {
         {/* Sticky bottom — AppShell's pb-0 on /chat lets this sit flush. */}
         <div className="shrink-0">
           <ChatInput
-            onSend={chat.send}
+            onSend={handleSend}
             streaming={chat.streaming}
           />
         </div>

@@ -1,6 +1,12 @@
 """
 Timeline assembly — Phase B v1.4.x.
 
+Note on rendering: this module is the source of the `title` / `subtitle`
+strings shown in calendar bullets + the "/api/timeline" feed. Field values
+are passed through `_format_value` so an ISO datetime in the primary slot
+reads as "5月30日 08:00" instead of "2026-05-30T08:00:00+08:00". Mirrors
+the auto-format in frontend/src/lib/format.ts applyFormat().
+
 Powers the「全部」filter tab in CalendarPage's Schedule view (per design
 DESIGN.md §5.2 + Phase B §八). NOT a standalone page — just the data source
 for that one tab.
@@ -118,15 +124,68 @@ def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
 
 
-def _asset_item(asset: Asset, skill_name: str) -> dict:
+import re
+
+_ISO_DT_RE   = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$")
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+def _format_value(raw) -> str:
+    """
+    Stringify a payload value for display in calendar bullets.
+
+    Auto-formats anything that looks like an ISO timestamp into 「月日 HH:MM」
+    so the user doesn't see "2026-05-30T08:00:00+08:00" on the timeline.
+    Other types pass through unchanged.
+    """
+    if raw is None:
+        return ""
+    s = str(raw)
+    if _ISO_DT_RE.match(s):
+        dt = _parse_iso(s)
+        if dt:
+            return f"{dt.month}月{dt.day}日 {dt.hour:02d}:{dt.minute:02d}"
+    if _ISO_DATE_RE.match(s):
+        try:
+            y, m, d = s.split("-")
+            return f"{int(m)}月{int(d)}日"
+        except ValueError:
+            return s
+    return s
+
+
+# Units were dropped per May audit (Option B). The title / subtitle are
+# just the formatted value — users embed units in the value themselves
+# when relevant ("150 毫升", "5 km"). Keeps multi-modal skills sane.
+
+
+def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = None, display_name: Optional[str] = None) -> dict:
     p = asset.payload or {}
-    # Heuristic title per skill; frontend can override
+    # Title: prefer the skill's render_spec.primary_field (matches how the card
+    # renders), then common title-ish fields, then the skill's display_name.
+    # Never fall back to "[skill_name]" — AI-created skills with custom payloads
+    # (e.g. 跑步记录 {distance, pace}) used to surface an ugly "[running]".
+    #
+    # Measurement skills (跑步 distance=5, 喝水 ml=200) used to surface as
+    # the bare number "5". Bundle C added primary_label / primary_unit to
+    # render_spec for cards; apply the same decoration here so the calendar
+    # bullet reads "距离 5 km" instead of "5". Single source of rendering
+    # rule for the timeline: <label?> <value> <unit?>.
+    rs = render_spec if isinstance(render_spec, dict) else {}
+    pf = rs.get("primary_field")
+    pf_val = p.get(pf) if pf else None
+    primary_str: Optional[str] = _format_value(pf_val) if pf_val not in (None, "") else None
     title = (
+        primary_str or
         p.get("content") or p.get("title") or p.get("name") or
         (f"¥{p.get('amount')}" if p.get("amount") else None) or
-        f"[{skill_name}]"
+        display_name or skill_name
     )
-    subtitle = p.get("description") or p.get("merchant") or ""
+    sf = rs.get("secondary_field")
+    sf_val = p.get(sf) if sf else None
+    if sf_val not in (None, ""):
+        subtitle = _format_value(sf_val)
+    else:
+        subtitle = p.get("description") or p.get("merchant") or ""
     return {
         "kind":                 "asset",
         "id":                   str(asset.id),
@@ -213,7 +272,7 @@ async def assemble_timeline(
     # ── assets (joined to skill name) ──
     if "asset" in kinds:
         stmt = (
-            select(Asset, GlobalSkill.name.label("skill_name"))
+            select(Asset, GlobalSkill.name.label("skill_name"), UserSkill.render_spec, UserSkill.display_name)
             .join(UserSkill, Asset.user_skill_id == UserSkill.id)
             .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
             .where(Asset.user_id == user_id)
@@ -221,8 +280,8 @@ async def assemble_timeline(
         if skill_names:
             stmt = stmt.where(GlobalSkill.name.in_(skill_names))
         rows = (await db.execute(stmt)).all()
-        for asset, skill_name in rows:
-            items.append(_asset_item(asset, skill_name))
+        for asset, skill_name, render_spec, display_name in rows:
+            items.append(_asset_item(asset, skill_name, render_spec, display_name))
 
     # ── events ──
     if "event" in kinds:

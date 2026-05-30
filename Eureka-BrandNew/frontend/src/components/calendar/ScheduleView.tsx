@@ -47,6 +47,10 @@ interface ScheduleViewProps {
   onItemTap: (item: TimelineItem) => void;
   /** Day-tile tap (whole tile, not item row) → DayDetailSheet. */
   onDayTap?: (dayKey: string) => void;
+  /** Redesign: when rendered under CalendarPage's Segmented control, hide this
+   *  view's own header (month label + 仅有事/⌕/⋮) — the month context lives in
+   *  the left vertical rail, and the redesign drops the filter toggle. */
+  embedded?: boolean;
 }
 
 /**
@@ -62,8 +66,12 @@ const EMPTY_PREF_KEY = "eureka:schedule_show_empty";
 // type display preference will move to a Settings page in M5; in the
 // meantime Schedule shows everything.
 
-export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
+export function ScheduleView({ onItemTap, onDayTap, embedded }: ScheduleViewProps) {
   const { items, isLoading } = useTimeline();
+  // Infinite-ish forward scroll: the window grows toward the future as the user
+  // scrolls near the bottom (appending rows → no scroll jump). Past is a
+  // generous fixed window. Reset isn't needed — it only grows within a session.
+  const [fwdDays, setFwdDays] = useState(120);
   const [showEmpty, setShowEmpty] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(EMPTY_PREF_KEY) === "1";
@@ -75,7 +83,7 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
 
   // ── Build day buckets across the visible window ──────────────────────────
   // Window: -14d ... earliest item ... +21d from today.
-  const fullDayWindow = useMemo(() => buildDayWindow(items), [items]);
+  const fullDayWindow = useMemo(() => buildDayWindow(items, fwdDays), [items, fwdDays]);
   const byDay = useMemo(() => {
     const m = new Map<string, TimelineItem[]>();
     for (const it of items) {
@@ -124,6 +132,11 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
 
     const compute = () => {
       rafQueued.current = false;
+      // Infinite forward scroll: near the bottom, push the window further into
+      // the future (cap ~10y). Appending rows keeps scroll position stable.
+      if (container.scrollHeight - container.scrollTop - container.clientHeight < 800) {
+        setFwdDays((d) => (d < 3650 ? d + 120 : d));
+      }
       const dayKey = dayKeyAtViewportCenter(container);
       if (!dayKey) return;
       const dist = distanceLabel(dayKey, todayKey);
@@ -156,7 +169,10 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#06070d" }}>
-      {/* ── Top header: month + tools ─────────────────────────────────── */}
+      {/* ── Top header: month + tools ─── hidden when embedded under the
+          CalendarPage Segmented control (redesign) ───────────────────── */}
+      {!embedded && (
+      <>
       <header className="flex items-center justify-between px-eu-md pt-1 pb-2.5">
         <div className="flex items-baseline gap-2">
           <span
@@ -205,6 +221,8 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
           type display preferences will move to a Settings page in M5.
           A thin separator keeps the header / content visually divided. */}
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }} />
+      </>
+      )}
 
       {isLoading && (
         <div className="px-eu-md py-eu-md text-eu-sm text-eu-text-lo font-mono">加载…</div>
@@ -219,18 +237,22 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
           doesn't stutter under the cursor. */}
       {overlay && (
         <div
-          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+          className="pointer-events-none absolute z-10"
           style={{
-            opacity: overlay.visible ? 0.85 : 0,
-            transition: "opacity 200ms cubic-bezier(.2,.7,.3,1)",
+            right: 18, top: "42%", transform: "translateY(-50%)",
+            textAlign: "right",
+            // Redesign: a faint light-gray watermark on the right (not a dark
+            // centered block) — matches the spec's translucent diff indicator.
+            opacity: overlay.visible ? 0.16 : 0,
+            transition: "opacity 220ms cubic-bezier(.2,.7,.3,1)",
           }}
         >
           <div
-            className="font-display select-none text-center"
+            className="font-display select-none"
             style={{
-              fontSize: 72, fontWeight: 700, lineHeight: 1.05,
-              color: "#0b0b14", letterSpacing: "-0.02em",
-              textShadow: "0 2px 16px rgba(0,0,0,0.20)",
+              fontSize: 64, fontWeight: 700, lineHeight: 0.9,
+              color: "var(--eu-text-hi)", letterSpacing: "-0.03em",
+              whiteSpace: "nowrap",
             }}
           >
             {overlay.text}
@@ -421,34 +443,26 @@ export function ScheduleView({ onItemTap, onDayTap }: ScheduleViewProps) {
  * expands into full empty tiles on click. Keeps the schedule scannable
  * when the user has only a few real items.
  */
-function GapRow({ count, onExpand }: { count: number; onExpand: () => void }) {
+function GapRow({ count }: { count: number; onExpand?: () => void }) {
+  // Redesign: empty stretches are a quiet thin gradient line, not a prominent
+  // "N 天空闲" chip (the user flagged 空闲 as redundant; the spec's flow renders
+  // empty days as a faint line). Slightly taller for longer gaps.
+  const h = Math.min(34, 16 + count * 2);
   return (
     <div
       className="grid"
       style={{ gridTemplateColumns: "64px 1fr", marginBottom: 6, paddingRight: 16 }}
     >
-      <div
-        style={{
-          borderRight: "1px solid rgba(255,255,255,0.04)",
-          height: 26,
-        }}
-      />
-      <button
-        type="button"
-        onClick={onExpand}
-        className="flex items-center justify-center ml-1.5 font-mono"
-        style={{
-          height: 26, borderRadius: 999,
-          background: "rgba(255,255,255,0.025)",
-          border: "1px dashed rgba(255,255,255,0.08)",
-          color: "rgba(255,255,255,0.40)",
-          fontSize: 10.5, letterSpacing: "0.16em",
-          cursor: "pointer",
-        }}
-        title="展开空闲日"
-      >
-        ⌄ {count} 天空闲
-      </button>
+      <div style={{ borderRight: "1px solid rgba(255,255,255,0.04)", height: h }} />
+      <div className="ml-1.5 flex items-center" style={{ height: h }}>
+        <div
+          style={{
+            width: "100%",
+            height: 1,
+            background: "linear-gradient(90deg, rgba(255,255,255,0.10), transparent)",
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -594,20 +608,20 @@ function subKindOf(it: TimelineItem): "event" | "todo" | "idea" | "expense" | "c
  * which is ASCENDING. Match the canvas: ascending; scroll position can
  * snap to today on mount (TODO).
  */
-function buildDayWindow(items: TimelineItem[]): string[] {
+function buildDayWindow(items: TimelineItem[], fwdDays: number): string[] {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  let minMs = +addDays(today, -14);
-  let maxMs = +addDays(today, +21);
+  let minMs = +addDays(today, -90);
+  let maxMs = +addDays(today, fwdDays);
   for (const it of items) {
     const t = +new Date(it.effective_at);
     if (t < minMs) minMs = t;
     if (t > maxMs) maxMs = t;
   }
-  // Clamp the window: don't sprawl beyond ~120 days either side, dev-time
-  // sanity — keeps the rail responsive even if a stray distant event exists.
-  const MAX_SIDE_MS = 120 * 24 * 3600 * 1000;
-  minMs = Math.max(minMs, +today - MAX_SIDE_MS);
-  maxMs = Math.min(maxMs, +today + MAX_SIDE_MS);
+  // Past: clamp to ~1 year back (sanity). Future: driven by fwdDays, which the
+  // scroll handler grows as the user nears the bottom → effectively infinite
+  // forward scroll without scroll-position jumps.
+  const PAST_MS = 365 * 24 * 3600 * 1000;
+  minMs = Math.max(minMs, +today - PAST_MS);
 
   const days: string[] = [];
   for (let t = minMs; t <= maxMs; t += 24 * 3600 * 1000) {

@@ -1,11 +1,9 @@
-import { useState } from "react";
-import { Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import useSWR from "swr";
 
 import { EventCard } from "@/components/calendar/EventCard";
 import { SkillCard } from "@/components/skill/SkillCard";
-import { AddSkillWizard } from "@/components/skill/AddSkillWizard";
+import { SkillsGrid, type SkillTileData, type TileAccent } from "@/components/library/SkillsGrid";
 import { swrFetcher } from "@/lib/api";
 import { buildCard } from "@/lib/render-spec";
 import type { AccentColor } from "@/lib/render-spec";
@@ -96,19 +94,30 @@ const CORE_TILES: TileKind[] = [
   { key: "contact", to: "/library/contact", label: "名片", icon: "◯", accent: "neutral" },
   { key: "file",    to: "/library/file",    label: "文件", icon: "♪", accent: "cyan"    },
 ];
-const SKILL_TILES: TileKind[] = [
-  { key: "todo",    to: "/library/todo",    label: "待办", icon: "☑", accent: "blue"    },
-  { key: "idea",    to: "/library/idea",    label: "想法", icon: "◇", accent: "amber"   },
-  { key: "expense", to: "/library/expense", label: "记账", icon: "¥", accent: "green"   },
-];
 
-// render_spec.accent_color → LibAccent, for dynamically-surfaced user skills
-// (seeded 笔记 + anything created via AddSkillWizard). red/gray fold into the
-// nearest library accent since the library palette has no red.
+// render_spec.accent_color → LibAccent, for the core-tile fallback.
 const RENDER_TO_LIB: Record<AccentColor, LibAccent> = {
   blue: "blue", amber: "amber", green: "green", purple: "purple",
   red: "amber", gray: "neutral", neutral: "neutral",
 };
+
+// SkillsGrid uses a slimmer accent palette; map the registry's render_spec
+// colors into it. red/gray fold into amber/neutral.
+const RENDER_TO_GRID: Record<AccentColor, TileAccent> = {
+  blue: "blue", amber: "amber", green: "green", purple: "purple",
+  red: "amber", gray: "neutral", neutral: "neutral",
+};
+
+// Seeded canonical skills that we surface but DON'T allow deletion of —
+// these are the framework's default skill kinds. User-created skills (跑步
+// / 读书 / habit / ...) are deletable.
+const PROTECTED_SKILL_NAMES = new Set([
+  "todo", "idea", "expense", "notes", "misc",
+]);
+
+// System skills (not user-facing) — never shown in the SKILLS grid.
+const HIDDEN_SKILL_NAMES = new Set(["external_ref", "qa", "contact"]);
+// (`contact` is a system skill but its real list lives in the CORE 名片 tile.)
 
 export function CategoryList() {
   const { skills } = useSkillRegistry();
@@ -135,21 +144,23 @@ export function CategoryList() {
     bySkillIcon: iconMap(skills),
   }, 5);
 
-  // 我的技能 tiles = the 3 designed defaults + every other registered user
-  // skill (seeded 笔记, plus anything created via AddSkillWizard). New skills
-  // surface here automatically, so M5's "register" step is visible end-to-end
-  // and nothing in the registry stays hidden.
-  const knownKeys = new Set([...CORE_TILES, ...SKILL_TILES].map((t) => t.key));
-  const extraSkillTiles: TileKind[] = skills
-    .filter((s) => s.render_spec && !knownKeys.has(s.name))
+  // SKILLS tiles = every registered user skill (seeded defaults + anything
+  // created via AddSkillWizard), ordered by user_skills.position so drag-to-
+  // reorder persists. Backend already returns sorted; we re-sort defensively
+  // so a stale cache doesn't show jitter.
+  const gridTiles: SkillTileData[] = skills
+    .filter((s) => s.render_spec && !HIDDEN_SKILL_NAMES.has(s.name))
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     .map((s) => ({
-      key:    s.name,
-      to:     `/library/${s.name}`,
-      label:  s.display_name || s.name,
-      icon:   s.render_spec?.icon ?? "◇",
-      accent: RENDER_TO_LIB[s.render_spec?.accent_color ?? "neutral"] ?? "neutral",
+      user_skill_id: s.user_skill_id,
+      name:          s.name,
+      label:         s.display_name || s.name,
+      icon:          s.render_spec?.icon ?? "◇",
+      accent:        RENDER_TO_GRID[s.render_spec?.accent_color ?? "neutral"] ?? "neutral",
+      count:         countFor(s.name, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts }),
+      preview:       previewFor(s.name, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts }),
+      deletable:     !PROTECTED_SKILL_NAMES.has(s.name),
     }));
-  const skillTiles = [...SKILL_TILES, ...extraSkillTiles];
 
   return (
     <div
@@ -214,7 +225,7 @@ export function CategoryList() {
             so a 393px iPhone frame fits 3 tiles per row neatly. The
             添加新技能 tile lives at the end of 技能 inline as the natural
             "extend" affordance. */}
-        <SectionLabel>核心</SectionLabel>
+        <SectionLabel>常驻 · PERMANENT</SectionLabel>
         <div
           className="grid grid-cols-3 gap-2.5"
           style={{ margin: "6px 0 16px" }}
@@ -229,23 +240,10 @@ export function CategoryList() {
           ))}
         </div>
 
-        <SectionLabel>我的技能</SectionLabel>
-        <div
-          className="grid grid-cols-3 gap-2.5"
-          style={{ margin: "6px 0 22px" }}
-        >
-          {skillTiles.map((t) => (
-            <TypeTile
-              key={t.key}
-              tile={t}
-              count={countFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
-              preview={previewFor(t.key, { assets, events: events.data?.events, files: files.data?.files, contacts: contacts.data?.contacts })}
-            />
-          ))}
-          <AddSkillTile />
-        </div>
+        <SectionLabel>启用的技能 · SKILLS</SectionLabel>
+        <SkillsGrid tiles={gridTiles} />
 
-        <SectionLabel>最近</SectionLabel>
+        <SectionLabel>最近 · RECENT</SectionLabel>
 
         {/* Cross-type latest 5 */}
         <div className="flex flex-col gap-2">
@@ -286,64 +284,41 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 /* ── Tile + RecentCard subcomponents ──────────────────────────────────── */
 
+// Compact entry tile per the Mobile-Redesign spec (library.jsx EntryRow) — the
+// user flagged the old blocks as "太大了". Small: icon + label + count, ~78px,
+// no preview line.
 function TypeTile({
-  tile, count, preview,
-}: { tile: TileKind; count: number; preview: string }) {
+  tile, count,
+}: { tile: TileKind; count: number; preview?: string }) {
   const ac = LIB_ACCENT[tile.accent];
   return (
     <Link
       to={tile.to}
       className="flex flex-col text-left active:scale-95"
       style={{
-        gap: 12,
-        padding: "14px 14px 12px", borderRadius: 14,
+        gap: 6,
+        padding: "10px 10px", borderRadius: 12,
         background: ac.bg, border: `1px solid ${ac.edge}`,
-        minHeight: 116,
-        transition: "all 280ms cubic-bezier(.2,.7,.3,1)",
+        minHeight: 78,
+        transition: "all 200ms cubic-bezier(.2,.7,.3,1)",
       }}
     >
-      <div className="flex items-center justify-between">
-        <span
-          className="font-mono"
-          style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: "rgba(0,0,0,0.20)",
-            border: `1px solid ${ac.edge}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: ac.fg, fontSize: 14,
-            boxShadow: `0 0 10px ${ac.glow}`,
-          }}
-        >
-          {tile.icon}
-        </span>
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 22, fontWeight: 700, color: "#ffffff",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {count}
-        </span>
-      </div>
-      <div>
-        <div
-          style={{
-            fontSize: 15, fontWeight: 600, color: "#f4f7fb",
-            letterSpacing: "-0.005em",
-          }}
-        >
-          {tile.label}
-        </div>
-        <div
-          style={{
-            fontSize: 11, color: "rgba(255,255,255,0.50)", marginTop: 4,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            fontFamily: tile.key === "file" ? '"JetBrains Mono", monospace' : "inherit",
-          }}
-        >
-          {preview || "—"}
-        </div>
+      <span
+        className="font-mono"
+        style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: `linear-gradient(140deg, ${ac.bg}, rgba(255,255,255,0.02))`,
+          border: `1px solid ${ac.edge}`,
+          boxShadow: `inset 0 0 12px ${ac.glow}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: ac.fg, fontSize: 13, fontWeight: 600,
+        }}
+      >
+        {tile.icon}
+      </span>
+      <div className="flex items-baseline justify-between" style={{ marginTop: "auto" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#f4f7fb" }}>{tile.label}</span>
+        <span className="font-mono" style={{ fontSize: 13, fontWeight: 600, color: ac.fg }}>{count}</span>
       </div>
     </Link>
   );
@@ -474,76 +449,9 @@ function RecentCard({ item }: { item: RecentItem }) {
   );
 }
 
-/**
- * AddSkillTile — OP4 grid-tile variant of "添加新技能". Lives inline
- * with the type tiles so users find it where they look for "what types
- * exist". Visually:dashed purple border + ✨ icon + label, leaning into
- * the "magical / experimental" framing of the AddSkillWizard.
- */
-function AddSkillTile() {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-    {open && <AddSkillWizard onClose={() => setOpen(false)} />}
-    <button
-      type="button"
-      onClick={() => setOpen(true)}
-      className="flex flex-col text-left active:scale-95"
-      style={{
-        gap: 12,
-        padding: "14px 14px 12px", borderRadius: 14,
-        background: "rgba(196,168,255,0.04)",
-        border: "1px dashed rgba(196,168,255,0.32)",
-        minHeight: 116,
-        color: "inherit", cursor: "pointer",
-        transition: "all 280ms cubic-bezier(.2,.7,.3,1)",
-      }}
-    >
-      <div className="flex items-center justify-between">
-        <span
-          style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: "rgba(196,168,255,0.10)",
-            border: "1px solid rgba(196,168,255,0.32)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#c4a8ff",
-            boxShadow: "0 0 10px rgba(196,168,255,0.30)",
-          }}
-        >
-          <Sparkles size={14} strokeWidth={1.75} />
-        </span>
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 11, color: "rgba(196,168,255,0.65)",
-            letterSpacing: "0.18em",
-          }}
-        >
-          NEW
-        </span>
-      </div>
-      <div>
-        <div
-          style={{
-            fontSize: 15, fontWeight: 600, color: "#f4f7fb",
-            letterSpacing: "-0.005em",
-          }}
-        >
-          添加新技能
-        </div>
-        <div
-          style={{
-            fontSize: 11, color: "rgba(255,255,255,0.50)", marginTop: 4,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}
-        >
-          由 AI 帮你设计卡片
-        </div>
-      </div>
-    </button>
-    </>
-  );
-}
+/* (Old AddSkillTile / per-cap state removed — handled inside SkillsGrid +
+   backend USER_SKILL_CAP=9. The plus tile and the cap UI live in
+   SkillsGrid.tsx now so they share the same long-press/edit-mode state.) */
 
 /* ── Data helpers ─────────────────────────────────────────────────────── */
 
@@ -587,11 +495,14 @@ function previewFor(
     if (!c) return "";
     return c.company ? `${c.name} · ${c.company}` : c.name;
   }
-  // Asset-backed skills — first row's title-ish field
+  // Asset-backed skills — first row's title-ish field. Fall back to "" (not
+  // the machine name) so AI-created skills with custom fields like 跑步记录
+  // (distance/pace/feeling) don't surface a raw "running" preview string.
   const a = d.assets.find((x) => x.user_skill_name === key);
   if (!a) return "";
   const p = a.payload as { content?: unknown; title?: unknown; name?: unknown };
-  return String(p.content ?? p.title ?? p.name ?? key);
+  const v = p.content ?? p.title ?? p.name;
+  return v != null && v !== "" ? String(v) : "";
 }
 
 /* ── 最近 list builder ──────────────────────────────────────────────── */

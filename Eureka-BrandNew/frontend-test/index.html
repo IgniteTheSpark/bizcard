@@ -107,6 +107,36 @@
   .card.contact .icon { color: var(--neutral); }
   .card.error .icon   { color: var(--red); background: rgba(236,106,131,0.10); border-color: rgba(236,106,131,0.22); }
   .card.input_turn .icon { color: var(--gray); }
+
+  /* Task card — async MCP work. Accent shifts with status. */
+  .card.task .icon              { color: var(--purple); background: rgba(156,128,240,0.10); border-color: rgba(156,128,240,0.22); }
+  .card.task.task-pending .icon,
+  .card.task.task-running .icon { color: var(--amber);  background: rgba(229,179,90,0.10); border-color: rgba(229,179,90,0.30); }
+  .card.task.task-done .icon    { color: var(--green);  background: rgba(95,198,133,0.10); border-color: rgba(95,198,133,0.30); }
+  .card.task.task-failed .icon  { color: var(--red);    background: rgba(236,106,131,0.10); border-color: rgba(236,106,131,0.30); }
+  .card.task.task-running       { animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.65 } }
+
+  /* External-system link footer inside cards (Dingtalk / Notion / ... jump out) */
+  .ext-link { margin-top: 6px; font-size: 12px; }
+  .ext-link a {
+    color: var(--purple); text-decoration: none;
+    padding: 2px 6px; border-radius: 4px;
+    background: rgba(156,128,240,0.08);
+    transition: background 0.15s;
+  }
+  .ext-link a:hover { background: rgba(156,128,240,0.18); text-decoration: underline; }
+
+  /* Conversational reply bubble (qa-skill output) — not a card, just text */
+  .flash-reply {
+    padding: 12px 14px; margin-bottom: 4px;
+    background: rgba(156,128,240,0.06); border-left: 2px solid var(--purple);
+    border-radius: 4px; color: var(--text-hi); font-size: 14px;
+    line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+  }
+  .flash-summary {
+    color: var(--text-lo); font-size: 12px; padding: 4px 2px; margin-top: 2px;
+  }
   .card.file .icon    { color: var(--neutral); }
 
   /* Chat */
@@ -258,7 +288,15 @@ const EK = "eureka_event_anchor";        // localStorage chat event anchor
 // ─── icons / accent per kind ──────────────────────────────────
 const ICON = { todo: "✅", event: "📅", expense: "💰", idea: "💡",
                notes: "📝", misc: "🗂", contact: "👤", qa: "❓",
-               error: "⚠️", input_turn: "🎙", file: "📎" };
+               error: "⚠️", input_turn: "🎙", file: "📎",
+               task: "⏳", pending_contact: "👥" };
+// task status → icon override (replaces the static ICON above when card is task-typed)
+const TASK_STATUS_ICON = { pending: "⏳", running: "⏳", done: "✅", failed: "❌" };
+const SYSTEM_LABEL = {
+  dingtalk_calendar: "钉钉日历", dingtalk_todo: "钉钉待办",
+  dingtalk_notes: "钉钉文档",   notion: "Notion",
+  google_calendar: "Google Calendar", fake_external: "fake",
+};
 
 // ─── topbar ───────────────────────────────────────────────────
 async function checkHealth() {
@@ -321,16 +359,34 @@ async function submitFlash() {
       return;
     }
     cards.innerHTML = "";
+    // Conversational reply (from qa-skill outputs) renders as a chat-bubble-
+    // style block, NOT as a card. Cards are reserved for asset/event handles.
+    if (d.reply) {
+      const bubble = document.createElement("div");
+      bubble.className = "flash-reply";
+      bubble.textContent = d.reply;
+      cards.appendChild(bubble);
+    }
     for (const c of (d.cards || [])) {
       cards.appendChild(renderCard(c));
     }
-    if (!d.cards?.length) {
+    if (!d.cards?.length && !d.reply) {
       cards.innerHTML = `<div class="empty">${d.summary || "无产出"}</div>`;
+    } else if (d.summary && d.cards?.length) {
+      // Small status line under cards (e.g. "已记录 1 项内容。")
+      const status = document.createElement("div");
+      status.className = "flash-summary";
+      status.textContent = d.summary;
+      cards.appendChild(status);
     }
     // 缓存 session_id 让 chat 能在这个 flash session 里续聊
     if (d.session_id) {
       localStorage.setItem(SK, d.session_id);
       updateSessionDisplay();
+      // Replay session messages into the chat panel — flash submits write
+      // to the messages table too (see api/flash.py persist_chat_turn), so
+      // the same session log shows both flash captures and chat turns.
+      await loadSessionHistory(d.session_id);
     }
     loadAll();
   } catch (e) {
@@ -341,16 +397,85 @@ async function submitFlash() {
 function renderCard(c) {
   const el = document.createElement("div");
   el.className = `card ${c.card_type || "misc"}`;
+  // Task cards override the static icon by status, and stash task_id on the
+  // element so the poller can locate them to refresh.
+  let icon = ICON[c.card_type] || "•";
+  if (c.card_type === "task" && c.status) {
+    icon = TASK_STATUS_ICON[c.status] || icon;
+    el.classList.add(`task-${c.status}`);
+    if (c.task_id) el.dataset.taskId = c.task_id;
+  }
+  // Title strips a leading status icon if the backend already baked one in
+  // (task subtitle pattern: "⏳ <title>" → display as just "<title>"
+  // because we're showing the status icon separately on the left).
+  const cleanTitle = String(c.title || "").replace(/^[⏳✅❌]\s*/, "");
+
+  // External link footer — clickable jump to Dingtalk / Notion / etc.
+  const extUrl = c.external_url || "";
+  const extSys = c.external_system || "";
+  const sysLabel = SYSTEM_LABEL[extSys] || extSys;
+  const linkRow = extUrl
+    ? `<div class="ext-link"><a href="${escapeAttr(extUrl)}" target="_blank" rel="noopener">→ 打开 ${escapeHtml(sysLabel)}</a></div>`
+    : "";
+
+  const handleMeta = c.event_id ? "event " + c.event_id.slice(0,8)
+    : c.task_id  ? "task "  + c.task_id.slice(0,8)
+    : c.asset_id ? "asset " + c.asset_id.slice(0,8) : "";
+
   el.innerHTML = `
-    <div class="icon">${ICON[c.card_type] || "•"}</div>
+    <div class="icon">${icon}</div>
     <div class="body">
-      <div class="title">${escapeHtml(c.title || "")}</div>
+      <div class="title">${escapeHtml(cleanTitle)}</div>
       <div class="subtitle">${escapeHtml(c.subtitle || "")}</div>
+      ${linkRow}
     </div>
-    <div class="meta">${c.event_id ? "event " + c.event_id.slice(0,8) : c.asset_id ? "asset " + c.asset_id.slice(0,8) : ""}</div>
+    <div class="meta">${handleMeta}</div>
   `;
   return el;
 }
+
+// HTML attribute escape (URLs especially — escapeHtml is for text, not href values)
+function escapeAttr(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+// ── Pending-task poller ──────────────────────────────────────
+// Flash returns task cards as `pending`. The async worker finishes in a
+// few seconds and updates the asset+task rows. We poll /api/tasks/:id and
+// re-render any in-flight task cards inside #flash-cards so the user sees
+// status flip without manual refresh.
+function pollPendingTaskCards() {
+  const cards = document.getElementById("flash-cards");
+  if (!cards) return;
+  const pendingEls = cards.querySelectorAll(".card.task[data-task-id]");
+  pendingEls.forEach(async (el) => {
+    const tid = el.dataset.taskId;
+    const status = (el.className.match(/task-(\w+)/) || [])[1];
+    if (!tid || status === "done" || status === "failed") return;
+    try {
+      const r = await fetch(`${API}/api/tasks/${tid}`);
+      const d = await r.json();
+      const t = d.task;
+      if (!t) return;
+      if (t.status !== status) {
+        const card = {
+          card_type:       "task",
+          title:           el.querySelector(".title")?.textContent || "",
+          subtitle:        t.status === "failed"
+              ? (t.error_message || "失败").slice(0, 80)
+              : `→ ${SYSTEM_LABEL[t.mcp_target] || t.mcp_target || ""}`,
+          status:          t.status,
+          task_id:         t.id,
+          asset_id:        t.result_asset_id,
+          external_system: (t.result_asset_payload || {}).external_system,
+          external_url:    (t.result_asset_payload || {}).external_url,
+        };
+        el.replaceWith(renderCard(card));
+      }
+    } catch {}
+  });
+}
+setInterval(pollPendingTaskCards, 3000);
 
 // ─── chat (SSE) ───────────────────────────────────────────────
 let messages = [];
@@ -381,6 +506,11 @@ function renderMessages() {
           p.className = "tool";
           const content = part.response?.content?.[0]?.text || JSON.stringify(part.response).slice(0, 200);
           p.innerHTML = `↩ <b>${escapeHtml(part.name)}</b>: ${escapeHtml(content.slice(0, 200))}`;
+        } else if (part.type === "cards") {
+          // Flash-session agent messages have cards attached — render them
+          // inline so history replay shows what got captured in that turn.
+          p.className = "cards-inline";
+          for (const c of part.cards) p.appendChild(renderCard(c));
         } else if (part.type === "error") {
           p.className = "err";
           p.textContent = "⚠ " + part.message;
@@ -580,13 +710,38 @@ async function loadSessions() {
   }
 }
 
-function switchToSession(sid) {
+async function switchToSession(sid) {
   localStorage.setItem(SK, sid);
   localStorage.removeItem(EK);
   updateSessionDisplay();
-  messages = [];
-  renderMessages();
-  alert("已切换到 session " + sid.slice(0,8) + "…\n下条 chat 在这个 session 内续聊");
+  // Replay history from DB so the user sees prior turns + cards before
+  // continuing the conversation.
+  await loadSessionHistory(sid);
+}
+
+// Fetch persisted message log and convert each DB Message row into the
+// shape `renderMessages` expects ({role, text} for user, {role, parts:[]}
+// for agent). Both /api/chat and /api/flash write to the `messages` table
+// via persist_chat_turn, so this works for both surfaces.
+async function loadSessionHistory(sid) {
+  const box = document.getElementById("messages");
+  box.innerHTML = `<div class="empty">加载中…</div>`;
+  try {
+    const r = await fetch(`${API}/api/sessions/${sid}/messages`);
+    const d = await r.json();
+    messages = (d.messages || []).map(m => {
+      if (m.role === "user") return { role: "user", text: m.text || "" };
+      const parts = [];
+      if (m.tool_call)   parts.push({ type: "tool_call",   name: m.tool_call.name,   args: m.tool_call.args });
+      if (m.tool_result) parts.push({ type: "tool_result", name: m.tool_result.name, response: m.tool_result.response });
+      if (m.text)        parts.push({ type: "text",  text: m.text });
+      if (m.cards?.length) parts.push({ type: "cards", cards: m.cards });
+      return { role: m.role, parts };
+    });
+    renderMessages();
+  } catch (e) {
+    box.innerHTML = `<div class="empty">加载失败: ${escapeHtml(e.message)}</div>`;
+  }
 }
 
 function anchorEvent(eid) {
@@ -645,6 +800,12 @@ function formatTime(iso) {
 checkHealth();
 updateSessionDisplay();
 loadAll();
+// Replay prior turns if we have a cached session — so refresh / reload
+// doesn't wipe what the user sees, even though the DB has it all.
+(function bootHistory() {
+  const sid = localStorage.getItem(SK);
+  if (sid) loadSessionHistory(sid);
+})();
 setInterval(checkHealth, 15000);
 
 // 回车提交

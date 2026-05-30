@@ -14,6 +14,8 @@ export interface Skill {
   payload_schema: Record<string, unknown> | null;
   render_spec: RenderSpec | null;
   queryable_fields: Array<{ field: string; index_type: string }> | null;
+  /** 0-based slot in the library's 3x3 SKILLS grid. */
+  position?: number;
 }
 
 export interface SkillsResponse {

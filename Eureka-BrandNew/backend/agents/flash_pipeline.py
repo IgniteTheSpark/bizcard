@@ -28,8 +28,14 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai.types import Content, Part
 
-from agents.skill_factory import make_dispatcher_agent, make_skill_agent
+from agents.skill_factory import (
+    make_dispatcher_agent, make_skill_agent, make_custom_skill_agent,
+    SKILL_FOLDER_MAP,
+)
 from core.event_mapper import event_tool_call, event_tool_result
+from sqlalchemy import select
+from db.database import AsyncSessionLocal
+from db.models import GlobalSkill, UserSkill
 
 
 _session_service = InMemorySessionService()
@@ -166,12 +172,58 @@ def _fallback_result_from_tool_events(tool_events: list) -> Optional[dict]:
 
 # ── Step 1: Dispatcher ─────────────────────────────────────────────────────────
 
-async def _dispatch(user_text: str, today_str: str, user_id: str) -> list:
+async def _load_custom_skill_map(user_id: str) -> dict[str, dict]:
+    """
+    Return {machine_name: {display_name, payload_schema, render_spec}} for
+    every user-registered skill that does NOT have a `flash-<name>-skill`
+    SKILL.md (i.e. dynamic, user-created via AddSkillWizard).
+
+    Used by the dispatcher to learn about custom skills at request time and
+    by _run_intent to route those intent types through make_custom_skill_agent.
+    """
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(
+            select(UserSkill, GlobalSkill.name.label("skill_name"))
+            .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
+            .where(UserSkill.user_id == user_id)
+        )).all()
+    out: dict[str, dict] = {}
+    for us, machine_name in rows:
+        if machine_name in SKILL_FOLDER_MAP:
+            continue  # has a static SKILL.md — not "custom" in our sense
+        if us.render_spec is None or us.render_spec == "null":
+            continue  # system skills (qa, external_ref) are not user-routed
+        out[machine_name] = {
+            "display_name":   us.display_name or machine_name,
+            "payload_schema": us.payload_schema or {},
+            "render_spec":    us.render_spec if isinstance(us.render_spec, dict) else {},
+        }
+    return out
+
+
+def _format_custom_skills_hint(custom_map: dict[str, dict]) -> str:
+    """Render the custom-skills block injected into the dispatcher prompt."""
+    if not custom_map:
+        return ""
+    lines: list[str] = []
+    for machine_name, meta in custom_map.items():
+        display = meta["display_name"]
+        # Cheap keyword surface = display_name + payload field names.
+        keywords = [display] + list((meta.get("payload_schema") or {}).keys())
+        kw_str = " / ".join(k for k in keywords if k)
+        lines.append(
+            f"- `{machine_name}` ({display}): 关键词 = {kw_str}"
+        )
+    return "\n".join(lines)
+
+
+async def _dispatch(user_text: str, today_str: str, user_id: str,
+                    custom_skills_hint: str = "") -> list:
     """
     Classify a user's free-text input into a list of intents.
-    Returns [{"type": "todo|event|expense|idea|contact|qa|note", "source_text": "..."}].
+    Returns [{"type": "todo|event|expense|idea|contact|qa|note|<custom>", "source_text": "..."}].
     """
-    agent = make_dispatcher_agent()
+    agent = make_dispatcher_agent(custom_skills_hint=custom_skills_hint)
     msg = f"今天是 {today_str}。\nuser_text: {user_text}"
     raw, _tool_events = await _run_agent(agent, msg, user_id)
     parsed = _parse_json(raw)
@@ -189,6 +241,7 @@ async def _run_intent(
     source_input_turn_id: str,
     today_str: str,
     user_id: str,
+    custom_skill_map: dict[str, dict] | None = None,
 ) -> dict:
     """Dispatch one intent to its skill agent. Returns the skill's result dict."""
     itype = intent.get("type", "misc")
@@ -213,6 +266,45 @@ async def _run_intent(
         )
         result["source_text"] = source
         return result
+
+    # Custom skill (no static SKILL.md). Build a one-shot agent from the
+    # user's payload_schema + render_spec at call time. May audit fix:
+    # without this branch, voice flash would dump "我跑了 5 公里" into
+    # misc because the dispatcher emitted type=running but there's no
+    # flash-running-skill folder to dispatch to.
+    if custom_skill_map and itype in custom_skill_map:
+        meta = custom_skill_map[itype]
+        agent = make_custom_skill_agent(
+            skill_name=itype,
+            display_name=meta["display_name"],
+            payload_schema=meta["payload_schema"],
+            render_spec=meta["render_spec"],
+        )
+        msg = (
+            f"source_text: {source}\n"
+            f"user_text: {user_text}\n"
+            f"session_id: {session_id}\n"
+            f"source_input_turn_id: {source_input_turn_id}\n"
+            f"今天是 {today_str}。"
+        )
+        raw, tool_events = await _run_agent(agent, msg, user_id)
+        result = _parse_json(raw)
+        if not result or not result.get("ok") or not result.get("asset_id"):
+            synthesized = _fallback_result_from_tool_events(tool_events)
+            if synthesized:
+                result = synthesized
+            elif not result:
+                result = {"ok": False, "raw": raw[:200]}
+        result["skill"] = f"{itype}-skill"
+        result["source_text"] = source
+        return result
+
+    # If the dispatcher emitted a type that has neither a static SKILL.md
+    # nor a custom-skill registration, fall back to misc instead of raising.
+    # Happens when a user deletes a custom skill while a stale prompt is in
+    # flight, or when the dispatcher hallucinates a type name.
+    if itype not in SKILL_FOLDER_MAP:
+        itype = "misc"
 
     agent = make_skill_agent(itype)
     msg = (
@@ -656,10 +748,20 @@ async def run_flash_pipeline(
     # a render_spec, no code change needed in this file.
     render_specs = await _load_user_render_specs(user_id)
 
-    intents = await _dispatch(user_text, today_str, user_id)
+    # May audit: load the user's custom-skill map so both the dispatcher
+    # (prompt hint) and _run_intent (routing) can dispatch to them. Without
+    # this, voice flash never routed to 跑步记录 / 宝宝养育记录 etc. and
+    # everything went to misc.
+    custom_skill_map = await _load_custom_skill_map(user_id)
+    custom_skills_hint = _format_custom_skills_hint(custom_skill_map)
+
+    intents = await _dispatch(user_text, today_str, user_id, custom_skills_hint)
     results = list(
         await asyncio.gather(*[
-            _run_intent(i, user_text, session_id, input_turn_id, today_str, user_id)
+            _run_intent(
+                i, user_text, session_id, input_turn_id, today_str, user_id,
+                custom_skill_map=custom_skill_map,
+            )
             for i in intents
         ])
     )

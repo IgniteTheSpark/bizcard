@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { Loader2, MessageCircle, Trash2, X } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Loader2, Trash2, X } from "lucide-react";
 import { useSWRConfig } from "swr";
 
 import { useModalMount } from "@/context/ModalContext";
-import { openSession } from "@/hooks/useSessions";
 import { apiFetch } from "@/lib/api";
 import type { Contact } from "@/lib/types";
 
@@ -14,8 +12,9 @@ import type { Contact } from "@/lib/types";
  * Closes the last gap in the uniform edit lifecycle: events use EventForm,
  * assets use SkillCreateForm, and contacts (a first-class entity) had no
  * edit form — the drawer's 编辑 button was disabled for them. Same drawer
- * shell as EventForm: 👤 header + 在 chat 里讨论 (edit only) + field rows +
- * 删除 / 取消 / 保存.
+ * shell as EventForm: 👤 header + field rows + 删除 / 取消 / 保存. No inline
+ * 「在 chat 里讨论」 — the global dock's Agent button is the entry (it picks
+ * up the contact's AgentTarget registered by AssetDetailDrawer).
  *
  * Backend: POST /api/contacts (create) / PUT /api/contacts/:id (update,
  * partial) / DELETE /api/contacts/:id.
@@ -34,8 +33,6 @@ export function ContactForm(props: ContactFormProps) {
 
 function ContactFormBody({ existing, onClose, onSaved }: ContactFormProps) {
   const isEdit = !!existing;
-  const navigate = useNavigate();
-  const location_ = useLocation();
   const { mutate } = useSWRConfig();
 
   const [name,    setName]    = useState(existing?.name    ?? "");
@@ -45,7 +42,6 @@ function ContactFormBody({ existing, onClose, onSaved }: ContactFormProps) {
   const [email,   setEmail]   = useState(existing?.email   ?? "");
   const [busy,    setBusy]    = useState(false);
   const [error,   setError]   = useState<string | null>(null);
-  const [discussLoading, setDiscussLoading] = useState(false);
   const [confirmDel,     setConfirmDel]     = useState(false);
 
   async function handleSave() {
@@ -101,26 +97,6 @@ function ContactFormBody({ existing, onClose, onSaved }: ContactFormProps) {
     }
   }
 
-  /** 在 chat 里讨论 — get-or-create the contact's home session (M2.3). */
-  async function openDiscuss() {
-    if (!existing || discussLoading) return;
-    setDiscussLoading(true);
-    try {
-      const { sessionId } = await openSession({
-        subject: { type: "contact", id: existing.id },
-      });
-      window.localStorage.setItem("eureka:active_chat_session", sessionId);
-      onClose();
-      navigate("/chat", {
-        state: { from: location_.pathname, fromLabel: existing.name || "联系人" },
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setDiscussLoading(false);
-    }
-  }
-
   return (
     <div
       className="fixed inset-0 z-50 bg-eu-bg/92 backdrop-blur-md eu-fade-in"
@@ -165,31 +141,10 @@ function ContactFormBody({ existing, onClose, onSaved }: ContactFormProps) {
           </button>
         </header>
 
-        {/* 在 chat 里讨论 (edit only) */}
-        {isEdit && (
-          <div className="px-eu-lg">
-            <button
-              type="button"
-              onClick={openDiscuss}
-              disabled={discussLoading}
-              className={[
-                "inline-flex items-center gap-1.5 px-eu-md py-eu-sm rounded-eu-full",
-                "bg-eu-brand-faint text-eu-brand-hi border border-eu-brand-line",
-                "text-eu-sm font-medium hover:brightness-110 active:scale-95",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                "transition-all duration-eu-fast",
-              ].join(" ")}
-            >
-              {discussLoading
-                ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                : <MessageCircle size={14} strokeWidth={1.75} />}
-              {discussLoading ? "打开中…" : "在 chat 里讨论"}
-            </button>
-          </div>
-        )}
+        {/* No inline 「在 chat 里讨论」 — dock Agent is the global entry. */}
 
         {/* Field rows */}
-        <div className="px-eu-lg flex flex-col gap-eu-md border-t border-eu-rule pt-eu-md">
+        <div className="px-eu-lg flex flex-col gap-eu-md pt-eu-md">
           <Field label="电话"><Input value={phone}   onChange={setPhone}   placeholder="(可选)" type="tel" /></Field>
           <Field label="公司"><Input value={company} onChange={setCompany} placeholder="(可选)" /></Field>
           <Field label="职位"><Input value={title}   onChange={setTitle}   placeholder="(可选)" /></Field>

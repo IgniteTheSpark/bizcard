@@ -146,7 +146,14 @@ async def update_asset(
     payload_patch: str,
     user_id: str = "default",
 ) -> dict:
-    """Merge payload_patch into existing asset; re-indexes queryable fields."""
+    """
+    Merge payload_patch into existing asset; re-indexes queryable fields.
+
+    Returns user_skill_name alongside asset_id + merged payload so the chat
+    frontend's tool_result extractor can pick the right render_spec —
+    otherwise updated cards render as a generic 「资产」 (issue #1, May
+    audit). create_asset already returns it; we mirror that here.
+    """
     try:
         patch = json.loads(payload_patch) if isinstance(payload_patch, str) else payload_patch
     except json.JSONDecodeError as e:
@@ -155,12 +162,18 @@ async def update_asset(
         return _err("payload_patch must be a JSON object")
 
     async with AsyncSessionLocal() as db:
+        # Join through UserSkill → GlobalSkill in one shot so we get the
+        # machine name without a second round-trip.
         result = await db.execute(
-            select(Asset).where(Asset.id == uuid.UUID(asset_id), Asset.user_id == user_id)
+            select(Asset, GlobalSkill.name.label("skill_name"))
+            .join(UserSkill, Asset.user_skill_id == UserSkill.id)
+            .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
+            .where(Asset.id == uuid.UUID(asset_id), Asset.user_id == user_id)
         )
-        asset = result.scalar_one_or_none()
-        if not asset:
+        row = result.first()
+        if not row:
             return _err(f"asset not found: {asset_id}")
+        asset, skill_name = row
 
         merged = {**asset.payload, **patch}
         asset.payload = merged
@@ -173,7 +186,7 @@ async def update_asset(
 
         await db.commit()
 
-    return _ok(asset_id=asset_id, payload=merged)
+    return _ok(asset_id=asset_id, user_skill_name=skill_name, payload=merged)
 
 
 async def delete_asset(asset_id: str, user_id: str = "default") -> dict:
@@ -247,6 +260,12 @@ async def update_contact(
     value: str,
     user_id: str = "default",
 ) -> dict:
+    """
+    Update a single field on a contact, return the FULL contact row so the
+    chat card renders with the actual name + updated values (May audit:
+    previously returned just {field, value} and the chat fell back to a
+    generic 「名片」 placeholder with no name).
+    """
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(Contact).where(Contact.id == uuid.UUID(contact_id), Contact.user_id == user_id)
@@ -263,8 +282,14 @@ async def update_contact(
             return _err(f"unknown field: {field}")
 
         await db.commit()
+        await db.refresh(contact)
 
-    return _ok(contact_id=contact_id, contact_action="updated", field=field, value=value)
+    return _ok(
+        contact_id=contact_id, contact_action="updated",
+        field=field, value=value,
+        name=contact.name, phone=contact.phone, company=contact.company,
+        title=contact.title, email=contact.email, notes=contact.notes or [],
+    )
 
 
 async def delete_contact(contact_id: str, user_id: str = "default") -> dict:

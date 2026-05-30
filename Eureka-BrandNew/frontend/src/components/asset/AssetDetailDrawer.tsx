@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
-import { ExternalLink, History, MessageCircle, Pencil, Trash2, X, Loader2 } from "lucide-react";
+import { ExternalLink, History, Pencil, Trash2, X, Loader2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { EventForm } from "@/components/calendar/EventForm";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { GenericField } from "@/components/skill/GenericField";
 import { SkillCreateForm } from "@/components/skill/SkillCreateForm";
-import { useModalMount } from "@/context/ModalContext";
+import { useAgentTarget, useModalMount } from "@/context/ModalContext";
 import { useEvents } from "@/hooks/useEvents";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
-import { openSession, type SubjectType } from "@/hooks/useSessions";
 import { apiFetch } from "@/lib/api";
 import type { CardData, FieldFormat } from "@/lib/render-spec";
 import type { Asset, Contact } from "@/lib/types";
@@ -20,13 +19,15 @@ import type { Asset, Contact } from "@/lib/types";
  *
  * Mobile: bottom sheet (~85vh max). Desktop: right-side drawer 480px wide.
  *
- * Actions (M2.2):
- *   - 「在 chat 里讨论」 → creates a NEW chat session with this asset attached
- *     as context_asset_ids[0], navigates to /chat. Agent will see it in the
- *     prompt as「本 session 携带的上下文资产」.
- *   - 「跳到创建该 asset 的 session」 → navigates to /chat with the asset's
- *     existing session_id (if any), letting the user see the conversation
- *     that produced this asset.
+ * Actions:
+ *   - 编辑 / 删除          → opens the matching edit form / confirms delete.
+ *   - 来源 chip            → if Agent created the asset, taps into that
+ *                            source session (read the original conversation).
+ *
+ * No inline 「在 chat 里讨论」 — the global FloatingDock's Agent button is
+ * the entry. The drawer registers an AgentTarget on mount, so the dock's
+ * Agent opens the asset's bound session directly. Same doctrine across
+ * EventForm / ContactForm — dock = global, context-bound agent entry.
  */
 
 interface AssetDetailDrawerProps {
@@ -38,13 +39,26 @@ interface AssetDetailDrawerProps {
 }
 
 export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: AssetDetailDrawerProps) {
-  useModalMount();
+  // keepDock: the global dock stays visible over the detail — its Agent button
+  // is now the entry into this asset's bound session (no in-drawer discuss btn).
+  useModalMount({ keepDock: true });
   const navigate = useNavigate();
   const location = useLocation();
   const { mutate } = useSWRConfig();
   const { bySkill } = useSkillRegistry();
   const { events } = useEvents();
-  const [discussLoading, setDiscussLoading] = useState(false);
+  const { setAgentTarget } = useAgentTarget();
+
+  // Register this asset as the dock's Agent target while the detail is open.
+  useEffect(() => {
+    if (!card.assetId) return;
+    const subjectType = card.cardType === "contact" ? "contact"
+      : card.cardType === "event" ? "event"
+      : card.cardType === "file" ? "file"
+      : "asset";
+    setAgentTarget({ subject: { type: subjectType, id: card.assetId }, label: card.title });
+    return () => setAgentTarget(null);
+  }, [card.assetId, card.cardType, card.title, setAgentTarget]);
 
   // RV3: edit + delete state.
   // - editing: which inner form is open (event / asset / null)
@@ -129,46 +143,6 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
     created_at: "",
   } : null;
 
-  /**
-   * 在 chat 里讨论 — M2.3 home-session pattern.
-   *
-   * Each asset / first-class entity has ONE chat session anchored to it. We
-   * map card.cardType to the right subject_type:
-   *   contact → "contact" (uses contacts.id)
-   *   event   → "event"   (uses events.id)
-   *   file    → "file"    (uses files.id)
-   *   any other (todo / idea / notes / misc / expense) → "asset"
-   *
-   * Repeated clicks return the same session — no fragmentation.
-   */
-  async function openDiscuss() {
-    if (!card.assetId || discussLoading) return;
-    setDiscussLoading(true);
-    try {
-      const subjectType: SubjectType =
-          card.cardType === "contact" ? "contact"
-        : card.cardType === "event"   ? "event"
-        : card.cardType === "file"    ? "file"
-        : "asset";
-      const { sessionId } = await openSession({
-        subject: { type: subjectType, id: card.assetId },
-      });
-      window.localStorage.setItem("eureka:active_chat_session", sessionId);
-      onClose();
-      // Pass `from` so ChatPage's back button can return here cleanly. We
-      // also send a short label derived from the subject so the back button
-      // renders 「← Kevin」 instead of just 「← 资产库」.
-      navigate("/chat", {
-        state: { from: location.pathname, fromLabel: card.title || "上一页" },
-      });
-    } catch (e) {
-      // eslint-disable-next-line no-alert
-      alert("打开对话失败:" + ((e as Error).message ?? "未知错误"));
-    } finally {
-      setDiscussLoading(false);
-    }
-  }
-
   /** 跳到创建该 asset 的 session — opens chat with the existing creator session. */
   function openSourceSession() {
     if (!sourceSessionId) return;
@@ -214,55 +188,53 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
           // 480px (escapes the 393px frame).
           "fixed inset-x-0 bottom-0 max-h-[85vh] rounded-t-eu-xl",
           "bg-eu-surface-raised border-t border-eu-border",
-          "shadow-eu-lg pt-eu-md pb-safe overflow-y-auto",
+          "shadow-eu-lg pt-eu-md overflow-y-auto eu-noscroll",
           "flex flex-col gap-eu-md eu-sheet-up",
         ].join(" ")}
+        // Bottom clearance so the (now-visible) floating dock doesn't cover the
+        // last fields — the dock's Agent button is this asset's session entry.
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 92px)" }}
       >
         {/* drag handle (mobile only) */}
         <div className="md:hidden h-1 w-12 rounded-full bg-eu-rule mx-auto" />
 
-        <header className="flex items-start gap-eu-md px-eu-lg">
-          <div className={[
-            "shrink-0 h-10 w-10 rounded-eu-md border",
-            "flex items-center justify-center font-mono font-semibold text-eu-lg",
-            ACCENT_BG[card.accentColor],
-            ACCENT_FG[card.accentColor],
-            ACCENT_BORDER[card.accentColor],
-          ].join(" ")}>
-            {card.icon}
-          </div>
-          <div className="flex-1 min-w-0">
+        {/* Hero — column layout per the design's AssetHero (big gradient icon
+            → prominent title → subtitle), replacing the old compact row. */}
+        <header className="px-eu-lg">
+          <div className="flex items-center justify-between">
             <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono">
               {card.cardType}
             </div>
-            <h2 className="text-eu-lg text-eu-text-hi font-medium tracking-tight mt-0.5 break-words">
-              {card.title}
-            </h2>
-            {card.subtitle && (
-              <div className="text-eu-sm text-eu-text-mid mt-1">{card.subtitle}</div>
-            )}
+            <button
+              type="button"
+              aria-label="关闭"
+              onClick={onClose}
+              className="shrink-0 p-1.5 rounded-eu-sm text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
+            >
+              <X size={18} strokeWidth={1.75} />
+            </button>
           </div>
-          <button
-            type="button"
-            aria-label="关闭"
-            onClick={onClose}
-            className="shrink-0 p-1.5 rounded-eu-sm text-eu-text-mid hover:text-eu-text-hi hover:bg-eu-surface-hover"
+          <div
+            className={[
+              "mt-3 flex items-center justify-center border font-mono font-semibold",
+              ACCENT_BG[card.accentColor],
+              ACCENT_FG[card.accentColor],
+              ACCENT_BORDER[card.accentColor],
+            ].join(" ")}
+            style={{ width: 54, height: 54, borderRadius: 14, fontSize: 22, boxShadow: "inset 0 0 18px rgba(255,255,255,0.05)" }}
           >
-            <X size={18} strokeWidth={1.75} />
-          </button>
+            {card.icon}
+          </div>
+          <h2 className="mt-3.5 text-eu-text-hi font-semibold tracking-tight break-words" style={{ fontSize: 22, lineHeight: 1.25 }}>
+            {card.title}
+          </h2>
+          {card.subtitle && (
+            <div className="text-eu-text-mid mt-2" style={{ fontSize: 14 }}>{card.subtitle}</div>
+          )}
         </header>
 
         {/* Action row */}
         <div className="px-eu-lg flex flex-wrap gap-eu-sm">
-          <ActionButton
-            icon={discussLoading
-              ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-              : <MessageCircle size={14} strokeWidth={1.75} />}
-            label={discussLoading ? "创建中…" : "在 chat 里讨论"}
-            onClick={openDiscuss}
-            disabled={!card.assetId || discussLoading}
-            variant="primary"
-          />
           {editable && (
             <ActionButton
               icon={<Pencil size={14} strokeWidth={1.75} />}
@@ -290,13 +262,6 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
               {confirmDel ? "确认删除" : "删除"}
             </button>
           )}
-          {sourceSessionId && (
-            <ActionButton
-              icon={<History size={14} strokeWidth={1.75} />}
-              label="跳到创建对话"
-              onClick={openSourceSession}
-            />
-          )}
           {externalUrl(payload) && (
             <a
               href={externalUrl(payload) ?? "#"}
@@ -312,6 +277,43 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
               <ExternalLink size={14} strokeWidth={1.75} />
               打开外部链接
             </a>
+          )}
+        </div>
+
+        {/* 来源 · SOURCE — R6: brief source only (manual vs agent-session),
+            not the full source detail. The agent line is tappable → opens the
+            creating session. */}
+        <div className="px-eu-lg pt-eu-md">
+          <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono mb-2">
+            来源 · SOURCE
+          </div>
+          {sourceSessionId ? (
+            <button
+              type="button"
+              onClick={openSourceSession}
+              className="w-full flex items-center gap-2.5 px-eu-md py-2.5 rounded-eu-md bg-eu-accent-amber-bg border border-eu-accent-amber-edge text-left hover:brightness-110 transition-all duration-eu-fast"
+            >
+              <span
+                className="shrink-0 grid place-items-center font-mono"
+                style={{ width: 24, height: 24, borderRadius: 7, background: "var(--eu-accent-amber-bg)", border: "1px solid var(--eu-accent-amber-edge)", color: "var(--eu-accent-amber-fg)", fontSize: 13, fontWeight: 600 }}
+              >●</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-eu-xs uppercase tracking-eu-caps font-mono text-eu-accent-amber-fg">Agent · 对话</div>
+                <div className="text-eu-sm text-eu-text-hi mt-0.5">由 Agent 在对话中创建</div>
+              </div>
+              <History size={14} strokeWidth={1.75} className="text-eu-text-mid shrink-0" />
+            </button>
+          ) : (
+            <div className="w-full flex items-center gap-2.5 px-eu-md py-2.5 rounded-eu-md bg-eu-surface border border-eu-border">
+              <span
+                className="shrink-0 grid place-items-center font-mono"
+                style={{ width: 24, height: 24, borderRadius: 7, background: "var(--eu-accent-neutral-bg)", border: "1px solid var(--eu-accent-neutral-edge)", color: "var(--eu-accent-neutral-fg)", fontSize: 13 }}
+              >✎</span>
+              <div className="flex-1">
+                <div className="text-eu-xs uppercase tracking-eu-caps font-mono text-eu-text-lo">Manual</div>
+                <div className="text-eu-sm text-eu-text-hi mt-0.5">手动创建</div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -430,9 +432,19 @@ function inferFormat(key: string, value: unknown): FieldFormat | undefined {
   // a deadline.
   if (key === "due_date")                    return "relative_date";
   if (key.endsWith("_date") || key.endsWith("_at")) return "absolute_date";
-  if (key === "date")                        return "absolute_date";
+  if (key === "date" || key === "time")      return "absolute_date";
   if (key === "duration_sec")                return undefined;
+  // Last resort: any string that parses as an ISO datetime (e.g., a
+  // user-defined skill's `time` / `at` / `recorded_at` field whose name
+  // doesn't match the heuristics above) — render it as 「5月30日 12:00」
+  // instead of dumping「2026-05-30T12:00:00+08:00」on the user.
+  if (looksLikeIsoDatetime(value))            return "absolute_date";
   return undefined;
+}
+
+const ISO_DT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/;
+function looksLikeIsoDatetime(s: string): boolean {
+  return ISO_DT_RE.test(s);
 }
 
 function externalUrl(payload: Record<string, unknown>): string | null {

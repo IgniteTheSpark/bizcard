@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from "react-router-dom";
 
-import { TopBar } from "./TopBar";
+import { StatusBar } from "./StatusBar";
 import { FloatingDock } from "./FloatingDock";
 
 /**
@@ -35,7 +35,7 @@ export function AppShell() {
     // height (and on real mobile, 100dvh via PhoneFrame's clamp). Layout
     // contract for children unchanged.
     <div className="h-full flex flex-col bg-eu-bg text-eu-text overflow-hidden">
-      <TopBar />
+      <StatusBar />
       {/* pb-28 reserves room for the floating dock + safe area;
           0 on /chat where the dock is hidden and ChatInput owns the bottom. */}
       <main className={`flex-1 overflow-y-auto min-h-0 ${onChat ? "pb-0" : "pb-28"}`}>

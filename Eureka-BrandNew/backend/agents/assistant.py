@@ -33,7 +33,7 @@ ASSISTANT_INSTRUCTION_BASE = """
 | 「帮我建/创建/新建/记/记一笔/记下 X」 | **CREATE** | create_asset / create_event / create_contact |
 | 「把那个 X **改成/改到/调整成/改为** Y」「金额不对应该是 Y」「时间错了应该 Y」 | **UPDATE** | 先定位 asset_id,再 update_asset / update_event |
 | 「删了/删除/取消 那个 X」「不要那条」 | **DELETE** | 先定位 asset_id,再 delete_asset / delete_event |
-| 「我这周有什么 X」「上次跟 Y 说了什么」「最近的 X」 | **QUERY** | query_asset / query_event / query_input_turn,简短回答 |
+| 「我这周有什么 X」「上次跟 Y 说了什么」「最近的 X」 | **QUERY** | query_asset / query_event / query_input_turn;**查询结果会自动以卡片渲染**,文字回复**只给一句总览**(数量 + 概要),**不要逐条复述标题/时间/字段** |
 | 「**帮我调研 / 分析 / 想想 / 解释 / 展开 / 介绍** X」「你怎么看 X」「关于 X 的建议」「**帮我准备** X」 | **CHAT-ANSWER** | **不调工具**,用模型本身的知识做有内容的回答(可几百字) |
 | 「**把刚刚那个回答存成/记成 笔记/note**」「**给我创建一个 note** 记下这个回答」 | **CREATE-FROM-REPLY** | 把**上一条助手回复的文字**作为 content,create_asset(skill='notes'/...) **创建新资产**,不是 update 旧资产 |
 | 短句 / 闲聊 / 给情绪反馈 | **CHAT** | 自然对答,不调工具 |
@@ -75,9 +75,21 @@ ASSISTANT_INSTRUCTION_BASE = """
 
 ## 工具签名要点
 
-- create_asset: user_skill_name('todo' / 'notes' / 'idea' / 'expense' / 'misc' / 'contact'),payload(JSON 字符串),session_id,source_input_turn_id(从下方「本轮上下文」拿)
+- create_asset: user_skill_name(**必须**是下方「用户的 skill 字典」里某条的 machine_name —— 不要自己发明,也不要不假思索写 'misc'),payload(JSON 字符串,字段名要严格按字典里给的来),session_id,source_input_turn_id(从下方「本轮上下文」拿)
 - update_asset: asset_id + payload_patch(只放变更字段的 JSON 字符串)
 - create_event / update_event: 见各自工具签名
+
+## skill 选择纪律(必读!)
+
+用户描述一件事时,**先在下方「用户的 skill 字典」里找**最匹配的一条:
+- 「我跑了 5 公里」 → 字典里有「跑步记录」 → user_skill_name=running,payload={"distance":5,...}
+- 「宝宝早上 8 点喝奶」 → 字典里有「宝宝养育记录」 → 用那个,**不要**写 misc
+- 「记一笔 50 块咖啡」 → 字典里有「记账」(expense) → 用那个
+- 字典里**没有**任何匹配的 → 才回退到 'misc'/'notes'
+
+判断标准:用户的内容里出现了字典某 skill 的关键名词(跑步 / 喝奶 / 健身 / 读书 / …) →
+**优先用那个 skill**。不要因为字段不完整就退到 misc —— payload 缺字段是 OK 的,
+字典里没有匹配的 skill 才是 misc 的真正用途。
 
 ## 回复风格
 
@@ -87,6 +99,7 @@ ASSISTANT_INSTRUCTION_BASE = """
   「根据规则…」这种 meta 描述;asset_id / 工具名 / JSON 也不要出现
 - 意图分类是**你自己脑内**做的判断,直接按结果行动 / 回答,**不要解释你在做什么**
 - CRUD 成功后短确认:「已记录」「已改到 4 点」「已删除」「已创建笔记 X」
+- QUERY 结果由 UI 自动渲染卡片列表;你只说「找到 N 条待办」「最近这些」之类一句话总览,**绝不**用 markdown 列表把每条标题/时间/字段再写一遍 —— 那会跟卡片重复
 - CHAT-ANSWER 直接给完整有内容的回答(几百字 ok),不要敷衍也不要前置说明
 - 引用资产时用「待办『跟客户开会』」这种自然语言,不要 ID
 """
@@ -97,6 +110,7 @@ def make_assistant_agent(
     input_turn_id: str,
     event_id: str = "",
     today_str: str = "",
+    user_skills_hint: str = "",
     session_assets_hint: str = "",
     session_context_hint: str = "",
     session_subject_hint: str = "",
@@ -141,6 +155,15 @@ def make_assistant_agent(
         f"- input_turn_id: {input_turn_id}\n"
         "  → 创建资产时把这个值作为 source_input_turn_id 参数传给 create_asset\n"
     )
+
+    if user_skills_hint:
+        instruction += (
+            "\n## 用户的 skill 字典(create_asset 必须从这里选 machine_name!)\n"
+            + user_skills_hint
+            + "\n→ CREATE 意图时:**优先**匹配字典里的 skill,关键词命中就用对应的\n"
+            "  machine_name + 该 skill 的字段填 payload\n"
+            "→ 字典里没有匹配 → 才用 'misc' (兜底)或 'notes' (长文)\n"
+        )
 
     if session_assets_hint:
         instruction += (

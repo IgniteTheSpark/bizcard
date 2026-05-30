@@ -27,7 +27,7 @@ import type { TimelineItem } from "@/lib/types";
  *   ├───────────────────────────────┤
  *   │ 周三 · 今天 · 5月27日           │ ← selected-day footer
  *   │ 10:00 ● 产品评审                │
- *   │ + 添加事件                      │
+ *   │ (create via global dock + button)│
  *   └───────────────────────────────┘
  */
 
@@ -38,17 +38,18 @@ interface MonthPaneProps {
   /** YYYY-MM — when set/changed, scroll that month into view (Year→Month). */
   focusMonthKey?: string | null;
   onItemTap?: (item: TimelineItem) => void;
-  onCreateEvent?: (dayKey: string) => void;
   /** Open DayDetail for a day (tap the day's date dot a second time, or any
    *  day with content). */
   onDayOpen?: (dayKey: string) => void;
+  /** Redesign: hide own header when rendered under CalendarPage's Segmented. */
+  embedded?: boolean;
 }
 
 const MONTHS_BACK = 6;
 const MONTHS_FWD = 6;
 
 export function MonthPane({
-  cursor, focusMonthKey, onItemTap, onCreateEvent, onDayOpen,
+  cursor, focusMonthKey, onItemTap, onDayOpen, embedded,
 }: MonthPaneProps) {
   const { byDay } = useTimeline();
   const todayKey = toLocalDayKey(new Date().toISOString());
@@ -97,7 +98,9 @@ export function MonthPane({
         fontFamily: '"Manrope","Noto Sans SC", system-ui, sans-serif',
       }}
     >
-      {/* Header: year + jump-to-today */}
+      {/* Header: year + jump-to-today — hidden when embedded under the
+          CalendarPage Segmented control (redesign). */}
+      {!embedded && (
       <header
         className="shrink-0 flex items-center justify-between"
         style={{ padding: "16px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
@@ -134,6 +137,7 @@ export function MonthPane({
           今天
         </button>
       </header>
+      )}
 
       {/* Continuous month scroll */}
       <div
@@ -158,7 +162,6 @@ export function MonthPane({
         dayKey={selected}
         items={byDay.get(selected) ?? []}
         onItemTap={(it) => onItemTap?.(it)}
-        onCreateEvent={() => onCreateEvent?.(selected)}
       />
     </div>
   );
@@ -264,12 +267,11 @@ function MonthBlock({
 /* ── Selected-day footer ──────────────────────────────────────────────── */
 
 function SelectedDayFooter({
-  dayKey, items, onItemTap, onCreateEvent,
+  dayKey, items, onItemTap,
 }: {
   dayKey: string;
   items: TimelineItem[];
   onItemTap: (it: TimelineItem) => void;
-  onCreateEvent: () => void;
 }) {
   return (
     <div
@@ -277,8 +279,10 @@ function SelectedDayFooter({
       style={{
         borderTop: "1px solid rgba(255,255,255,0.08)",
         background: "rgba(0,0,0,0.20)",
-        // Bottom padding clears the floating dock so 添加事件 / the last item
-        // aren't hidden behind it (this footer is pinned, not scrolled-through).
+        // Bottom padding clears the floating dock so the last item isn't
+        // hidden behind it (this footer is pinned, not scrolled-through).
+        // Per-day creation is via the dock's global + (context-aware add
+        // entry); no inline "+ 添加事件" — see CalendarPage rev.
         padding: "14px 20px",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 96px)",
         maxHeight: "42%", overflowY: "auto",
@@ -327,17 +331,6 @@ function SelectedDayFooter({
           ))}
         </div>
       )}
-      <button
-        type="button"
-        onClick={onCreateEvent}
-        className="font-mono"
-        style={{
-          fontSize: 11.5, color: "rgba(255,255,255,0.45)", letterSpacing: "0.1em",
-          marginTop: 12, background: "transparent", border: "none", cursor: "pointer", padding: 0,
-        }}
-      >
-        + 添加事件
-      </button>
     </div>
   );
 }

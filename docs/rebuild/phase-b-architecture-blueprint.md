@@ -8,6 +8,9 @@
 > - v1.1 → v1.2:接受 design Timeline 被 Calendar Schedule 吸收(分歧 1);接受 File 在资产库的 FileList 入口(分歧 3)
 > - v1.2 → v1.3:`input_turn.source` 语义从「session_type 同义」改为「输入模态」(voice / typed / imported),与 session_type 正交;支持混合模态会话(flash session 内可有 typed turn 做 CRUD 跟进 —— 例:语音建待办后打字「改成 4 点」);跨 turn 引用通过 messages 表里的 tool_call 历史解决
 > - **v1.3 → v1.4:Event 升级为一级实体(parallel to contacts/files);新增 notes / misc 资产类型;Sessions 可锚定 event(chat-from-event 工作流)**
+> - **v1.4.x:Task-skill + external_ref(异步第三方 MCP);render_spec-driven 卡片管线(skill 加新 = 0 代码);Streamable HTTP MCP transport(钉钉 AIHub 等托管 MCP)**
+>
+> **运行时调用流程图谱(Mermaid)**:`runtime-flow.md`(本目录) —— 完整覆盖 Flash / Chat / Task-skill / MCP 边界 / 卡片管线 / 数据沉淀路径。开发时找「这个请求到底怎么走」的就看那个。
 
 ---
 

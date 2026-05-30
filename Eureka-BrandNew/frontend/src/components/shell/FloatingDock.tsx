@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { CreateAssetMenu } from "@/components/library/CreateAssetMenu";
 import { AssetCardInChat } from "@/components/chat/AssetCardInChat";
 import { useFlashCapture } from "@/hooks/useFlashCapture";
-import { useIsAnyModalOpen, useModalMount } from "@/context/ModalContext";
+import { openSession } from "@/hooks/useSessions";
+import { useAgentTarget, useIsAnyModalOpen, useModalMount } from "@/context/ModalContext";
 
 /**
  * FloatingDock — global floating action capsule, replaces the old bottom
@@ -31,6 +32,48 @@ export function FloatingDock() {
   // Hide the dock whenever any modal is mounted — backdrop-blur + saturated
   // dock items would otherwise bleed through any z-50 backdrop overlay.
   const hidden = useIsAnyModalOpen();
+  const { agentTarget } = useAgentTarget();
+
+  /**
+   * Agent entry. When a detail view registered an agentTarget (asset/event/
+   * contact), peek for an existing bound session:
+   *   - exists  → open it directly (instant reopen of the same thread).
+   *   - missing → navigate to /chat with `pendingSubject` in router state;
+   *               ChatPage creates the session JIT on first send so a stray
+   *               tap doesn't litter sidebar history (#5, May audit).
+   * No agentTarget → open last/empty /chat.
+   *
+   * Detail pages no longer need their own 「在 chat 里讨论」 button — the
+   * global dock is the agent entry.
+   */
+  async function openAgent() {
+    if (!agentTarget) {
+      navigate("/chat");
+      return;
+    }
+    try {
+      const { sessionId } = await openSession({
+        subject: agentTarget.subject,
+        peekOnly: true,
+      });
+      if (sessionId) {
+        // Existing thread — open it directly.
+        window.localStorage.setItem("eureka:active_chat_session", sessionId);
+        navigate("/chat");
+      } else {
+        // No thread yet — defer creation to first send. /chat reads the
+        // hint from router state and binds the subject in the topic bar.
+        navigate("/chat", {
+          state: {
+            pendingSubject: agentTarget.subject,
+            pendingLabel:   agentTarget.label,
+          },
+        });
+      }
+    } catch {
+      navigate("/chat");
+    }
+  }
 
   return (
     <>
@@ -103,7 +146,7 @@ export function FloatingDock() {
         <button
           type="button"
           aria-label="Agent 对话"
-          onClick={() => navigate("/chat")}
+          onClick={openAgent}
           className={[
             "h-10 pl-3 pr-4 ml-0.5 rounded-eu-full",
             "bg-gradient-to-br from-eu-accent-purple-solid to-eu-accent-blue-solid",

@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { Loader2, MessageCircle, Trash2, X } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Loader2, Trash2, X } from "lucide-react";
 
 import { useModalMount } from "@/context/ModalContext";
 import { useEventMutations, type EventInput } from "@/hooks/useEvents";
-import { openSession } from "@/hooks/useSessions";
 import type { Event } from "@/lib/types";
 
 /**
@@ -20,9 +18,11 @@ import type { Event } from "@/lib/types";
  * View is owned by AssetDetailDrawer; tap-to-edit on a card opens this form.
  *
  * Action row:
- *   - 在 chat 里讨论  (edit only, brand pill — calls openSession with
- *                      subject_type=event, get-or-create the home session)
  *   - 删除           (edit only, red, double-tap to confirm)
+ *
+ * No inline 「在 chat 里讨论」: the global FloatingDock's Agent button
+ * registers an AgentTarget on the event's detail drawer (AssetDetailDrawer)
+ * and enters the bound session directly. Close form → tap dock Agent.
  *
  * Footer:
  *   - 取消 / 保存
@@ -50,8 +50,6 @@ export function EventForm(props: EventFormProps) {
 
 function EventFormBody({ existing, defaultStart, onClose, onSaved }: EventFormProps) {
   const isEdit = !!existing;
-  const navigate = useNavigate();
-  const location_ = useLocation();
   const { create, update, remove } = useEventMutations();
 
   // ── initial state ──────────────────────────────────────────────────
@@ -70,7 +68,6 @@ function EventFormBody({ existing, defaultStart, onClose, onSaved }: EventFormPr
   const [location, setLocation] = useState(existing?.location ?? "");
   const [busy,     setBusy]     = useState(false);
   const [error,    setError]    = useState<string | null>(null);
-  const [discussLoading, setDiscussLoading] = useState(false);
   const [confirmDel,     setConfirmDel]     = useState(false);
 
   // ── save ──────────────────────────────────────────────────────────
@@ -109,29 +106,6 @@ function EventFormBody({ existing, defaultStart, onClose, onSaved }: EventFormPr
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
-    }
-  }
-
-  /**
-   * 在 chat 里讨论 — get-or-create the event's home session (M2.3).
-   * Repeated taps re-open the same thread instead of fragmenting.
-   */
-  async function openDiscuss() {
-    if (!existing || discussLoading) return;
-    setDiscussLoading(true);
-    try {
-      const { sessionId } = await openSession({
-        subject: { type: "event", id: existing.event_id },
-      });
-      window.localStorage.setItem("eureka:active_chat_session", sessionId);
-      onClose();
-      navigate("/chat", {
-        state: { from: location_.pathname, fromLabel: existing.title || "事件" },
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setDiscussLoading(false);
     }
   }
 
@@ -181,32 +155,10 @@ function EventFormBody({ existing, defaultStart, onClose, onSaved }: EventFormPr
           </button>
         </header>
 
-        {/* ── Action row (edit only): 在 chat 里讨论 ─────────────────── */}
-        {isEdit && (
-          <div className="px-eu-lg">
-            <button
-              type="button"
-              onClick={openDiscuss}
-              disabled={discussLoading}
-              className={[
-                "inline-flex items-center gap-1.5 px-eu-md py-eu-sm rounded-eu-full",
-                "bg-eu-brand-faint text-eu-brand-hi border border-eu-brand-line",
-                "text-eu-sm font-medium",
-                "hover:brightness-110 active:scale-95",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                "transition-all duration-eu-fast",
-              ].join(" ")}
-            >
-              {discussLoading
-                ? <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                : <MessageCircle size={14} strokeWidth={1.75} />}
-              {discussLoading ? "打开中…" : "在 chat 里讨论"}
-            </button>
-          </div>
-        )}
+        {/* No inline 「在 chat 里讨论」 — dock Agent is the global entry. */}
 
         {/* ── Form rows ──────────────────────────────────────────────── */}
-        <div className="px-eu-lg flex flex-col gap-eu-md border-t border-eu-rule pt-eu-md">
+        <div className="px-eu-lg flex flex-col gap-eu-md pt-eu-md">
           {/* 全天 toggle */}
           <FieldRow label="全天">
             <button

@@ -56,10 +56,11 @@ function HorizontalCard({
 
   return (
     <CardShell accent={data.accentColor} selected={selected} onClick={onClick}>
-      {hasCheck
-        ? <CheckTile done={done} accent={data.accentColor}
-            onClick={(e) => { e.stopPropagation(); onToggleCheck?.(!done); }} />
-        : <IconTile icon={data.icon} accent={data.accentColor} />}
+      <IconTile
+        icon={data.icon}
+        accent={data.accentColor}
+        check={hasCheck ? { done, onClick: (e) => { e.stopPropagation(); onToggleCheck?.(!done); } } : undefined}
+      />
       <div className="flex-1 min-w-0">
         <div
           className={[
@@ -215,52 +216,59 @@ function CardShell({
   );
 }
 
-function IconTile({ icon, accent }: { icon: string; accent: AccentColor }) {
-  const a = ACCENT[accent];
-  return (
-    <div
-      className={[
-        "shrink-0 h-8 w-8 rounded-eu-md",
-        "flex items-center justify-center",
-        "font-mono font-semibold text-eu-md",
-        a.iconBg, a.iconFg, "border", a.border,
-        // Inset glow — uses the accent's edge color at low opacity
-        "shadow-[inset_0_0_12px_rgba(255,255,255,0.04)]",
-      ].join(" ")}
-    >
-      {icon}
-    </div>
-  );
-}
-
 /**
- * CheckTile — OP3 tap-target replacing the IconTile when a card has the
- * "check" action. Visually:
- *   - unchecked: open circle, accent border
- *   - checked: filled accent square + white ✓
- * stopPropagation in the onClick is handled by the caller.
+ * IconTile — every card's left-side identity block. Always renders the
+ * skill's icon so a todo still looks like a todo (its 🟢/⏳/⭐ etc.). When
+ * `check` is provided (skill has the "check" action), a small checkbox
+ * overlay floats in the bottom-right corner of the tile — both the icon and
+ * the check state are visible simultaneously (#2, May audit). Done state
+ * dims the icon so the visual weight follows completion.
  */
-function CheckTile({
-  done, accent, onClick,
-}: { done: boolean; accent: AccentColor; onClick: (e: React.MouseEvent) => void }) {
+function IconTile({
+  icon, accent, check,
+}: {
+  icon: string;
+  accent: AccentColor;
+  check?: { done: boolean; onClick: (e: React.MouseEvent) => void };
+}) {
   const a = ACCENT[accent];
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={done ? "标记未完成" : "标记完成"}
-      className={[
-        "shrink-0 h-8 w-8 rounded-eu-md",
-        "flex items-center justify-center",
-        "border transition-all duration-eu-fast ease-eu-out",
-        "active:scale-90",
-        done
-          ? `${a.iconBg} ${a.border} text-white`
-          : `bg-transparent ${a.border} ${a.iconFg} hover:${a.iconBg}`,
-      ].join(" ")}
-    >
-      {done && <Check size={14} strokeWidth={3} />}
-    </button>
+    <div className="relative shrink-0 h-8 w-8">
+      <div
+        className={[
+          "h-8 w-8 rounded-eu-md",
+          "flex items-center justify-center",
+          "font-mono font-semibold text-eu-md",
+          a.iconBg, a.iconFg, "border", a.border,
+          "shadow-[inset_0_0_12px_rgba(255,255,255,0.04)]",
+          check?.done ? "opacity-50" : "",
+        ].join(" ")}
+      >
+        {icon}
+      </div>
+      {check && (
+        <button
+          type="button"
+          onClick={check.onClick}
+          aria-label={check.done ? "标记未完成" : "标记完成"}
+          className={[
+            // Sits on the bottom-right corner, slightly overhanging.
+            "absolute -bottom-1 -right-1 h-[15px] w-[15px] rounded-full",
+            "flex items-center justify-center",
+            "border transition-all duration-eu-fast ease-eu-out",
+            "active:scale-85",
+            check.done
+              ? `${a.iconBg} ${a.border} text-white`
+              : `bg-eu-bg ${a.border} ${a.iconFg} hover:${a.iconBg}`,
+            // A faint ring against any background — the tile sits over
+            // varying surfaces (raised, glass) and the overlay needs lift.
+            "ring-1 ring-eu-bg/80",
+          ].join(" ")}
+        >
+          {check.done && <Check size={9} strokeWidth={3.5} />}
+        </button>
+      )}
+    </div>
   );
 }
 
