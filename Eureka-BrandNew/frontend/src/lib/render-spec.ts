@@ -54,27 +54,15 @@ export interface RenderSpec {
   timeline_position?: { time_field?: string; fallback: "created_at" };
   calendar_render?: { date_field: string; time_field?: string };
   /**
-   * Per-field unit suffix, keyed by payload field name. Renderer appends
-   * "<value> <unit>" wherever the field is shown (title / subtitle / meta /
-   * detail drawer raw field). Per the May audit, units are field-scoped
-   * (not slot-scoped) — they describe the value, not the position.
-   *
-   * Example: { distance: "km", pace: "/km" }
-   *
-   * Legacy compatibility: primary_label / primary_unit / secondary_label /
-   * secondary_unit are accepted on read for skills already in the DB but
-   * are no longer emitted by the wizard. decorate() ignores labels (per
-   * user feedback: card icon + skill display_name provide enough context).
+   * @deprecated Units were dropped per May audit — users embed them in the
+   * value when needed ("150 毫升" / "5 km"). Kept on the type so existing
+   * skills with these fields still type-check; renderer ignores them.
    */
-  field_units?: Record<string, string>;
-  /** @deprecated label-decoration removed per May audit. Kept on type for old data. */
-  primary_label?: string;
-  /** @deprecated use field_units. Kept on type for old skills. */
-  primary_unit?: string;
-  /** @deprecated label-decoration removed per May audit. */
-  secondary_label?: string;
-  /** @deprecated use field_units. */
-  secondary_unit?: string;
+  field_units?:    Record<string, string>;
+  /** @deprecated */ primary_label?:   string;
+  /** @deprecated */ primary_unit?:    string;
+  /** @deprecated */ secondary_label?: string;
+  /** @deprecated */ secondary_unit?:  string;
 }
 
 /**
@@ -125,29 +113,12 @@ const DEFAULT_LAYOUT: CardLayout = "horizontal";
 const DEFAULT_ACCENT: AccentColor = "gray";
 const DEFAULT_ICON = "•";
 
-/**
- * Append unit when present. Labels (前缀) are intentionally dropped — the
- * card already shows the skill icon + display_name above the value, so a
- * field-name prefix is redundant. May audit (user feedback: "不需要事件
- * 之类的标识了").
- *
- * decorate("124", "km") → "124 km"
- * decorate("吃辅食", undefined) → "吃辅食"
- */
-function decorate(value: string, unit?: string): string {
-  return unit ? `${value} ${unit}` : value;
-}
-
-/** Look up a unit for the given field, tolerating legacy slot-scoped fields. */
-function unitFor(spec: RenderSpec, field: string | undefined): string | undefined {
-  if (!field) return undefined;
-  if (spec.field_units && spec.field_units[field]) return spec.field_units[field];
-  // Legacy: skills authored before field_units existed had primary_unit /
-  // secondary_unit on the spec. Honor them so existing data renders right.
-  if (field === spec.primary_field   && spec.primary_unit)   return spec.primary_unit;
-  if (field === spec.secondary_field && spec.secondary_unit) return spec.secondary_unit;
-  return undefined;
-}
+// Decoration (label prefix, unit suffix) was removed in two passes per the
+// May audit. Final rule: the card title/subtitle = the field's value as-is.
+// Users embed units in the value when they need them ("150 毫升", "5 km"),
+// which also makes multi-modal skills (宝宝养育: amount in 毫升 OR 克 OR
+// 小时 depending on activity) actually work — one schema, no per-asset
+// unit-lookup gymnastics.
 
 export function buildCard(input: BuildCardInput): CardData {
   const { payload, spec, assetId, cardType, displayName } = input;
@@ -170,25 +141,19 @@ export function buildCard(input: BuildCardInput): CardData {
   const primaryRaw = spec.primary_field ? payload[spec.primary_field] : undefined;
   const secondaryRaw = spec.secondary_field ? payload[spec.secondary_field] : undefined;
 
-  // Decorate with unit only — no label prefix. The card's icon + skill
-  // display_name above already say what the value is; a "距离" prefix in
-  // front of "5 km" reads as noise (May audit user feedback).
+  // Title / subtitle: the raw payload value with format applied (date,
+  // currency, ...). No unit, no label — values speak for themselves. Falls
+  // back to displayName / cardType when the primary field is empty so the
+  // card never reads as blank.
   const primaryValue = applyFormat(primaryRaw, spec.primary_format);
-  const title = primaryValue
-    ? decorate(primaryValue, unitFor(spec, spec.primary_field))
-    : (displayName || cardType);
-  const secondaryValue = applyFormat(secondaryRaw, spec.secondary_format);
-  const subtitle = secondaryValue
-    ? decorate(secondaryValue, unitFor(spec, spec.secondary_field))
-    : "";
+  const title = primaryValue || displayName || cardType;
+  const subtitle = applyFormat(secondaryRaw, spec.secondary_format);
 
   const metaFields = (spec.meta_fields ?? [])
     .map((mf) => {
       const raw = payload[mf.field];
-      const formatted = applyFormat(raw, mf.format);
-      if (!formatted) return null;
-      const value = decorate(formatted, unitFor(spec, mf.field));
-      return { field: mf.field, value, format: mf.format };
+      const value = applyFormat(raw, mf.format);
+      return value ? { field: mf.field, value, format: mf.format } : null;
     })
     .filter((m): m is NonNullable<typeof m> => m !== null);
 

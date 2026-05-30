@@ -96,10 +96,6 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
   // calendar bullet share a single primary so the UI never disagrees with
   // itself. See "## Unified display rule" banner in PreviewStep.
   const [slots, setSlots] = useState<SlotMap>({});
-  // Per-field unit suffix (replaces the old per-slot label/unit pairs).
-  // Units are field-scoped because they describe the value, not the slot.
-  // Empty / missing entries mean "no unit".
-  const [fieldUnits, setFieldUnits] = useState<Record<string, string>>({});
 
   function applyDraft(d: SkillDraft) {
     setDraft(d);
@@ -107,7 +103,6 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
     setAccent(d.render_spec?.accent_color ?? "blue");
     setIcon(d.render_spec?.icon ?? "•");
     setSlots(initialSlots(d));
-    setFieldUnits(initialUnits(d));
     setStep("preview");
   }
 
@@ -186,7 +181,7 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
     setError(null);
     try {
       const render_spec: RenderSpec = composeRenderSpec(draft.render_spec, {
-        accent, icon, slots, fieldUnits,
+        accent, icon, slots,
       });
       const resp = await apiFetch<{ ok: boolean; user_skill_id?: string; name?: string; error?: string }>(
         "/api/skills/confirm",
@@ -231,7 +226,7 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
     buildCard({
       payload: draft.sample_payload ?? {},
       spec: composeRenderSpec(draft.render_spec, {
-        accent, icon, slots, fieldUnits,
+        accent, icon, slots,
       }),
       assetId: null,
       cardType: draft.name,
@@ -322,8 +317,6 @@ function Body({ onClose, onCreated }: AddSkillWizardProps) {
             setIcon={setIcon}
             slots={slots}
             setSlots={setSlots}
-            fieldUnits={fieldUnits}
-            setFieldUnits={setFieldUnits}
           />
         )}
 
@@ -610,7 +603,6 @@ function PreviewStep({
   accent, setAccent,
   icon, setIcon,
   slots, setSlots,
-  fieldUnits, setFieldUnits,
 }: {
   card: ReturnType<typeof buildCard>;
   draft: SkillDraft;
@@ -618,21 +610,12 @@ function PreviewStep({
   accent: AccentColor; setAccent: (v: AccentColor) => void;
   icon: string; setIcon: (v: string) => void;
   slots: SlotMap; setSlots: (v: SlotMap) => void;
-  fieldUnits: Record<string, string>;
-  setFieldUnits: (v: Record<string, string>) => void;
 }) {
   const fields = schemaFields(draft.payload_schema);
   const metaCount = Object.values(slots).filter((s) => s === "meta").length;
 
   function pick(field: string, kind: SlotKind) {
     setSlots(applySlotPick(slots, field, kind));
-  }
-
-  function setUnit(field: string, unit: string) {
-    const next = { ...fieldUnits };
-    if (unit.trim()) next[field] = unit;
-    else delete next[field];
-    setFieldUnits(next);
   }
 
   return (
@@ -673,19 +656,17 @@ function PreviewStep({
             </div>
           </div>
           <div className="text-eu-xs text-eu-text-lo leading-relaxed">
-            主标题同时出现在大卡片和日历行上。副标题和信息只出现在大卡片上。先选位置,再补单位。
+            主标题同时出现在大卡片和日历行上。副标题和信息只出现在大卡片上。如果需要单位(克 / 毫升 / 公里),直接写在值里就好(如「150 毫升」)。
           </div>
-          <div className="flex flex-col gap-1.5 mt-0.5">
+          <div className="flex flex-col gap-1 mt-0.5">
             {fields.map((f) => (
               <FieldConfigRow
                 key={f.name}
                 field={f.name}
                 type={f.type}
                 slot={slots[f.name] ?? "hidden"}
-                unit={fieldUnits[f.name] ?? ""}
                 metaFull={metaCount >= 3 && slots[f.name] !== "meta"}
                 onPickSlot={(k) => pick(f.name, k)}
-                onSetUnit={(u) => setUnit(f.name, u)}
               />
             ))}
           </div>
@@ -742,25 +723,19 @@ function PreviewStep({
 }
 
 /**
- * FieldConfigRow — one payload field per row. Top half: name + type chip +
- * slot picker (主/副/信息/隐藏). When the slot is anything other than
- * 隐藏, a small "单位" input appears below so the user can attach a unit
- * suffix like "km" / "毫升" / "页". The unit appears in the live card +
- * bullet preview immediately.
- *
- * Layout intentionally tight: 3-5 fields × this row needs to fit on a
- * phone height without crowding the previews above.
+ * FieldConfigRow — one payload field per row: name + type chip + slot
+ * picker (主/副/信息/隐藏). May audit Option B: units were dropped from
+ * the spec entirely — users embed them in the value when needed. So this
+ * row no longer has a per-field 单位 input.
  */
 function FieldConfigRow({
-  field, type, slot, unit, metaFull, onPickSlot, onSetUnit,
+  field, type, slot, metaFull, onPickSlot,
 }: {
   field: string;
   type: string;
   slot: SlotKind;
-  unit: string;
   metaFull: boolean;
   onPickSlot: (s: SlotKind) => void;
-  onSetUnit:  (u: string)   => void;
 }) {
   const slotOptions: Array<{ key: SlotKind; label: string; disabled?: boolean }> = [
     { key: "primary",   label: "主" },
@@ -768,49 +743,34 @@ function FieldConfigRow({
     { key: "meta",      label: "信息", disabled: metaFull },
     { key: "hidden",    label: "隐藏" },
   ];
-  const showUnit = slot !== "hidden";
   return (
-    <div className="flex flex-col gap-1 py-0.5">
-      <div className="flex items-center gap-eu-sm">
-        <div className="flex-1 min-w-0 flex items-baseline gap-1.5">
-          <span className="text-eu-sm text-eu-text-hi truncate">{field}</span>
-          {type && <span className="font-mono text-eu-xs text-eu-text-lo shrink-0">{type}</span>}
-        </div>
-        <div className="flex gap-0.5 shrink-0">
-          {slotOptions.map((o) => {
-            const active = slot === o.key;
-            return (
-              <button
-                key={o.key}
-                type="button"
-                disabled={o.disabled && !active}
-                onClick={() => onPickSlot(o.key)}
-                className={[
-                  "px-2 py-0.5 rounded-eu-sm text-eu-xs border transition-all active:scale-95",
-                  active
-                    ? "bg-eu-brand-faint text-eu-brand-hi border-eu-brand-line font-medium"
-                    : "bg-transparent text-eu-text-lo border-eu-border hover:border-eu-border-strong",
-                  o.disabled && !active ? "opacity-30 cursor-not-allowed" : "",
-                ].join(" ")}
-              >
-                {o.label}
-              </button>
-            );
-          })}
-        </div>
+    <div className="flex items-center gap-eu-sm py-1">
+      <div className="flex-1 min-w-0 flex items-baseline gap-1.5">
+        <span className="text-eu-sm text-eu-text-hi truncate">{field}</span>
+        {type && <span className="font-mono text-eu-xs text-eu-text-lo shrink-0">{type}</span>}
       </div>
-      {showUnit && (
-        <div className="flex items-center gap-eu-sm pl-3">
-          <span className="text-eu-xs text-eu-text-lo font-mono w-8 shrink-0">单位</span>
-          <input
-            type="text"
-            value={unit}
-            onChange={(e) => onSetUnit(e.target.value)}
-            placeholder="(可选,如 km / 毫升 / 页)"
-            className="flex-1 bg-eu-surface border border-eu-border rounded-eu-md px-eu-sm py-0.5 text-eu-xs text-eu-text-hi focus:outline-none focus:border-eu-brand"
-          />
-        </div>
-      )}
+      <div className="flex gap-0.5 shrink-0">
+        {slotOptions.map((o) => {
+          const active = slot === o.key;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              disabled={o.disabled && !active}
+              onClick={() => onPickSlot(o.key)}
+              className={[
+                "px-2 py-0.5 rounded-eu-sm text-eu-xs border transition-all active:scale-95",
+                active
+                  ? "bg-eu-brand-faint text-eu-brand-hi border-eu-brand-line font-medium"
+                  : "bg-transparent text-eu-text-lo border-eu-border hover:border-eu-border-strong",
+                o.disabled && !active ? "opacity-30 cursor-not-allowed" : "",
+              ].join(" ")}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -917,40 +877,18 @@ function applySlotPick(slots: SlotMap, field: string, kind: SlotKind): SlotMap {
 }
 
 interface ComposeOpts {
-  accent:     AccentColor;
-  icon:       string;
-  slots:      SlotMap;
-  fieldUnits: Record<string, string>;
+  accent: AccentColor;
+  icon:   string;
+  slots:  SlotMap;
 }
 
 /**
- * Seed the per-field unit map from a fresh AI draft. The design agent's
- * legacy schema put units on slot-scoped keys (primary_unit / secondary_
- * unit) and on meta_fields[i].unit; gather them all into one field-keyed
- * map so the wizard can edit them per-field.
- */
-function initialUnits(draft: SkillDraft): Record<string, string> {
-  const out: Record<string, string> = {};
-  const rs = draft.render_spec ?? {} as RenderSpec;
-  if (rs.primary_field   && rs.primary_unit)   out[rs.primary_field]   = rs.primary_unit;
-  if (rs.secondary_field && rs.secondary_unit) out[rs.secondary_field] = rs.secondary_unit;
-  for (const mf of rs.meta_fields ?? []) {
-    const u = (mf as { unit?: string }).unit;
-    if (mf.field && u) out[mf.field] = u;
-  }
-  // Also surface any field_units the draft already carried (forward-compat).
-  if (rs.field_units) Object.assign(out, rs.field_units);
-  return out;
-}
-
-/**
- * Compose a RenderSpec from the AI draft + the user's slot map +
- * per-field unit map. Falls back to the AI's choices when the slot map
- * isn't populated yet (initial render, or skill with empty schema).
- *
- * Strips the legacy primary_label / secondary_label fields — labels are
- * gone per May audit. primary_unit / secondary_unit also dropped from the
- * output; units live in field_units exclusively now.
+ * Compose a RenderSpec from the AI draft + the user's slot map. May
+ * audit Option B: units / labels are gone from the schema, so the
+ * compose call no longer threads field_units. Legacy decoration keys
+ * (primary_label / primary_unit / secondary_label / secondary_unit /
+ * field_units) are stripped so they don't shadow the clean rule
+ * downstream.
  */
 function composeRenderSpec(base: RenderSpec, opts: ComposeOpts): RenderSpec {
   const entries = Object.entries(opts.slots);
@@ -964,17 +902,6 @@ function composeRenderSpec(base: RenderSpec, opts: ComposeOpts): RenderSpec {
       })
     : base.meta_fields;
 
-  // Only keep units for fields that are actually shown — pruning hidden-
-  // field units keeps the spec tidy.
-  const visibleFields = new Set<string>();
-  if (primary)   visibleFields.add(primary);
-  if (secondary) visibleFields.add(secondary);
-  for (const m of meta_fields ?? []) visibleFields.add(m.field);
-  const field_units: Record<string, string> = {};
-  for (const [f, u] of Object.entries(opts.fieldUnits)) {
-    if (u && visibleFields.has(f)) field_units[f] = u;
-  }
-
   return {
     ...base,
     accent_color:    opts.accent,
@@ -982,8 +909,9 @@ function composeRenderSpec(base: RenderSpec, opts: ComposeOpts): RenderSpec {
     primary_field:   primary,
     secondary_field: secondary,
     meta_fields,
-    field_units,
-    // Strip legacy keys so they don't shadow field_units later.
+    // Strip legacy decoration keys (Option B): values speak for
+    // themselves; units belong in the value when needed.
+    field_units:     undefined,
     primary_label:   undefined,
     primary_unit:    undefined,
     secondary_label: undefined,

@@ -153,29 +153,9 @@ def _format_value(raw) -> str:
     return s
 
 
-def _decorate(value: str, unit: Optional[str]) -> str:
-    """
-    Mirror frontend lib/render-spec `decorate`. May audit: labels were
-    dropped per user feedback — the card / bullet already shows the skill
-    icon + display_name, so a label prefix is redundant noise.
-
-    decorate("5", "km") → "5 km"
-    decorate("吃辅食", None) → "吃辅食"
-    """
-    return f"{value} {unit}" if unit else value
-
-
-def _unit_for(rs: dict, field: Optional[str]) -> Optional[str]:
-    """Resolve a field's unit from render_spec, tolerating legacy slot-scoped fields."""
-    if not field:
-        return None
-    fu = rs.get("field_units") if isinstance(rs.get("field_units"), dict) else None
-    if fu and fu.get(field):
-        return fu[field]
-    # Legacy: skills authored before field_units existed.
-    if field == rs.get("primary_field")   and rs.get("primary_unit"):   return rs["primary_unit"]
-    if field == rs.get("secondary_field") and rs.get("secondary_unit"): return rs["secondary_unit"]
-    return None
+# Units were dropped per May audit (Option B). The title / subtitle are
+# just the formatted value — users embed units in the value themselves
+# when relevant ("150 毫升", "5 km"). Keeps multi-modal skills sane.
 
 
 def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = None, display_name: Optional[str] = None) -> dict:
@@ -193,21 +173,17 @@ def _asset_item(asset: Asset, skill_name: str, render_spec: Optional[dict] = Non
     rs = render_spec if isinstance(render_spec, dict) else {}
     pf = rs.get("primary_field")
     pf_val = p.get(pf) if pf else None
-    primary_str: Optional[str] = None
-    if pf_val not in (None, ""):
-        primary_str = _decorate(_format_value(pf_val), _unit_for(rs, pf))
+    primary_str: Optional[str] = _format_value(pf_val) if pf_val not in (None, "") else None
     title = (
         primary_str or
         p.get("content") or p.get("title") or p.get("name") or
         (f"¥{p.get('amount')}" if p.get("amount") else None) or
         display_name or skill_name
     )
-    # Subtitle picks up the secondary field with its decoration too — useful
-    # for cards that want to show e.g. "6 /km" as a one-line meta.
     sf = rs.get("secondary_field")
     sf_val = p.get(sf) if sf else None
     if sf_val not in (None, ""):
-        subtitle = _decorate(_format_value(sf_val), _unit_for(rs, sf))
+        subtitle = _format_value(sf_val)
     else:
         subtitle = p.get("description") or p.get("merchant") or ""
     return {
