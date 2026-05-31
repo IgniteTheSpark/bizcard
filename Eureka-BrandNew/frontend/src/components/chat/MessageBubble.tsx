@@ -1,10 +1,14 @@
-import { Wrench, AlertCircle, Bookmark } from "lucide-react";
+import { Wrench, AlertCircle, Bookmark, FileText, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { AssetCardInChat } from "./AssetCardInChat";
+import { ReportSheet } from "./ReportSheet";
 import { AssetDetailDrawer } from "@/components/asset/AssetDetailDrawer";
 import type { ChatMessage, ChatPart } from "@/hooks/useChat";
 import type { CardData } from "@/lib/render-spec";
+
+/** A rendered HTML report carried by a tool_render_report tool_result. */
+interface ReportData { title: string; html: string }
 
 /**
  * MessageBubble — renders one user or agent message.
@@ -54,6 +58,7 @@ function AgentBubble({
   parts, streaming, onPrecipitate,
 }: { parts: ChatPart[]; streaming?: boolean; onPrecipitate?: (text: string) => void }) {
   const [drawerCard, setDrawerCard] = useState<{ card: CardData; payload: Record<string, unknown> } | null>(null);
+  const [openReport, setOpenReport] = useState<ReportData | null>(null);
 
   // Concatenate all text parts into one string for the "save as asset" action
   const fullText = parts.filter((p): p is Extract<ChatPart, { type: "text" }> => p.type === "text")
@@ -67,6 +72,7 @@ function AgentBubble({
             key={idx}
             part={part}
             onOpenCard={(card, payload) => setDrawerCard({ card, payload })}
+            onOpenReport={setOpenReport}
           />
         ))}
 
@@ -100,6 +106,14 @@ function AgentBubble({
           onClose={() => setDrawerCard(null)}
         />
       )}
+
+      {openReport && (
+        <ReportSheet
+          title={openReport.title}
+          html={openReport.html}
+          onClose={() => setOpenReport(null)}
+        />
+      )}
     </div>
   );
 }
@@ -107,10 +121,11 @@ function AgentBubble({
 /* ── Per-part renderers ─────────────────────────────────────────────────── */
 
 function PartRenderer({
-  part, onOpenCard,
+  part, onOpenCard, onOpenReport,
 }: {
   part: ChatPart;
   onOpenCard: (card: CardData, payload: Record<string, unknown>) => void;
+  onOpenReport: (report: ReportData) => void;
 }) {
   if (part.type === "text") {
     return (
@@ -136,6 +151,13 @@ function PartRenderer({
     );
   }
   if (part.type === "tool_result") {
+    // html-summary: a report result renders a compact receipt card (NOT the
+    // raw HTML — that opens full-screen in ReportSheet on tap).
+    const report = extractReportFromToolResult(part.response);
+    if (report) {
+      return <ReportReceiptCard report={report} onOpen={() => onOpenReport(report)} />;
+    }
+
     // Extract every card-shaped item the result carries — single asset, single
     // event, OR a list (query_*). Falls back to a tiny "↩ ok" chip only when
     // nothing renderable was returned. Plural results render as a stack.
@@ -247,6 +269,81 @@ function extractCardsFromToolResult(response: Record<string, unknown>): Record<s
   return [];
 }
 
+/**
+ * Detect a tool_render_report result and pull out {title, html}. Same
+ * FastMCP-envelope walk as extractCardsFromToolResult — the payload may sit
+ * at the top level, in structuredContent, or JSON-encoded in content[0].text.
+ * Returns null for any non-report tool_result.
+ */
+function extractReportFromToolResult(response: Record<string, unknown>): ReportData | null {
+  if (!response) return null;
+
+  const candidates: Record<string, unknown>[] = [response];
+  const sc = response.structuredContent;
+  if (sc && typeof sc === "object" && !Array.isArray(sc)) {
+    candidates.push(sc as Record<string, unknown>);
+  }
+  const content = response.content;
+  if (Array.isArray(content) && content[0] && typeof content[0] === "object") {
+    const text = (content[0] as Record<string, unknown>).text;
+    if (typeof text === "string") {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          candidates.push(parsed as Record<string, unknown>);
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
+  for (const c of candidates) {
+    if (c.kind === "report" && typeof c.html === "string" && c.html.length > 0) {
+      return {
+        title: typeof c.title === "string" && c.title ? c.title : "报告",
+        html:  c.html,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * ReportReceiptCard — the compact in-chat stand-in for a generated report.
+ * The chat never shows the raw HTML (too cramped); this card is the handle
+ * that opens the full-screen ReportSheet on tap.
+ */
+function ReportReceiptCard({ report, onOpen }: { report: ReportData; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={[
+        "self-start w-full max-w-[280px] flex items-center gap-eu-md",
+        "px-eu-md py-eu-sm rounded-eu-md text-left",
+        "bg-eu-brand-faint border border-eu-brand-line",
+        "hover:brightness-110 active:scale-[0.99]",
+        "transition-all duration-eu-fast",
+      ].join(" ")}
+    >
+      <span
+        className="shrink-0 h-9 w-9 rounded-eu-md flex items-center justify-center"
+        style={{
+          background: "rgba(196,168,255,0.14)",
+          border: "1px solid rgba(196,168,255,0.34)",
+          color: "#c4a8ff",
+        }}
+      >
+        <FileText size={17} strokeWidth={1.75} />
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-eu-base text-eu-text-hi font-medium truncate">{report.title}</div>
+        <div className="text-eu-xs text-eu-text-lo">点击查看完整报告</div>
+      </div>
+      <ChevronRight size={16} strokeWidth={1.75} className="shrink-0 text-eu-text-lo" />
+    </button>
+  );
+}
+
 /** Stamp the response with the right card_type so AssetCardInChat can pick
  *  the matching render_spec (synthesizeSpec(card_type) keys off this). */
 function tagByIdField(d: Record<string, unknown>): Record<string, unknown> | null {
@@ -278,6 +375,7 @@ const TOOL_LABEL: Record<string, string> = {
   tool_query_input_turn:  "查找语音/输入",
   tool_get_input_turn:    "取出原文",
   tool_create_task:       "触发外部任务",
+  tool_render_report:     "生成报告",
 };
 function humanToolLabel(name: string): string {
   return TOOL_LABEL[name] ?? name;
