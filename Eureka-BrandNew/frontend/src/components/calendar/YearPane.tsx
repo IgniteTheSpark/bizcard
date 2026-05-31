@@ -44,10 +44,12 @@ export function YearPane({ initialYear, onPickMonth }: YearPaneProps) {
         fontFamily: '"Manrope","Noto Sans SC", system-ui, sans-serif',
       }}
     >
-      {/* Header: ‹ year › */}
+      {/* Header: ‹ year › — borderless + tight top padding so switching to the
+          年 tab matches the headerless 流/月 panes' rhythm under the Segmented
+          control (the year stepper stays — it's the only year-nav affordance). */}
       <header
         className="shrink-0 flex items-center gap-3"
-        style={{ padding: "16px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        style={{ padding: "6px 20px 12px" }}
       >
         <YearStep dir="-" onClick={() => setYear((y) => y - 1)} />
         <div

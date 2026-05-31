@@ -1,9 +1,10 @@
 import { EventCard } from "@/components/calendar/EventCard";
 import { SkillCard } from "@/components/skill/SkillCard";
+import { useAssets } from "@/hooks/useAssets";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { useToggleTodo } from "@/hooks/useToggleTodo";
 import { buildCard } from "@/lib/render-spec";
-import type { CardData } from "@/lib/render-spec";
+import type { AccentColor, CardAction, CardData, FieldFormat } from "@/lib/render-spec";
 
 /**
  * AssetCardInChat — render a card that came inline in a chat agent message.
@@ -29,6 +30,38 @@ interface AssetCardInChatProps {
 }
 
 export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
+  const skillName = pickString(data, ["user_skill_name", "card_type", "skill_name"]);
+  const assetId   = pickString(data, ["asset_id", "id"]);
+
+  // Async-task lifecycle cards (third-party MCP sync via task-skill) read their
+  // LIVE status from the assets cache instead of the frozen card captured when
+  // the agent message streamed. The background task finishes seconds later and
+  // fires a `task_done` notification → /api/assets revalidates → this card
+  // flips pending → done (⏳ → 🔗 / 已同步) with no reload.
+  if ((skillName === "task" || skillName === "external_ref") && assetId) {
+    return <LiveTaskCard assetId={assetId} frozen={data} onOpen={onOpen} />;
+  }
+  return <AssetCardBody data={data} onOpen={onOpen} />;
+}
+
+/** Lifecycle-card wrapper: overlays the live asset payload onto the frozen
+ *  chat card so async MCP tasks visibly complete in place. */
+function LiveTaskCard({
+  assetId, frozen, onOpen,
+}: {
+  assetId: string;
+  frozen: Record<string, unknown>;
+  onOpen?: AssetCardInChatProps["onOpen"];
+}) {
+  const { assets } = useAssets();
+  const live = assets.find((a) => a.id === assetId);
+  const data = live
+    ? { ...frozen, user_skill_name: live.user_skill_name, asset_id: assetId, payload: live.payload }
+    : frozen;
+  return <AssetCardBody data={data} onOpen={onOpen} />;
+}
+
+function AssetCardBody({ data, onOpen }: AssetCardInChatProps) {
   const { bySkill } = useSkillRegistry();
   const toggleTodo = useToggleTodo();
 
@@ -54,6 +87,49 @@ export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
           location: typeof data.location === "string" ? data.location : null,
         }}
         onClick={onOpen ? () => onOpen(buildEventCardData(data), payload) : undefined}
+      />
+    );
+  }
+
+  // Flash pipeline emits a PRE-BUILT card: title/subtitle/icon/accent are
+  // already computed server-side (via the skill's render_spec), shaped
+  // {card_type, title, subtitle, icon, accent_color, meta_fields, actions,
+  // asset_id} with NO `payload`. Detect that and render it directly —
+  // otherwise buildCard re-derives the title from the spec's primary_field
+  // ("content"/etc.) which isn't in this shape, and falls back to the
+  // display_name ("待办"). The chat tool_result path keeps `payload`, so it
+  // still flows through buildCard below.
+  const prebuilt =
+    pickObject(data, "payload") == null &&
+    typeof data.title === "string" &&
+    typeof data.card_type === "string";
+  if (prebuilt) {
+    const actions = Array.isArray(data.actions) ? (data.actions as CardAction[]) : [];
+    const cardData: CardData = {
+      cardType:    String(data.card_type),
+      layout:      "horizontal",
+      icon:        typeof data.icon === "string" ? data.icon : "•",
+      accentColor: (typeof data.accent_color === "string" ? data.accent_color : "neutral") as AccentColor,
+      title:       String(data.title),
+      subtitle:    typeof data.subtitle === "string" ? data.subtitle : "",
+      metaFields:  Array.isArray(data.meta_fields)
+        ? (data.meta_fields as Array<Record<string, unknown>>)
+            .map((m) => ({ field: String(m.field ?? ""), value: String(m.value ?? ""), format: m.format as FieldFormat | undefined }))
+            .filter((m) => m.value)
+        : [],
+      actions,
+      assetId:     assetId,
+      // Fresh flash cards are unchecked; show the box when the skill is checkable.
+      checkDone:   actions.includes("check") ? false : undefined,
+    };
+    return (
+      <SkillCard
+        data={cardData}
+        layoutOverride="horizontal"
+        onClick={onOpen ? () => onOpen(cardData, payload) : undefined}
+        onToggleCheck={cardData.checkDone !== undefined && assetId
+          ? (next) => toggleTodo(assetId, next)
+          : undefined}
       />
     );
   }
@@ -165,6 +241,10 @@ function synthesizeSpec(
       accent_color: "amber",
       primary_field: "title",
       secondary_field: "external_system",
+      // Surface the async lifecycle state (pending/running/done/failed) as a
+      // colored badge — see SkillCard.LIFECYCLE_STATUS. Without this the
+      // in-flight card showed no state at all in chat.
+      meta_fields: [{ field: "status", format: "badge" }],
     };
   }
   if (skillName === "external_ref") {
@@ -174,6 +254,7 @@ function synthesizeSpec(
       accent_color: "purple",
       primary_field: "title",
       secondary_field: "external_system",
+      meta_fields: [{ field: "status", format: "badge" }],
     };
   }
   // Best-effort: render whatever field looks like a title

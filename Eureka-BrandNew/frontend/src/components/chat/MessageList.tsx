@@ -55,7 +55,7 @@ export function MessageList({ messages, onPrecipitate, header }: MessageListProp
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto px-eu-md py-eu-md flex flex-col gap-eu-md"
+      className="flex-1 overflow-y-auto eu-noscroll px-eu-md py-eu-md flex flex-col gap-eu-md"
     >
       {header}
       {messages.map((m) => (

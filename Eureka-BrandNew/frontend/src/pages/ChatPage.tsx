@@ -104,16 +104,25 @@ export function ChatPage() {
   // hidden until the agent finished streaming, when SWR refetched the
   // persisted pair and showed both.
   //
-  // Condition `chat.messages.length === 0` covers the two cases we DO want
-  // to reset:
-  //   - first mount (chat starts empty, history arrives) → seed
-  //   - explicit handleSelectSession (calls chat.reset([]) → next history
-  //     for the new id arrives) → seed
-  // and skips the case we DON'T want to reset:
-  //   - mid-stream session promotion (chat has live messages, history is
-  //     briefly empty for the new id)
+  // Re-seed rules:
+  //   - first mount / after switching session (chat empty) → seed
+  //   - LIVE EXTERNAL GROWTH: the server gained messages this view doesn't
+  //     have — e.g. a hardware card flash wrote to the SAME session while
+  //     it's open. The flash-done notification revalidates this session's
+  //     /messages SWR key, so initialMessages grows; re-seed so the new turn
+  //     appears with no manual refresh.
+  //   - NEVER mid-stream: would wipe the optimistic / streaming bubble
+  //     (issue #3, May audit). Skip entirely while streaming; the post-stream
+  //     SWR revalidation re-runs this effect when it's safe.
+  //
+  // Length comparison is safe against loops: after a re-seed chat.messages
+  // equals initialMessages, so the `>` guard goes false. Optimistic sends
+  // (chat grows first, server catches up to equal length) never trigger it.
   useEffect(() => {
-    if (chat.messages.length === 0 && initialMessages.length > 0) {
+    if (chat.streaming) return;
+    const empty = chat.messages.length === 0;
+    const serverHasMore = initialMessages.length > chat.messages.length;
+    if ((empty && initialMessages.length > 0) || serverHasMore) {
       chat.reset(initialMessages);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

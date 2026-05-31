@@ -137,15 +137,25 @@ async def create_asset(
 async def query_asset(
     user_skill_name: str = "",
     contains: str = "",
+    from_date: str = "",
+    to_date: str = "",
     limit: int = 100,
     user_id: str = "default",
 ) -> dict:
     """
-    Query assets by skill name and/or keyword in payload. Newest-first.
+    Query assets by skill name, keyword, and/or capture-date range. Newest-first.
 
     Skill name is resolved via UserSkill → GlobalSkill.name join — no reliance
     on payload.asset_type (that field is gone).
+
+    Date range filters on `created_at` (when the asset was recorded), which is
+    what a 日报/周报/月报 means — "things I logged in this window". Pass
+    ISO8601 + timezone, e.g. from_date="2026-05-31T00:00:00+08:00",
+    to_date="2026-05-31T23:59:59+08:00". **For a whole-day/period SUMMARY,
+    leave user_skill_name empty so you get every type (待办 + 想法 + 记账 +
+    笔记 + 跑步 + …), not just one.**
     """
+    from datetime import datetime
     async with AsyncSessionLocal() as db:
         stmt = (
             select(Asset, GlobalSkill.name.label("skill_name"))
@@ -157,6 +167,16 @@ async def query_asset(
             stmt = stmt.where(GlobalSkill.name == user_skill_name)
         if contains:
             stmt = stmt.where(Asset.payload.cast(Text).ilike(f"%{contains}%"))
+        if from_date:
+            try:
+                stmt = stmt.where(Asset.created_at >= datetime.fromisoformat(from_date.replace("Z", "+00:00")))
+            except ValueError:
+                return _err(f"invalid from_date: {from_date}")
+        if to_date:
+            try:
+                stmt = stmt.where(Asset.created_at <= datetime.fromisoformat(to_date.replace("Z", "+00:00")))
+            except ValueError:
+                return _err(f"invalid to_date: {to_date}")
         stmt = stmt.order_by(Asset.created_at.desc()).limit(limit)
         result = await db.execute(stmt)
         rows = result.all()
@@ -172,6 +192,78 @@ async def query_asset(
         }
         for a, skill_name in rows
     ])
+
+
+async def query_digest(
+    from_date: str = "",
+    to_date: str = "",
+    user_id: str = "default",
+) -> dict:
+    """
+    Compact, pre-grouped snapshot of a time window — the data source for a
+    SUMMARY/日报/周报/月报 report. Returns every asset type captured in the
+    range PLUS events, but LEAN: just counts + per-type payload lists + a thin
+    event list, with NO per-item metadata (no asset_id / session_id /
+    created_at). That keeps the result small so the agent reliably goes on to
+    call tool_render_report (a big full-payload query_asset result tends to
+    make the model stall and skip the report step).
+
+    Date range filters asset.created_at and event.start_at; pass ISO8601+tz
+    (e.g. "2026-05-31T00:00:00+08:00" .. "2026-05-31T23:59:59+08:00").
+
+    Shape:
+      { ok, counts: {<type>: n, ...}, by_type: {<type>: [<payload>, ...]},
+        events: [{title, start_at, end_at, location, all_day}, ...] }
+    """
+    from datetime import datetime
+
+    def _parse(s: str):
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+    async with AsyncSessionLocal() as db:
+        a_stmt = (
+            select(Asset, GlobalSkill.name.label("skill_name"))
+            .join(UserSkill, Asset.user_skill_id == UserSkill.id)
+            .join(GlobalSkill, UserSkill.skill_id == GlobalSkill.id)
+            .where(Asset.user_id == user_id)
+        )
+        if from_date:
+            try: a_stmt = a_stmt.where(Asset.created_at >= _parse(from_date))
+            except ValueError: return _err(f"invalid from_date: {from_date}")
+        if to_date:
+            try: a_stmt = a_stmt.where(Asset.created_at <= _parse(to_date))
+            except ValueError: return _err(f"invalid to_date: {to_date}")
+        a_stmt = a_stmt.order_by(Asset.created_at.asc())
+        rows = (await db.execute(a_stmt)).all()
+
+        by_type: dict[str, list] = {}
+        for a, skill_name in rows:
+            by_type.setdefault(skill_name, []).append(a.payload or {})
+
+        e_stmt = select(Event).where(Event.user_id == user_id)
+        if from_date:
+            try: e_stmt = e_stmt.where(Event.start_at >= _parse(from_date))
+            except ValueError: return _err(f"invalid from_date: {from_date}")
+        if to_date:
+            try: e_stmt = e_stmt.where(Event.start_at <= _parse(to_date))
+            except ValueError: return _err(f"invalid to_date: {to_date}")
+        e_stmt = e_stmt.order_by(Event.start_at.asc())
+        events = (await db.execute(e_stmt)).scalars().all()
+
+    return _ok(
+        counts={k: len(v) for k, v in by_type.items()},
+        by_type=by_type,
+        events=[
+            {
+                "title":    e.title,
+                "start_at": e.start_at.isoformat() if e.start_at else None,
+                "end_at":   e.end_at.isoformat() if e.end_at else None,
+                "location": e.location,
+                "all_day":  e.all_day,
+            }
+            for e in events
+        ],
+    )
 
 
 async def update_asset(

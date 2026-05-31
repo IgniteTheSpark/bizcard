@@ -158,7 +158,7 @@ export function SessionTopicBar({
         className={[
           "border-b border-eu-rule bg-eu-bg/60 backdrop-blur",
           "px-eu-md py-eu-sm flex items-center gap-eu-sm",
-          "overflow-x-auto",
+          "overflow-x-auto eu-noscroll",
         ].join(" ")}
       >
         {subject && <SubjectChip chip={subject} onOpen={() => setOpenChip(subject)} />}

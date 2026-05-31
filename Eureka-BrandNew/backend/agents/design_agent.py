@@ -71,6 +71,12 @@ DESIGN_INSTRUCTION = """
 - card_layout 默认 horizontal;内容字段多/长用 stacked;时间流密集场景用 inline
 - primary_field 必填,选最能一眼识别这条记录的字段(跑步 → 距离;读书 → 书名)
 - secondary_format 不确定就 "text",日期/时间字段用 "relative_date" 或 "absolute_date"
+- **字段覆盖(关键!别让用户记的东西在卡片上消失)**:payload 里每个有意义的
+    字段都要能在卡片上看到 —— 要么是 primary_field / secondary_field,要么进
+    meta_fields。尤其是自由文本字段(note / 备注 / 感想 / 描述 / 心情),用户
+    随手记的内容常常落在这里;如果它没进 render_spec,卡片就只剩干巴巴的标题,
+    用户会以为内容丢了。这类字段优先放 secondary_field(长文本能截断显示)或
+    meta_fields。空字段不会显示,所以全放进去不会让卡片变脏。
 - 不要发明 enum 外的值
 
 ## 字段类型 + 单位的处理(关键!)

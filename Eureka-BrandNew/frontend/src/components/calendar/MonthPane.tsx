@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { useTimeline, toLocalDayKey } from "@/hooks/useTimeline";
+import { timelineItemVisual, type SkillLookup } from "@/lib/timeline-visual";
 import type { TimelineItem } from "@/lib/types";
 
 /**
@@ -52,6 +54,8 @@ export function MonthPane({
   cursor, focusMonthKey, onItemTap, onDayOpen, embedded,
 }: MonthPaneProps) {
   const { byDay } = useTimeline();
+  // Per-item type signal in the selected-day footer (matches the 流 view).
+  const { bySkill } = useSkillRegistry();
   const todayKey = toLocalDayKey(new Date().toISOString());
 
   const [selected, setSelected] = useState<string>(todayKey);
@@ -161,6 +165,7 @@ export function MonthPane({
       <SelectedDayFooter
         dayKey={selected}
         items={byDay.get(selected) ?? []}
+        bySkill={bySkill}
         onItemTap={(it) => onItemTap?.(it)}
       />
     </div>
@@ -267,10 +272,11 @@ function MonthBlock({
 /* ── Selected-day footer ──────────────────────────────────────────────── */
 
 function SelectedDayFooter({
-  dayKey, items, onItemTap,
+  dayKey, items, bySkill, onItemTap,
 }: {
   dayKey: string;
   items: TimelineItem[];
+  bySkill: SkillLookup;
   onItemTap: (it: TimelineItem) => void;
 }) {
   return (
@@ -303,32 +309,39 @@ function SelectedDayFooter({
         </div>
       ) : (
         <div className="flex flex-col gap-2.5">
-          {items.map((it) => (
-            <button
-              key={`${it.kind}-${it.id}`}
-              type="button"
-              onClick={() => onItemTap(it)}
-              className="flex items-center gap-3 text-left"
-              style={{ background: "transparent", border: "none", cursor: "pointer" }}
-            >
-              <span
-                className="font-mono"
-                style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", minWidth: 40 }}
+          {items.map((it) => {
+            const { glyph, glow } = timelineItemVisual(it, bySkill);
+            return (
+              <button
+                key={`${it.kind}-${it.id}`}
+                type="button"
+                onClick={() => onItemTap(it)}
+                className="flex items-center gap-3 text-left"
+                style={{ background: "transparent", border: "none", cursor: "pointer" }}
               >
-                {formatTime(it)}
-              </span>
-              <span
-                style={{
-                  width: 6, height: 6, borderRadius: 999,
-                  background: dotForKind(subKindOf(it) ?? "neutral"),
-                  boxShadow: `0 0 6px ${dotForKind(subKindOf(it) ?? "neutral")}`,
-                }}
-              />
-              <span style={{ fontSize: 13.5, color: "#f4f7fb", fontWeight: 500 }}>
-                {it.title}
-              </span>
-            </button>
-          ))}
+                <span
+                  className="font-mono"
+                  style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", minWidth: 40 }}
+                >
+                  {formatTime(it)}
+                </span>
+                {/* Type signal: skill icon + accent halo (was a generic dot). */}
+                <span
+                  style={{
+                    flex: "0 0 17px", width: 17, height: 17,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12.5, lineHeight: 1,
+                    filter: `drop-shadow(0 0 4px ${glow})`,
+                  }}
+                >
+                  {glyph}
+                </span>
+                <span style={{ fontSize: 13.5, color: "#f4f7fb", fontWeight: 500 }}>
+                  {it.title}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -364,21 +377,6 @@ function dominantKind(items: TimelineItem[]): "event" | "todo" | "mixed" | undef
   if (hasTodo)             return "todo";
   return undefined;
 }
-
-function subKindOf(it: TimelineItem): string | null {
-  if (it.kind === "event") return "event";
-  switch (it.skill_name) {
-    case "todo": case "idea": case "expense": case "contact":
-      return it.skill_name;
-    default: return null;
-  }
-}
-
-const DOT: Record<string, string> = {
-  event: "#c4a8ff", todo: "#8ab4ff", idea: "#f5c977",
-  expense: "#86e0a5", contact: "#d4dbe6", neutral: "rgba(255,255,255,0.55)",
-};
-function dotForKind(k: string): string { return DOT[k] ?? DOT.neutral; }
 
 function formatTime(it: TimelineItem): string {
   if (it.kind === "event" && it.all_day) return "全天";

@@ -1,4 +1,4 @@
-import { Wrench, AlertCircle, Bookmark, FileText, ChevronRight } from "lucide-react";
+import { Wrench, AlertCircle, Bookmark, FileText, ChevronRight, ChevronDown, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { AssetCardInChat } from "./AssetCardInChat";
@@ -71,13 +71,18 @@ function AgentBubble({
           <PartRenderer
             key={idx}
             part={part}
+            streaming={streaming}
+            isLast={idx === parts.length - 1}
             onOpenCard={(card, payload) => setDrawerCard({ card, payload })}
             onOpenReport={setOpenReport}
           />
         ))}
 
         {streaming && parts.length === 0 && (
-          <div className="text-eu-sm text-eu-text-lo italic">思考中…</div>
+          <div className="flex items-center gap-1.5 text-eu-sm text-eu-text-lo italic">
+            <Loader2 size={12} strokeWidth={1.75} className="animate-spin" />
+            分析中…
+          </div>
         )}
 
         {/* Precipitate button only on completed agent messages with text */}
@@ -121,9 +126,11 @@ function AgentBubble({
 /* ── Per-part renderers ─────────────────────────────────────────────────── */
 
 function PartRenderer({
-  part, onOpenCard, onOpenReport,
+  part, streaming, isLast, onOpenCard, onOpenReport,
 }: {
   part: ChatPart;
+  streaming: boolean;
+  isLast: boolean;
   onOpenCard: (card: CardData, payload: Record<string, unknown>) => void;
   onOpenReport: (report: ReportData) => void;
 }) {
@@ -136,6 +143,11 @@ function PartRenderer({
     );
   }
   if (part.type === "tool_call") {
+    // Only the in-flight call (last part while streaming) shows a chip — and as
+    // an ongoing action ("查询资产中…" + spinner). Once the tool_result lands it
+    // follows as its own part and carries the outcome, so a settled tool_call
+    // would just be a redundant duplicate chip — render nothing for it.
+    if (!(streaming && isLast)) return null;
     return (
       <div
         className={[
@@ -145,8 +157,8 @@ function PartRenderer({
           "bg-eu-accent-amber-bg border border-eu-accent-amber-edge",
         ].join(" ")}
       >
-        <Wrench size={11} strokeWidth={1.75} />
-        {humanToolLabel(part.name)}
+        <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+        {humanToolLabel(part.name)}中…
       </div>
     );
   }
@@ -162,6 +174,21 @@ function PartRenderer({
     // event, OR a list (query_*). Falls back to a tiny "↩ ok" chip only when
     // nothing renderable was returned. Plural results render as a stack.
     const cards = extractCardsFromToolResult(part.response);
+
+    // Query tools return a LIST that's often intermediate (esp. feeding a
+    // SUMMARY report). Dumping every card clutters the thread, so collapse to
+    // "↩ 查询资产 · 找到 N 项 ▸" and let the user expand to inspect. Create /
+    // update / etc. keep showing their (single) card — that IS the answer.
+    if (QUERY_TOOLS.has(part.name)) {
+      return (
+        <CollapsibleQueryResult
+          label={humanToolLabel(part.name)}
+          cards={cards}
+          onOpenCard={onOpenCard}
+        />
+      );
+    }
+
     if (cards.length === 0) {
       return (
         <div className="text-eu-xs text-eu-text-lo italic">
@@ -360,6 +387,7 @@ const TOOL_LABEL: Record<string, string> = {
   tool_create_asset:      "创建资产",
   tool_update_asset:      "更新资产",
   tool_query_asset:       "查询资产",
+  tool_query_digest:      "汇总数据",
   tool_delete_asset:      "删除资产",
   tool_create_event:      "创建事件",
   tool_update_event:      "更新事件",
@@ -379,4 +407,52 @@ const TOOL_LABEL: Record<string, string> = {
 };
 function humanToolLabel(name: string): string {
   return TOOL_LABEL[name] ?? name;
+}
+
+/** Tools whose result is a (possibly large) LIST — collapsed in chat. */
+const QUERY_TOOLS = new Set([
+  "tool_query_asset",
+  "tool_query_event",
+  "tool_query_contact",
+  "tool_query_input_turn",
+]);
+
+/**
+ * CollapsibleQueryResult — a query's matched cards, collapsed to a one-line
+ * "↩ 查询资产 · 找到 N 项" chip you can expand. Keeps intermediate query data
+ * (especially when it's feeding a SUMMARY report) from flooding the thread,
+ * while staying inspectable on demand.
+ */
+function CollapsibleQueryResult({
+  label, cards, onOpenCard,
+}: {
+  label: string;
+  cards: Record<string, unknown>[];
+  onOpenCard: (card: CardData, payload: Record<string, unknown>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (cards.length === 0) {
+    return <div className="text-eu-xs text-eu-text-lo italic">↩ {label} · 没有结果</div>;
+  }
+  return (
+    <div className="flex flex-col gap-eu-sm self-start">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1 self-start text-eu-xs text-eu-text-lo hover:text-eu-text-mid transition-colors"
+      >
+        {open
+          ? <ChevronDown size={12} strokeWidth={2} />
+          : <ChevronRight size={12} strokeWidth={2} />}
+        ↩ {label} · 找到 {cards.length} 项
+      </button>
+      {open && (
+        <div className="flex flex-col gap-eu-sm">
+          {cards.map((c, i) => (
+            <AssetCardInChat key={i} data={c} onOpen={onOpenCard} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

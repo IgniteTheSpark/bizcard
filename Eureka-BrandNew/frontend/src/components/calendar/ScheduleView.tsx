@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
+import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { useTimeline, toLocalDayKey } from "@/hooks/useTimeline";
+import { timelineItemVisual } from "@/lib/timeline-visual";
 import type { TimelineItem } from "@/lib/types";
 
 /**
@@ -68,6 +70,9 @@ const EMPTY_PREF_KEY = "eureka:schedule_show_empty";
 
 export function ScheduleView({ onItemTap, onDayTap, embedded }: ScheduleViewProps) {
   const { items, isLoading } = useTimeline();
+  // Per-item type signal: each row shows its skill's icon (✅ todo, 💡 idea,
+  // 💰 记账, 🏃 跑步…) instead of a generic dot, so the timeline reads as typed.
+  const { bySkill } = useSkillRegistry();
   // Infinite-ish forward scroll: the window grows toward the future as the user
   // scrolls near the bottom (appending rows → no scroll jump). Past is a
   // generous fixed window. Reset isn't needed — it only grows within a session.
@@ -424,6 +429,7 @@ export function ScheduleView({ onItemTap, onDayTap, embedded }: ScheduleViewProp
                     key={`${it.kind}-${it.id}`}
                     item={it}
                     tone={UNIFORM_TONE}
+                    bySkill={bySkill}
                     onClick={(e) => { e.stopPropagation(); onItemTap(it); }}
                   />
                 ))}
@@ -470,13 +476,15 @@ function GapRow({ count }: { count: number; onExpand?: () => void }) {
 /* ── Day tile item row ─────────────────────────────────────────────────── */
 
 function ItemRow({
-  item, tone, onClick,
+  item, tone, onClick, bySkill,
 }: {
   item: TimelineItem;
   tone: DayTone;
   onClick: (e: React.MouseEvent) => void;
+  bySkill: ReturnType<typeof useSkillRegistry>["bySkill"];
 }) {
   const time = formatTime(item);
+  const { glyph, glow } = timelineItemVisual(item, bySkill);
   return (
     <div
       onClick={onClick}
@@ -492,14 +500,18 @@ function ItemRow({
       >
         {time}
       </span>
+      {/* Type signal: the skill's own icon (emoji carries the kind) sitting in
+          an accent-tinted halo, replacing the old type-agnostic 5px dot. */}
       <span
         style={{
-          width: 5, height: 5, borderRadius: 999,
-          background: dotForItem(item),
-          boxShadow: `0 0 6px ${dotForItem(item)}`,
-          flex: "0 0 5px",
+          flex: "0 0 17px", width: 17, height: 17,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 12.5, lineHeight: 1,
+          filter: `drop-shadow(0 0 4px ${glow})`,
         }}
-      />
+      >
+        {glyph}
+      </span>
       <span
         style={{
           fontSize: 13.5, color: tone.text, fontWeight: 500,
@@ -557,11 +569,6 @@ interface DayTone {
 const UNIFORM_TONE: DayTone = {
   bg: TILE_BG, text: TILE_TEXT, meta: TILE_META, dot: TILE_DOT_FALLBACK,
 };
-
-function dotForItem(it: TimelineItem): string {
-  const k = subKindOf(it);
-  return ACCENT_DOT[k ?? "neutral"];
-}
 
 const ACCENT_DOT: Record<string, string> = {
   event:   "#c4a8ff",

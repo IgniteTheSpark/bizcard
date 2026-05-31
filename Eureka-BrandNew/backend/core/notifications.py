@@ -45,6 +45,19 @@ def _publish(user_id: str, payload: dict) -> None:
             pass
 
 
+def publish_event(user_id: str, event: str, **data) -> None:
+    """
+    Push a non-notification app event over the SAME SSE channel the
+    notifications stream uses. The frontend's single EventSource dispatches
+    by event name. Used for ephemeral, un-persisted signals like the flash
+    "listening" state — no DB row, just a live nudge to the UI.
+
+    The stream tags each frame with the `_event` key (see api/notifications
+    stream). Notifications omit it and default to event name "notification".
+    """
+    _publish(user_id, {"_event": event, **data})
+
+
 def serialize(n: Notification) -> dict:
     return {
         "id":         str(n.id),

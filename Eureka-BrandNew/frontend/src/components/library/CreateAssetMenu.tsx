@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
@@ -13,13 +12,11 @@ import type { Skill } from "@/lib/types";
  * CreateAssetMenu — bottom-sheet menu shown when user taps the + button on
  * the FloatingDock or LibraryPage.
  *
- * M1 scope: list creatable asset types (skill-driven) + jump to that
- * category page. Per-type quick-create forms (the actual creation UX)
- * arrive in later milestones — for now tapping a row routes the user to
- * the appropriate flow:
- *   - "通过对话创建"   → /chat (works today)
- *   - "通过闪念创建"   → opens flash sheet (existing FloatingDock affordance)
- *   - per-skill rows   → /library/:name (placeholder; real form M2/M3/M4)
+ * Asset-creation only: one tile per creatable type (event + every skill
+ * with a render_spec). Tapping a tile opens that type's create form inline
+ * (EventForm for 事件, SkillCreateForm for skills). The AI entry points
+ * (跟 Agent 对话 / 闪念输入) deliberately live on the dock itself — the
+ * Agent pill and 🎙 mic — not here, so the + is unambiguously "make a thing".
  */
 
 interface CreateAssetMenuProps {
@@ -37,7 +34,6 @@ export function CreateAssetMenu({ open, onClose, defaultDate }: CreateAssetMenuP
 
 function CreateAssetMenuBody({ onClose, defaultDate }: { onClose: () => void; defaultDate?: Date }) {
   useModalMount();
-  const navigate = useNavigate();
   const { skills } = useSkillRegistry();
   // When user picks a skill, swap the menu for that skill's create form.
   // (We don't unmount this component — the form sits as a sibling overlay.)
@@ -95,31 +91,11 @@ function CreateAssetMenuBody({ onClose, defaultDate }: { onClose: () => void; de
           </button>
         </div>
 
-        <div className="px-eu-md text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono">
-          通过 AI
-        </div>
-        <div className="px-eu-md flex flex-col gap-eu-sm">
-          <PrimaryRow
-            label="跟 Agent 对话"
-            sub="自然语言描述你要的"
-            onClick={() => { onClose(); navigate("/chat"); }}
-          />
-          <PrimaryRow
-            label="闪念输入"
-            sub="录一句,AI 自动归类"
-            onClick={() => {
-              onClose();
-              // Dock's mic button has the actual sheet — we just hint the user
-              // to use it. M2 wires this directly into the same sheet.
-              alert("点底部 dock 的 🎙 麦克风 icon 开始闪念");
-            }}
-          />
-        </div>
-
-        <div className="px-eu-md mt-eu-sm text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono">
-          直接创建
-        </div>
-        <div className="px-eu-md pb-eu-md grid grid-cols-2 gap-eu-sm">
+        {/* The + is asset-creation only. The AI entries (跟 Agent 对话 /
+            闪念输入) used to live here but were redundant with the dock's own
+            Agent pill + 🎙 mic — so this sheet is now purely "create an asset
+            of type X". */}
+        <div className="px-eu-md pt-eu-sm pb-eu-md grid grid-cols-2 gap-eu-sm">
           {/* M4-bugfix-3: 事件 is first-class (not a skill) but the user
               expects to create one from this same grid. Hardcoded tile
               opens EventForm directly. */}
@@ -141,28 +117,6 @@ function CreateAssetMenuBody({ onClose, defaultDate }: { onClose: () => void; de
         </div>
       </div>
     </div>
-  );
-}
-
-function PrimaryRow({
-  label, sub, onClick,
-}: { label: string; sub: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "w-full flex items-center gap-eu-md px-eu-md py-eu-sm rounded-eu-md",
-        "bg-eu-surface border border-eu-border",
-        "hover:bg-eu-surface-hover transition-colors",
-        "text-left",
-      ].join(" ")}
-    >
-      <div className="flex-1">
-        <div className="text-eu-base text-eu-text-hi">{label}</div>
-        <div className="text-eu-xs text-eu-text-lo font-mono mt-0.5">{sub}</div>
-      </div>
-    </button>
   );
 }
 
