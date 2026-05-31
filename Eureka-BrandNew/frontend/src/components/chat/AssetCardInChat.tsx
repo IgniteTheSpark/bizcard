@@ -26,7 +26,10 @@ import type { AccentColor, CardAction, CardData, FieldFormat } from "@/lib/rende
 interface AssetCardInChatProps {
   /** Either the raw tool_result.response or a Message.cards[i] entry */
   data: Record<string, unknown>;
-  onOpen?: (cardData: CardData, payload: Record<string, unknown>) => void;
+  /** Opens the detail drawer. `sourceSessionId` lets the drawer show the
+   *  real provenance (闪念 / Agent) when the card resolves to a live asset —
+   *  chat cards otherwise carry only the prebuilt card dict + no session. */
+  onOpen?: (cardData: CardData, payload: Record<string, unknown>, sourceSessionId?: string | null) => void;
 }
 
 export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
@@ -64,12 +67,20 @@ function LiveTaskCard({
 function AssetCardBody({ data, onOpen }: AssetCardInChatProps) {
   const { bySkill } = useSkillRegistry();
   const toggleTodo = useToggleTodo();
+  const { assets } = useAssets();
 
   const skillName = pickString(data, ["user_skill_name", "card_type", "skill_name"]);
   const payload   = pickObject(data, "payload") ?? data;
   const assetId   = pickString(data, ["asset_id", "id"]);
   const eventId   = pickString(data, ["event_id"]);
   const taskId    = pickString(data, ["task_id"]);
+
+  // Resolve the live asset (if this card maps to one) so the detail drawer
+  // gets the REAL payload + its source session — not the truncated card dict
+  // a flash/agent card carries inline. Falls back to the inline payload.
+  const live        = assetId ? assets.find((a) => a.id === assetId) : undefined;
+  const openPayload = live?.payload ?? payload;
+  const openSession = live?.session_id ?? null;
 
   // M4-bugfix-2: events route through the unified EventCard so chat /
   // library / day-detail show identical surfaces. The tool_create_event
@@ -86,7 +97,7 @@ function AssetCardBody({ data, onOpen }: AssetCardInChatProps) {
           all_day:  Boolean(data.all_day),
           location: typeof data.location === "string" ? data.location : null,
         }}
-        onClick={onOpen ? () => onOpen(buildEventCardData(data), payload) : undefined}
+        onClick={onOpen ? () => onOpen(buildEventCardData(data), openPayload, openSession) : undefined}
       />
     );
   }
@@ -126,7 +137,7 @@ function AssetCardBody({ data, onOpen }: AssetCardInChatProps) {
       <SkillCard
         data={cardData}
         layoutOverride="horizontal"
-        onClick={onOpen ? () => onOpen(cardData, payload) : undefined}
+        onClick={onOpen ? () => onOpen(cardData, openPayload, openSession) : undefined}
         onToggleCheck={cardData.checkDone !== undefined && assetId
           ? (next) => toggleTodo(assetId, next)
           : undefined}
@@ -154,7 +165,7 @@ function AssetCardBody({ data, onOpen }: AssetCardInChatProps) {
       // Chat-embedded cards always use the compact horizontal style; respect
       // existing layout if explicitly set (rare).
       layoutOverride={cardData.layout === "compact" ? "compact" : "horizontal"}
-      onClick={onOpen ? () => onOpen(cardData, payload) : undefined}
+      onClick={onOpen ? () => onOpen(cardData, openPayload, openSession) : undefined}
       onToggleCheck={cardData.checkDone !== undefined && assetId
         ? (next) => toggleTodo(assetId, next)
         : undefined}

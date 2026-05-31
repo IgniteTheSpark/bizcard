@@ -9,6 +9,7 @@ import { GenericField } from "@/components/skill/GenericField";
 import { SkillCreateForm } from "@/components/skill/SkillCreateForm";
 import { useAgentTarget, useModalMount } from "@/context/ModalContext";
 import { useEvents } from "@/hooks/useEvents";
+import { useSessionDetail } from "@/hooks/useSessions";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { apiFetch } from "@/lib/api";
 import type { CardData, FieldFormat } from "@/lib/render-spec";
@@ -48,6 +49,15 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
   const { bySkill } = useSkillRegistry();
   const { events } = useEvents();
   const { setAgentTarget } = useAgentTarget();
+
+  // Source provenance: flash (闪念 capture) vs agent (chat) vs manual. Look up
+  // the creating session's type so we can label + route correctly. flash and
+  // chat both open the session on tap; manual has no session.
+  const { session: sourceSession } = useSessionDetail(sourceSessionId ?? null);
+  const sourceKind: "flash" | "agent" | "manual" =
+    !sourceSessionId ? "manual"
+      : sourceSession?.session_type === "flash" ? "flash"
+        : "agent";
 
   // Register this asset as the dock's Agent target while the detail is open.
   useEffect(() => {
@@ -287,7 +297,34 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
           <div className="text-eu-xs uppercase tracking-eu-caps text-eu-text-lo font-mono mb-2">
             来源 · SOURCE
           </div>
-          {sourceSessionId ? (
+          {sourceKind === "manual" ? (
+            <div className="w-full flex items-center gap-2.5 px-eu-md py-2.5 rounded-eu-md bg-eu-surface border border-eu-border">
+              <span
+                className="shrink-0 grid place-items-center font-mono"
+                style={{ width: 24, height: 24, borderRadius: 7, background: "var(--eu-accent-neutral-bg)", border: "1px solid var(--eu-accent-neutral-edge)", color: "var(--eu-accent-neutral-fg)", fontSize: 13 }}
+              >✎</span>
+              <div className="flex-1">
+                <div className="text-eu-xs uppercase tracking-eu-caps font-mono text-eu-text-lo">Manual</div>
+                <div className="text-eu-sm text-eu-text-hi mt-0.5">手动创建</div>
+              </div>
+            </div>
+          ) : sourceKind === "flash" ? (
+            <button
+              type="button"
+              onClick={openSourceSession}
+              className="w-full flex items-center gap-2.5 px-eu-md py-2.5 rounded-eu-md bg-eu-accent-blue-bg border border-eu-accent-blue-edge text-left hover:brightness-110 transition-all duration-eu-fast"
+            >
+              <span
+                className="shrink-0 grid place-items-center font-mono"
+                style={{ width: 24, height: 24, borderRadius: 7, background: "var(--eu-accent-blue-bg)", border: "1px solid var(--eu-accent-blue-edge)", color: "var(--eu-accent-blue-fg)", fontSize: 13, fontWeight: 600 }}
+              >⚡</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-eu-xs uppercase tracking-eu-caps font-mono text-eu-accent-blue-fg">闪念 · FLASH</div>
+                <div className="text-eu-sm text-eu-text-hi mt-0.5">闪念录入时整理 · 点开看原始记录</div>
+              </div>
+              <History size={14} strokeWidth={1.75} className="text-eu-text-mid shrink-0" />
+            </button>
+          ) : (
             <button
               type="button"
               onClick={openSourceSession}
@@ -299,21 +336,10 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
               >●</span>
               <div className="flex-1 min-w-0">
                 <div className="text-eu-xs uppercase tracking-eu-caps font-mono text-eu-accent-amber-fg">Agent · 对话</div>
-                <div className="text-eu-sm text-eu-text-hi mt-0.5">由 Agent 在对话中创建</div>
+                <div className="text-eu-sm text-eu-text-hi mt-0.5">由 Agent 在对话中创建 · 点开看对话</div>
               </div>
               <History size={14} strokeWidth={1.75} className="text-eu-text-mid shrink-0" />
             </button>
-          ) : (
-            <div className="w-full flex items-center gap-2.5 px-eu-md py-2.5 rounded-eu-md bg-eu-surface border border-eu-border">
-              <span
-                className="shrink-0 grid place-items-center font-mono"
-                style={{ width: 24, height: 24, borderRadius: 7, background: "var(--eu-accent-neutral-bg)", border: "1px solid var(--eu-accent-neutral-edge)", color: "var(--eu-accent-neutral-fg)", fontSize: 13 }}
-              >✎</span>
-              <div className="flex-1">
-                <div className="text-eu-xs uppercase tracking-eu-caps font-mono text-eu-text-lo">Manual</div>
-                <div className="text-eu-sm text-eu-text-hi mt-0.5">手动创建</div>
-              </div>
-            </div>
           )}
         </div>
 
@@ -323,12 +349,12 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
             if (shouldSkipField(key, value)) return null;
             // Arrays get a custom string-list renderer (attendees etc.)
             if (Array.isArray(value)) {
-              return <ArrayField key={key} label={key} items={value} />;
+              return <ArrayField key={key} label={fieldLabel(key)} items={value} />;
             }
             return (
               <GenericField
                 key={key}
-                label={key}
+                label={fieldLabel(key)}
                 value={value}
                 format={inferFormat(key, value)}
                 multiline={MULTILINE_KEYS.has(key)}
@@ -373,7 +399,32 @@ const SKIP_KEYS = new Set([
   "user_skill_id",       // implementation detail
   "logId",               // some MCP responses include this trace id
   "trace_id",            // same
+  // Render-spec / CardData keys that leak into `payload` when a chat-built
+  // card dict is opened (prebuilt flash cards). These are presentation
+  // metadata, never user content — hide them so the body reads cleanly
+  // (was the「ICON / ACTIONS / ACCENT_COLOR」junk the user flagged).
+  "icon", "accent_color", "accentColor", "actions",
+  "card_layout", "layout", "cardType", "checkDone",
+  "primary_field", "primary_format", "secondary_field", "secondary_format",
+  "meta_fields", "metaFields", "timeline_position", "calendar_render",
+  "field_units", "primary_label", "primary_unit", "secondary_label", "secondary_unit",
 ]);
+
+/** Friendly Chinese labels for common payload keys (raw machine keys read as
+ *  unintelligible「DUE_DATE」caps otherwise). Unmapped keys fall back to the
+ *  key itself. */
+const FIELD_LABEL: Record<string, string> = {
+  title: "标题", subtitle: "摘要", content: "内容", note: "备注", notes: "备注",
+  description: "描述", summary: "摘要", body: "正文", markdown: "正文",
+  due_date: "截止时间", date: "日期", time: "时间", start_at: "开始", end_at: "结束",
+  amount: "金额", price: "价格", currency: "币种", category: "分类",
+  location: "地点", distance: "距离", duration: "时长", pace: "配速", mood: "心情",
+  name: "名称", company: "公司", title_role: "职位", phone: "电话", email: "邮箱",
+  asr_text: "原始语音", reps: "次数", weight: "重量", pages_read: "阅读页数",
+};
+function fieldLabel(key: string): string {
+  return FIELD_LABEL[key] ?? key;
+}
 
 /** Heuristic: should this field be hidden from the drawer? */
 function shouldSkipField(key: string, value: unknown): boolean {

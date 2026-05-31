@@ -57,7 +57,7 @@ function UserBubble({ text }: { text: string }) {
 function AgentBubble({
   parts, streaming, onPrecipitate,
 }: { parts: ChatPart[]; streaming?: boolean; onPrecipitate?: (text: string) => void }) {
-  const [drawerCard, setDrawerCard] = useState<{ card: CardData; payload: Record<string, unknown> } | null>(null);
+  const [drawerCard, setDrawerCard] = useState<{ card: CardData; payload: Record<string, unknown>; sourceSessionId: string | null } | null>(null);
   const [openReport, setOpenReport] = useState<ReportData | null>(null);
 
   // Concatenate all text parts into one string for the "save as asset" action
@@ -73,7 +73,7 @@ function AgentBubble({
             part={part}
             streaming={streaming}
             isLast={idx === parts.length - 1}
-            onOpenCard={(card, payload) => setDrawerCard({ card, payload })}
+            onOpenCard={(card, payload, sourceSessionId) => setDrawerCard({ card, payload, sourceSessionId: sourceSessionId ?? null })}
             onOpenReport={setOpenReport}
           />
         ))}
@@ -108,6 +108,7 @@ function AgentBubble({
         <AssetDetailDrawer
           card={drawerCard.card}
           payload={drawerCard.payload}
+          sourceSessionId={drawerCard.sourceSessionId}
           onClose={() => setDrawerCard(null)}
         />
       )}
@@ -131,7 +132,7 @@ function PartRenderer({
   part: ChatPart;
   streaming: boolean;
   isLast: boolean;
-  onOpenCard: (card: CardData, payload: Record<string, unknown>) => void;
+  onOpenCard: (card: CardData, payload: Record<string, unknown>, sourceSessionId?: string | null) => void;
   onOpenReport: (report: ReportData) => void;
 }) {
   if (part.type === "text") {
@@ -428,7 +429,7 @@ function CollapsibleQueryResult({
 }: {
   label: string;
   cards: Record<string, unknown>[];
-  onOpenCard: (card: CardData, payload: Record<string, unknown>) => void;
+  onOpenCard: (card: CardData, payload: Record<string, unknown>, sourceSessionId?: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   if (cards.length === 0) {
