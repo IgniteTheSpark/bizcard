@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { useTimeline, toLocalDayKey } from "@/hooks/useTimeline";
+import { timelineItemVisual } from "@/lib/timeline-visual";
 import type { TimelineItem } from "@/lib/types";
 
 /**
@@ -483,7 +484,7 @@ function ItemRow({
   bySkill: ReturnType<typeof useSkillRegistry>["bySkill"];
 }) {
   const time = formatTime(item);
-  const { glyph, glow } = visualForItem(item, bySkill);
+  const { glyph, glow } = timelineItemVisual(item, bySkill);
   return (
     <div
       onClick={onClick}
@@ -576,38 +577,6 @@ const ACCENT_DOT: Record<string, string> = {
   expense: "#86e0a5",
   contact: "#d4dbe6",
   neutral: "rgba(255,255,255,0.55)",
-};
-
-/**
- * visualForItem — the per-row type signal for the timeline. Returns the
- * skill's own icon (emoji, which carries the type at a glance) plus an
- * accent-colored glow keyed off the skill's render_spec.accent_color.
- * Events use a calendar glyph + purple. Unknown / unregistered skills fall
- * back to a neutral dot glyph so a row is never blank.
- */
-function visualForItem(
-  it: TimelineItem,
-  bySkill: ReturnType<typeof useSkillRegistry>["bySkill"],
-): { glyph: string; glow: string } {
-  if (it.kind === "event") {
-    return { glyph: "📅", glow: ACCENT_GLOW.purple };
-  }
-  const skill = it.skill_name ? bySkill.get(it.skill_name) : undefined;
-  const glyph = skill?.render_spec?.icon || "•";
-  const glow  = ACCENT_GLOW[skill?.render_spec?.accent_color ?? "neutral"] ?? ACCENT_GLOW.neutral;
-  return { glyph, glow };
-}
-
-// render_spec.accent_color → soft glow color behind the row icon. Mirrors the
-// accent palette used by SkillCard / the library tiles.
-const ACCENT_GLOW: Record<string, string> = {
-  blue:    "rgba(138,180,255,0.50)",
-  amber:   "rgba(245,201,119,0.50)",
-  green:   "rgba(134,224,165,0.50)",
-  red:     "rgba(255,141,161,0.50)",
-  purple:  "rgba(196,168,255,0.50)",
-  gray:    "rgba(212,219,230,0.32)",
-  neutral: "rgba(212,219,230,0.32)",
 };
 
 /* ── sub-kind derivation ──────────────────────────────────────────────── */
