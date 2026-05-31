@@ -24,6 +24,7 @@ from mcp_server.tools import (
     query_input_turn, get_input_turn,
     create_event, query_event, get_event, update_event, delete_event,   # v1.4
     add_event_attendee, link_event_file,                                  # v1.4
+    render_report,                                                        # html-summary
 )
 
 mcp = FastMCP("eureka")
@@ -85,6 +86,90 @@ async def tool_update_asset(asset_id: str, payload_patch: str) -> str:
 async def tool_delete_asset(asset_id: str) -> str:
     """Delete an asset by ID. Cascades to asset_fields."""
     return _jsonify(await delete_asset(asset_id))
+
+
+@mcp.tool()
+async def tool_render_report(title: str, html: str) -> str:
+    """
+    Render a rich, well-designed HTML report for the user (图文并茂的总结).
+
+    Use when the user asks to 总结 / 汇总 / 复盘 / 生成报告 over their data.
+    The report opens FULL-SCREEN — treat it like a designed dashboard, not a
+    dump of rows.
+
+    ── WORKFLOW ──────────────────────────────────────────────────────────
+    1. query_asset / query_event / query_input_turn → pull the real rows.
+    2. ANALYZE, don't list. Compute aggregates and find the story.
+    3. Compose ONE self-contained HTML doc and pass as `html`.
+
+    ── 内容:行为汇总(必做,这是报告的灵魂)────────────────────────────
+    报告**不是把记录抄一遍**,而是**算出洞察**:
+      · 汇总数字:总计 / 平均 / 最高·最低 / 次数 / 完成率
+      · 趋势:这段 vs 上一段、按天/周分布、是涨是跌
+      · 模式 & 亮点:连续打卡天数、最长的一次、异常值、习惯规律
+      · 一句话结论放最前面(headline),先给判断再给数据支撑
+    没有数据的部分**如实说**「这段时间没有 X 记录」,绝不编造。
+
+    ── 结构(从上到下)──────────────────────────────────────────────
+      ① 标题 + 一句话总结(headline insight)
+      ② 关键数字:3-4 个大号 stat 卡片并排(总计/平均/最高/次数)
+      ③ 趋势图:一张手画 inline <svg> 图(柱状或折线)
+      ④ 明细:干净的列表或表格(最多 ~8 行,多了截断 + "等 N 条")
+      ⑤ 亮点/建议:1-3 条 bullet(连续天数、提醒、规律)
+
+    ── 设计系统(深色,跟 app 一致;别再用 Arial 白底)──────────────
+    在 <style> 里内联这套 token,然后用它们:
+      :root{
+        --bg:#0b0e16; --bg2:#11151f;
+        --card:rgba(255,255,255,.045); --line:rgba(255,255,255,.09);
+        --hi:#e9eef7; --mid:#9aa6b8; --lo:#5d6675;
+        --brand:#b79dff; --blue:#6f9eff; --green:#5fd6a0;
+        --amber:#f5c879; --red:#ff8a8a;
+      }
+      body{margin:0;padding:20px 18px 40px;background:var(--bg);
+        color:var(--hi);font:14px/1.6 -apple-system,"Noto Sans SC",system-ui,sans-serif;}
+      h1{font-size:24px;font-weight:700;letter-spacing:-.01em;margin:0 0 4px;}
+      .headline{color:var(--mid);font-size:14px;margin:0 0 20px;}
+      .stats{display:flex;gap:10px;margin:0 0 22px;}
+      .stat{flex:1;background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:12px 10px;text-align:center;}
+      .stat .n{font-size:26px;font-weight:700;color:var(--brand);
+        font-variant-numeric:tabular-nums;line-height:1.1;}
+      .stat .k{font-size:11px;color:var(--lo);margin-top:4px;letter-spacing:.08em;}
+      .card{background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:16px;margin:0 0 16px;}
+      .sec{font-size:11px;letter-spacing:.18em;color:var(--lo);
+        text-transform:uppercase;margin:0 0 12px;font-weight:600;}
+      table{width:100%;border-collapse:collapse;font-size:13px;}
+      td{padding:8px 0;border-top:1px solid var(--line);color:var(--hi);}
+      td.r{text-align:right;color:var(--mid);font-variant-numeric:tabular-nums;}
+      ul{margin:0;padding-left:18px;color:var(--mid);}
+      li{margin:6px 0;}
+    数字用 --brand 高亮;正向用 --green、提醒用 --amber、紧急用 --red。
+
+    ── 图表配方(inline SVG,圆角柱状)─────────────────────────────
+      <svg viewBox="0 0 320 160" width="100%" style="display:block">
+        <!-- 网格线 -->
+        <line x1="0" y1="130" x2="320" y2="130" stroke="rgba(255,255,255,.12)"/>
+        <!-- 每根柱子(高度按比例算,用品牌渐变色)-->
+        <rect x="20" y="60" width="46" height="70" rx="6" fill="#6f9eff"/>
+        <text x="43" y="148" fill="#9aa6b8" font-size="11" text-anchor="middle">周一</text>
+        <text x="43" y="52" fill="#e9eef7" font-size="12" text-anchor="middle">12</text>
+        <!-- …重复 …  -->
+      </svg>
+    折线同理:<polyline points="..." fill="none" stroke="#b79dff" stroke-width="2"/>
+    + 圆点。**自己按数据算坐标**,别留占位。
+
+    ── 硬规则 ───────────────────────────────────────────────────────
+      · 渲染在 ~393px 宽的 sandbox iframe:单列、max-width 100%、长表格套
+        可横向滚动容器。
+      · 所有 CSS 内联;不引外部样式/字体/JS;**没有 <script>**(沙箱拦截)。
+      · 紧凑——一份 1-2 屏、信息密度高的报告,胜过又长又空的。
+
+    title: 给聊天里那张回执卡片用的短标题,如 "跑步月报"。
+    html: 完整 HTML 文档字符串(遵循以上设计系统)。
+    """
+    return _jsonify(await render_report(title, html))
 
 
 # ── Contact tools ──────────────────────────────────────────────────────────────

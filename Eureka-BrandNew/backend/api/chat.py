@@ -238,6 +238,13 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
         agent_text_parts: list[str] = []
         first_tool_call: dict | None = None
         first_tool_result: dict | None = None
+        # html-summary: a SUMMARY turn makes TWO tool calls (query_* then
+        # tool_render_report). The messages table holds one tool_call /
+        # tool_result pair, so we capture the report pair separately and
+        # prefer it at persist time — otherwise reload would only replay the
+        # intermediate query and lose the report (breaks re-viewing).
+        report_tool_call: dict | None = None
+        report_tool_result: dict | None = None
 
         try:
             async for evt_type, payload in _stream_assistant(
@@ -252,14 +259,34 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
                 yield sse_event(evt_type, payload)
                 if evt_type == "token":
                     agent_text_parts.append(payload.get("text", ""))
-                elif evt_type == "tool_call" and first_tool_call is None:
-                    first_tool_call = payload
-                elif evt_type == "tool_result" and first_tool_result is None:
-                    first_tool_result = payload
+                elif evt_type == "tool_call":
+                    if first_tool_call is None:
+                        first_tool_call = payload
+                    if payload.get("name") == "tool_render_report":
+                        report_tool_call = payload
+                elif evt_type == "tool_result":
+                    if first_tool_result is None:
+                        first_tool_result = payload
+                    if payload.get("name") == "tool_render_report":
+                        report_tool_result = payload
         except Exception as e:
             yield sse_event("error", {"message": str(e)[:200]})
 
-        # Phase 3 — persist user + agent messages
+        # Phase 3 — persist user + agent messages. Prefer the report pair so
+        # the receipt card survives reload.
+        persist_tool_call   = report_tool_call   or first_tool_call
+        persist_tool_result = report_tool_result or first_tool_result
+        # Strip the bulky html out of the *tool_call* args — the frontend
+        # reads the report from tool_result.response, so keeping it in the
+        # call args would just double the stored html.
+        if persist_tool_call is report_tool_call and report_tool_call:
+            rc = dict(report_tool_call)
+            args = dict(rc.get("args") or {})
+            if isinstance(args.get("html"), str):
+                args["html"] = f"⟨{len(args['html'])} chars⟩"
+            rc["args"] = args
+            persist_tool_call = rc
+
         agent_text = "".join(agent_text_parts).strip()
         elapsed_ms = int((time.monotonic() - t0) * 1000)
         try:
@@ -268,8 +295,8 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id)):
                     db, session_id, user_id,
                     user_text=req.user_text,
                     agent_text=agent_text,
-                    tool_call=first_tool_call,
-                    tool_result=first_tool_result,
+                    tool_call=persist_tool_call,
+                    tool_result=persist_tool_result,
                     elapsed_ms=elapsed_ms,
                 )
                 msg_id = str(agent_msg.id)
