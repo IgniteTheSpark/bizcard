@@ -63,12 +63,21 @@ export function useNotifications() {
 
 /**
  * useNotificationStream — open ONE SSE connection to /api/notifications/stream
- * and invoke `onNew` for each pushed notification. Mount exactly once (App's
+ * and dispatch the pushed app events. Mount exactly once (App's
  * NotificationsBridge). Auto-reconnects (openSse handles backoff).
+ *
+ * The single stream multiplexes event types:
+ *   - `notification` → onNew (persisted notification rows)
+ *   - `listening`    → onListening (ephemeral hardware-mic state, "on"/"off")
  */
-export function useNotificationStream(onNew: (n: Notification) => void) {
+export function useNotificationStream(
+  onNew: (n: Notification) => void,
+  onListening?: (state: "on" | "off") => void,
+) {
   const cb = useRef(onNew);
   cb.current = onNew;
+  const cbListening = useRef(onListening);
+  cbListening.current = onListening;
 
   useEffect(() => {
     const sub = openSse(
@@ -79,6 +88,14 @@ export function useNotificationStream(onNew: (n: Notification) => void) {
           notification: (data) => {
             try {
               cb.current(JSON.parse(data) as Notification);
+            } catch {
+              /* malformed frame — ignore */
+            }
+          },
+          listening: (data) => {
+            try {
+              const p = JSON.parse(data) as { state?: string };
+              cbListening.current?.(p.state === "on" ? "on" : "off");
             } catch {
               /* malformed frame — ignore */
             }

@@ -102,7 +102,15 @@ async def stream(user_id: str = Depends(get_current_user_id)):
             yield sse_comment("connected")
             while True:
                 payload = await q.get()
-                yield sse_event("notification", payload)
+                # Generic routing: payloads may carry an `_event` name (e.g.
+                # "listening") for non-notification app signals. Plain
+                # notification rows have no `_event` → default "notification".
+                if isinstance(payload, dict) and "_event" in payload:
+                    payload = dict(payload)
+                    event = payload.pop("_event")
+                else:
+                    event = "notification"
+                yield sse_event(event, payload)
         finally:
             unsubscribe(user_id, q)
 

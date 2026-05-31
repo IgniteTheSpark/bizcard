@@ -26,7 +26,7 @@ from sqlalchemy import select
 
 from agents.flash_pipeline import run_flash_pipeline
 from core.auth import get_current_user_id
-from core.notifications import create_notification
+from core.notifications import create_notification, publish_event
 from core.session_service import (
     create_input_turn_for_message,
     persist_chat_turn,
@@ -44,6 +44,13 @@ class FlashRequest(BaseModel):
     session_id: str = ""     # empty = get-or-create today's flash session
     source: str = "voice"    # voice | typed (per Phase B v1.3 modality)
     file_id: str = ""        # optional, when real audio upload exists (future)
+
+
+class ListeningRequest(BaseModel):
+    # "on" while the hardware mic (W1/W2 card flash-memo button) is held down
+    # and capturing; "off" on release. Pushed live to the UI so it can show a
+    # global「正在聆听」overlay. Ephemeral — no DB row.
+    state: str   # "on" | "off"
 
 
 class FlashResponse(BaseModel):
@@ -196,3 +203,20 @@ async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
         has_pending=result.get("has_pending", False),
         elapsed_ms=elapsed_ms,
     )
+
+
+@router.post("/flash/listening")
+async def flash_listening(
+    req: ListeningRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Live mic state from the hardware capture layer (the W1/W2 card's
+    flash-memo button). The host-side listen-watcher posts `on` when the
+    button is held + recording starts and `off` on release. We just fan it
+    out over the SSE channel so the UI can show a global「正在聆听」overlay.
+    Ephemeral — no persistence.
+    """
+    state = "on" if req.state == "on" else "off"
+    publish_event(user_id, "listening", state=state)
+    return {"ok": True, "state": state}
