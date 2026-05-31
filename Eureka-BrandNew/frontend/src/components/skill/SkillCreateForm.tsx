@@ -158,7 +158,7 @@ export function SkillCreateForm({ skill, onClose, onCreated, existing }: SkillCr
           "bg-eu-surface-raised border-t border-eu-border md:border md:rounded-eu-xl",
           "rounded-t-eu-xl shadow-eu-lg pt-eu-md pb-safe",
           "eu-sheet-up",
-          "flex flex-col gap-eu-md max-h-[88vh] overflow-y-auto",
+          "flex flex-col gap-eu-md max-h-[88vh] overflow-y-auto eu-noscroll",
         ].join(" ")}
       >
         <div className="md:hidden h-1 w-12 rounded-full bg-eu-rule mx-auto" />

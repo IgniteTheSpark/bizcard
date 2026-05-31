@@ -121,7 +121,7 @@ function EventFormBody({ existing, defaultStart, onClose, onSaved }: EventFormPr
           "fixed inset-x-0 bottom-0 max-h-[88vh] rounded-t-eu-xl",
           "eu-sheet-up",
           "bg-eu-surface-raised border-t border-eu-border",
-          "shadow-eu-lg pt-eu-md pb-safe overflow-y-auto",
+          "shadow-eu-lg pt-eu-md pb-safe overflow-y-auto eu-noscroll",
           "flex flex-col gap-eu-md",
         ].join(" ")}
       >

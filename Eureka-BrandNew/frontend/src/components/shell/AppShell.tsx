@@ -38,7 +38,7 @@ export function AppShell() {
       <StatusBar />
       {/* pb-28 reserves room for the floating dock + safe area;
           0 on /chat where the dock is hidden and ChatInput owns the bottom. */}
-      <main className={`flex-1 overflow-y-auto min-h-0 ${onChat ? "pb-0" : "pb-28"}`}>
+      <main className={`flex-1 overflow-y-auto eu-noscroll min-h-0 ${onChat ? "pb-0" : "pb-28"}`}>
         <Outlet />
       </main>
       {!onChat && <FloatingDock />}

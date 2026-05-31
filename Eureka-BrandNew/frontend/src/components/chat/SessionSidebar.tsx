@@ -97,7 +97,7 @@ function SidebarInner({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-eu-sm pb-eu-md">
+      <div className="flex-1 overflow-y-auto eu-noscroll px-eu-sm pb-eu-md">
         {isLoading && (
           <div className="text-eu-xs text-eu-text-lo px-eu-sm py-eu-sm font-mono">加载中…</div>
         )}

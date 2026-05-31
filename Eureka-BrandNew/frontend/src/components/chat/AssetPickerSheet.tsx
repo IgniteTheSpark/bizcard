@@ -79,7 +79,7 @@ export function AssetPickerSheet({ onConfirm, onClose, excludeIds = [] }: AssetP
           选中的资产会作为 context 注入到 chat,Agent 可以基于它们回答
         </div>
 
-        <div className="flex-1 overflow-y-auto px-eu-md">
+        <div className="flex-1 overflow-y-auto eu-noscroll px-eu-md">
           {isLoading && <div className="text-eu-sm text-eu-text-lo px-eu-sm py-eu-md">加载中…</div>}
           {!isLoading && assets.length === 0 && (
             <div className="text-eu-sm text-eu-text-lo px-eu-sm py-eu-md">

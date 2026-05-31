@@ -241,7 +241,7 @@ function FlashSheet({ onClose }: { onClose: () => void }) {
           "bg-eu-surface-raised border-t border-eu-border rounded-t-eu-xl",
           "eu-sheet-up",
           "p-eu-lg pb-safe flex flex-col gap-eu-md shadow-eu-lg",
-          "max-h-[88vh] overflow-y-auto",
+          "max-h-[88vh] overflow-y-auto eu-noscroll",
         ].join(" ")}
         onClick={(e) => e.stopPropagation()}
       >
