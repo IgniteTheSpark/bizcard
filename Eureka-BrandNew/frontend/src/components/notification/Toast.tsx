@@ -6,18 +6,29 @@ import type { Notification } from "@/lib/types";
 import { notifLinkTarget, notifMeta } from "./meta";
 
 /**
- * Toast — a single transient notification card. Auto-dismisses after ~4.5s;
- * tap to follow its deep-link (and dismiss). Rendered by ToastProvider's
- * viewport (top-center, inside the phone frame).
+ * Toast — a single transient notification card. Auto-dismisses (tap to follow
+ * its deep-link, or × to dismiss). Rendered by ToastProvider's viewport
+ * (top-center, inside the phone frame).
+ *
+ * Async-task results (task_done / task_failed) linger longer: they land 10-20s
+ * after the user fired the request, by which point the user has usually moved
+ * on, so a 4.5s flash is easy to miss. 7.5s gives the "your 钉钉 task finished"
+ * moment a real chance to register.
  */
+const DISMISS_MS: Record<string, number> = {
+  task_done:   7500,
+  task_failed: 7500,
+};
+const DEFAULT_DISMISS_MS = 4500;
+
 export function Toast({ notif, onDone }: { notif: Notification; onDone: () => void }) {
   const navigate = useNavigate();
   const m = notifMeta(notif.type);
 
   useEffect(() => {
-    const t = setTimeout(onDone, 4500);
+    const t = setTimeout(onDone, DISMISS_MS[notif.type] ?? DEFAULT_DISMISS_MS);
     return () => clearTimeout(t);
-  }, [onDone]);
+  }, [onDone, notif.type]);
 
   const target = notifLinkTarget(notif);
 

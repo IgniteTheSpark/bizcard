@@ -237,6 +237,14 @@ async def _run_task_async(
             inner_err = _extract_inner_error(tool_events)
             if inner_err:
                 raise RuntimeError(f"MCP 返回错误: {inner_err}")
+            # No tool was called at all (tool_events == 0). This almost always
+            # means the request lacked the detail the MCP needs (no title / no
+            # due time), so the agent asked a clarifying question instead of
+            # acting. Surface THAT question — it's actionable — rather than the
+            # cryptic internal "did not produce a usable tool result". It flows
+            # to the asset error, the failure toast, and the drawer.
+            if not tool_events and raw.strip():
+                raise RuntimeError(raw.strip()[:400])
             raise RuntimeError(
                 f"task agent did not produce a usable tool result "
                 f"(tool_events_count={len(tool_events)}, raw={raw[:120]!r})"

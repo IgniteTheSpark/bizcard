@@ -90,9 +90,13 @@ const LIB_ACCENT: Record<LibAccent, { fg: string; bg: string; edge: string; glow
 //   via the AddSkillWizard. The 添加新技能 tile sits at the end of this
 //   row so the "I can add more" affordance is visible inline.
 const CORE_TILES: TileKind[] = [
-  { key: "event",   to: "/library/event",   label: "事件", icon: "●", accent: "purple"  },
-  { key: "contact", to: "/library/contact", label: "名片", icon: "◯", accent: "neutral" },
-  { key: "file",    to: "/library/file",    label: "文件", icon: "♪", accent: "cyan"    },
+  { key: "event",        to: "/library/event",        label: "事件", icon: "●",  accent: "purple"  },
+  { key: "contact",      to: "/library/contact",      label: "名片", icon: "◯",  accent: "neutral" },
+  { key: "file",         to: "/library/file",         label: "文件", icon: "♪",  accent: "cyan"    },
+  // 外部引用 — pointers to things created in third-party systems (Notion /
+  // 钉钉 / Google Calendar) via the task-skill MCP. A first-class entity like
+  // event/contact/file, so it lives here in 常驻 rather than the skills grid.
+  { key: "external_ref", to: "/library/external_ref", label: "外部", icon: "🔗", accent: "blue"    },
 ];
 
 // render_spec.accent_color → LibAccent, for the core-tile fallback.
@@ -227,7 +231,7 @@ export function CategoryList() {
             "extend" affordance. */}
         <SectionLabel>常驻 · PERMANENT</SectionLabel>
         <div
-          className="grid grid-cols-3 gap-2.5"
+          className="grid grid-cols-4 gap-2"
           style={{ margin: "6px 0 16px" }}
         >
           {CORE_TILES.map((t) => (
