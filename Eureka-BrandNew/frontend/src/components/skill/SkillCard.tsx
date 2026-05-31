@@ -272,9 +272,31 @@ function IconTile({
   );
 }
 
+/**
+ * Async-task lifecycle statuses (external_ref / task cards). When a badge
+ * meta-field carries one of these raw values, render it localized + colored
+ * by state instead of the card's flat accent — this is the task-status UI for
+ * third-party MCP calls (pending → running → done/failed). pending/running
+ * pulse to read as "in flight".
+ */
+const LIFECYCLE_STATUS: Record<string, { label: string; cls: string; pulse?: boolean }> = {
+  pending: { label: "待处理", cls: "text-eu-accent-amber-fg bg-eu-accent-amber-bg", pulse: true },
+  running: { label: "同步中", cls: "text-eu-accent-blue-fg bg-eu-accent-blue-bg",  pulse: true },
+  done:    { label: "已同步", cls: "text-eu-accent-green-fg bg-eu-accent-green-bg" },
+  failed:  { label: "失败",   cls: "text-eu-accent-red-fg bg-eu-accent-red-bg" },
+};
+
 function MetaPill({ value, format, accentClass }: { value: string; format?: string; accentClass: string }) {
   const isBadge = format === "badge";
   if (isBadge) {
+    const st = LIFECYCLE_STATUS[value];
+    if (st) {
+      return (
+        <span className={`px-1.5 py-0.5 rounded text-eu-xs font-medium ${st.cls} ${st.pulse ? "animate-pulse" : ""}`}>
+          {st.label}
+        </span>
+      );
+    }
     return (
       <span className={`px-1.5 py-0.5 rounded text-eu-xs font-medium ${accentClass} bg-white/5`}>
         {value}

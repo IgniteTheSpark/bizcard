@@ -1,5 +1,6 @@
 import { EventCard } from "@/components/calendar/EventCard";
 import { SkillCard } from "@/components/skill/SkillCard";
+import { useAssets } from "@/hooks/useAssets";
 import { useSkillRegistry } from "@/hooks/useSkillRegistry";
 import { useToggleTodo } from "@/hooks/useToggleTodo";
 import { buildCard } from "@/lib/render-spec";
@@ -29,6 +30,38 @@ interface AssetCardInChatProps {
 }
 
 export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
+  const skillName = pickString(data, ["user_skill_name", "card_type", "skill_name"]);
+  const assetId   = pickString(data, ["asset_id", "id"]);
+
+  // Async-task lifecycle cards (third-party MCP sync via task-skill) read their
+  // LIVE status from the assets cache instead of the frozen card captured when
+  // the agent message streamed. The background task finishes seconds later and
+  // fires a `task_done` notification → /api/assets revalidates → this card
+  // flips pending → done (⏳ → 🔗 / 已同步) with no reload.
+  if ((skillName === "task" || skillName === "external_ref") && assetId) {
+    return <LiveTaskCard assetId={assetId} frozen={data} onOpen={onOpen} />;
+  }
+  return <AssetCardBody data={data} onOpen={onOpen} />;
+}
+
+/** Lifecycle-card wrapper: overlays the live asset payload onto the frozen
+ *  chat card so async MCP tasks visibly complete in place. */
+function LiveTaskCard({
+  assetId, frozen, onOpen,
+}: {
+  assetId: string;
+  frozen: Record<string, unknown>;
+  onOpen?: AssetCardInChatProps["onOpen"];
+}) {
+  const { assets } = useAssets();
+  const live = assets.find((a) => a.id === assetId);
+  const data = live
+    ? { ...frozen, user_skill_name: live.user_skill_name, asset_id: assetId, payload: live.payload }
+    : frozen;
+  return <AssetCardBody data={data} onOpen={onOpen} />;
+}
+
+function AssetCardBody({ data, onOpen }: AssetCardInChatProps) {
   const { bySkill } = useSkillRegistry();
   const toggleTodo = useToggleTodo();
 
@@ -208,6 +241,10 @@ function synthesizeSpec(
       accent_color: "amber",
       primary_field: "title",
       secondary_field: "external_system",
+      // Surface the async lifecycle state (pending/running/done/failed) as a
+      // colored badge — see SkillCard.LIFECYCLE_STATUS. Without this the
+      // in-flight card showed no state at all in chat.
+      meta_fields: [{ field: "status", format: "badge" }],
     };
   }
   if (skillName === "external_ref") {
@@ -217,6 +254,7 @@ function synthesizeSpec(
       accent_color: "purple",
       primary_field: "title",
       secondary_field: "external_system",
+      meta_fields: [{ field: "status", format: "badge" }],
     };
   }
   // Best-effort: render whatever field looks like a title

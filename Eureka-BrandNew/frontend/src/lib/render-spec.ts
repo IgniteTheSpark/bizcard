@@ -113,6 +113,20 @@ const DEFAULT_LAYOUT: CardLayout = "horizontal";
 const DEFAULT_ACCENT: AccentColor = "gray";
 const DEFAULT_ICON = "•";
 
+// Friendly labels for external_ref/task `external_system` values. The
+// in-flight sentinel ("pending") and unknown map to "" so the subtitle is
+// blank while the status badge ("待处理"/"同步中") carries the state.
+const EXTERNAL_SYSTEM_LABEL: Record<string, string> = {
+  pending:           "",
+  unknown:           "",
+  notion:            "Notion",
+  google_calendar:   "Google 日历",
+  dingtalk:          "钉钉",
+  dingtalk_calendar: "钉钉日历",
+  dingtalk_todo:     "钉钉待办",
+  dingtalk_notes:    "钉钉文档",
+};
+
 // Decoration (label prefix, unit suffix) was removed in two passes per the
 // May audit. Final rule: the card title/subtitle = the field's value as-is.
 // Users embed units in the value when they need them ("150 毫升", "5 km"),
@@ -147,7 +161,15 @@ export function buildCard(input: BuildCardInput): CardData {
   // card never reads as blank.
   const primaryValue = applyFormat(primaryRaw, spec.primary_format);
   const title = primaryValue || displayName || cardType;
-  const subtitle = applyFormat(secondaryRaw, spec.secondary_format);
+  let subtitle = applyFormat(secondaryRaw, spec.secondary_format);
+
+  // external_ref / task cards use `external_system` as their subtitle. Raw it
+  // reads as "pending" (the in-flight sentinel) or a lowercase machine name
+  // ("google_calendar"). Localize: blank during pending/unknown so the status
+  // badge carries the state, friendly names once the system is known.
+  if (spec.secondary_field === "external_system" && typeof secondaryRaw === "string") {
+    subtitle = EXTERNAL_SYSTEM_LABEL[secondaryRaw] ?? subtitle;
+  }
 
   const metaFields = (spec.meta_fields ?? [])
     .map((mf) => {
