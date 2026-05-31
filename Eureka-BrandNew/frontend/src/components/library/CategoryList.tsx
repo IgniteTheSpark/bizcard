@@ -142,7 +142,7 @@ export function CategoryList() {
   const recent = buildRecent({
     assets, events: events.data?.events ?? [], files: files.data?.files ?? [],
     bySkillIcon: iconMap(skills),
-  }, 5);
+  }, 8);
 
   // SKILLS tiles = every registered user skill (seeded defaults + anything
   // created via AddSkillWizard), ordered by user_skills.position so drag-to-
@@ -245,19 +245,23 @@ export function CategoryList() {
 
         <SectionLabel>最近 · RECENT</SectionLabel>
 
-        {/* Cross-type latest 5 */}
-        <div className="flex flex-col gap-2">
-          {recent.length === 0 ? (
-            <div
-              className="font-mono"
-              style={{ fontSize: 11, color: "rgba(255,255,255,0.30)", padding: "10px 0" }}
-            >
-              还没有资产 — 用底部 + 或 🎙 创建
+        {/* Cross-type latest activity, grouped by day (今天 / 昨天 / M月D日) so a
+            multi-day glance is scannable instead of one flat undifferentiated run. */}
+        {recent.length === 0 ? (
+          <div
+            className="font-mono"
+            style={{ fontSize: 11, color: "rgba(255,255,255,0.30)", padding: "10px 0" }}
+          >
+            还没有资产 — 用底部 + 或 🎙 创建
+          </div>
+        ) : (
+          groupByDay(recent).map(([dayKey, items]) => (
+            <div key={dayKey} className="flex flex-col gap-2" style={{ marginBottom: 10 }}>
+              <DayHeader label={dayHeaderLabel(dayKey)} />
+              {items.map((r) => <RecentCard key={r.id} item={r} />)}
             </div>
-          ) : (
-            recent.map((r) => <RecentCard key={r.id} item={r} />)
-          )}
-        </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -278,6 +282,23 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
         {children}
       </span>
       <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
+    </div>
+  );
+}
+
+/* ── 最近 day-group header — lighter than SectionLabel (a sub-label, not a
+   section divider): caps mono, no rule, sits above each day's cards. ── */
+function DayHeader({ label }: { label: string }) {
+  return (
+    <div
+      className="font-mono"
+      style={{
+        fontSize: 10, letterSpacing: "0.14em",
+        color: "rgba(255,255,255,0.42)", fontWeight: 600,
+        marginTop: 4,
+      }}
+    >
+      {label}
     </div>
   );
 }
@@ -333,6 +354,8 @@ interface RecentItem {
   title:    string;
   sub:      string;
   hasSource: boolean;
+  /** Local day key (YYYY-MM-DD) of the item's timestamp — drives 最近 day grouping. */
+  dayKey:   string;
   /** When the source is an event, render via EventCard. */
   event?:   Event;
   /** OP2: when the source is an asset, render via SkillCard for visual
@@ -531,6 +554,7 @@ function buildRecent(
       title:    String(p.content ?? p.title ?? p.name ?? skillName),
       sub:      relativeTime(a.created_at),
       hasSource: !!a.source_input_turn_id,
+      dayKey:   localDayKey(a.created_at),
       asset:    a,   // OP2: enables SkillCard rendering
     });
   }
@@ -545,6 +569,7 @@ function buildRecent(
       title:    e.title,
       sub:      formatStart(e.start_at, e.all_day),
       hasSource: !!e.source_input_turn_id,
+      dayKey:   localDayKey(e.created_at),
       event:    e,   // for unified EventCard rendering
     });
   }
@@ -559,6 +584,7 @@ function buildRecent(
       title:    `${f.source_tag === "flash" ? "闪念录音" : f.source_tag === "meeting" ? "会议录音" : "文件"}`,
       sub:      `${f.duration_sec ? `${Math.round(f.duration_sec)}s · ` : ""}${relativeTime(f.created_at)}`,
       hasSource: false,
+      dayKey:   localDayKey(f.created_at),
     });
   }
 
@@ -575,6 +601,40 @@ function accentForSkill(name: string): LibAccent {
     case "notes":   return "blue";
     default:        return "neutral";
   }
+}
+
+/** Local day key (YYYY-MM-DD) — for grouping 最近 by calendar day. */
+function localDayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Human day header: 今天 / 昨天 / M月D日 (older). */
+function dayHeaderLabel(dayKey: string): string {
+  const today = localDayKey(new Date().toISOString());
+  if (dayKey === today) return "今天";
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  if (dayKey === localDayKey(y.toISOString())) return "昨天";
+  const [, mo, da] = dayKey.split("-").map(Number);
+  return `${mo}月${da}日`;
+}
+
+/** Group already-sorted (desc) recent items into [dayKey, items] runs,
+ *  preserving the sort so day groups come out newest-first. */
+function groupByDay(items: RecentItem[]): Array<[string, RecentItem[]]> {
+  const out: Array<[string, RecentItem[]]> = [];
+  const idx = new Map<string, RecentItem[]>();
+  for (const it of items) {
+    let arr = idx.get(it.dayKey);
+    if (!arr) {
+      arr = [];
+      idx.set(it.dayKey, arr);
+      out.push([it.dayKey, arr]);
+    }
+    arr.push(it);
+  }
+  return out;
 }
 
 function relativeTime(iso: string): string {
