@@ -19,7 +19,7 @@ import json
 from fastmcp import FastMCP
 
 from mcp_server.tools import (
-    create_asset, query_asset, update_asset, delete_asset,
+    create_asset, query_asset, query_digest, update_asset, delete_asset,
     create_contact, query_contact, update_contact, delete_contact,
     query_input_turn, get_input_turn,
     create_event, query_event, get_event, update_event, delete_event,   # v1.4
@@ -62,15 +62,38 @@ async def tool_create_asset(
 async def tool_query_asset(
     user_skill_name: str = "",
     contains: str = "",
+    from_date: str = "",
+    to_date: str = "",
     limit: int = 100,
 ) -> str:
     """
-    Query assets. Filter by skill name and/or keyword in payload (case-insensitive).
+    Query assets. Filter by skill name, keyword in payload (case-insensitive),
+    and/or capture-date range (from_date/to_date, ISO8601+tz, filters created_at).
 
     Returns newest-first list with skill_name + payload + session_id + source_input_turn_id.
-    Empty user_skill_name = all skills.
+    Empty user_skill_name = all skills — use that (+ a date range) for a whole-day/
+    period SUMMARY so you get every type, not just one.
     """
-    return _jsonify(await query_asset(user_skill_name, contains, limit))
+    return _jsonify(await query_asset(user_skill_name, contains, from_date, to_date, limit))
+
+
+@mcp.tool()
+async def tool_query_digest(
+    from_date: str = "",
+    to_date: str = "",
+) -> str:
+    """
+    Compact, pre-grouped snapshot of a time window for a SUMMARY/日报/周报/月报.
+
+    Use THIS (not tool_query_asset) when building a whole-day / period report:
+    it returns counts + per-type payload lists + events, lean enough that you
+    can reliably go straight on to tool_render_report. Pass ISO8601+tz dates
+    (e.g. a single day = 00:00:00 .. 23:59:59 of that date in +08:00).
+
+    Returns: { counts: {<type>: n}, by_type: {<type>: [payload, ...]},
+               events: [{title, start_at, end_at, location, all_day}] }
+    """
+    return _jsonify(await query_digest(from_date, to_date))
 
 
 @mcp.tool()
