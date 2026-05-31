@@ -51,6 +51,39 @@ def _err(msg: str):
     return {"ok": False, "error": msg}
 
 
+# ── Report rendering (html-summary feature) ────────────────────────────────────
+
+# Hard cap so a runaway generation can't bloat the messages table / blow the
+# srcdoc attribute. ~120KB of HTML is a *very* rich report; most are <30KB.
+_REPORT_HTML_MAX = 120_000
+
+
+async def render_report(title: str, html: str, user_id: str = "default") -> dict:
+    """
+    Echo a rich HTML report back to the chat so the frontend can render it
+    full-screen in a sandboxed iframe.
+
+    No DB write — the report is NOT persisted as a separate asset (the user
+    explicitly didn't want a 报告 shelf accumulating redundant entries). It
+    rides inside the chat message's tool_result, which already persists as
+    normal conversation history, so it remains re-viewable within that
+    session without creating a new storage surface.
+
+    Security: the real boundary is the frontend's `<iframe sandbox srcdoc>`
+    (opaque origin, no scripts, no parent access). This function only does a
+    size guard; it does NOT sanitize, because the sandbox makes the markup
+    inert regardless.
+    """
+    if not html or not html.strip():
+        return _err("html is required")
+    if len(html) > _REPORT_HTML_MAX:
+        return _err(
+            f"report html too large ({len(html)} > {_REPORT_HTML_MAX}); "
+            "narrow the scope (fewer rows / shorter window) and retry"
+        )
+    return _ok(kind="report", title=(title or "报告").strip()[:80], html=html)
+
+
 # ── Asset tools ────────────────────────────────────────────────────────────────
 
 async def create_asset(

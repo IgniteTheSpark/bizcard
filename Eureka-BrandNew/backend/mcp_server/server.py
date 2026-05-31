@@ -24,6 +24,7 @@ from mcp_server.tools import (
     query_input_turn, get_input_turn,
     create_event, query_event, get_event, update_event, delete_event,   # v1.4
     add_event_attendee, link_event_file,                                  # v1.4
+    render_report,                                                        # html-summary
 )
 
 mcp = FastMCP("eureka")
@@ -85,6 +86,37 @@ async def tool_update_asset(asset_id: str, payload_patch: str) -> str:
 async def tool_delete_asset(asset_id: str) -> str:
     """Delete an asset by ID. Cascades to asset_fields."""
     return _jsonify(await delete_asset(asset_id))
+
+
+@mcp.tool()
+async def tool_render_report(title: str, html: str) -> str:
+    """
+    Render a rich HTML report/summary for the user (图文并茂的总结).
+
+    Use this when the user asks to 总结 / 汇总 / 复盘 / 生成报告 over their
+    data — e.g. "总结一下我最近的跑步", "看看我这个月的记账", "帮我复盘
+    最近的 notes". The report opens FULL-SCREEN in the app, so go rich:
+    headings, tables, lists, inline SVG charts, highlights.
+
+    Workflow:
+      1. Gather the data first with query_asset / query_event /
+         query_input_turn (don't summarize from memory — pull the rows).
+      2. Compose ONE complete, self-contained HTML document and pass it as
+         `html`.
+
+    HTML rules (the frontend renders it in a sandboxed iframe ~393px wide):
+      - Inline ALL CSS in a <style> block. No external stylesheets/fonts/JS.
+      - **No <script>** — the sandbox blocks it; it just won't run.
+      - Mobile-first: single column, max-width 100%, wrap long tables in a
+        scroll container. Dark-friendly palette (the app is dark).
+      - Charts: inline <svg> only (bars / lines you draw by hand). No chart
+        libraries.
+      - Keep it focused — a tight 1-2 screen report beats a sprawling one.
+
+    title: short label for the chat receipt card, e.g. "跑步月报".
+    html: the full HTML document string.
+    """
+    return _jsonify(await render_report(title, html))
 
 
 # ── Contact tools ──────────────────────────────────────────────────────────────
