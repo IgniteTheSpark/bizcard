@@ -35,6 +35,22 @@ export function notifLinkTarget(n: Notification): string | null {
   return "/library";
 }
 
+/**
+ * Handle a notification tap — centralizes nav for Toast / Bell / Page so they
+ * behave identically. flash_done opens the captured flash SESSION in chat
+ * (link carries the session id); everything else falls back to notifLinkTarget.
+ */
+export function notifNavigate(n: Notification, navigate: (to: string) => void): void {
+  if (n.type === "flash_done" && n.link) {
+    // Open the flash session that this capture landed in.
+    window.localStorage.setItem("eureka:active_chat_session", n.link);
+    navigate("/chat");
+    return;
+  }
+  const target = notifLinkTarget(n);
+  if (target) navigate(target);
+}
+
 export function relativeTime(iso: string | null): string {
   if (!iso) return "";
   const diffSec = Math.max(0, Math.floor((Date.now() - +new Date(iso)) / 1000));

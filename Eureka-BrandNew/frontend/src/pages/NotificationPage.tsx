@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
 import { NotificationItem } from "@/components/notification/NotificationItem";
-import { notifLinkTarget } from "@/components/notification/meta";
+import { notifNavigate } from "@/components/notification/meta";
 import { useNotifications } from "@/hooks/useNotifications";
 import type { Notification } from "@/lib/types";
 
@@ -16,8 +16,7 @@ export function NotificationPage() {
 
   function openNotif(n: Notification) {
     if (!n.read) markRead(n.id);
-    const target = notifLinkTarget(n);
-    if (target) navigate(target);
+    notifNavigate(n, navigate);
   }
 
   return (

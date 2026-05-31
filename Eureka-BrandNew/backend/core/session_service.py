@@ -490,3 +490,50 @@ async def persist_chat_turn(
     await db.refresh(user_msg)
     await db.refresh(agent_msg)
     return user_msg, agent_msg
+
+
+async def persist_user_message(
+    db: AsyncSession,
+    session_id: str,
+    user_id: str,
+    user_text: str,
+) -> Message:
+    """
+    Persist just the user side of a turn (role='user'). Used by Flash so the
+    spoken input shows in the session immediately, before the (multi-second)
+    pipeline runs — then persist_agent_message adds the analysis after.
+    """
+    msg = Message(
+        session_id=uuid.UUID(session_id),
+        user_id=user_id,
+        role="user",
+        text=user_text,
+    )
+    db.add(msg)
+    await db.commit()
+    await db.refresh(msg)
+    return msg
+
+
+async def persist_agent_message(
+    db: AsyncSession,
+    session_id: str,
+    user_id: str,
+    agent_text: str,
+    cards: Optional[list] = None,
+    elapsed_ms: Optional[int] = None,
+) -> Message:
+    """Persist just the agent side of a turn (role='agent') — pairs with
+    persist_user_message for the Flash input-first flow."""
+    msg = Message(
+        session_id=uuid.UUID(session_id),
+        user_id=user_id,
+        role="agent",
+        text=agent_text,
+        cards=cards or [],
+        elapsed_ms=elapsed_ms,
+    )
+    db.add(msg)
+    await db.commit()
+    await db.refresh(msg)
+    return msg

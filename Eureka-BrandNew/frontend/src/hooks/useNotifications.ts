@@ -73,11 +73,14 @@ export function useNotifications() {
 export function useNotificationStream(
   onNew: (n: Notification) => void,
   onListening?: (state: "on" | "off") => void,
+  onCapture?: () => void,
 ) {
   const cb = useRef(onNew);
   cb.current = onNew;
   const cbListening = useRef(onListening);
   cbListening.current = onListening;
+  const cbCapture = useRef(onCapture);
+  cbCapture.current = onCapture;
 
   useEffect(() => {
     const sub = openSse(
@@ -99,6 +102,12 @@ export function useNotificationStream(
             } catch {
               /* malformed frame — ignore */
             }
+          },
+          // Silent realtime nudge (no toast): a flash capture wrote its input
+          // message; revalidate so the open session shows the input bubble
+          // immediately, ahead of the analysis. See flash.py publish_event.
+          capture: () => {
+            cbCapture.current?.();
           },
         },
       },

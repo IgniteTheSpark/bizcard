@@ -46,6 +46,9 @@ function NotificationsBridge() {
       mutate(revalidatesOnCapture);
     },
     (state) => setListening(state === "on"),
+    // `capture`: a flash just wrote its input message — silently revalidate so
+    // the open session shows the input bubble before the analysis lands.
+    () => mutate(revalidatesOnCapture),
   );
   return null;
 }

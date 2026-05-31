@@ -29,7 +29,8 @@ from core.auth import get_current_user_id
 from core.notifications import create_notification, publish_event
 from core.session_service import (
     create_input_turn_for_message,
-    persist_chat_turn,
+    persist_agent_message,
+    persist_user_message,
 )
 from db.database import AsyncSessionLocal
 from db.models import Session as DBSession
@@ -134,10 +135,22 @@ async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
                 db, session_id, user_id, req.text, source=input_source,
             )
             input_turn_id = str(turn.id)
+
+            # Write the user's input as a chat message NOW (before the pipeline)
+            # and ping the live UI so the input bubble shows immediately — the
+            # analysis follows once the pipeline finishes (mimics a normal chat
+            # turn: input first, then AI works). The agent message is persisted
+            # in Phase 3.
+            await persist_user_message(db, session_id, user_id, req.text)
     except HTTPException:
         raise
     except Exception as e:
         return FlashResponse(ok=False, session_id="", input_turn_id="", error=str(e)[:200])
+
+    # Silent realtime nudge: the open flash session revalidates its messages
+    # and renders the just-written input bubble (no toast — flash_done at the
+    # end is the toast). Frontend handles the `capture` SSE event.
+    publish_event(user_id, "capture", session_id=session_id)
 
     # Phase 2 — run Flash Pipeline (dispatcher → parallel sub-skills → aggregate)
     try:
@@ -168,9 +181,11 @@ async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
 
     try:
         async with AsyncSessionLocal() as db:
-            await persist_chat_turn(
+            # User message was already persisted in Phase 1 (input-first); here
+            # we add only the agent side. flash_done below pings the UI to
+            # revalidate, so the analysis appears after the input.
+            await persist_agent_message(
                 db, session_id, user_id,
-                user_text=req.text,
                 agent_text=agent_text_for_history,
                 cards=cards,
                 elapsed_ms=elapsed_ms,
@@ -190,6 +205,9 @@ async def flash(req: FlashRequest, user_id: str = Depends(get_current_user_id)):
             type="flash_done",
             title="闪念已整理",
             body=(summary or reply or f"已记录 {len(derived)} 项")[:200],
+            # link = the flash session id so tapping the notification opens that
+            # session in chat (frontend notifNavigate keys off type=flash_done).
+            link=session_id,
         )
 
     return FlashResponse(

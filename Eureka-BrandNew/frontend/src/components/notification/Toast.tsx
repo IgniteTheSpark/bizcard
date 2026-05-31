@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import type { Notification } from "@/lib/types";
-import { notifLinkTarget, notifMeta } from "./meta";
+import { notifLinkTarget, notifMeta, notifNavigate } from "./meta";
 
 /**
  * Toast — a single transient notification card. Auto-dismisses (tap to follow
@@ -36,7 +36,7 @@ export function Toast({ notif, onDone }: { notif: Notification; onDone: () => vo
     <div
       role="status"
       onClick={() => {
-        if (target) navigate(target);
+        notifNavigate(notif, navigate);
         onDone();
       }}
       className="pointer-events-auto eu-sheet-down"
