@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { EventForm } from "@/components/calendar/EventForm";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { GenericField } from "@/components/skill/GenericField";
+import { McpBrandMark, isMcpBrand } from "@/components/skill/McpBrandMark";
 import { SkillCreateForm } from "@/components/skill/SkillCreateForm";
 import { useAgentTarget, useModalMount } from "@/context/ModalContext";
 import { useEvents } from "@/hooks/useEvents";
@@ -224,17 +225,23 @@ export function AssetDetailDrawer({ card, payload, onClose, sourceSessionId }: A
               <X size={18} strokeWidth={1.75} />
             </button>
           </div>
-          <div
-            className={[
-              "mt-3 flex items-center justify-center border font-mono font-semibold",
-              ACCENT_BG[card.accentColor],
-              ACCENT_FG[card.accentColor],
-              ACCENT_BORDER[card.accentColor],
-            ].join(" ")}
-            style={{ width: 54, height: 54, borderRadius: 14, fontSize: 22, boxShadow: "inset 0 0 18px rgba(255,255,255,0.05)" }}
-          >
-            {card.icon}
-          </div>
+          {isMcpBrand(card.icon) ? (
+            <div className="mt-3">
+              <McpBrandMark icon={card.icon} size={54} radius={14} />
+            </div>
+          ) : (
+            <div
+              className={[
+                "mt-3 flex items-center justify-center border font-mono font-semibold",
+                ACCENT_BG[card.accentColor],
+                ACCENT_FG[card.accentColor],
+                ACCENT_BORDER[card.accentColor],
+              ].join(" ")}
+              style={{ width: 54, height: 54, borderRadius: 14, fontSize: 22, boxShadow: "inset 0 0 18px rgba(255,255,255,0.05)" }}
+            >
+              {card.icon}
+            </div>
+          )}
           <h2 className="mt-3.5 text-eu-text-hi font-semibold tracking-tight break-words" style={{ fontSize: 22, lineHeight: 1.25 }}>
             {card.title}
           </h2>

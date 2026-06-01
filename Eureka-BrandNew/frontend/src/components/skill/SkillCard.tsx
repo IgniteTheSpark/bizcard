@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 
+import { McpBrandMark, isMcpBrand } from "@/components/skill/McpBrandMark";
 import type { AccentColor, CardData, CardLayout } from "@/lib/render-spec";
 
 /**
@@ -232,6 +233,11 @@ function IconTile({
   check?: { done: boolean; onClick: (e: React.MouseEvent) => void };
 }) {
   const a = ACCENT[accent];
+  // MCP brand cards (e.g. 钉钉) render the real logo tile instead of a glyph.
+  // These never have a check action, so no overlay to worry about.
+  if (isMcpBrand(icon)) {
+    return <McpBrandMark icon={icon} size={32} radius={9} />;
+  }
   return (
     <div className="relative shrink-0 h-8 w-8">
       <div

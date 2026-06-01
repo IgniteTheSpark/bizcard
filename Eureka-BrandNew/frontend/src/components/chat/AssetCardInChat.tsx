@@ -23,21 +23,6 @@ import type { AccentColor, CardAction, CardData, FieldFormat } from "@/lib/rende
  * defaults when no render_spec is registered for them.
  */
 
-/**
- * external_system → card icon for task / external_ref cards. No emoji exists
- * for these brands, so these are representative stand-ins: 📌 puns on 钉
- * (钉钉), 📝 Notion, 📅 Google Calendar. "pending" stays ⏳ (still in flight).
- */
-const MCP_ICON: Record<string, string> = {
-  pending:           "⏳",
-  dingtalk:          "📌",
-  dingtalk_calendar: "📌",
-  dingtalk_todo:     "📌",
-  dingtalk_notes:    "📌",
-  notion:            "📝",
-  google_calendar:   "📅",
-};
-
 interface AssetCardInChatProps {
   /** Either the raw tool_result.response or a Message.cards[i] entry */
   data: Record<string, unknown>;
@@ -176,14 +161,6 @@ function AssetCardBody({ data, onOpen }: AssetCardInChatProps) {
     cardType: skillName ?? "asset",
     displayName: skill?.display_name ?? skillName ?? "资产",
   });
-
-  // Async-task / external_ref cards: swap the generic ⏳/🔗 for the icon of the
-  // MCP the task actually hit, once known (pending stays ⏳). Tells the user at
-  // a glance「这条进了钉钉/Notion/日历」.
-  if (skillName === "external_ref" || skillName === "task") {
-    const sys = typeof payload.external_system === "string" ? payload.external_system : "";
-    if (MCP_ICON[sys]) cardData.icon = MCP_ICON[sys];
-  }
 
   return (
     <SkillCard

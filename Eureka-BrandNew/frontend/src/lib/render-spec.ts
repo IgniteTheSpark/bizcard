@@ -127,6 +127,19 @@ const EXTERNAL_SYSTEM_LABEL: Record<string, string> = {
   dingtalk_notes:    "钉钉文档",
 };
 
+// external_system → card icon for external_ref / task cards. "mcp:*" sentinels
+// render the real brand logo (see McpBrandMark); others are emoji stand-ins;
+// "pending" stays ⏳ (in flight). Unknown keeps the spec's default (🔗).
+const EXTERNAL_SYSTEM_ICON: Record<string, string> = {
+  pending:           "⏳",
+  dingtalk:          "mcp:dingtalk",
+  dingtalk_calendar: "mcp:dingtalk",
+  dingtalk_todo:     "mcp:dingtalk",
+  dingtalk_notes:    "mcp:dingtalk",
+  notion:            "📝",
+  google_calendar:   "📅",
+};
+
 // Decoration (label prefix, unit suffix) was removed in two passes per the
 // May audit. Final rule: the card title/subtitle = the field's value as-is.
 // Users embed units in the value when they need them ("150 毫升", "5 km"),
@@ -199,10 +212,19 @@ export function buildCard(input: BuildCardInput): CardData {
     }
   }
 
+  // external_ref / task cards: icon reflects the MCP the item hit, once known
+  // (pending → ⏳, dingtalk → real brand mark, …). Falls back to the spec icon.
+  let icon = spec.icon ?? DEFAULT_ICON;
+  if (cardType === "external_ref" || cardType === "task") {
+    const sysRaw = payload["external_system"];
+    const mapped = typeof sysRaw === "string" ? EXTERNAL_SYSTEM_ICON[sysRaw] : undefined;
+    if (mapped) icon = mapped;
+  }
+
   return {
     cardType,
     layout: spec.card_layout ?? DEFAULT_LAYOUT,
-    icon: spec.icon ?? DEFAULT_ICON,
+    icon,
     accentColor: spec.accent_color ?? DEFAULT_ACCENT,
     title,
     subtitle,
