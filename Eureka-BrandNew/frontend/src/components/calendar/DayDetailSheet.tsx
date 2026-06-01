@@ -317,30 +317,25 @@ export function DayDetailSheet({
                     transition: "all 200ms cubic-bezier(.2,.7,.3,1)",
                   }}
                 >
+                  {/* Title is the headline — the block's vertical position on the
+                      hour grid already conveys the time, so we don't repeat it
+                      in the card. Clamp to 2 lines (a short block height clips to
+                      one) so the text leads and never overflows. */}
                   <div
-                    className="font-mono"
+                    className="line-clamp-2"
                     style={{
-                      fontSize: 10.5, color: "rgba(255,255,255,0.85)",
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    {formatRange(it)}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 13.5, fontWeight: 600, color: "#ffffff",
-                      letterSpacing: "-0.005em",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      fontSize: 13, fontWeight: 600, color: "#ffffff",
+                      letterSpacing: "-0.005em", lineHeight: 1.3,
                     }}
                   >
                     {it.title}
                   </div>
                   {it.location && block.height > 56 && (
                     <div
+                      className="line-clamp-1"
                       style={{
                         fontSize: 11, color: "rgba(255,255,255,0.72)",
                         marginTop: 2,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}
                     >
                       {it.location}
@@ -624,15 +619,6 @@ function hourLabel(hour: number): string {
   if (hour === 12) return "中午 12时";
   if (hour < 12)   return `上午 ${hour}时`;
   return `下午 ${hour - 12}时`;
-}
-
-function formatRange(it: TimelineItem): string {
-  const s = new Date(it.effective_at);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const startStr = `${pad(s.getHours())}:${pad(s.getMinutes())}`;
-  if (!it.end_at) return startStr;
-  const e = new Date(it.end_at);
-  return `${startStr} — ${pad(e.getHours())}:${pad(e.getMinutes())}`;
 }
 
 function weekdayLabel(dayKey: string): string {
