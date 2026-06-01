@@ -86,6 +86,12 @@ def _build_task_runner_prompt() -> str:
    调创建文档/笔记的工具时,**必须**把它原样填进正文参数(钉钉文档的 `markdown`、
    Notion 的 `content` 等)。标题归标题、正文归正文,**绝不**只填标题把正文丢掉。
    没带这一段时才只创建标题。
+6. **更新 vs 新建(关键)**:如果输入里带了「======== 这是【更新现有对象】========」
+   这一段,说明用户要改的是一个**已存在**的对象,里面给了它的 external_id。这时
+   **必须**用该系统的**更新**工具(钉钉文档 → `update_document`,改不动整篇就用
+   `update_document_block` / `insert_document_block`;日历 → `update_calendar_event`;
+   待办 → `update_todo_task`),把那个 id 传进对应的 node/doc/event id 参数,把正文
+   设置进去。**绝对不要** create 新对象。没有这一段才用 create。
 
 ## 失败重试(关键)
 
@@ -117,6 +123,8 @@ async def run_task_intent(
     source_input_turn_id: str = "",
     user_id: str = "default",
     content: str = "",
+    target_external_id: str = "",
+    target_external_system: str = "",
 ) -> dict:
     """
     Entry point for both Flash (`{type: "task"}` intent) and Chat (Assistant
@@ -186,6 +194,8 @@ async def run_task_intent(
         user_text=user_text,
         user_id=user_id,
         content=content,
+        target_external_id=target_external_id,
+        target_external_system=target_external_system,
     ))
 
     # ── Sync return: placeholder card so Flash/Chat shows ⏳ immediately ──
@@ -212,6 +222,8 @@ async def _run_task_async(
     user_text: str,
     user_id: str,
     content: str = "",
+    target_external_id: str = "",
+    target_external_system: str = "",
 ) -> None:
     """
     Background worker. Spawns an ephemeral LlmAgent with all external MCPs
@@ -245,10 +257,20 @@ async def _run_task_async(
         # agent explicitly as the body to write — otherwise a doc/note tool gets
         # only a title and the user ends up with an empty document.
         runner_input = user_text
+        if target_external_id.strip():
+            # UPDATE an existing external object — give the runner the id + system
+            # so it picks the update tool (not create).
+            runner_input += (
+                f"\n\n======== 这是【更新现有对象】,不要新建 ========\n"
+                f"目标系统: {target_external_system or '(见 user_text)'}\n"
+                f"目标对象 external_id: {target_external_id}\n"
+                f"动作: 用该系统的【更新】工具(如 update_document / update_calendar_event /"
+                f" update_todo_task),把这个 id 传进它的节点/文档/事件 id 参数,"
+                f"再把下面的正文设置进去。**不要 create 新对象。**"
+            )
         if content.strip():
-            runner_input = (
-                f"{user_text}\n\n"
-                f"======== 要写入的正文内容(原样作为文档/笔记/markdown 正文) ========\n"
+            runner_input += (
+                f"\n\n======== 要写入的正文内容(原样作为文档/笔记/markdown 正文) ========\n"
                 f"{content}"
             )
 

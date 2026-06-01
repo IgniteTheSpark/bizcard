@@ -367,6 +367,8 @@ async def tool_create_task(
     session_id: str = "",
     source_input_turn_id: str = "",
     content: str = "",
+    target_external_id: str = "",
+    target_external_system: str = "",
 ) -> str:
     """
     Kick off an async task that calls a third-party MCP (Notion / Google
@@ -391,6 +393,14 @@ async def tool_create_task(
                               The task agent itself can't see prior chat turns, so
                               YOU must put the real text here or the doc/note ends
                               up empty. Leave "" for pure actions (calendar/todo).
+        target_external_id:   When UPDATING an EXISTING external object (e.g. "把内容
+                              更新到刚刚那个钉钉文档"), pass that object's external_id
+                              (the prior external_ref asset's external_id, found via
+                              query_asset user_skill_name="external_ref"). The task
+                              then UPDATES it instead of creating a new one. Leave ""
+                              to create new.
+        target_external_system: The external_system of the object being updated
+                              (e.g. "dingtalk_notes") — pair with target_external_id.
     """
     from agents.task_skill import run_task_intent
     return _jsonify(await run_task_intent(
@@ -398,6 +408,8 @@ async def tool_create_task(
         session_id=session_id,
         source_input_turn_id=source_input_turn_id,
         content=content,
+        target_external_id=target_external_id,
+        target_external_system=target_external_system,
     ))
 
 
