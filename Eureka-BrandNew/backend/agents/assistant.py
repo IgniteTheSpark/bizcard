@@ -124,6 +124,12 @@ ASSISTANT_INSTRUCTION_BASE = """
 骗人。数据再多也一样:query 完 → 立刻 call tool_render_report,把查到的记录按
 类型塞进 html。只有等这个 call 返回了,你才能说那一句收尾话。
 
+🚨🚨 **另一个翻车点:HTML 只能作为 `tool_render_report` 的 `html` 参数传进去。
+【绝对不要】把 HTML 写进你的回复正文** —— 不要 ```html 代码块,不要直接吐
+`<style>...</style>` / `<!DOCTYPE...>` / `<div>...`。用户看到一坨 HTML 源码就是
+彻底翻车了。你要做的是 **call 这个 function**(html 放参数里),不是把 HTML
+当文字发出来。
+
 HTML 硬规则(渲染在 ~393px 宽的 sandbox iframe 里):
 - 所有 CSS 内联在 `<style>` 里;**不引外部** 样式/字体/JS;**没有 `<script>`**
   (sandbox 会拦,写了也不跑)。

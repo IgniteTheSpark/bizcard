@@ -136,6 +136,24 @@ function PartRenderer({
   onOpenReport: (report: ReportData) => void;
 }) {
   if (part.type === "text") {
+    // Salvage: deepseek sometimes emits a report's HTML as a raw text message
+    // (```html fence / bare <style> doc) instead of calling tool_render_report.
+    // The HTML is fine — render it as a proper report card rather than dumping
+    // code at the user. While it's still streaming in, show a placeholder.
+    if (isHtmlReportText(part.text)) {
+      if (streaming && isLast) {
+        return (
+          <div className="inline-flex items-center gap-1.5 self-start px-2 py-1 rounded-eu-sm text-eu-xs text-eu-accent-amber-fg bg-eu-accent-amber-bg border border-eu-accent-amber-edge">
+            <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+            整理报告中…
+          </div>
+        );
+      }
+      const salvaged = extractHtmlReportFromText(part.text);
+      if (salvaged) {
+        return <ReportReceiptCard report={salvaged} onOpen={() => onOpenReport(salvaged)} />;
+      }
+    }
     return (
       <div className="text-eu-base text-eu-text whitespace-pre-wrap leading-relaxed">
         {part.text}
@@ -303,6 +321,36 @@ function extractCardsFromToolResult(response: Record<string, unknown>): Record<s
  * at the top level, in structuredContent, or JSON-encoded in content[0].text.
  * Returns null for any non-report tool_result.
  */
+/** Strip a leading ```html fence + a leading "<!-- … -->" comment so we can
+ *  sniff the first real tag. */
+function stripReportPreamble(text: string): string {
+  return text
+    .trim()
+    .replace(/^```[a-zA-Z]*\s*/, "")    // ```html / ```
+    .replace(/^<!--[\s\S]*?-->\s*/, "") // <!-- language: html -->
+    .trim();
+}
+
+/** Does this text message look like a (possibly still-streaming) HTML report
+ *  the model emitted inline instead of via tool_render_report? Anchored at the
+ *  start so a normal prose answer that merely mentions a tag won't match. */
+function isHtmlReportText(text: string): boolean {
+  if (!text || (!text.includes("<style") && !text.toLowerCase().includes("<!doctype") && !text.toLowerCase().includes("<html"))) {
+    return false;
+  }
+  return /^(<!doctype|<html|<style)/i.test(stripReportPreamble(text));
+}
+
+/** Extract {title, html} from an inline-HTML report text once it's complete. */
+function extractHtmlReportFromText(text: string): ReportData | null {
+  let html = stripReportPreamble(text).replace(/```\s*$/, "").trim();
+  if (html.length < 120) return null;          // too short to be a real report
+  if (!/^(<!doctype|<html|<style)/i.test(html.toLowerCase())) return null;
+  const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const title = h1 ? h1[1].replace(/<[^>]+>/g, "").trim().slice(0, 60) : "总结报告";
+  return { title: title || "总结报告", html };
+}
+
 function extractReportFromToolResult(response: Record<string, unknown>): ReportData | null {
   if (!response) return null;
 
