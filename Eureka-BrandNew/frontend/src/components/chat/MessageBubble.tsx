@@ -423,10 +423,14 @@ function ReportReceiptCard({ report, onOpen }: { report: ReportData; onOpen: () 
 /** Stamp the response with the right card_type so AssetCardInChat can pick
  *  the matching render_spec (synthesizeSpec(card_type) keys off this). */
 function tagByIdField(d: Record<string, unknown>): Record<string, unknown> | null {
+  // task_id BEFORE asset_id: a create_task result carries BOTH (asset_id = the
+  // placeholder external_ref asset). If asset_id won, the card got no card_type
+  // and rendered as a generic「资产」. Tagging it "task" routes it through the
+  // lifecycle card (⏳ → MCP icon + status badge).
+  if (d.task_id)       return { ...d, card_type: "task" };
   if (d.asset_id)      return d;                      // user_skill_name carried
   if (d.event_id)      return { ...d, card_type: "event" };
   if (d.contact_id)    return { ...d, card_type: "contact" };
-  if (d.task_id)       return { ...d, card_type: "task" };
   if (d.input_turn_id) return { ...d, card_type: "input_turn" };
   return null;
 }

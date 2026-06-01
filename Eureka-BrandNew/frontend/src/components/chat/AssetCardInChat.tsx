@@ -23,6 +23,21 @@ import type { AccentColor, CardAction, CardData, FieldFormat } from "@/lib/rende
  * defaults when no render_spec is registered for them.
  */
 
+/**
+ * external_system → card icon for task / external_ref cards. No emoji exists
+ * for these brands, so these are representative stand-ins: 📌 puns on 钉
+ * (钉钉), 📝 Notion, 📅 Google Calendar. "pending" stays ⏳ (still in flight).
+ */
+const MCP_ICON: Record<string, string> = {
+  pending:           "⏳",
+  dingtalk:          "📌",
+  dingtalk_calendar: "📌",
+  dingtalk_todo:     "📌",
+  dingtalk_notes:    "📌",
+  notion:            "📝",
+  google_calendar:   "📅",
+};
+
 interface AssetCardInChatProps {
   /** Either the raw tool_result.response or a Message.cards[i] entry */
   data: Record<string, unknown>;
@@ -33,7 +48,10 @@ interface AssetCardInChatProps {
 }
 
 export function AssetCardInChat({ data, onOpen }: AssetCardInChatProps) {
-  const skillName = pickString(data, ["user_skill_name", "card_type", "skill_name"]);
+  // Fall back to "task" when a card dict carries task_id but no card_type —
+  // covers history replay where the stored card wasn't tagged (live cards get
+  // tagged by tagByIdField). Without this the task card renders as「资产」.
+  const skillName = pickString(data, ["user_skill_name", "card_type", "skill_name"]) ?? (data.task_id ? "task" : null);
   const assetId   = pickString(data, ["asset_id", "id"]);
 
   // Async-task lifecycle cards (third-party MCP sync via task-skill) read their
@@ -69,7 +87,7 @@ function AssetCardBody({ data, onOpen }: AssetCardInChatProps) {
   const toggleTodo = useToggleTodo();
   const { assets } = useAssets();
 
-  const skillName = pickString(data, ["user_skill_name", "card_type", "skill_name"]);
+  const skillName = pickString(data, ["user_skill_name", "card_type", "skill_name"]) ?? (data.task_id ? "task" : null);
   const payload   = pickObject(data, "payload") ?? data;
   const assetId   = pickString(data, ["asset_id", "id"]);
   const eventId   = pickString(data, ["event_id"]);
@@ -158,6 +176,14 @@ function AssetCardBody({ data, onOpen }: AssetCardInChatProps) {
     cardType: skillName ?? "asset",
     displayName: skill?.display_name ?? skillName ?? "资产",
   });
+
+  // Async-task / external_ref cards: swap the generic ⏳/🔗 for the icon of the
+  // MCP the task actually hit, once known (pending stays ⏳). Tells the user at
+  // a glance「这条进了钉钉/Notion/日历」.
+  if (skillName === "external_ref" || skillName === "task") {
+    const sys = typeof payload.external_system === "string" ? payload.external_system : "";
+    if (MCP_ICON[sys]) cardData.icon = MCP_ICON[sys];
+  }
 
   return (
     <SkillCard
