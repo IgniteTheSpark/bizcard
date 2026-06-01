@@ -81,6 +81,11 @@ def _build_task_runner_prompt() -> str:
 3. 如果用户说了具体时间("明天下午三点"),换算成 ISO8601 + 时区(+08:00 默认)
    再传 —— **不要**传中文时间。
 4. **不要凭空编参数**(比如不要给 attendees 编名字)。用户没说就不填非必需字段。
+5. **正文内容(关键!别建空文档)**:如果输入里带了
+   「======== 要写入的正文内容 ========」这一段,**那段就是文档/笔记的完整正文**。
+   调创建文档/笔记的工具时,**必须**把它原样填进正文参数(钉钉文档的 `markdown`、
+   Notion 的 `content` 等)。标题归标题、正文归正文,**绝不**只填标题把正文丢掉。
+   没带这一段时才只创建标题。
 
 ## 失败重试(关键)
 
@@ -111,10 +116,17 @@ async def run_task_intent(
     session_id: str = "",
     source_input_turn_id: str = "",
     user_id: str = "default",
+    content: str = "",
 ) -> dict:
     """
     Entry point for both Flash (`{type: "task"}` intent) and Chat (Assistant
     calling `tool_create_task`).
+
+    `content` is the body to write when the action carries real content the
+    instruction only *references* (e.g. "把上面那段分析同步到钉钉文档" — the
+    analysis lives in a prior chat message the ephemeral task agent can't see).
+    The caller (Assistant) passes the actual text here so the MCP doc/note gets
+    a body instead of just a title.
 
     Returns the placeholder card immediately. Real MCP work runs in the
     background via asyncio.create_task; clients poll /api/tasks/{id} or
@@ -173,6 +185,7 @@ async def run_task_intent(
         asset_id=asset_id,
         user_text=user_text,
         user_id=user_id,
+        content=content,
     ))
 
     # ── Sync return: placeholder card so Flash/Chat shows ⏳ immediately ──
@@ -198,6 +211,7 @@ async def _run_task_async(
     asset_id: str,
     user_text: str,
     user_id: str,
+    content: str = "",
 ) -> None:
     """
     Background worker. Spawns an ephemeral LlmAgent with all external MCPs
@@ -227,8 +241,19 @@ async def _run_task_async(
             tools=toolsets,
         )
 
+        # Compose the runner input. When `content` is provided, hand it to the
+        # agent explicitly as the body to write — otherwise a doc/note tool gets
+        # only a title and the user ends up with an empty document.
+        runner_input = user_text
+        if content.strip():
+            runner_input = (
+                f"{user_text}\n\n"
+                f"======== 要写入的正文内容(原样作为文档/笔记/markdown 正文) ========\n"
+                f"{content}"
+            )
+
         # Run agent (reuses _run_agent from flash_pipeline → captures tool events)
-        raw, tool_events = await _run_agent(agent, user_text, user_id)
+        raw, tool_events = await _run_agent(agent, runner_input, user_id)
         ext_info = _extract_external_ref(tool_events)
 
         if not ext_info:

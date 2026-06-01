@@ -366,6 +366,7 @@ async def tool_create_task(
     user_text: str,
     session_id: str = "",
     source_input_turn_id: str = "",
+    content: str = "",
 ) -> str:
     """
     Kick off an async task that calls a third-party MCP (Notion / Google
@@ -384,12 +385,19 @@ async def tool_create_task(
         user_text:            User's original request describing the action.
         session_id:           Current session UUID (from this turn's context).
         source_input_turn_id: Current input_turn UUID (provenance).
+        content:              The actual BODY to write, when the action saves
+                              content the request only references (e.g. "把上面那段
+                              分析同步到钉钉文档" — pass the full analysis text here).
+                              The task agent itself can't see prior chat turns, so
+                              YOU must put the real text here or the doc/note ends
+                              up empty. Leave "" for pure actions (calendar/todo).
     """
     from agents.task_skill import run_task_intent
     return _jsonify(await run_task_intent(
         user_text=user_text,
         session_id=session_id,
         source_input_turn_id=source_input_turn_id,
+        content=content,
     ))
 
 
